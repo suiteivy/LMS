@@ -30,6 +30,7 @@ import { LogoutReason } from '@/types/logout';
 
 const IconIonicons = Ionicons as any;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CAN_USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 // ─── Design Tokens ──────────────────────────────────────────────────────────
 const FLAME        = '#FF6B00';
@@ -242,8 +243,8 @@ const PrimaryButton = ({
   useEffect(() => {
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.12, duration: 1600, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1,    duration: 1600, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.12, duration: 1600, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: CAN_USE_NATIVE_DRIVER }),
+        Animated.timing(pulseAnim, { toValue: 1,    duration: 1600, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: CAN_USE_NATIVE_DRIVER }),
       ])
     );
     pulse.start();
@@ -257,7 +258,7 @@ const PrimaryButton = ({
         toValue: 2,
         duration: 600,
         easing: EasingRN.out(EasingRN.cubic),
-        useNativeDriver: true,
+        useNativeDriver: CAN_USE_NATIVE_DRIVER,
       }).start();
     }
   }, [hovered, disabled, loading]);
@@ -401,8 +402,8 @@ const LogoLockup = ({ entranceAnim }: { entranceAnim: Animated.Value }) => {
   useEffect(() => {
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseScale, { toValue: 1.08, duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
-        Animated.timing(pulseScale, { toValue: 1,    duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
+        Animated.timing(pulseScale, { toValue: 1.08, duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: CAN_USE_NATIVE_DRIVER }),
+        Animated.timing(pulseScale, { toValue: 1,    duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: CAN_USE_NATIVE_DRIVER }),
       ])
     );
     pulse.start();
@@ -471,13 +472,13 @@ export default function SecurityQuestionsSetup() {
     Animated.timing(logoEntrance, {
       toValue: 1, duration: 500,
       easing: EasingRN.out(EasingRN.cubic),
-      useNativeDriver: true,
+      useNativeDriver: CAN_USE_NATIVE_DRIVER,
     }).start();
 
     Animated.parallel([
-      Animated.timing(cardFade,  { toValue: 1, duration: 700, easing: EasingRN.out(EasingRN.quad), useNativeDriver: true }),
-      Animated.spring(cardSlide, { toValue: 0, useNativeDriver: true, friction: 8, tension: 55 }),
-      Animated.spring(cardScale, { toValue: 1, useNativeDriver: true, friction: 8, tension: 55 }),
+      Animated.timing(cardFade,  { toValue: 1, duration: 700, easing: EasingRN.out(EasingRN.quad), useNativeDriver: CAN_USE_NATIVE_DRIVER }),
+      Animated.spring(cardSlide, { toValue: 0, useNativeDriver: CAN_USE_NATIVE_DRIVER, friction: 8, tension: 55 }),
+      Animated.spring(cardScale, { toValue: 1, useNativeDriver: CAN_USE_NATIVE_DRIVER, friction: 8, tension: 55 }),
     ]).start();
   }, []);
 

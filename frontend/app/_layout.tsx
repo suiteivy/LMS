@@ -72,6 +72,8 @@ const _origConsoleWarn = console.warn.bind(console);
 console.warn = (...args: unknown[]) => {
   const all = args.map((arg) => (arg instanceof Error ? arg.message : String(arg ?? ''))).join(' ');
   if (all.includes("non-boolean attribute") && all.includes("collapsable")) return;
+  if (Platform.OS === 'web' && all.includes('"shadow*" style props are deprecated. Use "boxShadow"')) return;
+  if (Platform.OS === 'web' && all.includes("props.pointerEvents is deprecated. Use style.pointerEvents")) return;
   _origConsoleWarn(...args);
 };
 
@@ -183,8 +185,8 @@ function AuthHandler() {
     if (!maintenanceModeEnabled) return;
     const anim = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 0.6, duration: 1000, easing: EasingRN.inOut(EasingRN.ease), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0.2, duration: 1000, easing: EasingRN.inOut(EasingRN.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.6, duration: 1000, easing: EasingRN.inOut(EasingRN.ease), useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(pulse, { toValue: 0.2, duration: 1000, easing: EasingRN.inOut(EasingRN.ease), useNativeDriver: Platform.OS !== 'web' }),
       ])
     );
     anim.start();

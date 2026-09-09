@@ -152,14 +152,18 @@ exports.getMaintenanceStatus = async (_req, res) => {
             message,
         });
     } catch (err) {
-        console.error('getMaintenanceStatus error:', err);
         if (isTransientSupabaseError(err)) {
+            console.warn('getMaintenanceStatus transient upstream error:', {
+                message: err?.message || String(err),
+                code: err?.code || err?.cause?.code || null,
+            });
             return res.status(200).json({
                 enabled: false,
                 message: 'System maintenance status is temporarily unavailable.',
                 stale: true,
             });
         }
+        console.error('getMaintenanceStatus error:', err);
         return res.status(200).json({
             enabled: false,
             message: 'System maintenance is in progress. Please try again later.',

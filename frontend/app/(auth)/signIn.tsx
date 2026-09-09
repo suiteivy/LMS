@@ -29,6 +29,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 
 const IconIonicons = Ionicons as any;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const CAN_USE_NATIVE_DRIVER = Platform.OS !== "web";
 
 // ─── Design tokens ──────────────────────────────────────────────────────────
 const FLAME      = "#FF6B00";
@@ -239,7 +240,7 @@ const ForgotLink = ({ onPress }: { onPress: () => void }) => {
       toValue: 1,
       duration: 280,
       easing: EasingRN.out(EasingRN.cubic),
-      useNativeDriver: true,
+      useNativeDriver: CAN_USE_NATIVE_DRIVER,
     }).start();
 
   const onHoverOut = () =>
@@ -247,7 +248,7 @@ const ForgotLink = ({ onPress }: { onPress: () => void }) => {
       toValue: 0,
       duration: 180,
       easing: EasingRN.in(EasingRN.quad),
-      useNativeDriver: true,
+      useNativeDriver: CAN_USE_NATIVE_DRIVER,
     }).start();
 
   const scaleX = underlineAnim;
@@ -305,8 +306,8 @@ const PrimaryButton = ({
   useEffect(() => {
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.12, duration: 1600, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1,    duration: 1600, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.12, duration: 1600, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: CAN_USE_NATIVE_DRIVER }),
+        Animated.timing(pulseAnim, { toValue: 1,    duration: 1600, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: CAN_USE_NATIVE_DRIVER }),
       ])
     );
     pulse.start();
@@ -321,7 +322,7 @@ const PrimaryButton = ({
         toValue: 2,
         duration: 600,
         easing: EasingRN.out(EasingRN.cubic),
-        useNativeDriver: true,
+        useNativeDriver: CAN_USE_NATIVE_DRIVER,
       }).start();
     }
   }, [hovered]);
@@ -467,8 +468,8 @@ const LogoLockup = ({ entranceAnim }: { entranceAnim: Animated.Value }) => {
   useEffect(() => {
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseScale, { toValue: 1.08, duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
-        Animated.timing(pulseScale, { toValue: 1,    duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: true }),
+        Animated.timing(pulseScale, { toValue: 1.08, duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: CAN_USE_NATIVE_DRIVER }),
+        Animated.timing(pulseScale, { toValue: 1,    duration: 2400, easing: EasingRN.inOut(EasingRN.sin), useNativeDriver: CAN_USE_NATIVE_DRIVER }),
       ])
     );
     pulse.start();
@@ -545,39 +546,39 @@ export default function SignIn() {
     Animated.timing(logoEntrance, {
       toValue: 1, duration: 500,
       easing: EasingRN.out(EasingRN.cubic),
-      useNativeDriver: true,
+      useNativeDriver: CAN_USE_NATIVE_DRIVER,
     }).start();
 
     // Card: fade + slide-up spring + scale-in spring
     Animated.parallel([
-      Animated.timing(cardFade,  { toValue: 1, duration: 700, easing: EasingRN.out(EasingRN.quad), useNativeDriver: true }),
-      Animated.spring(cardSlide, { toValue: 0, useNativeDriver: true, friction: 8, tension: 55 }),
-      Animated.spring(cardScale, { toValue: 1, useNativeDriver: true, friction: 8, tension: 55 }),
+      Animated.timing(cardFade,  { toValue: 1, duration: 700, easing: EasingRN.out(EasingRN.quad), useNativeDriver: CAN_USE_NATIVE_DRIVER }),
+      Animated.spring(cardSlide, { toValue: 0, useNativeDriver: CAN_USE_NATIVE_DRIVER, friction: 8, tension: 55 }),
+      Animated.spring(cardScale, { toValue: 1, useNativeDriver: CAN_USE_NATIVE_DRIVER, friction: 8, tension: 55 }),
     ]).start(() => {
       // Fields stagger in after card settles
       Animated.stagger(100, [
-        Animated.spring(field1, { toValue: 1, useNativeDriver: true, friction: 7, tension: 80 }),
-        Animated.spring(field2, { toValue: 1, useNativeDriver: true, friction: 7, tension: 80 }),
-        Animated.spring(field3, { toValue: 1, useNativeDriver: true, friction: 7, tension: 80 }),
+        Animated.spring(field1, { toValue: 1, useNativeDriver: CAN_USE_NATIVE_DRIVER, friction: 7, tension: 80 }),
+        Animated.spring(field2, { toValue: 1, useNativeDriver: CAN_USE_NATIVE_DRIVER, friction: 7, tension: 80 }),
+        Animated.spring(field3, { toValue: 1, useNativeDriver: CAN_USE_NATIVE_DRIVER, friction: 7, tension: 80 }),
       ]).start();
     });
   }, []);
 
   const shakeCard = () => {
     Animated.sequence([
-      Animated.timing(shakeX, { toValue:  10, duration: 55, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue: -10, duration: 55, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue:   8, duration: 55, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue:  -8, duration: 55, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue:   4, duration: 55, useNativeDriver: true }),
-      Animated.timing(shakeX, { toValue:   0, duration: 55, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue:  10, duration: 55, useNativeDriver: CAN_USE_NATIVE_DRIVER }),
+      Animated.timing(shakeX, { toValue: -10, duration: 55, useNativeDriver: CAN_USE_NATIVE_DRIVER }),
+      Animated.timing(shakeX, { toValue:   8, duration: 55, useNativeDriver: CAN_USE_NATIVE_DRIVER }),
+      Animated.timing(shakeX, { toValue:  -8, duration: 55, useNativeDriver: CAN_USE_NATIVE_DRIVER }),
+      Animated.timing(shakeX, { toValue:   4, duration: 55, useNativeDriver: CAN_USE_NATIVE_DRIVER }),
+      Animated.timing(shakeX, { toValue:   0, duration: 55, useNativeDriver: CAN_USE_NATIVE_DRIVER }),
     ]).start();
   };
 
   const pressBtn = () => {
     Animated.sequence([
-      Animated.timing(btnScale, { toValue: 0.94, duration: 80, useNativeDriver: true }),
-      Animated.spring(btnScale,  { toValue: 1, useNativeDriver: true, friction: 4, tension: 140 }),
+      Animated.timing(btnScale, { toValue: 0.94, duration: 80, useNativeDriver: CAN_USE_NATIVE_DRIVER }),
+      Animated.spring(btnScale,  { toValue: 1, useNativeDriver: CAN_USE_NATIVE_DRIVER, friction: 4, tension: 140 }),
     ]).start();
   };
 

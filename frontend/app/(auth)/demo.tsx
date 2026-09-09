@@ -38,6 +38,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 const FLAME = "#FF6B00";
 const FLAME_GLOW = "rgba(255,107,0,0.35)";
 const GLASS_BORDER = "rgba(255,255,255,0.09)";
+const CAN_USE_NATIVE_DRIVER = Platform.OS !== "web";
 
 type RoleType = "student" | "teacher" | "parent" | "admin";
 
@@ -161,13 +162,13 @@ const PersonaCard: React.FC<PersonaCardProps> = ({
           toValue: 1.07,
           duration: 2200 + index * 200,
           easing: EasingRN.inOut(EasingRN.sin),
-          useNativeDriver: true,
+          useNativeDriver: CAN_USE_NATIVE_DRIVER,
         }),
         Animated.timing(iconPulse, {
           toValue: 1,
           duration: 2200 + index * 200,
           easing: EasingRN.inOut(EasingRN.sin),
-          useNativeDriver: true,
+          useNativeDriver: CAN_USE_NATIVE_DRIVER,
         }),
       ])
     );
@@ -177,13 +178,13 @@ const PersonaCard: React.FC<PersonaCardProps> = ({
           toValue: 0.85,
           duration: 1800 + index * 180,
           easing: EasingRN.inOut(EasingRN.sin),
-          useNativeDriver: true,
+          useNativeDriver: CAN_USE_NATIVE_DRIVER,
         }),
         Animated.timing(iconGlow, {
           toValue: 0.35,
           duration: 1800 + index * 180,
           easing: EasingRN.inOut(EasingRN.sin),
-          useNativeDriver: true,
+          useNativeDriver: CAN_USE_NATIVE_DRIVER,
         }),
       ])
     );
@@ -204,7 +205,7 @@ const PersonaCard: React.FC<PersonaCardProps> = ({
         toValue: 2,
         duration: 550,
         easing: EasingRN.out(EasingRN.cubic),
-        useNativeDriver: true,
+        useNativeDriver: CAN_USE_NATIVE_DRIVER,
       }).start();
     }
   }, [hovered, reducedMotion, sweepAnim]);
@@ -553,13 +554,13 @@ const LaunchDemoButton: React.FC<LaunchButtonProps> = ({
           toValue: 1.08,
           duration: 1600,
           easing: EasingRN.inOut(EasingRN.sin),
-          useNativeDriver: true,
+          useNativeDriver: CAN_USE_NATIVE_DRIVER,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
           duration: 1600,
           easing: EasingRN.inOut(EasingRN.sin),
-          useNativeDriver: true,
+          useNativeDriver: CAN_USE_NATIVE_DRIVER,
         }),
       ])
     );
@@ -574,7 +575,7 @@ const LaunchDemoButton: React.FC<LaunchButtonProps> = ({
         toValue: 2,
         duration: 600,
         easing: EasingRN.out(EasingRN.cubic),
-        useNativeDriver: true,
+        useNativeDriver: CAN_USE_NATIVE_DRIVER,
       }).start();
     }
   }, [hovered, reducedMotion, sweepAnim]);
@@ -606,7 +607,7 @@ const LaunchDemoButton: React.FC<LaunchButtonProps> = ({
       Animated.timing(pressScale, {
         toValue: 0.96,
         duration: 80,
-        useNativeDriver: true,
+        useNativeDriver: CAN_USE_NATIVE_DRIVER,
       }).start();
     }
   };
@@ -617,7 +618,7 @@ const LaunchDemoButton: React.FC<LaunchButtonProps> = ({
         toValue: 1,
         friction: 4,
         tension: 120,
-        useNativeDriver: true,
+        useNativeDriver: CAN_USE_NATIVE_DRIVER,
       }).start();
     }
   };
@@ -802,13 +803,13 @@ export default function Demo() {
         toValue: 1,
         duration: 650,
         easing: EasingRN.out(EasingRN.cubic),
-        useNativeDriver: true,
+        useNativeDriver: CAN_USE_NATIVE_DRIVER,
       }),
       Animated.spring(headerSlide, {
         toValue: 0,
         friction: 8,
         tension: 55,
-        useNativeDriver: true,
+        useNativeDriver: CAN_USE_NATIVE_DRIVER,
       }),
     ]).start();
 
@@ -820,7 +821,7 @@ export default function Demo() {
           toValue: 1,
           friction: 8,
           tension: 48,
-          useNativeDriver: true,
+          useNativeDriver: CAN_USE_NATIVE_DRIVER,
         })
       )
     ).start();
@@ -843,12 +844,12 @@ export default function Demo() {
         toValue: 1,
         friction: 8,
         tension: 65,
-        useNativeDriver: true,
+        useNativeDriver: CAN_USE_NATIVE_DRIVER,
       }),
       Animated.timing(modalOpacity, {
         toValue: 1,
         duration: 250,
-        useNativeDriver: true,
+        useNativeDriver: CAN_USE_NATIVE_DRIVER,
       }),
     ]).start();
   };
@@ -862,12 +863,12 @@ export default function Demo() {
       Animated.timing(modalScale, {
         toValue: 0.94,
         duration: 180,
-        useNativeDriver: true,
+        useNativeDriver: CAN_USE_NATIVE_DRIVER,
       }),
       Animated.timing(modalOpacity, {
         toValue: 0,
         duration: 180,
-        useNativeDriver: true,
+        useNativeDriver: CAN_USE_NATIVE_DRIVER,
       }),
     ]).start(() => setModalVisible(false));
   };
