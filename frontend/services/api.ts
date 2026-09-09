@@ -12,6 +12,7 @@ declare module 'axios' {
     skipErrorToast?: boolean;
     retryable?: boolean;
     skipErrorLog?: boolean;
+    _isRetry?: boolean;
   }
 }
 
@@ -83,6 +84,24 @@ supabase.auth.onAuthStateChange((_event, session) => {
   setLatestAccessToken(session?.access_token || null);
   authContextReady = true;
 });
+
+export const isTokenExpired = (token?: string | null, bufferSeconds = 30): boolean => {
+  if (!token) return true;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonStr = typeof atob !== 'undefined'
+      ? atob(base64)
+      : Buffer.from(base64, 'base64').toString('utf-8');
+    const payload = JSON.parse(jsonStr);
+    if (!payload.exp) return false;
+    return (payload.exp * 1000) <= (Date.now() + bufferSeconds * 1000);
+  } catch {
+    return false;
+  }
+};
 
 const isLikelyPublicRoute = (url?: string) => {
   const target = String(url || '');
@@ -219,22 +238,45 @@ api.interceptors.request.use(
     try {
       let token = latestAccessToken;
 
-      if (!token) {
+      if (!token || isTokenExpired(token)) {
         const { data: { session } } = await supabase.auth.getSession();
         token = session?.access_token || null;
+
+        if (token && isTokenExpired(token)) {
+          const { data: refreshed } = await supabase.auth.refreshSession();
+          token = refreshed?.session?.access_token || null;
+        }
+
         setLatestAccessToken(token);
         authContextReady = true;
       }
 
       if (!token && !isLikelyPublicRoute(config.url)) {
         token = await waitForAuthToken(1200);
+        if (token && isTokenExpired(token)) {
+          const { data: refreshed } = await supabase.auth.refreshSession();
+          token = refreshed?.session?.access_token || null;
+        }
         setLatestAccessToken(token);
       }
 
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+      } else if (!isLikelyPublicRoute(config.url)) {
+        // Prevent sending doomed unauthenticated requests over the wire for protected endpoints
+        const unauthError: any = new Error('No authentication token available');
+        unauthError.isAuthError = true;
+        unauthError.config = config;
+        unauthError.response = {
+          status: 401,
+          data: { error: 'No token provided', code: 'NO_TOKEN' },
+        };
+        return Promise.reject(unauthError);
       }
     } catch (error: any) {
+      if (error?.isAuthError) {
+        return Promise.reject(error);
+      }
       console.error(`[API ${requestId}] Auth interceptor failure for ${config.url}:`, error.message);
     }
     
@@ -252,7 +294,7 @@ api.interceptors.response.use(
     _setOffline(false);
     return response;
   },
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     let title = "Error";
     let message = "An unexpected error occurred";
     let severity: 'error' | 'warning' | 'info' = 'error';
@@ -276,13 +318,32 @@ api.interceptors.response.use(
         case 400:
           title = "Invalid Request";
           break;
-        case 401:
+        case 401: {
           title = "Unauthorized";
           message = data?.error || data?.message || "Please sign in again.";
 
           const skipSignOut = (error.config as InternalAxiosRequestConfig & { skipErrorToast?: boolean })?.skipErrorToast;
-
           const errorCode = data?.code;
+          const shouldForceSignOut = ['SESSION_IDLE_TIMEOUT', 'SESSION_TIMEOUT', 'SESSION_REVOKED'].includes(errorCode);
+
+          // If standard 401 occurred (e.g. token expired) and request hasn't been retried yet,
+          // attempt a single token refresh and retry before concluding unauthorized.
+          const originalConfig = error.config as (InternalAxiosRequestConfig & { _isRetry?: boolean }) | undefined;
+          if (originalConfig && !originalConfig._isRetry && !shouldForceSignOut && !isLikelyPublicRoute(originalConfig.url)) {
+            originalConfig._isRetry = true;
+            try {
+              const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
+              if (!refreshErr && refreshData?.session?.access_token) {
+                const freshToken = refreshData.session.access_token;
+                setLatestAccessToken(freshToken);
+                originalConfig.headers.Authorization = `Bearer ${freshToken}`;
+                return api.request(originalConfig);
+              }
+            } catch {
+              // Refresh failed, proceed to 401 handling
+            }
+          }
+
           let logoutReason = LogoutReason.UNKNOWN;
           if (errorCode === 'SESSION_IDLE_TIMEOUT') {
             logoutReason = LogoutReason.INACTIVITY_TIMEOUT;
@@ -291,8 +352,6 @@ api.interceptors.response.use(
           } else if (error.response?.status === 401) {
             logoutReason = LogoutReason.TOKEN_EXPIRED;
           }
-
-          const shouldForceSignOut = ['SESSION_IDLE_TIMEOUT', 'SESSION_TIMEOUT', 'SESSION_REVOKED'].includes(errorCode);
 
           if (!skipSignOut && shouldForceSignOut && error.config?.headers?.Authorization) {
             console.warn(`[API] 401 ${errorCode} received. Checking session before triggering safeSignOut.`);
@@ -303,6 +362,7 @@ api.interceptors.response.use(
             });
           }
           return Promise.reject({ ...error, isAuthError: true });
+        }
         case 403:
           title = "Permission Denied";
           message = "You don't have access to this resource.";

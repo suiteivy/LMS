@@ -207,8 +207,18 @@ async function getClassDomainOptions(institutionId) {
         .eq('institution_id', institutionId);
 
     const scopedCategoryIds = [...new Set((scopedInstitutionCategories || []).map((row) => row.category_id).filter(Boolean))];
+    const hasDeletedAt = await supportsClassesDeletedAt();
 
-    const [categoriesRes, levelsRes, streamsRes] = await Promise.all([
+    let classQuery = supabase
+        .from('classes')
+        .select('id, level_id, stream_id, stream, teacher_id, capacity')
+        .eq('institution_id', institutionId);
+
+    if (hasDeletedAt) {
+        classQuery = classQuery.is('deleted_at', null);
+    }
+
+    const [categoriesRes, levelsRes, streamsRes, classesRes] = await Promise.all([
         supabase
             .from('class_categories')
             .select('id, name, description, sort_order, school_category_id')
@@ -230,6 +240,7 @@ async function getClassDomainOptions(institutionId) {
             .is('deleted_at', null)
             .order('sort_order', { ascending: true })
             .order('code', { ascending: true }),
+        classQuery,
     ]);
 
     if (categoriesRes.error) throw categoriesRes.error;
@@ -237,9 +248,28 @@ async function getClassDomainOptions(institutionId) {
     if (streamsRes.error) throw streamsRes.error;
 
     const categories = categoriesRes.data || [];
-    const levels = levelsRes.data || [];
-    const allowedLevelIds = new Set(levels.map((item) => item.id));
+    const rawLevels = levelsRes.data || [];
+    const allowedLevelIds = new Set(rawLevels.map((item) => item.id));
     const streams = (streamsRes.data || []).filter((item) => allowedLevelIds.has(item.level_id));
+    const classes = classesRes?.error ? [] : (classesRes?.data || []);
+
+    const levels = rawLevels.map((level) => {
+        const levelClasses = classes.filter((c) => c.level_id === level.id);
+        const standaloneClass = levelClasses.find(
+            (c) => !c.stream_id && (!c.stream || String(c.stream).trim() === '')
+        );
+        const streamCount = streams.filter((s) => s.level_id === level.id).length;
+
+        return {
+            ...level,
+            has_standalone_class: !!standaloneClass,
+            standalone_class_id: standaloneClass ? standaloneClass.id : null,
+            standalone_class_teacher_id: standaloneClass ? standaloneClass.teacher_id : null,
+            standalone_class_capacity: standaloneClass ? standaloneClass.capacity : null,
+            stream_count: streamCount,
+            class_count: levelClasses.length,
+        };
+    });
 
     return {
         categories,
@@ -446,7 +476,7 @@ exports.createClassDomainCategory = async (req, res) => {
 exports.createClassDomainLevel = async (req, res) => {
     try {
         const institution_id = req.institution_id;
-        let { category_id, level_number, name, sort_order } = req.body;
+        let { category_id, level_number, name, sort_order, as_single_class, create_class, capacity, teacher_id } = req.body;
         if (!institution_id) return res.status(400).json({ error: 'Institution context is required' });
         
         const levelNumber = toFiniteNumber(level_number);
@@ -549,7 +579,101 @@ exports.createClassDomainLevel = async (req, res) => {
             data = inserted;
         }
 
-        res.status(201).json(data);
+        const shouldCreateClass = Boolean(as_single_class || create_class);
+        let standaloneClass = null;
+
+        if (shouldCreateClass && data?.id) {
+            const meta = await getInstitutionCategoryMeta(institution_id);
+            const hasClassType = await supportsClassesClassType();
+            const hasDeletedAt = await supportsClassesDeletedAt();
+
+            let classQuery = supabase
+                .from('classes')
+                .select('*')
+                .eq('institution_id', institution_id)
+                .eq('level_id', data.id)
+                .is('stream_id', null);
+            if (hasDeletedAt) {
+                classQuery = classQuery.is('deleted_at', null);
+            }
+            const { data: existingClasses } = await classQuery;
+            standaloneClass = (existingClasses || []).find(
+                (c) => !c.stream || String(c.stream).trim() === ''
+            );
+
+            if (!standaloneClass) {
+                if (hasDeletedAt) {
+                    const { data: softDeletedClasses } = await supabase
+                        .from('classes')
+                        .select('*')
+                        .eq('institution_id', institution_id)
+                        .eq('level_id', data.id)
+                        .is('stream_id', null)
+                        .not('deleted_at', 'is', null);
+
+                    const softDeleted = (softDeletedClasses || []).find(
+                        (c) => !c.stream || String(c.stream).trim() === ''
+                    );
+
+                    if (softDeleted) {
+                        const updatePayload = {
+                            deleted_at: null,
+                            updated_at: new Date().toISOString(),
+                        };
+                        if (capacity !== undefined) updatePayload.capacity = capacity;
+                        if (teacher_id !== undefined) updatePayload.teacher_id = teacher_id || null;
+
+                        const { data: restoredClass, error: restoreClassErr } = await supabase
+                            .from('classes')
+                            .update(updatePayload)
+                            .eq('id', softDeleted.id)
+                            .select('*')
+                            .single();
+                        if (restoreClassErr) throw restoreClassErr;
+                        standaloneClass = restoredClass;
+                    }
+                }
+
+                if (!standaloneClass) {
+                    const insertClassData = {
+                        institution_id,
+                        category_id: data.category_id,
+                        level_id: data.id,
+                        stream_id: null,
+                        stream: null,
+                    };
+                    if (meta.class_type === 'Form') {
+                        insertClassData.form_level = levelNumber;
+                    } else {
+                        insertClassData.grade_level = levelNumber;
+                    }
+                    if (hasClassType) {
+                        insertClassData.class_type = meta.class_type || 'Grade';
+                    }
+                    if (capacity !== undefined) insertClassData.capacity = capacity;
+                    if (teacher_id !== undefined) insertClassData.teacher_id = teacher_id || null;
+
+                    const { data: createdClass, error: classCreateErr } = await supabase
+                        .from('classes')
+                        .insert(insertClassData)
+                        .select('*')
+                        .single();
+                    if (classCreateErr) throw classCreateErr;
+                    standaloneClass = createdClass;
+                }
+            }
+        }
+
+        res.status(201).json({
+            ...data,
+            has_standalone_class: !!standaloneClass,
+            standalone_class_id: standaloneClass ? standaloneClass.id : null,
+            standalone_class_teacher_id: standaloneClass ? standaloneClass.teacher_id : null,
+            standalone_class_capacity: standaloneClass ? standaloneClass.capacity : null,
+            stream_count: 0,
+            class_count: standaloneClass ? 1 : 0,
+            class: standaloneClass || null,
+        });
     } catch (err) {
         console.error('createClassDomainLevel error:', err);
         const isDuplicate = err?.code === '23505' || 
@@ -652,14 +776,62 @@ exports.archiveClassDomainLevel = async (req, res) => {
         const { id } = req.params;
         if (!institution_id) return res.status(400).json({ error: 'Institution context is required' });
 
-        const { count: classCount, error: classCountError } = await supabase
+        const hasDeletedAt = await supportsClassesDeletedAt();
+        let classQuery = supabase
             .from('classes')
-            .select('id', { count: 'exact', head: true })
+            .select('id, stream_id, stream')
             .eq('level_id', id)
             .eq('institution_id', institution_id);
-        if (classCountError && !hasRelationMissingError(classCountError)) throw classCountError;
-        if ((classCount || 0) > 0) {
-            return res.status(400).json({ error: 'Cannot archive level that is referenced by classes' });
+        if (hasDeletedAt) {
+            classQuery = classQuery.is('deleted_at', null);
+        }
+        const { data: levelClasses, error: classError } = await classQuery;
+        if (classError && !hasRelationMissingError(classError)) throw classError;
+
+        const activeClasses = levelClasses || [];
+        if (activeClasses.length > 0) {
+            // Check if any active classes have enrolled students
+            const classIds = activeClasses.map((c) => c.id);
+            const { count: studentCount, error: enrollmentError } = await supabase
+                .from('class_enrollments')
+                .select('id', { count: 'exact', head: true })
+                .in('class_id', classIds)
+                .eq('status', 'enrolled');
+
+            if (enrollmentError && !hasRelationMissingError(enrollmentError)) throw enrollmentError;
+
+            if ((studentCount || 0) > 0) {
+                return res.status(400).json({
+                    error: `Cannot archive level with ${studentCount} enrolled student${studentCount === 1 ? '' : 's'}. Please reassign or remove students first.`,
+                });
+            }
+
+            // Check if there are streams under this level
+            const { count: streamCount } = await supabase
+                .from('class_streams')
+                .select('id', { count: 'exact', head: true })
+                .eq('level_id', id)
+                .eq('institution_id', institution_id)
+                .is('deleted_at', null);
+
+            if ((streamCount || 0) > 0) {
+                return res.status(400).json({
+                    error: 'Cannot archive level that has active streams. Please archive streams first.',
+                });
+            }
+
+            // If only standalone classes exist with 0 students, archive those classes
+            if (hasDeletedAt) {
+                await supabase
+                    .from('classes')
+                    .update({ deleted_at: new Date().toISOString() })
+                    .in('id', classIds);
+            } else {
+                await supabase
+                    .from('classes')
+                    .delete()
+                    .in('id', classIds);
+            }
         }
 
         const { data, error } = await supabase
@@ -759,6 +931,34 @@ exports.createClass = async (req, res) => {
         }
         if (capacity !== undefined) insertData.capacity = capacity;
         if (teacher_id !== undefined) insertData.teacher_id = teacher_id;
+
+        const isStandalone = (
+            (!insertData.stream_id) &&
+            (!insertData.stream || String(insertData.stream).trim() === '')
+        );
+
+        if (isStandalone && insertData.level_id) {
+            const hasDeletedAt = await supportsClassesDeletedAt();
+            let dupQuery = supabase
+                .from('classes')
+                .select('id, stream')
+                .eq('institution_id', institution_id)
+                .eq('level_id', insertData.level_id)
+                .is('stream_id', null);
+            if (hasDeletedAt) {
+                dupQuery = dupQuery.is('deleted_at', null);
+            }
+            const { data: existingDupes } = await dupQuery;
+            const hasDuplicate = (existingDupes || []).some(
+                (c) => !c.stream || String(c.stream).trim() === ''
+            );
+            if (hasDuplicate) {
+                return res.status(409).json({
+                    code: 'DUPLICATE_CLASS',
+                    error: 'A standalone class already exists for this grade level.',
+                });
+            }
+        }
 
         const { data, error } = await supabase
             .from("classes")
@@ -1082,6 +1282,12 @@ exports.getClassOptions = async (req, res) => {
                 level_id: level.id,
                 category_id: level.category_id,
                 class_type: level.category_types?.name || defaultClassType,
+                has_standalone_class: level.has_standalone_class || false,
+                standalone_class_id: level.standalone_class_id || null,
+                standalone_class_teacher_id: level.standalone_class_teacher_id || null,
+                standalone_class_capacity: level.standalone_class_capacity || null,
+                stream_count: level.stream_count || 0,
+                class_count: level.class_count || 0,
             }));
 
             // If no domain class_levels exist yet, check if existing classes have grade/form levels

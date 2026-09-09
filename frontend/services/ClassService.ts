@@ -44,6 +44,12 @@ export interface ClassOptionItem {
     category_id?: string;
     level_id?: string;
     class_type?: string;
+    has_standalone_class?: boolean;
+    standalone_class_id?: string | null;
+    standalone_class_teacher_id?: string | null;
+    standalone_class_capacity?: number | null;
+    stream_count?: number;
+    class_count?: number;
 }
 
 export interface ClassDomainCategory {
@@ -60,6 +66,13 @@ export interface ClassDomainLevel {
     name?: string | null;
     sort_order?: number;
     class_type?: string;
+    has_standalone_class?: boolean;
+    standalone_class_id?: string | null;
+    standalone_class_teacher_id?: string | null;
+    standalone_class_capacity?: number | null;
+    stream_count?: number;
+    class_count?: number;
+    class?: ClassItem | null;
 }
 
 export interface ClassDomainStream {
@@ -125,7 +138,16 @@ export const ClassService = {
         return res.data;
     },
 
-    async createDomainLevel(data: { category_id?: string; level_number: number; name?: string; sort_order?: number }): Promise<ClassDomainLevel> {
+    async createDomainLevel(data: {
+        category_id?: string;
+        level_number: number;
+        name?: string;
+        sort_order?: number;
+        as_single_class?: boolean;
+        create_class?: boolean;
+        capacity?: number;
+        teacher_id?: string;
+    }): Promise<ClassDomainLevel> {
         const res = await api.post('/classes/domain/levels', data);
         return res.data;
     },

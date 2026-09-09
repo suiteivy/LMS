@@ -63,8 +63,15 @@ export function useRealtimeQuery(
     const startPolling = () => {
       if (pollingRef.current || !mountedRef.current) return;
       setRealtimeUnavailable(true);
-      pollingRef.current = setInterval(() => {
-        if (mountedRef.current) handleUpdate();
+      pollingRef.current = setInterval(async () => {
+        if (!mountedRef.current) return;
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session || (session.expires_at && session.expires_at * 1000 <= Date.now())) return;
+          handleUpdate();
+        } catch {
+          // ignore
+        }
       }, POLL_INTERVAL_MS);
     };
 
@@ -74,6 +81,9 @@ export function useRealtimeQuery(
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session || !mountedRef.current) {
+          return;
+        }
+        if (session.expires_at && session.expires_at * 1000 <= Date.now()) {
           return;
         }
       } catch {

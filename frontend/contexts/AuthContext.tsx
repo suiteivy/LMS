@@ -804,6 +804,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
 
         if (initialSession) {
+          // If cached initial session is expired or near expiry, refresh it immediately
+          if (initialSession.expires_at && (initialSession.expires_at * 1000 <= Date.now() + 60000)) {
+            try {
+              const { data: refreshed, error: refErr } = await supabase.auth.refreshSession();
+              if (!refErr && refreshed?.session) {
+                initialSession = refreshed.session;
+              }
+            } catch {
+              // Refresh error; continue to getUser validation
+            }
+          }
+
           // Race protection: timeout for getUser (5 seconds instead of 15 seconds)
           const userPromise = supabase.auth.getUser();
           const userTimeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getUser timeout')), 5000));

@@ -28,7 +28,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const requiresCredentialSetup = !!profile?.must_change_password || !!profile?.requires_security_questions_setup;
 
     const fetchNotifications = useCallback(async () => {
-        if (!session || requiresCredentialSetup) return;
+        if (!session?.access_token || requiresCredentialSetup) return;
         try {
             setLoading(true);
             const data = await NotificationAPI.getUserNotifications();
@@ -51,7 +51,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         } finally {
             setLoading(false);
         }
-    }, [session, requiresCredentialSetup]);
+    }, [session?.access_token, requiresCredentialSetup]);
 
     // Listen to realtime changes on the notifications table
     useRealtimeQuery('notifications', fetchNotifications);

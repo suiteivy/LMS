@@ -11,7 +11,7 @@ import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 
 export default function TeacherNotifications() {
-    const { isDemo } = useAuth();
+    const { isDemo, session } = useAuth();
     const [notifications, setNotifications] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -33,16 +33,33 @@ export default function TeacherNotifications() {
 
     // Listen to realtime changes on the notifications table
     useRealtimeQuery('notifications', () => {
-        if (!loading && !refreshing) {
+        if (!loading && !refreshing && session?.access_token) {
             fetchNotifications();
         }
     });
 
     const fetchNotifications = async () => {
+        if (!session?.access_token) {
+            setLoading(false);
+            setRefreshing(false);
+            return;
+        }
         try {
             const data = await NotificationAPI.getUserNotifications();
             setNotifications(data);
-        } catch (error) {
+        } catch (error: any) {
+            if (
+                error?.isAuthError ||
+                error?.response?.status === 401 ||
+                error?.response?.status === 403 ||
+                error?.response?.status === 428 ||
+                error?.code === 'ERR_NETWORK' ||
+                error?.code === 'ECONNABORTED' ||
+                error?.message?.toLowerCase?.().includes('timeout')
+            ) {
+                setNotifications([]);
+                return;
+            }
             console.error("Error fetching notifications:", error);
         } finally {
             setLoading(false);
@@ -51,14 +68,18 @@ export default function TeacherNotifications() {
     };
 
     useEffect(() => {
-        fetchNotifications();
-    }, []);
+        if (session?.access_token) {
+            fetchNotifications();
+        } else {
+            setLoading(false);
+            setNotifications([]);
+        }
+    }, [session?.access_token]);
 
     useEffect(() => {
         const interval = setInterval(() => setNowMs(Date.now()), 30000);
         return () => clearInterval(interval);
     }, []);
-
     const onRefresh = () => {
         setRefreshing(true);
         fetchNotifications();

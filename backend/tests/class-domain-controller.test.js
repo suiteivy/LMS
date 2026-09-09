@@ -38,6 +38,10 @@ function createSupabaseMock(resolver) {
           state.filters.push({ op: 'is', column, value });
           return this;
         },
+        not(column, op, value) {
+          state.filters.push({ op: 'not', column, op2: op, value });
+          return this;
+        },
         in(column, values) {
           state.filters.push({ op: 'in', column, value: values });
           return this;
@@ -153,6 +157,14 @@ test('createClass resolves level_id to legacy level fields and persists domain i
       return { data: null, error: { code: '42703', message: 'column class_type does not exist' } };
     }
 
+    if (state.table === 'classes' && state.select?.columns === 'deleted_at' && state.limit === 1) {
+      return { data: null, error: { code: '42703', message: 'column deleted_at does not exist' } };
+    }
+
+    if (state.table === 'classes' && state.select?.columns === 'id, stream') {
+      return { data: [], error: null };
+    }
+
     if (state.table === 'institutions') {
       return {
         data: { name: 'North Campus' },
@@ -234,6 +246,133 @@ test('createClass resolves level_id to legacy level fields and persists domain i
   assert.equal(res.state.body.name, 'Grade 3');
 });
 
+test('createClass rejects duplicate standalone class for the same level', async () => {
+  const supabase = createSupabaseMock((state) => {
+    if (state.table === 'classes' && state.select?.columns === 'class_type' && state.limit === 1) {
+      return { data: null, error: { code: '42703', message: 'column class_type does not exist' } };
+    }
+    if (state.table === 'classes' && state.select?.columns === 'deleted_at' && state.limit === 1) {
+      return { data: null, error: { code: '42703', message: 'column deleted_at does not exist' } };
+    }
+    if (state.table === 'classes' && state.select?.columns === 'id, stream') {
+      return { data: [{ id: 'cls-existing', stream: null }], error: null };
+    }
+    if (state.table === 'institutions') {
+      return { data: { name: 'North Campus' }, error: null };
+    }
+    if (state.table === 'institution_categories') {
+      return { data: [], error: null };
+    }
+    if (state.table === 'class_categories' && state.select?.columns === 'id' && state.limit === 1) {
+      return { data: [{ id: 'cat-seed' }], error: null };
+    }
+    if (state.table === 'class_levels') {
+      return {
+        data: { id: 'lvl-3', category_id: 'cat-1', level_number: 3, type_id: null, category_types: null },
+        error: null,
+      };
+    }
+    if (state.table === 'class_categories') {
+      return { data: { id: 'cat-1' }, error: null };
+    }
+    throw new Error(`Unexpected query: ${JSON.stringify(state)}`);
+  });
+
+  const controller = loadControllerWithSupabaseMock(supabase);
+  const req = {
+    institution_id: 'inst-1',
+    body: {
+      level_id: 'lvl-3',
+    },
+  };
+  const res = createRes();
+
+  await controller.createClass(req, res);
+
+  assert.equal(res.state.statusCode, 409);
+  assert.equal(res.state.body.code, 'DUPLICATE_CLASS');
+});
+
+test('createClassDomainLevel with as_single_class: true creates a standalone class', async () => {
+  let createdLevel = null;
+  let createdClass = null;
+
+  const supabase = createSupabaseMock((state) => {
+    if (state.table === 'classes' && state.select?.columns === 'class_type' && state.limit === 1) {
+      return { data: null, error: { code: '42703' } };
+    }
+    if (state.table === 'classes' && state.select?.columns === 'deleted_at' && state.limit === 1) {
+      return { data: null, error: { code: '42703' } };
+    }
+    if (state.table === 'institutions') {
+      return { data: { name: 'North Campus' }, error: null };
+    }
+    if (state.table === 'institution_categories') {
+      return { data: [], error: null };
+    }
+    if (state.table === 'class_categories' && state.terminal === 'single') {
+      return { data: { id: 'cat-1' }, error: null };
+    }
+    if (state.table === 'class_levels' && state.terminal === 'maybeSingle') {
+      return { data: null, error: null };
+    }
+    if (state.table === 'class_levels' && state.insert) {
+      createdLevel = state.insert;
+      return {
+        data: {
+          id: 'lvl-1',
+          category_id: state.insert.category_id,
+          level_number: state.insert.level_number,
+          name: state.insert.name,
+          sort_order: state.insert.sort_order,
+        },
+        error: null,
+      };
+    }
+    if (state.table === 'classes' && state.insert) {
+      createdClass = state.insert;
+      return {
+        data: {
+          id: 'cls-standalone-1',
+          ...state.insert,
+        },
+        error: null,
+      };
+    }
+    if (state.table === 'classes' && state.select?.columns === '*') {
+      return { data: [], error: null };
+    }
+    throw new Error(`Unexpected query: ${JSON.stringify(state)}`);
+  });
+
+  const controller = loadControllerWithSupabaseMock(supabase);
+  const req = {
+    institution_id: 'inst-1',
+    body: {
+      category_id: 'cat-1',
+      level_number: 1,
+      name: 'Grade 1',
+      as_single_class: true,
+      capacity: 35,
+      teacher_id: 'teach-10',
+    },
+  };
+  const res = createRes();
+
+  await controller.createClassDomainLevel(req, res);
+
+  assert.equal(res.state.statusCode, 201);
+  assert.equal(createdClass.level_id, 'lvl-1');
+  assert.equal(createdClass.stream_id, null);
+  assert.equal(createdClass.stream, null);
+  assert.equal(createdClass.capacity, 35);
+  assert.equal(createdClass.teacher_id, 'teach-10');
+  assert.equal(res.state.body.has_standalone_class, true);
+  assert.equal(res.state.body.standalone_class_id, 'cls-standalone-1');
+  assert.equal(res.state.body.standalone_class_teacher_id, 'teach-10');
+  assert.equal(res.state.body.standalone_class_capacity, 35);
+});
+
 test('archiveClassDomainCategory rejects when category levels are referenced by classes', async () => {
   const supabase = createSupabaseMock((state) => {
     if (state.table === 'class_levels' && state.select?.columns === 'id') {
@@ -257,10 +396,18 @@ test('archiveClassDomainCategory rejects when category levels are referenced by 
   assert.deepEqual(res.state.body, { error: 'Cannot archive category that is referenced by classes' });
 });
 
-test('archiveClassDomainLevel rejects when level is referenced by classes', async () => {
+test('archiveClassDomainLevel rejects when level has classes with enrolled students', async () => {
   const supabase = createSupabaseMock((state) => {
-    if (state.table === 'classes' && state.select?.options?.head === true && hasFilter(state, 'eq', 'level_id', 'lvl-9')) {
-      return { data: null, count: 3, error: null };
+    if (state.table === 'classes' && state.select?.columns === 'deleted_at' && state.limit === 1) {
+      return { data: null, error: { code: '42703', message: 'column deleted_at does not exist' } };
+    }
+
+    if (state.table === 'classes' && state.select?.columns === 'id, stream_id, stream') {
+      return { data: [{ id: 'cls-1', stream_id: null, stream: null }], error: null };
+    }
+
+    if (state.table === 'class_enrollments' && state.select?.options?.head === true) {
+      return { data: null, count: 5, error: null };
     }
 
     throw new Error(`Unexpected query: ${JSON.stringify(state)}`);
@@ -273,7 +420,53 @@ test('archiveClassDomainLevel rejects when level is referenced by classes', asyn
   await controller.archiveClassDomainLevel(req, res);
 
   assert.equal(res.state.statusCode, 400);
-  assert.deepEqual(res.state.body, { error: 'Cannot archive level that is referenced by classes' });
+  assert.deepEqual(res.state.body, { error: 'Cannot archive level with 5 enrolled students. Please reassign or remove students first.' });
+});
+
+test('archiveClassDomainLevel archives empty standalone class and level', async () => {
+  let classDeleted = false;
+  let levelArchived = false;
+
+  const supabase = createSupabaseMock((state) => {
+    if (state.table === 'classes' && state.select?.columns === 'deleted_at' && state.limit === 1) {
+      return { data: [{ deleted_at: null }], error: null };
+    }
+
+    if (state.table === 'classes' && state.select?.columns === 'id, stream_id, stream') {
+      return { data: [{ id: 'cls-empty', stream_id: null, stream: null }], error: null };
+    }
+
+    if (state.table === 'class_enrollments' && state.select?.options?.head === true) {
+      return { data: null, count: 0, error: null };
+    }
+
+    if (state.table === 'class_streams' && state.select?.options?.head === true) {
+      return { data: null, count: 0, error: null };
+    }
+
+    if (state.table === 'classes' && state.update) {
+      classDeleted = true;
+      return { data: [{ id: 'cls-empty' }], error: null };
+    }
+
+    if (state.table === 'class_levels' && state.update) {
+      levelArchived = true;
+      return { data: { id: 'lvl-9' }, error: null };
+    }
+
+    throw new Error(`Unexpected query: ${JSON.stringify(state)}`);
+  });
+
+  const controller = loadControllerWithSupabaseMock(supabase);
+  const req = { institution_id: 'inst-1', params: { id: 'lvl-9' } };
+  const res = createRes();
+
+  await controller.archiveClassDomainLevel(req, res);
+
+  assert.equal(res.state.statusCode, 200);
+  assert.equal(classDeleted, true);
+  assert.equal(levelArchived, true);
+  assert.deepEqual(res.state.body, { message: 'Level archived successfully' });
 });
 
 test('updateClass resolves domain IDs and legacy fields via level_id', async () => {

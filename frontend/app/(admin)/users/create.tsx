@@ -207,7 +207,7 @@ export default function CreateUserScreen() {
 
         const [classRes, subjectRes, studentRes, parentRes, classOptionsRes, yearsRes, gendersRes, positionsRes, slotCapacityRes] = await Promise.all([
             supabase.from('classes')
-                .select('id, grade_level, form_level, stream, display_name')
+                .select('id, grade_level, form_level, stream, display_name, level_id, stream_id')
                 .eq('institution_id', profile.institution_id)
                 .order('grade_level', { ascending: true })
                 .order('form_level', { ascending: true })
@@ -814,24 +814,22 @@ export default function CreateUserScreen() {
                     updateForm('grade_level', levelNumber);
                     updateForm('form_level', isSecondary ? levelNumber : '');
                     updateForm('class_stream_id', '');
-                    updateForm('class_id', '');
-                    updateForm('class_ids', []);
-                }}
-                isDark={isDark}
-                textPrimary={textPrimary}
-                textSecondary={textSecondary}
-                border={border}
-                card={card}
-            />
-            <RenderPicker
-                label="Class Stream *"
-                options={streamsForSelectedLevel.map((stream) => ({ value: stream.id, label: stream.name || stream.code }))}
-                selected={form.class_stream_id}
-                onSelect={(v: string) => {
-                    updateForm('class_stream_id', v);
-                    const candidates = classes.filter((cls) => cls.stream_id === v);
-                    if (candidates.length === 1) {
-                        selectStudentClass(candidates[0].id);
+
+                    // Check if this level has streams
+                    const levelStreams = domainStreams.filter((stream) => stream.level_id === v);
+                    if (levelStreams.length === 0) {
+                        // Find standalone class for this level
+                        const numLevel = parseInt(levelNumber, 10);
+                        const standaloneClass = classes.find((cls) =>
+                            (cls.level_id === v || (isSecondary ? cls.form_level : cls.grade_level) === numLevel) &&
+                            (!cls.stream_id && (!cls.stream || String(cls.stream).trim() === ''))
+                        );
+                        if (standaloneClass) {
+                            selectStudentClass(standaloneClass.id);
+                        } else {
+                            updateForm('class_id', '');
+                            updateForm('class_ids', []);
+                        }
                     } else {
                         updateForm('class_id', '');
                         updateForm('class_ids', []);
@@ -843,6 +841,35 @@ export default function CreateUserScreen() {
                 border={border}
                 card={card}
             />
+            {streamsForSelectedLevel.length > 0 ? (
+                <RenderPicker
+                    label="Class Stream *"
+                    options={streamsForSelectedLevel.map((stream) => ({ value: stream.id, label: stream.name || stream.code }))}
+                    selected={form.class_stream_id}
+                    onSelect={(v: string) => {
+                        updateForm('class_stream_id', v);
+                        const candidates = classes.filter((cls) => cls.stream_id === v);
+                        if (candidates.length === 1) {
+                            selectStudentClass(candidates[0].id);
+                        } else {
+                            updateForm('class_id', '');
+                            updateForm('class_ids', []);
+                        }
+                    }}
+                    isDark={isDark}
+                    textPrimary={textPrimary}
+                    textSecondary={textSecondary}
+                    border={border}
+                    card={card}
+                />
+            ) : form.class_level_id ? (
+                <View style={{ backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : '#ECFDF5', borderWidth: 1, borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0', padding: 12, borderRadius: 12, marginBottom: 16, flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="information-circle" size={18} color={isDark ? '#34D399' : '#059669'} style={{ marginRight: 8 }} />
+                    <Text style={{ color: isDark ? '#A7F3D0' : '#065F46', fontSize: 13, fontWeight: '600', flex: 1 }}>
+                        Entire Grade Class (Single Class) — Stream selection not required
+                    </Text>
+                </View>
+            ) : null}
             <RenderPicker label="Academic Year *" options={resolvedAcademicYearOptions} selected={form.academic_year} onSelect={(v: string) => updateForm('academic_year', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
             <RenderInput label="Parent/Guardian Contact" value={form.parent_contact} onChangeText={(v: string) => updateFormSanitized('parent_contact', v, 'phone')} placeholder="Phone number" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
 
@@ -866,7 +893,7 @@ export default function CreateUserScreen() {
 
             {/* Class Assignment Section */}
             <View style={{ marginBottom: 16 }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Assign to Class (Stream) *</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Assign to Class *</Text>
                 
                 {!(form.grade_level || form.form_level) ? (
                     <View style={{ backgroundColor: isDark ? '#1e293b' : '#f8fafc', padding: 16, borderRadius: 12, borderStyle: 'dashed', borderWidth: 1, borderColor: border }}>
@@ -875,12 +902,12 @@ export default function CreateUserScreen() {
                 ) : getFilteredClasses().length === 0 ? (
                     <View style={{ backgroundColor: isDark ? '#450a0a' : '#fef2f2', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#991b1b' : '#fecaca' }}>
                         <Ionicons name="alert-circle" size={20} color={isDark ? '#f87171' : '#dc2626'} style={{ marginBottom: 8 }} />
-                        <Text style={{ color: isDark ? '#fecaca' : '#991b1b', fontSize: 13, fontWeight: '600' }}>No streams found for {form.grade_level || form.form_level}</Text>
+                        <Text style={{ color: isDark ? '#fecaca' : '#991b1b', fontSize: 13, fontWeight: '600' }}>No classes found for {form.grade_level || form.form_level}</Text>
                         <TouchableOpacity 
                             onPress={() => router.push('/(admin)/classes')}
                             style={{ marginTop: 12, backgroundColor: isDark ? '#991b1b' : '#dc2626', padding: 10, borderRadius: 8, alignSelf: 'flex-start' }}
                         >
-                            <Text style={{ color: 'white', fontSize: 12, fontWeight: '700' }}>Manage Streams</Text>
+                            <Text style={{ color: 'white', fontSize: 12, fontWeight: '700' }}>Manage Classes</Text>
                         </TouchableOpacity>
                     </View>
                 ) : (
@@ -905,7 +932,9 @@ export default function CreateUserScreen() {
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={{ color: textPrimary, fontWeight: '600', fontSize: 15 }}>{c.name}</Text>
-                                     <Text style={{ color: textSecondary, fontSize: 12 }}>Class stream</Text>
+                                    <Text style={{ color: textSecondary, fontSize: 12 }}>
+                                        {!c.stream || String(c.stream).trim() === '' ? 'Entire Grade (Single Class)' : `Stream: ${c.stream}`}
+                                    </Text>
                                 </View>
                             </TouchableOpacity>
                         ))}

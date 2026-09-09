@@ -64,6 +64,7 @@ export default function CreateClassScreen() {
     const [streamId, setStreamId] = useState('');
     const [classType, setClassType] = useState('Grade');
     const [classTypes, setClassTypes] = useState<string[]>(['Grade']);
+    const [structure, setStructure] = useState<'stream' | 'single'>('stream');
 
     const surface = isDark ? "#161B22" : "#ffffff";
     const border = isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb";
@@ -150,7 +151,7 @@ export default function CreateClassScreen() {
                 class_type: classType,
                 category_id: categoryId || undefined,
                 level_id: levelId || undefined,
-                stream_id: streamId || undefined,
+                stream_id: structure === 'single' ? undefined : (streamId || undefined),
                 grade_level: (instLevelLabel === 'Grade' || instLevelLabel === 'KG') ? numLevel : undefined,
                 form_level: instLevelLabel === 'Form' ? numLevel : undefined,
                 capacity: capacity ? parseInt(capacity) : undefined,
@@ -317,43 +318,115 @@ export default function CreateClassScreen() {
                     </View>
                 )}
 
-                {availableStreams.length > 0 && (
-                    <View style={{ marginBottom: 20 }}>
-                        <Text style={{ color: labelColor, fontSize: 14, fontWeight: "600", marginBottom: 8 }}>
-                            Stream
-                        </Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                            <View style={{ flexDirection: "row", gap: 8 }}>
-                                {availableStreams.map((streamItem) => (
-                                    <TouchableOpacity
-                                        key={streamItem.id}
-                                        onPress={() => {
-                                            const nextStreamId = streamId === streamItem.id ? '' : streamItem.id;
-                                            setStreamId(nextStreamId);
-                                            if (nextStreamId && !gradeLevel && levelId) {
-                                                const selectedLevel = domainLevels.find((item) => item.id === levelId);
-                                                if (selectedLevel) {
-                                                    setGradeLevel(`${instLevelLabel} ${selectedLevel.level_number}`);
-                                                }
-                                            }
-                                        }}
-                                        style={{
-                                            paddingHorizontal: 14,
-                                            paddingVertical: 8,
-                                            borderRadius: 20,
-                                            borderWidth: 1.5,
-                                            backgroundColor: streamId === streamItem.id ? "#0EA5E9" : inputBg,
-                                            borderColor: streamId === streamItem.id ? "#0EA5E9" : border,
-                                        }}
-                                    >
-                                        <Text style={{ fontSize: 12, fontWeight: "700", color: streamId === streamItem.id ? "white" : textPrimary }}>
-                                            {streamItem.label}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </ScrollView>
+                {/* Class Structure (Entire Grade vs Streams) */}
+                <View style={{ marginBottom: 20 }}>
+                    <Text style={{ color: labelColor, fontSize: 14, fontWeight: "600", marginBottom: 8 }}>
+                        Class Structure
+                    </Text>
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                        <TouchableOpacity
+                            onPress={() => setStructure('stream')}
+                            style={{
+                                flex: 1,
+                                paddingVertical: 12,
+                                paddingHorizontal: 14,
+                                borderRadius: 10,
+                                borderWidth: 1.5,
+                                backgroundColor: structure === 'stream' ? (isDark ? "rgba(14,165,233,0.15)" : "#e0f2fe") : inputBg,
+                                borderColor: structure === 'stream' ? "#0EA5E9" : border,
+                            }}
+                        >
+                            <Text style={{ fontSize: 13, fontWeight: "700", color: structure === 'stream' ? "#0EA5E9" : textPrimary, marginBottom: 2 }}>
+                                Streams / Sections
+                            </Text>
+                            <Text style={{ fontSize: 11, color: textSecondary }}>
+                                Multi-class grade (e.g. 1A, 1B)
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => {
+                                setStructure('single');
+                                setStreamId('');
+                            }}
+                            style={{
+                                flex: 1,
+                                paddingVertical: 12,
+                                paddingHorizontal: 14,
+                                borderRadius: 10,
+                                borderWidth: 1.5,
+                                backgroundColor: structure === 'single' ? (isDark ? "rgba(255,107,0,0.15)" : "#fff7ed") : inputBg,
+                                borderColor: structure === 'single' ? "#FF6B00" : border,
+                            }}
+                        >
+                            <Text style={{ fontSize: 13, fontWeight: "700", color: structure === 'single' ? "#FF6B00" : textPrimary, marginBottom: 2 }}>
+                                Entire Grade (1 Class)
+                            </Text>
+                            <Text style={{ fontSize: 11, color: textSecondary }}>
+                                Standalone class (e.g. Grade 1)
+                            </Text>
+                        </TouchableOpacity>
                     </View>
+                </View>
+
+                {structure === 'single' ? (
+                    <View
+                        style={{
+                            marginBottom: 20,
+                            padding: 12,
+                            borderRadius: 10,
+                            backgroundColor: isDark ? "rgba(255,107,0,0.1)" : "#fff7ed",
+                            borderWidth: 1,
+                            borderColor: isDark ? "rgba(255,107,0,0.25)" : "#fed7aa",
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 10,
+                        }}
+                    >
+                        <Ionicons name="information-circle-outline" size={20} color="#FF6B00" />
+                        <Text style={{ fontSize: 13, color: isDark ? "#ffedd5" : "#9a3412", flex: 1 }}>
+                            This class will represent the entire grade as a single standalone class. No stream selection is needed.
+                        </Text>
+                    </View>
+                ) : (
+                    availableStreams.length > 0 && (
+                        <View style={{ marginBottom: 20 }}>
+                            <Text style={{ color: labelColor, fontSize: 14, fontWeight: "600", marginBottom: 8 }}>
+                                Stream / Section
+                            </Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                <View style={{ flexDirection: "row", gap: 8 }}>
+                                    {availableStreams.map((streamItem) => (
+                                        <TouchableOpacity
+                                            key={streamItem.id}
+                                            onPress={() => {
+                                                const nextStreamId = streamId === streamItem.id ? '' : streamItem.id;
+                                                setStreamId(nextStreamId);
+                                                if (nextStreamId && !gradeLevel && levelId) {
+                                                    const selectedLevel = domainLevels.find((item) => item.id === levelId);
+                                                    if (selectedLevel) {
+                                                        setGradeLevel(`${instLevelLabel} ${selectedLevel.level_number}`);
+                                                    }
+                                                }
+                                            }}
+                                            style={{
+                                                paddingHorizontal: 14,
+                                                paddingVertical: 8,
+                                                borderRadius: 20,
+                                                borderWidth: 1.5,
+                                                backgroundColor: streamId === streamItem.id ? "#0EA5E9" : inputBg,
+                                                borderColor: streamId === streamItem.id ? "#0EA5E9" : border,
+                                            }}
+                                        >
+                                            <Text style={{ fontSize: 12, fontWeight: "700", color: streamId === streamItem.id ? "white" : textPrimary }}>
+                                                {streamItem.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </ScrollView>
+                        </View>
+                    )
                 )}
 
                 {/* Capacity */}
