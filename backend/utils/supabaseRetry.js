@@ -110,6 +110,7 @@ const withSupabaseRetry = async (fn, { attempts = 3, delaysMs = [250, 700] } = {
             await sleep(delaysMs[Math.min(i, delaysMs.length - 1)] || 500);
             continue;
           }
+          break;
         }
       }
 
