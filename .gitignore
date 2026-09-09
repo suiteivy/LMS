@@ -41,3 +41,5 @@ backend/logs/
 
 /frontend/.antigravityignore
 /docs/Tasks
+/supabase/.temp
+/backend/supabase/.temp
