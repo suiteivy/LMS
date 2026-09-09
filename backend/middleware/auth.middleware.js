@@ -1,6 +1,7 @@
 const supabase = require("../utils/supabaseClient.js");
 const { canonicalRoleFrom } = require("../utils/roleAlias.js");
 const { isTransientSupabaseError, withSupabaseRetry } = require('../utils/supabaseRetry.js');
+const logger = require('../utils/logger');
 
 // Simple in-memory cache for profiles: userId -> { profile, timestamp }
 const profileCache = new Map();
@@ -95,7 +96,7 @@ async function authMiddleware(req, res, next) {
       }
       const msg = error?.message || 'Invalid user';
       if (isTransientSupabaseError(error || msg)) {
-        console.error(`[AuthMiddleware] Supabase auth transient error for ${req.url}:`, msg);
+        logger.throttle('warn', 'auth:middleware:transient', `[AuthMiddleware] Supabase auth transient error`, { url: req.url, msg }, 30_000);
         res.setHeader('Retry-After', '5');
         return res.status(503).json({ error: 'Authentication service unavailable', code: 'AUTH_SERVICE_UNAVAILABLE' });
       }
@@ -294,11 +295,12 @@ async function authMiddleware(req, res, next) {
         if (isLogoutPath) return res.status(200).json({ message: "Already logged out" });
         const msg = profileError?.message || 'Profile lookup failed';
         const timeoutLike = /fetch failed|timeout|und_err_connect_timeout/i.test(msg);
-        console.error(`[AuthMiddleware] Profile fetch error for ${user.id}:`, msg);
         if (timeoutLike) {
+          logger.throttle('warn', 'auth:middleware:profileFetch:transient', `[AuthMiddleware] Profile fetch transient error`, { userId: user.id, msg }, 30_000);
           res.setHeader('Retry-After', '5');
           return res.status(503).json({ error: 'Authentication service unavailable', code: 'AUTH_SERVICE_UNAVAILABLE' });
         }
+        console.error(`[AuthMiddleware] Profile fetch error for ${user.id}:`, msg);
         return res.status(403).json({ error: "Unauthorized" });
       }
 

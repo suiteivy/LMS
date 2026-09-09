@@ -2,6 +2,8 @@
 const supabase = require("../utils/supabaseClient.js");
 const axios = require("axios");
 const { isTransientSupabaseError, withSupabaseRetry } = require('../utils/supabaseRetry.js');
+const logger = require('../utils/logger');
+
 
 const FX_PROVIDERS = [
     'https://open.er-api.com/v6/latest/USD',
@@ -152,18 +154,27 @@ exports.getMaintenanceStatus = async (_req, res) => {
             message,
         });
     } catch (err) {
-        if (isTransientSupabaseError(err)) {
-            console.warn('getMaintenanceStatus transient upstream error:', {
+        // Treat any fetch/network/circuit-breaker error as transient — always degrade gracefully.
+        const errMsg = String(err?.message || err?.details || err || '').toLowerCase();
+        const isTransient = isTransientSupabaseError(err) || errMsg.includes('fetch failed') || errMsg.includes('network');
+
+        if (isTransient) {
+            logger.throttle('warn', 'settings:maintenanceStatus:transient', 'getMaintenanceStatus transient upstream error', {
                 message: err?.message || String(err),
                 code: err?.code || err?.cause?.code || null,
-            });
+            }, 30_000);
             return res.status(200).json({
                 enabled: false,
                 message: 'System maintenance status is temporarily unavailable.',
                 stale: true,
             });
         }
-        console.error('getMaintenanceStatus error:', err);
+        console.error('getMaintenanceStatus error:', {
+            message: err?.message || String(err),
+            details: err?.details || '',
+            hint: err?.hint || '',
+            code: err?.code || '',
+        });
         return res.status(200).json({
             enabled: false,
             message: 'System maintenance is in progress. Please try again later.',

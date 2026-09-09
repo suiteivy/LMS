@@ -1,4 +1,6 @@
+const logger = require('./logger');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 
 const CIRCUIT_OPEN_MS = 30 * 1000;
 const FAILURE_THRESHOLD = 5;
@@ -47,6 +49,7 @@ const assertCircuitAllowsRequest = () => {
   const now = Date.now();
   if (circuit.state === 'open') {
     if ((now - circuit.openedAt) < CIRCUIT_OPEN_MS) {
+      logger.throttle('warn', 'supabase:circuit:open', 'Supabase circuit breaker is open — request blocked', { state: 'open', failureCount: circuit.failureCount }, 30_000);
       throw buildCircuitOpenError();
     }
     circuit.state = 'half_open';
@@ -68,12 +71,18 @@ const isTransientSupabaseError = (errorLike) => {
     errorLike?.cause || ''
   ).toLowerCase();
 
-  const msg = (String(
-    errorLike?.message ||
-    errorLike?.details ||
-    errorLike?.code ||
-    errorLike || ''
-  ) + ' ' + causeMsg).toLowerCase();
+  // Concatenate ALL fields (not short-circuit ||) so Supabase plain-object errors
+  // like { message: 'TypeError: fetch failed', details: '...', code: '' } are fully scanned.
+  const parts = [
+    errorLike?.message,
+    errorLike?.details,
+    errorLike?.code,
+    typeof errorLike === 'string' ? errorLike : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const msg = (parts + ' ' + causeMsg).toLowerCase();
 
   return (
     msg.includes('fetch failed') ||
@@ -134,6 +143,8 @@ const withSupabaseRetry = async (fn, { attempts = 3, delaysMs = [250, 700] } = {
     markCircuitFailure();
   }
 
+  const errMsg = String(lastError?.message || lastError || 'unknown');
+  logger.throttle('warn', `supabase:retry:exhausted:${errMsg.slice(0, 60)}`, `Supabase request failed after ${attempts} retries: ${errMsg}`, { code: lastError?.code || null }, 30_000);
   throw lastError || new Error('Supabase request failed after retries');
 };
 
