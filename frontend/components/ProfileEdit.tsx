@@ -190,22 +190,17 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
 
   return (
     <Modal
-      animationType="slide"
+      animationType="fade"
       transparent
       visible={visible}
       onRequestClose={onClose}
-      style={{backgroundColor: isDark ? '#0B1117' : '#FCFCFC'}}
     >
-      <Pressable className="flex-1 bg-black/60 justify-end" onPress={onClose}>
+      <Pressable className="flex-1 bg-black/60 justify-center items-center p-4" onPress={onClose}>
         <Pressable
-          className={`rounded-t-[32px] h-[85%] w-full shadow-xl ${isDark ? 'bg-gray-900' : 'bg-white'}`}
+          className={`rounded-3xl max-h-[88%] w-full max-w-xl shadow-2xl overflow-hidden ${isDark ? 'bg-gray-900 border border-gray-800' : 'bg-white'}`}
           onPress={(e) => e.stopPropagation()}
         >
-          <View className="items-center py-3">
-            <View className="w-12 h-1.5 bg-gray-200 rounded-full" />
-          </View>
-
-          <View className="flex-row items-center justify-between px-6 pb-4 border-b border-gray-50">
+          <View className={`flex-row items-center justify-between px-6 pt-5 pb-4 border-b ${isDark ? 'border-gray-800' : 'border-gray-100'}`}>
             <Text 
               style={{ color: isDark? '#FCFCFC' : '#0D1117' }}
               className={`text-xl font-bold`}>
@@ -213,9 +208,9 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
             </Text>
             <TouchableOpacity
               onPress={onClose}
-              className="p-2 bg-gray-100 rounded-full"
+              className={`p-2 rounded-full ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}
             >
-              <X size={20} color="#4b5563" />
+              <X size={20} color={isDark ? '#9ca3af' : '#4b5563'} />
             </TouchableOpacity>
           </View>
 

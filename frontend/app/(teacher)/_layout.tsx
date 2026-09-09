@@ -4,13 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { Slot, Tabs } from "expo-router";
-import { BookOpen, Building, LayoutGrid, School, Settings, Users, Bell } from "lucide-react-native";
+import { BookOpen, Building, LayoutGrid, School, Settings, Users, Bell, Calendar } from "lucide-react-native";
 import { Platform, useWindowDimensions, View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Full nav items for paid plans
 const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
+    { name: "calendar", title: "Calendar", icon: Calendar, route: "/(teacher)/calendar" },
     { name: "notifications", title: "Alerts", icon: Bell, route: "/(teacher)/notifications" },
     { name: "management", title: "Manage", icon: LayoutGrid, route: "/(teacher)/management" },
     { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(teacher)/accessibility/settings" },
@@ -19,13 +20,14 @@ const ALL_NAV_ITEMS: NavItem[] = [
 // Simplified nav for beta plan
 const BETA_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
+    { name: "calendar", title: "Calendar", icon: Calendar, route: "/(teacher)/calendar" },
     { name: "notifications", title: "Alerts", icon: Bell, route: "/(teacher)/notifications" },
     { name: "management", title: "Manage", icon: LayoutGrid, route: "/(teacher)/management" },
     { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(teacher)/accessibility/settings" },
 ];
 
 // Routes accessible via Manage — registered but hidden from tab bar
-const MANAGE_SUB_ROUTES = ["subjects", "classes", "students", "library"];
+const MANAGE_SUB_ROUTES = ["subjects", "classes", "students", "library", "calendar"];
 // Beta plan additionally hides subjects/students
 const BETA_HIDDEN = ["subjects", "students"];
 

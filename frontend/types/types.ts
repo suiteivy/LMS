@@ -66,6 +66,7 @@ export interface SubjectFormData {
   description: string;
   class_id?: string;
   class_ids?: string[];
+  level_ids?: string[];
   teacher_ids?: string[];
 }
 
@@ -150,6 +151,7 @@ export interface Subject {
   lastAccessed?: string;
   lessons: Lesson[];
   class_id?: string;
+  level_ids?: string[] | null;
 }
 
 export interface Lesson {

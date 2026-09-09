@@ -155,8 +155,6 @@ exports.getDashboardStats = async (req, res) => {
                 department: teacher.department,
                 qualification: teacher.qualification,
                 position: teacher.position,
-                specialization: teacher.specialization,
-                hire_date: teacher.hire_date,
                 full_name: teacher.users?.full_name,
                 email: teacher.users?.email,
                 avatar_url: teacher.users?.avatar_url

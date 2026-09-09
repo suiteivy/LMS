@@ -4,7 +4,7 @@ import { useNotifications } from "@/contexts/NotificationContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
-import { Text, TouchableOpacity, View, useWindowDimensions, Modal, ScrollView, Animated } from "react-native";
+import { Text, TouchableOpacity, View, useWindowDimensions, Modal, ScrollView, Animated, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MainAdminBadge, SubscriptionStatusBadge } from "../shared/SubscriptionComponents";
 import { Menu, X } from "lucide-react-native";
@@ -37,7 +37,7 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   const { backTo } = useLocalSearchParams<{ backTo?: string }>();
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme();
-  const { institutionName } = useAuth();
+  const { institutionName, institutionLogo } = useAuth();
   const { width } = useWindowDimensions();
   const { unreadCount, setShowNotifications } = useNotifications();
 
@@ -134,11 +134,24 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
 
           <View style={{
             backgroundColor: isDark ? 'rgba(255, 105, 0, 0.12)' : '#fff7ed',
-            padding: 8,
+            padding: institutionLogo ? 2 : 8,
             borderRadius: 12,
             marginRight: 12,
+            width: 36,
+            height: 36,
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
           }}>
-            <Ionicons name="school" size={20} color="#FF6900" />
+            {institutionLogo ? (
+              <Image
+                source={{ uri: institutionLogo }}
+                style={{ width: 32, height: 32, borderRadius: 8 }}
+                resizeMode="contain"
+              />
+            ) : (
+              <Ionicons name="school" size={20} color="#FF6900" />
+            )}
           </View>
 
           <View style={{ flex: 1 }}>

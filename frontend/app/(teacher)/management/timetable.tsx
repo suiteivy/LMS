@@ -1,12 +1,15 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { TimetableAPI, TimetableEntry } from "@/services/TimetableService";
+import { downloadTimetablePdf } from "@/utils/timetablePdfGenerator";
+import { CalendarAPI, CancelledDateInfo } from "@/services/CalendarService";
 import { router } from "expo-router";
-import { Calendar, Clock, MapPin, Users } from 'lucide-react-native';
+import { AlertTriangle, Calendar, Clock, Download, MapPin, Users } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
-import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { showFetchError } from "@/utils/toast";
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { showFetchError, showError, showSuccess } from "@/utils/toast";
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -50,19 +53,26 @@ const TimetableCard = ({ entry, isDark }: { entry: TimetableEntry; isDark: boole
 
 export default function TimetablePage() {
     const { isDark } = useTheme();
+    const { institutionName, institutionLogo, profile } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
     const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
     const [activeDay, setActiveDay] = useState<string>(DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]);
+    const [cancelledDates, setCancelledDates] = useState<CancelledDateInfo[]>([]);
 
     useEffect(() => {
-        fetchTimetable();
+        fetchData();
     }, []);
 
-    const fetchTimetable = async () => {
+    const fetchData = async () => {
         try {
             setLoading(true);
-            const data = await TimetableAPI.getTeacherTimetable();
+            const [data, cancelled] = await Promise.all([
+                TimetableAPI.getTeacherTimetable(),
+                CalendarAPI.getCancelledDates(),
+            ]);
             setTimetable(data || []);
+            setCancelledDates(cancelled || []);
         } catch (error) {
             console.error("Fetch timetable error:", error);
             showFetchError("timetable", error);
@@ -70,6 +80,39 @@ export default function TimetablePage() {
             setLoading(false);
         }
     };
+
+    const handleDownloadPdf = async () => {
+        if (!timetable.length) {
+            showError("No schedule", "No timetable entries to export.");
+            return;
+        }
+        try {
+            setDownloadingPdf(true);
+            await downloadTimetablePdf({
+                title: "Teacher Teaching Schedule",
+                subtitle: profile?.full_name ? `Schedule for ${profile.full_name}` : "Academic Schedule",
+                institutionName,
+                institutionLogo,
+                entries: timetable,
+            });
+            showSuccess("PDF Ready", "Teaching schedule PDF generated successfully.");
+        } catch (error) {
+            showError("Export failed", "Failed to generate timetable PDF.");
+        } finally {
+            setDownloadingPdf(false);
+        }
+    };
+
+    // Cancelled-date check: find entry matching today's ISO date if the activeDay corresponds
+    const todayIso = new Date().toISOString().slice(0, 10);
+    // Map activeDay name to the nearest matching calendar date for the current week
+    const activeDayIndex = DAYS.indexOf(activeDay); // 0=Mon
+    const weekStart = new Date();
+    const dow = weekStart.getDay(); // 0=Sun
+    const diffToMon = (dow === 0 ? -6 : 1 - dow);
+    weekStart.setDate(weekStart.getDate() + diffToMon + activeDayIndex);
+    const activeDateStr = weekStart.toISOString().slice(0, 10);
+    const cancelledForActiveDay = cancelledDates.find(c => c.event_date === activeDateStr);
 
     const filteredEntries = timetable.filter(entry => entry.day_of_week === activeDay)
         .sort((a, b) => a.start_time.localeCompare(b.start_time));
@@ -81,6 +124,22 @@ export default function TimetablePage() {
                 subtitle="My Timetable"
                 role="Teacher"
                 fallbackPath="/(teacher)/management"
+                rightActions={
+                    timetable.length > 0 ? (
+                        <TouchableOpacity
+                            onPress={handleDownloadPdf}
+                            disabled={downloadingPdf}
+                            className={`flex-row items-center px-3 py-1.5 rounded-full border ${isDark ? 'bg-white/10 border-white/20' : 'bg-white border-gray-200'} shadow-sm`}
+                            accessibilityRole="button"
+                            accessibilityLabel="Download Timetable PDF"
+                        >
+                            <Download size={14} color="#FF6900" style={{ marginRight: 6 }} />
+                            <Text className="text-[#FF6900] font-bold text-xs">
+                                {downloadingPdf ? 'Exporting...' : 'PDF'}
+                            </Text>
+                        </TouchableOpacity>
+                    ) : null
+                }
             />
 
             <View className="px-4 md:p-8 pt-4">
@@ -106,6 +165,18 @@ export default function TimetablePage() {
                     ))}
                 </ScrollView>
             </View>
+
+            {cancelledForActiveDay && (
+                <View className="mx-5 mb-2 p-4 rounded-2xl flex-row items-center" style={{ backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' }}>
+                    <View className="w-10 h-10 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: 'rgba(239,68,68,0.2)' }}>
+                        <AlertTriangle size={20} color="#EF4444" />
+                    </View>
+                    <View className="flex-1">
+                        <Text className="text-red-600 dark:text-red-400 font-bold text-sm">Classes Cancelled: {cancelledForActiveDay.title}</Text>
+                        <Text className="text-red-600/70 dark:text-red-400/70 text-xs mt-0.5">All academic sessions on this date are suspended.</Text>
+                    </View>
+                </View>
+            )}
 
             <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
                 {loading ? (

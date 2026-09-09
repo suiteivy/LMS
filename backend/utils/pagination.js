@@ -13,10 +13,11 @@
  * @param {{ defaultLimit?: number, maxLimit?: number }} opts
  * @returns {{ page: number, limit: number, from: number, to: number }}
  */
-function parsePagination(query, opts = {}) {
+function parsePagination(query = {}, opts = {}) {
+  const q = query || {};
   const { defaultLimit = 25, maxLimit = 100 } = opts;
-  const page = Math.max(1, parseInt(query.page, 10) || 1);
-  const limit = Math.min(maxLimit, Math.max(1, parseInt(query.limit, 10) || defaultLimit));
+  const page = Math.max(1, parseInt(q.page, 10) || 1);
+  const limit = Math.min(maxLimit, Math.max(1, parseInt(q.limit, 10) || defaultLimit));
   const from = (page - 1) * limit;
   const to = from + limit - 1;
   return { page, limit, from, to };

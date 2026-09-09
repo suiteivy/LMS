@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { TeacherAPI } from '@/services/TeacherService';
 import { CacheService } from '@/services/CacheService';
 
-export type TeacherRoleMode = 'subject' | 'class';
+export type TeacherRoleMode = 'subject' | 'class' | 'librarian';
 
 export const TEACHER_ROLE_MODE_KEY = 'teacher_active_mode';
 
@@ -19,7 +19,7 @@ function notifyListeners() {
 }
 
 export function useTeacherRoleMode() {
-  const { teacherId, session, isDemo } = useAuth();
+  const { teacherId, session, isDemo, isLibrarian: isLibrarianAuth } = useAuth();
   const [mode, setLocalMode] = useState<TeacherRoleMode>(currentMode);
   const [roles, setLocalRoles] = useState<string[]>(currentRoles);
   const [loading, setLoading] = useState<boolean>(!isInitialized);
@@ -46,7 +46,7 @@ export function useTeacherRoleMode() {
       try {
         // 1. Load saved mode from AsyncStorage
         const savedMode = await AsyncStorage.getItem(TEACHER_ROLE_MODE_KEY);
-        if (savedMode === 'subject' || savedMode === 'class') {
+        if (savedMode === 'subject' || savedMode === 'class' || savedMode === 'librarian') {
           currentMode = savedMode;
         }
 
@@ -140,8 +140,11 @@ export function useTeacherRoleMode() {
 
   const isClassTeacher = roles.includes('Class Teacher');
   const isSubjectTeacher = roles.includes('Subject Teacher');
-  // Both roles needed to toggle modes
-  const canToggle = isClassTeacher && isSubjectTeacher;
+  const isLibrarian = isLibrarianAuth || roles.includes('Librarian');
+  
+  // At least 2 roles available to toggle modes
+  const activeRoleCount = (isClassTeacher ? 1 : 0) + (isSubjectTeacher ? 1 : 0) + (isLibrarian ? 1 : 0);
+  const canToggle = activeRoleCount >= 2;
 
   return {
     mode,
@@ -150,6 +153,7 @@ export function useTeacherRoleMode() {
     syncRoles,
     isClassTeacher,
     isSubjectTeacher,
+    isLibrarian,
     canToggle,
     loading,
   };

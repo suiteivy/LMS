@@ -20,6 +20,7 @@ import { usePrint } from '@/hooks/usePrint';
 import { getPerformanceLabel, type GradingScaleRow } from '@/utils/getPerformanceLabel';
 import { setParentSelectedChild } from '@/utils/parentSelectedChild';
 import { useParentStudentContext } from '@/hooks/useParentStudentContext';
+import { GradingScaleModal } from '@/components/results/GradingScaleModal';
 import {
   AlertCircle,
   Award,
@@ -210,6 +211,7 @@ export default function ParentReportCardsScreen() {
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [gradingScales, setGradingScales] = useState<GradingScaleRow[]>([]);
+  const [showScaleModal, setShowScaleModal] = useState(false);
 
   const selectedTermObj = selectedTerm
     ? terms.find((t) => t.id === selectedTerm) || null
@@ -333,6 +335,25 @@ export default function ParentReportCardsScreen() {
         subtitle={childName ? `Viewing: ${childName}` : undefined}
         role="Parent/Guardian"
         onBack={() => router.back()}
+        rightActions={
+          <TouchableOpacity
+            onPress={() => setShowScaleModal(true)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 20,
+              backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8',
+              borderWidth: 1,
+              borderColor: isDark ? '#78350F' : '#FFEDD5',
+              gap: 6,
+            }}
+          >
+            <Award size={14} color="#FF6900" />
+            <Text style={{ color: '#FF6900', fontSize: 12, fontWeight: '700' }}>Scale</Text>
+          </TouchableOpacity>
+        }
       />
 
       {/* Child Selector */}
@@ -844,6 +865,11 @@ export default function ParentReportCardsScreen() {
           <View style={{ height: 40 }} />
         </ScrollView>
       )}
+
+      <GradingScaleModal
+        visible={showScaleModal}
+        onClose={() => setShowScaleModal(false)}
+      />
     </View>
   );
 }

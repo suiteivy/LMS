@@ -621,7 +621,6 @@ exports.enrollUser = async (req, res) => {
     // Teacher-specific
     department,
     qualification,
-    specialization,
     position,
     subject_ids, // array of subject UUIDs to assign
     class_teacher_id, // class UUID to assign as class teacher
@@ -1090,7 +1089,6 @@ exports.enrollUser = async (req, res) => {
       const updateFields = {};
       if (department) updateFields.department = department;
       if (qualification) updateFields.qualification = qualification;
-      if (specialization) updateFields.specialization = specialization;
       if (position) updateFields.position = position;
 
       if (Object.keys(updateFields).length > 0) {
@@ -1214,9 +1212,7 @@ exports.adminUpdateUser = async (req, res) => {
     // Teacher fields
     department,
     qualification,
-    specialization,
     position,
-    hire_date,
     // Parent fields
     occupation,
     parent_address,
@@ -1430,9 +1426,7 @@ exports.adminUpdateUser = async (req, res) => {
         req.body.teacher_role_enabled !== undefined ||
         department !== undefined ||
         qualification !== undefined ||
-        specialization !== undefined ||
         position !== undefined ||
-        hire_date !== undefined ||
         subject_ids !== undefined ||
         req.body.class_teacher_id !== undefined
       ));
@@ -1469,9 +1463,7 @@ exports.adminUpdateUser = async (req, res) => {
               institution_id: targetInstId,
               department: department || null,
               qualification: qualification || null,
-              specialization: specialization || null,
               position: position || 'teacher',
-              hire_date: hire_date || new Date().toISOString().split('T')[0],
             })
             .select('id')
             .single();
@@ -1486,9 +1478,7 @@ exports.adminUpdateUser = async (req, res) => {
         const updates = {};
         if (department !== undefined) updates.department = department || null;
         if (qualification !== undefined) updates.qualification = qualification || null;
-        if (specialization !== undefined) updates.specialization = specialization || null;
         if (position !== undefined) updates.position = position || null;
-        if (hire_date !== undefined) updates.hire_date = hire_date || null;
 
         if (Object.keys(updates).length > 0 && teacherData?.id) {
           await supabase.from('teachers').update(updates).eq('id', teacherData.id);

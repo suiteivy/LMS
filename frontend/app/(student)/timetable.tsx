@@ -1,32 +1,64 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { StudentService } from "@/services/StudentService";
+import { useAuth } from "@/contexts/AuthContext";
+import { downloadTimetablePdf } from "@/utils/timetablePdfGenerator";
+import { CalendarAPI, CancelledDateInfo } from "@/services/CalendarService";
 import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { router } from "expo-router";
-import { Calendar, MapPin, User } from "lucide-react-native";
+import { AlertTriangle, Calendar, Download, MapPin, User } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { showFetchError } from "@/utils/toast";
+import { showFetchError, showError, showSuccess } from "@/utils/toast";
 
 export default function StudentTimetablePage() {
     const [loading, setLoading] = useState(true);
+    const { institutionName, institutionLogo, profile } = useAuth();
     const [timetable, setTimetable] = useState<any[]>([]);
     const [selectedDay, setSelectedDay] = useState(new Date());
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
+    const [cancelledDates, setCancelledDates] = useState<CancelledDateInfo[]>([]);
 
     useEffect(() => {
-        fetchTimetable();
+        fetchData();
     }, []);
 
-    const fetchTimetable = async () => {
+    const fetchData = async () => {
         try {
             setLoading(true);
-            const data = await StudentService.getTimetable();
-            setTimetable(data);
+            const [data, cancelled] = await Promise.all([
+                StudentService.getTimetable(),
+                CalendarAPI.getCancelledDates(),
+            ]);
+            setTimetable(data || []);
+            setCancelledDates(cancelled || []);
         } catch (error) {
             console.error(error);
             showFetchError("timetable", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDownloadPdf = async () => {
+        if (!timetable.length) {
+            showError("No schedule", "No timetable entries to export.");
+            return;
+        }
+        try {
+            setDownloadingPdf(true);
+            await downloadTimetablePdf({
+                title: "Student Class Timetable",
+                subtitle: profile?.full_name ? `Schedule for ${profile.full_name}` : "Academic Schedule",
+                institutionName,
+                institutionLogo,
+                entries: timetable,
+            });
+            showSuccess("PDF Ready", "Class timetable PDF generated successfully.");
+        } catch (error) {
+            showError("Export failed", "Failed to generate timetable PDF.");
+        } finally {
+            setDownloadingPdf(false);
         }
     };
 
@@ -36,6 +68,9 @@ export default function StudentTimetablePage() {
     });
 
     const getDayName = (date: Date) => format(date, 'EEEE');
+
+    const selectedDateStr = format(selectedDay, 'yyyy-MM-dd');
+    const cancelledForSelectedDay = cancelledDates.find(c => c.event_date === selectedDateStr);
 
     const filteredEntries = timetable.filter(entry =>
         entry.day_of_week === getDayName(selectedDay)
@@ -48,6 +83,22 @@ export default function StudentTimetablePage() {
                 subtitle="Portal"
                 role="Student"
                 onBack={() => router.back()}
+                rightActions={
+                    timetable.length > 0 ? (
+                        <TouchableOpacity
+                            onPress={handleDownloadPdf}
+                            disabled={downloadingPdf}
+                            className="flex-row items-center px-3 py-1.5 rounded-full border bg-white dark:bg-[#21262D] border-gray-200 dark:border-gray-700 shadow-sm"
+                            accessibilityRole="button"
+                            accessibilityLabel="Download Timetable PDF"
+                        >
+                            <Download size={14} color="#FF6900" style={{ marginRight: 6 }} />
+                            <Text className="text-[#FF6900] font-bold text-xs">
+                                {downloadingPdf ? 'Exporting...' : 'PDF'}
+                            </Text>
+                        </TouchableOpacity>
+                    ) : null
+                }
             />
 
             <View className="px-4 md:px-8 pt-4">
@@ -89,6 +140,22 @@ export default function StudentTimetablePage() {
                         <Text className="text-[#FF6900] text-[8px] font-black uppercase tracking-widest">{filteredEntries.length} Sessions</Text>
                     </View>
                 </View>
+
+                {cancelledForSelectedDay && (
+                    <View className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex-row items-center">
+                        <View className="w-10 h-10 rounded-xl bg-red-500/20 items-center justify-center mr-3">
+                            <AlertTriangle size={20} color="#EF4444" />
+                        </View>
+                        <View className="flex-1">
+                            <Text className="text-red-600 dark:text-red-400 font-bold text-sm">
+                                Classes Cancelled: {cancelledForSelectedDay.title}
+                            </Text>
+                            <Text className="text-red-600/80 dark:text-red-400/80 text-xs mt-0.5">
+                                Academic sessions are suspended on this date due to a scheduled school calendar event.
+                            </Text>
+                        </View>
+                    </View>
+                )}
 
                 {loading ? (
                     <ListItemSkeleton loading={loading} count={4} label="Loading timetable..." />

@@ -6,7 +6,7 @@ import { router } from 'expo-router'
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { AppState, AppStateStatus, Platform } from 'react-native'
 import Toast from 'react-native-toast-message'
-import { api } from '@/services/api'
+import { api, isTokenExpired } from '@/services/api'
 import { safeSignOut } from '@/utils/safeSignOut'
 import { LogoutReason, LOGOUT_MESSAGES } from '@/types/logout'
 import { getApiBaseUrl } from '@/utils/backendUrl'
@@ -26,6 +26,7 @@ interface AuthContextType {
   subscriptionPlan: string | null
   trialEndDate: string | null
   institutionName: string | null
+  institutionLogo: string | null
   isMain: boolean
   isPlatformAdmin: boolean
   isLibrarian: boolean
@@ -69,10 +70,66 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+const fallbackAuthContext: AuthContextType = {
+  session: null,
+  user: null,
+  profile: null,
+  studentId: null,
+  teacherId: null,
+  adminId: null,
+  parentId: null,
+  displayId: null,
+  subscriptionStatus: null,
+  subscriptionPlan: null,
+  trialEndDate: null,
+  institutionName: null,
+  institutionLogo: null,
+  isMain: false,
+  isPlatformAdmin: false,
+  isLibrarian: false,
+  canonicalRole: null,
+  availableRoles: [],
+  activeRole: null,
+  switchActiveRole: async () => {},
+  loading: false,
+  setLoading: () => {},
+  isInitializing: true,
+  isNavReady: false,
+  isProfileLoading: false,
+  isSessionExpiring: false,
+  dismissSessionWarning: () => {},
+  signIn: async () => ({ data: null, error: new Error('Auth provider not ready') }),
+  signOut: async () => ({ error: null }),
+  logout: async () => ({ error: null }),
+  resetPassword: async () => ({ error: null }),
+  refreshProfile: async () => null,
+  resetSessionTimer: () => {},
+  startDemo: async () => ({ data: null, error: null }),
+  isDemo: false,
+  isDemoExiting: false,
+  exitDemoSession: async () => ({ error: null }),
+  wasDemo: false,
+  clearWasDemo: () => {},
+  isTrial: false,
+  addonMessaging: false,
+  addonLibrary: false,
+  addonFinance: true,
+  addonAnalytics: true,
+  addonBursary: false,
+  addonAttendance: true,
+  addonDiary: false,
+  customStudentLimit: null,
+  getRoleRedirect: () => "/(auth)/signIn",
+  maintenanceModeEnabled: false,
+  maintenanceModeMessage: 'System maintenance is in progress. Please try again later.',
+  refreshMaintenanceStatus: async () => ({ enabled: false, message: '' }),
+};
+
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    console.warn('[useAuth] Called outside AuthProvider - returning safe fallback context to prevent crash');
+    return fallbackAuthContext;
   }
   return context
 }
@@ -125,6 +182,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [subscriptionPlan, setSubscriptionPlan] = useState<string | null>(null)
   const [trialEndDate, setTrialEndDate] = useState<string | null>(null)
   const [institutionName, setInstitutionName] = useState<string | null>(null)
+  const [institutionLogo, setInstitutionLogo] = useState<string | null>(null)
   const [isMain, setIsMain] = useState(false)
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
   const [isLibrarian, setIsLibrarian] = useState(false)
@@ -243,7 +301,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const now = Date.now();
       if (now - lastPingTime.current > 60000) {
         lastPingTime.current = now;
-        api.post('/auth/ping', {}, { skipErrorToast: true }).catch(() => {});
+        const currentToken = currentSessionRef.current?.access_token;
+        if (currentToken && !isTokenExpired(currentToken)) {
+          api.post('/auth/ping', {}, { skipErrorToast: true, skipErrorLog: true, timeout: 6000 }).catch(() => {});
+        }
       }
     }, 10 * 1000); // every 10 seconds
   }, [clearHeartbeat]);
@@ -402,6 +463,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleSignIn = async (email: string, password: string) => {
     setLoading(true);
     try {
+      await AsyncStorage.removeItem('deliberate_logout').catch(() => {});
       const result = await authService.signIn(email, password);
       if (result.data?.session) {
         await AsyncStorage.setItem('session_start_time', Date.now().toString());
@@ -447,7 +509,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const now = Date.now();
         if (now - lastPingTime.current > 60000) {
           lastPingTime.current = now;
-          api.post('/auth/ping', {}, { skipErrorToast: true }).catch(() => {});
+          const currentToken = currentSessionRef.current?.access_token;
+          if (currentToken && !isTokenExpired(currentToken)) {
+            api.post('/auth/ping', {}, { skipErrorToast: true, skipErrorLog: true, timeout: 6000 }).catch(() => {});
+          }
         }
       }, 10 * 1000);
       return;
@@ -518,7 +583,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     );
   };
 
-  const applyProfileData = (userData: any, userId: string): UserProfile => {
+  const applyProfileData = (userData: any, userId: string, isLibrarianParam?: boolean): UserProfile => {
     if (userData?.institutions) {
       const categoryIdsFromLinks = Array.isArray(userData.institutions.institution_categories)
         ? userData.institutions.institution_categories
@@ -534,17 +599,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const isPlatformAdminFlag = !!userData.platform_admins?.[0] || userData.role === 'master_admin';
     const isMainFlag = userData.admins?.[0]?.is_main || false;
+    const isLibrarianActive = isLibrarianParam !== undefined ? isLibrarianParam : (userData.is_librarian ?? isLibrarian);
+    setIsLibrarian(isLibrarianActive);
 
     let newSubscriptionStatus = null;
     let newSubscriptionPlan = null;
     let newTrialEndDate = null;
     let newInstitutionName = null;
+    let newInstitutionLogo = null;
 
     if (userData.institutions) {
       newSubscriptionStatus = userData.institutions.subscription_status || null;
       newSubscriptionPlan = userData.institutions.subscription_plan || null;
       newTrialEndDate = userData.institutions.subscription_tracking_start_date || null;
       newInstitutionName = userData.institutions.name || null;
+      newInstitutionLogo = userData.institutions.logo_url || null;
       const normalizedPlan = normalizeSubscriptionPlan(userData.institutions.subscription_plan);
       const isBetaPlan = normalizedPlan === 'beta';
 
@@ -578,6 +647,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (teacherId) rolesSet.add('teacher');
     if (parentId) rolesSet.add('parent');
     if (studentId) rolesSet.add('student');
+    if (isLibrarianActive) rolesSet.add('librarian');
     const newAvailableRoles = Array.from(rolesSet);
     setAvailableRoles(newAvailableRoles);
 
@@ -615,6 +685,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (subscriptionPlan !== newSubscriptionPlan) setSubscriptionPlan(newSubscriptionPlan);
     if (trialEndDate !== newTrialEndDate) setTrialEndDate(newTrialEndDate);
     if (institutionName !== newInstitutionName) setInstitutionName(newInstitutionName);
+    if (institutionLogo !== newInstitutionLogo) setInstitutionLogo(newInstitutionLogo);
     if (isPlatformAdmin !== isPlatformAdminFlag) setIsPlatformAdmin(isPlatformAdminFlag);
     if (isMain !== isMainFlag) setIsMain(isMainFlag);
 
@@ -655,7 +726,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsProfileLoading(true);
       const { data, error } = await supabase
         .from('users')
-        .select('*, students(id), teachers(id), admins(id, is_main), parents(id), institutions(name, category_id, subscription_status, subscription_plan, subscription_tracking_start_date, addon_messaging, addon_library, addon_diary, addon_bursary, custom_student_limit, currency_id, institution_categories(category_id), currency:currency_id(code, symbol, decimal_places)), platform_admins(id)')
+        .select('*, students(id), teachers(id), admins(id, is_main), parents(id), institutions(name, logo_url, category_id, subscription_status, subscription_plan, subscription_tracking_start_date, addon_messaging, addon_library, addon_diary, addon_bursary, custom_student_limit, currency_id, institution_categories(category_id), currency:currency_id(code, symbol, decimal_places)), platform_admins(id)')
         .eq('id', userId)
         .maybeSingle();
 
@@ -703,13 +774,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isLibrarianFlag = false;
       }
       setIsLibrarian(isLibrarianFlag);
+      userData.is_librarian = isLibrarianFlag;
 
       // Cache profile locally for offline resilience
       try {
         await AsyncStorage.setItem(`lms_cached_profile_${userId}`, JSON.stringify(userData));
       } catch {}
 
-      return applyProfileData(userData, userId);
+      return applyProfileData(userData, userId, isLibrarianFlag);
     } catch (err: any) {
       if (isNetworkLikeError(err)) {
         console.warn('[AuthContext] Network exception in loadUserProfile, attempting cache recovery:', err?.message || err);
@@ -718,7 +790,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (cachedRaw) {
             const cachedData = JSON.parse(cachedRaw);
             if (cachedData && cachedData.id === userId) {
-              return applyProfileData(cachedData, userId);
+              return applyProfileData(cachedData, userId, cachedData.is_librarian);
             }
           }
         } catch {}
@@ -751,6 +823,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       case "teacher": return "/(teacher)";
       case "student": return "/(student)";
       case "parent": return "/(parent)";
+      case "librarian": return "/(teacher)/management/library";
       default: return "/(auth)/signIn";
     }
   }, [activeRole]);
@@ -796,11 +869,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timeout')), 6000));
 
         let initialSession: Session | null = null;
-        try {
-          const result = await Promise.race([sessionPromise, timeoutPromise]) as any;
-          initialSession = result?.data?.session || null;
-        } catch (sessErr: any) {
-          console.warn('[AuthContext] getSession timeout/error:', sessErr?.message || sessErr);
+        const isDeliberatelyLoggedOut = await AsyncStorage.getItem('deliberate_logout').catch(() => null);
+
+        if (isDeliberatelyLoggedOut !== 'true') {
+          try {
+            const result = await Promise.race([sessionPromise, timeoutPromise]) as any;
+            initialSession = result?.data?.session || null;
+          } catch (sessErr: any) {
+            console.warn('[AuthContext] getSession timeout/error:', sessErr?.message || sessErr);
+          }
         }
 
         if (initialSession) {
@@ -889,6 +966,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
+        const isDeliberatelyLoggedOut = await AsyncStorage.getItem('deliberate_logout').catch(() => null);
+        if (isDeliberatelyLoggedOut === 'true' && !isManualLogout.current) {
+          console.warn('[AuthContext] Suppressed unexpected SIGNED_IN event while marked logged out');
+          await safeSignOut('local', LogoutReason.USER_INITIATED, true);
+          return;
+        }
+
         setSession(session);
         setUser(session.user);
         currentSessionRef.current = session;
@@ -926,6 +1010,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           .subscribe();
         realtimeChannelRef.current = channel;
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        const isDeliberatelyLoggedOut = await AsyncStorage.getItem('deliberate_logout').catch(() => null);
+        if (isDeliberatelyLoggedOut === 'true' || isManualLogout.current) {
+          console.warn('[AuthContext] Suppressed TOKEN_REFRESHED due to deliberate logged out state');
+          await safeSignOut('local', LogoutReason.USER_INITIATED, true);
+          return;
+        }
         setSession(session);
         setUser(session.user);
         currentSessionRef.current = session;
@@ -1018,7 +1108,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     adminId: roleInfo.adminId,
     parentId: roleInfo.parentId,
     displayId: roleInfo.displayId,
-    subscriptionStatus, subscriptionPlan, trialEndDate, institutionName,
+    subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, institutionLogo,
     loading, isInitializing, isNavReady, isProfileLoading,
     isSessionExpiring,
     dismissSessionWarning,
@@ -1055,7 +1145,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     maintenanceModeEnabled,
     maintenanceModeMessage,
     refreshMaintenanceStatus,
-  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, isDemoExiting, exitDemoSession, wasDemo, clearWasDemo, isMain, isPlatformAdmin, isLibrarian, canonicalRole, addonFlags, customStudentLimit, getRoleRedirect, availableRoles, activeRole, switchActiveRole, maintenanceModeEnabled, maintenanceModeMessage, refreshMaintenanceStatus]);
+  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, institutionLogo, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, isDemoExiting, exitDemoSession, wasDemo, clearWasDemo, isMain, isPlatformAdmin, isLibrarian, canonicalRole, addonFlags, customStudentLimit, getRoleRedirect, availableRoles, activeRole, switchActiveRole, maintenanceModeEnabled, maintenanceModeMessage, refreshMaintenanceStatus]);
 
   return (
     <AuthContext.Provider value={value}>

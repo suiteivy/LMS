@@ -53,6 +53,7 @@ export default function SubjectsIndex() {
                 const firstTeacherName = assignedTeachers.length > 0 ? assignedTeachers[0].name : 'Unknown Instructor';
                 return {
                     ...item,
+                    level_ids: Array.isArray(item.level_ids) ? item.level_ids : [],
                     instructor: { name: firstTeacherName },
                     instructors: assignedTeachers,
                     lessons: item.lessons || [],

@@ -27,7 +27,7 @@ router.get("/", authorizeRoles(["master_admin"]), getInstitutions);
 router.post("/", authorizeRoles(["master_admin"]), validate(schemas.createInstitution), createInstitution);
 
 // Update institution
-router.put("/", authorizeRoles(["admin", "master_admin"]), validate(schemas.updateUser), updateInstitution);
-router.put("/:id", authorizeRoles(["admin", "master_admin"]), validate(schemas.idParam), updateInstitution);
+router.put("/", authorizeRoles(["admin", "master_admin"]), validate(schemas.updateInstitution), updateInstitution);
+router.put("/:id", authorizeRoles(["admin", "master_admin"]), validate(schemas.updateInstitution), updateInstitution);
 
 module.exports = router;

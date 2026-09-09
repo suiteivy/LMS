@@ -370,3 +370,59 @@ function AuthHandler() {
     </View>
   );
 }
+
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: '#0F0B2E',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 24,
+      }}
+    >
+      <View
+        style={{
+          backgroundColor: 'rgba(19,16,58,0.85)',
+          borderColor: 'rgba(255,107,0,0.3)',
+          borderWidth: 1,
+          borderRadius: 20,
+          padding: 24,
+          maxWidth: 420,
+          width: '100%',
+          alignItems: 'center',
+        }}
+      >
+        <Text style={{ color: '#FF6B00', fontSize: 18, fontWeight: '800', marginBottom: 8 }}>
+          Something went wrong
+        </Text>
+        <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, textAlign: 'center', marginBottom: 20 }}>
+          {error?.message || 'An unexpected error occurred while loading this view.'}
+        </Text>
+        <View
+          style={{
+            backgroundColor: '#FF6B00',
+            borderRadius: 12,
+            overflow: 'hidden',
+          }}
+        >
+          <Text
+            onPress={retry}
+            style={{
+              color: '#FFFFFF',
+              fontWeight: '700',
+              fontSize: 14,
+              paddingVertical: 12,
+              paddingHorizontal: 24,
+              textAlign: 'center',
+            }}
+          >
+            Try Again
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+

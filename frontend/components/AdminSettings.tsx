@@ -1,8 +1,8 @@
-import {ProfileEdit} from "@/components/ProfileEdit";
+import { ProfileEdit } from "@/components/ProfileEdit";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { SettingsService, UserPreferences } from "@/services/SettingsService";
-import { Bell, ChevronRight, Globe, Lock, LucideIcon, Shield, User } from "lucide-react-native";
+import { Bell, ChevronRight, Globe, Lock, LucideIcon, Shield, User, Image as ImageIcon } from "lucide-react-native";
 import React, { ReactNode, useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
 import Toast from 'react-native-toast-message';
@@ -11,6 +11,7 @@ import { ChangePasswordModal } from "./shared/ChangePasswordModal";
 import { HelpTooltip } from "./settings/HelpTooltip";
 import { SettingsWithManual } from "./settings/SettingsWithManual";
 import { ThemeSegmentedControl } from "./settings/ThemeSegmentedControl";
+import { InstitutionBrandingModal } from "./InstitutionBrandingModal";
 
 interface SettingRowProps {
     icon: LucideIcon;
@@ -23,6 +24,7 @@ interface SettingRowProps {
 export default function AdminSettings() {
     const [showEditForm, setShowEditForm] = useState(false);
     const [showPasswordForm, setShowPasswordForm] = useState(false);
+    const [showBrandingModal, setShowBrandingModal] = useState(false);
     const { isDark } = useTheme();
     const tier = useSubscriptionTier();
     const params = useLocalSearchParams<{ manual?: string; anchor?: string }>();
@@ -97,7 +99,6 @@ export default function AdminSettings() {
         </TouchableOpacity>
     );
 
-
     const settingsContent = (
         <ScrollView className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <View className="p-4 md:p-8 max-w-2xl mx-auto w-full">
@@ -117,6 +118,18 @@ export default function AdminSettings() {
                     <SettingRow icon={Globe} title="Language" isLast >
                         <HelpTooltip id="settings.language.admin" role="admin" tier={tier} onLearnMore={openManual} />
                         <Text className="text-gray-500 dark:text-white mr-2">English</Text>
+                    </SettingRow>
+                </View>
+
+                <Text className="text-xs font-bold text-gray-500 dark:text-white uppercase tracking-widest ml-1 mb-2">Institution Branding</Text>
+                <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-3xl border border-[#D0D7DE] dark:border-[#21262D] mb-6 overflow-hidden">
+                    <SettingRow
+                        icon={ImageIcon}
+                        title="Institution Logo & Identity"
+                        onPress={() => setShowBrandingModal(true)}
+                        isLast
+                    >
+                        <Text className="text-[#FF6B00] font-semibold text-xs mr-2">Configure</Text>
                     </SettingRow>
                 </View>
 
@@ -151,6 +164,7 @@ export default function AdminSettings() {
 
                 <ProfileEdit visible={showEditForm} onClose={() => setShowEditForm(false)} />
                 <ChangePasswordModal visible={showPasswordForm} onClose={() => setShowPasswordForm(false)} />
+                <InstitutionBrandingModal visible={showBrandingModal} onClose={() => setShowBrandingModal(false)} />
             </View>
         </ScrollView>
     );

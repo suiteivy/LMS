@@ -19,8 +19,16 @@ import {
     Search,
     Upload,
     X,
+    Award,
+    Sparkles,
+    SlidersHorizontal,
+    Trash2,
+    CheckCircle2,
+    ArrowRight,
+    TrendingUp,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { GradingScaleModal } from "@/components/results/GradingScaleModal";
 import {
     ActivityIndicator,
     Alert,
@@ -337,6 +345,11 @@ export default function GradeEntryPage() {
     const [importResults, setImportResults] = useState<{ created: number; skipped: number; errors: { index: number; error: string; student_id?: string }[] } | null>(null);
     const [importing, setImporting] = useState(false);
 
+    // ── Usability additions: Scale Modal & Quick Fill ──
+    const [showScaleModal, setShowScaleModal] = useState(false);
+    const [showQuickFill, setShowQuickFill] = useState(false);
+    const [quickFillValue, setQuickFillValue] = useState("");
+
     // ──────────────────────────────────────────────────────────────────────────
     // Fetch filter options
     // ──────────────────────────────────────────────────────────────────────────
@@ -601,6 +614,85 @@ export default function GradeEntryPage() {
             })
         );
     };
+
+    // ── Bulk quick fill scores ──
+    const handleQuickFill = (target: "empty" | "all") => {
+        if (!ensureWritableTerm("Bulk grade fill")) return;
+        const val = parseFloat(quickFillValue);
+        if (isNaN(val) || val < 0) {
+            showError("Invalid score", "Please enter a valid numeric score (e.g. 75)");
+            return;
+        }
+        const max = getCurrentMaxScore();
+        if (val > max) {
+            showError("Score too high", `Entered score (${val}) exceeds max score (${max})`);
+            return;
+        }
+
+        let count = 0;
+        setGradeEntries((prev) =>
+            prev.map((entry) => {
+                if (target === "empty" && entry.score !== "") return entry;
+                count++;
+                const pct = computePercentage(quickFillValue, entry.maxScore);
+                return {
+                    ...entry,
+                    score: quickFillValue,
+                    percentage: pct,
+                    letterGrade: pct !== null ? computeLetterGrade(pct) : "--",
+                    status: entry.existingEntryId ? "updated" : "new",
+                };
+            })
+        );
+        showSuccess("Quick Fill Complete", `Applied ${val}/${max} to ${count} student(s)`);
+        setQuickFillValue("");
+        setShowQuickFill(false);
+    };
+
+    const handleClearAllGrades = () => {
+        if (!ensureWritableTerm("Clear grades")) return;
+        Alert.alert(
+            "Clear Entered Grades",
+            "Are you sure you want to reset all entered scores on this screen? Unsaved entries will be removed.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Clear All",
+                    style: "destructive",
+                    onPress: () => {
+                        setGradeEntries((prev) =>
+                            prev.map((entry) => ({
+                                ...entry,
+                                score: "",
+                                percentage: null,
+                                letterGrade: "--",
+                                status: entry.existingEntryId ? "updated" : "new",
+                            }))
+                        );
+                        showSuccess("Grades Cleared", "All entered scores were reset.");
+                    },
+                },
+            ]
+        );
+    };
+
+    const classStats = useMemo(() => {
+        const scores = gradeEntries
+            .map((e) => parseFloat(e.score))
+            .filter((n) => !isNaN(n));
+        if (scores.length === 0) return null;
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        const highest = Math.max(...scores);
+        const lowest = Math.min(...scores);
+        const passCount = scores.filter((s) => s >= 50).length;
+        const passRate = Math.round((passCount / scores.length) * 100);
+        return {
+            avg: avg.toFixed(1),
+            highest: highest.toFixed(1),
+            lowest: lowest.toFixed(1),
+            passRate,
+        };
+    }, [gradeEntries]);
 
     const openFeedback = (studentId: string) => {
         if (!ensureWritableTerm("Feedback updates")) return;
@@ -886,12 +978,42 @@ export default function GradeEntryPage() {
                 contentContainerStyle={{ paddingBottom: 120 }}
             >
                 <View className="p-4 md:p-8">
-                    {/* ── Summary Stats ── */}
-                    <View className="flex-row items-center mb-2 px-1">
-                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Grade Entry Summary</Text>
-                        <HelpTooltip id="teacher.manage.grade_entry" role="teacher" tier={tier} onLearnMore={openManual} />
+                    {/* ── Workflow Stepper ── */}
+                    <View className="flex-row items-center justify-between mb-5 bg-white dark:bg-[#161B22] p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+                        <View className="flex-row items-center gap-2">
+                            <View className={`w-6 h-6 rounded-full items-center justify-center ${selectedSubjectId && selectedClassId ? 'bg-emerald-500' : 'bg-[#FF6900]'}`}>
+                                {selectedSubjectId && selectedClassId ? <Check size={12} color="#FFF" /> : <Text className="text-white text-[10px] font-bold">1</Text>}
+                            </View>
+                            <Text className="text-xs font-bold text-gray-900 dark:text-gray-100">Scope</Text>
+                        </View>
+                        <ArrowRight size={14} color="#9CA3AF" />
+                        <View className="flex-row items-center gap-2">
+                            <View className={`w-6 h-6 rounded-full items-center justify-center ${gradedCount > 0 ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                {gradedCount === totalStudents && totalStudents > 0 ? <Check size={12} color="#FFF" /> : <Text className="text-white text-[10px] font-bold">2</Text>}
+                            </View>
+                            <Text className="text-xs font-bold text-gray-900 dark:text-gray-100">Grades</Text>
+                        </View>
+                        <ArrowRight size={14} color="#9CA3AF" />
+                        <View className="flex-row items-center gap-2">
+                            <View className={`w-6 h-6 rounded-full items-center justify-center ${existingCount > 0 ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                <Text className="text-white text-[10px] font-bold">3</Text>
+                            </View>
+                            <Text className="text-xs font-bold text-gray-900 dark:text-gray-100">Save</Text>
+                        </View>
                     </View>
-                    <View className="flex-row gap-3 mb-6">
+
+                    {/* ── Summary Stats ── */}
+                    <View className="flex-row items-center justify-between mb-2 px-1">
+                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Grade Entry Summary</Text>
+                        <TouchableOpacity
+                            onPress={() => setShowScaleModal(true)}
+                            className="flex-row items-center gap-1 bg-orange-50 dark:bg-orange-950/30 px-2.5 py-1 rounded-lg border border-orange-200 dark:border-orange-800"
+                        >
+                            <Award size={12} color="#FF6900" />
+                            <Text className="text-[#FF6900] text-[10px] font-bold">Grading Scale</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View className="flex-row gap-3 mb-4">
                         <View className="flex-1 bg-[#FF6900] p-4 rounded-3xl shadow-sm">
                             <Text className="text-orange-100 text-[10px] font-bold uppercase tracking-wider">Graded</Text>
                             <Text className="text-white text-2xl font-bold mt-1">
@@ -908,6 +1030,21 @@ export default function GradeEntryPage() {
                             <Text className="text-white text-2xl font-bold mt-1">{totalStudents - gradedCount}</Text>
                         </View>
                     </View>
+
+                    {/* Live Class Performance Pill */}
+                    {classStats && (
+                        <View className="flex-row items-center justify-between bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-500/30 px-4 py-2.5 rounded-2xl mb-6">
+                            <View className="flex-row items-center gap-2">
+                                <TrendingUp size={16} color="#10B981" />
+                                <Text className="text-emerald-700 dark:text-emerald-400 text-xs font-bold">
+                                    Class Average: {classStats.avg}%
+                                </Text>
+                            </View>
+                            <Text className="text-emerald-700 dark:text-emerald-400 text-xs">
+                                High: <Text className="font-bold">{classStats.highest}%</Text> • Pass Rate: <Text className="font-bold">{classStats.passRate}%</Text>
+                            </Text>
+                        </View>
+                    )}
 
                     {/* ── Filters ── */}
                     <View className="mb-6 relative z-50" style={{ zIndex: 50 }}>
@@ -1033,22 +1170,78 @@ export default function GradeEntryPage() {
                         </TouchableOpacity>
                     )}
 
-                    {/* ── Search ── */}
+                    {/* ── Quick-Fill Toolbar & Search ── */}
                     {gradeEntries.length > 0 && (
-                        <View className="flex-row items-center bg-white dark:bg-[#161B22] rounded-2xl px-4 py-3 mb-6 border border-gray-100 dark:border-gray-800 shadow-sm">
-                            <Search size={18} color="#9CA3AF" />
-                            <TextInput
-                                className="flex-1 ml-3 text-gray-900 dark:text-gray-100 font-medium"
-                                placeholder="Search students..."
-                                placeholderTextColor="#9CA3AF"
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                            />
-                            {searchQuery.length > 0 && (
-                                <TouchableOpacity onPress={() => setSearchQuery("")}>
-                                    <X size={16} color="#9CA3AF" />
+                        <View className="mb-4">
+                            {/* Quick-Fill Toggle Bar */}
+                            <View className="flex-row items-center justify-between mb-3 bg-white dark:bg-[#161B22] p-3 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                <TouchableOpacity
+                                    onPress={() => setShowQuickFill(!showQuickFill)}
+                                    className="flex-row items-center gap-2"
+                                >
+                                    <Sparkles size={16} color="#FF6900" />
+                                    <Text className="text-gray-900 dark:text-gray-100 font-bold text-xs">
+                                        Bulk Quick-Fill Scores
+                                    </Text>
+                                    <ChevronDown size={14} color="#9CA3AF" style={{ transform: [{ rotate: showQuickFill ? "180deg" : "0deg" }] }} />
                                 </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    onPress={handleClearAllGrades}
+                                    className="flex-row items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900"
+                                >
+                                    <Trash2 size={12} color="#EF4444" />
+                                    <Text className="text-red-600 dark:text-red-400 text-[10px] font-bold">Clear All</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Quick-Fill Form */}
+                            {showQuickFill && (
+                                <View className="p-4 rounded-2xl bg-orange-50/50 dark:bg-orange-950/10 border border-orange-100 dark:border-orange-900/30 mb-3">
+                                    <Text className="text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-2">
+                                        Set Default Score for Students:
+                                    </Text>
+                                    <View className="flex-row items-center gap-2">
+                                        <TextInput
+                                            className="w-20 bg-white dark:bg-[#161B22] rounded-xl px-3 py-2 text-center text-sm font-bold border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
+                                            placeholder="Score"
+                                            placeholderTextColor="#9CA3AF"
+                                            keyboardType="numeric"
+                                            value={quickFillValue}
+                                            onChangeText={setQuickFillValue}
+                                        />
+                                        <TouchableOpacity
+                                            onPress={() => handleQuickFill("empty")}
+                                            className="flex-1 py-2 rounded-xl bg-[#FF6900] items-center justify-center active:opacity-90"
+                                        >
+                                            <Text className="text-white text-xs font-bold">Fill Ungraded</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => handleQuickFill("all")}
+                                            className="flex-1 py-2 rounded-xl bg-gray-800 dark:bg-gray-700 items-center justify-center active:opacity-90"
+                                        >
+                                            <Text className="text-white text-xs font-bold">Fill All</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
                             )}
+
+                            {/* Search */}
+                            <View className="flex-row items-center bg-white dark:bg-[#161B22] rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-800 shadow-sm">
+                                <Search size={18} color="#9CA3AF" />
+                                <TextInput
+                                    className="flex-1 ml-3 text-gray-900 dark:text-gray-100 font-medium"
+                                    placeholder="Search students..."
+                                    placeholderTextColor="#9CA3AF"
+                                    value={searchQuery}
+                                    onChangeText={setSearchQuery}
+                                />
+                                {searchQuery.length > 0 && (
+                                    <TouchableOpacity onPress={() => setSearchQuery("")}>
+                                        <X size={16} color="#9CA3AF" />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
                         </View>
                     )}
 
@@ -1445,6 +1638,12 @@ export default function GradeEntryPage() {
                     </View>
                 </View>
             </Modal>
+
+            {/* ── Grading Scale Modal ── */}
+            <GradingScaleModal
+                visible={showScaleModal}
+                onClose={() => setShowScaleModal(false)}
+            />
         </View>
     );
 }

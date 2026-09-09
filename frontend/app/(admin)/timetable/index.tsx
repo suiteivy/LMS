@@ -10,10 +10,14 @@ import { formatClassLabel } from "@/utils/classLabel";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { downloadTimetablePdf } from "@/utils/timetablePdfGenerator";
+import { CalendarAPI, CancelledDateInfo } from "@/services/CalendarService";
 import {
     AlertOctagon,
+    AlertTriangle,
     Bell,
     BookOpen,
     Calendar,
@@ -22,6 +26,7 @@ import {
     ChevronLeft,
     ChevronUp,
     Clock,
+    Download,
     Edit3,
     Info,
     MapPin,
@@ -395,9 +400,12 @@ export default function TimetableBuilder() {
 
     const styles = React.useMemo(() => getStyles(colors), [colors]) as any;
 
+    const { institutionName, institutionLogo } = useAuth();
+
     // Data state
     const [loading, setLoading] = useState(true);
     const [fetchingTimetable, setFetchingTimetable] = useState(false);
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
     const [classes, setClasses] = useState<ClassData[]>([]);
     const [subjects, setSubjects] = useState<SubjectData[]>([]);
     const [selectedClassId, setSelectedClassId] = useState<string>("");
@@ -407,6 +415,7 @@ export default function TimetableBuilder() {
     const [sendingAlerts, setSendingAlerts] = useState(false);
     const [institutionType, setInstitutionType] = useState<string | null>(null);
     const [institutionId, setInstitutionId] = useState<string | null>(null);
+    const [cancelledDates, setCancelledDates] = useState<CancelledDateInfo[]>([]);
 
     // UI state
     const [selectedDay, setSelectedDay] = useState<string>("Monday");
@@ -428,6 +437,29 @@ export default function TimetableBuilder() {
         .filter(t => t.day_of_week === selectedDay)
         .sort((a, b) => toMinutes(a.start_time) - toMinutes(b.start_time));
     const conflictingIds = new Set(conflicts.flatMap(c => c.affectedEntryIds));
+
+    const handleDownloadPdf = async () => {
+        if (!timetable.length) {
+            showError("No schedule", "No timetable entries to export for this class.");
+            return;
+        }
+        const classTitle = selectedClass ? formatClassLabel(selectedClass) : "Class";
+        try {
+            setDownloadingPdf(true);
+            await downloadTimetablePdf({
+                title: `${classTitle} Timetable`,
+                subtitle: `Academic Schedule • ${institutionName || 'School Timetable'}`,
+                institutionName,
+                institutionLogo,
+                entries: timetable,
+            });
+            showSuccess("PDF Ready", "Timetable PDF generated successfully.");
+        } catch (error) {
+            showError("Export failed", "Failed to generate timetable PDF.");
+        } finally {
+            setDownloadingPdf(false);
+        }
+    };
 
     // ── Data fetching ─────────────────────────────────────────────────────────
 
@@ -489,6 +521,7 @@ export default function TimetableBuilder() {
             }
         };
         loadInstitution();
+        CalendarAPI.getCancelledDates().then(setCancelledDates).catch(() => {});
         (async () => {
             try {
                 setLoading(true);
@@ -636,9 +669,25 @@ export default function TimetableBuilder() {
                 role="Admin"
                 onBack={() => router.back()}
                 rightActions={
-                    <TouchableOpacity onPress={handleRefresh} style={styles.iconBtn}>
-                        <RefreshCw size={18} color={colors.textSub} />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        {selectedClassId && timetable.length > 0 && (
+                            <TouchableOpacity
+                                onPress={handleDownloadPdf}
+                                disabled={downloadingPdf}
+                                style={[styles.iconBtn, { flexDirection: 'row', paddingHorizontal: 12, width: 'auto', gap: 6, backgroundColor: colors.surface }]}
+                                accessibilityRole="button"
+                                accessibilityLabel="Download Timetable PDF"
+                            >
+                                <Download size={16} color={colors.accent} />
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.accent }}>
+                                    {downloadingPdf ? 'Exporting...' : 'PDF'}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity onPress={handleRefresh} style={styles.iconBtn}>
+                            <RefreshCw size={18} color={colors.textSub} />
+                        </TouchableOpacity>
+                    </View>
                 }
             />
 
@@ -703,6 +752,29 @@ export default function TimetableBuilder() {
                     </ScrollView>
                 </View>
             )}
+
+            {/* ── Cancelled-Day Banner ── */}
+            {selectedClassId && (() => {
+                const activeDayIndex = DAYS.indexOf(selectedDay as any);
+                const ws = new Date();
+                const dow = ws.getDay();
+                const diffToMon = (dow === 0 ? -6 : 1 - dow);
+                ws.setDate(ws.getDate() + diffToMon + activeDayIndex);
+                const dateStr = ws.toISOString().slice(0, 10);
+                const cancelled = cancelledDates.find(c => c.event_date === dateStr);
+                if (!cancelled) return null;
+                return (
+                    <View style={{ marginHorizontal: 16, marginBottom: 8, padding: 14, borderRadius: 14, backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)', flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(239,68,68,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                            <AlertTriangle size={18} color="#EF4444" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ color: '#EF4444', fontWeight: '700', fontSize: 13 }}>Classes Cancelled: {cancelled.title}</Text>
+                            <Text style={{ color: 'rgba(239,68,68,0.75)', fontSize: 11, marginTop: 2 }}>Academic sessions are suspended on this calendar date.</Text>
+                        </View>
+                    </View>
+                );
+            })()}
 
             {/* ── Main Content ── */}
             {!selectedClassId ? (

@@ -4576,36 +4576,30 @@ export type Database = {
         Row: {
           created_at: string | null
           department: string | null
-          hire_date: string | null
           id: string
           institution_id: string | null
           position: string | null
           qualification: string | null
-          specialization: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
           department?: string | null
-          hire_date?: string | null
           id?: string
           institution_id?: string | null
           position?: string | null
           qualification?: string | null
-          specialization?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
           department?: string | null
-          hire_date?: string | null
           id?: string
           institution_id?: string | null
           position?: string | null
           qualification?: string | null
-          specialization?: string | null
           updated_at?: string | null
           user_id?: string
         }

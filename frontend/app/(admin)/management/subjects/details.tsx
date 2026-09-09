@@ -3,6 +3,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { SubjectAPI } from "@/services/SubjectService";
+import { ClassService } from "@/services/ClassService";
 import { Subject } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -29,12 +30,12 @@ function SubjectDetailsScreen() {
   const [saving, setSaving] = useState(false);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
+  const [levels, setLevels] = useState<any[]>([]);
 
   const assignedTeacherNames = teachers
     .filter((t) => (form.teacher_ids || []).includes(t.id))
     .map((t) => t.users?.full_name || t.id)
     .join(", ");
-  // const surface = isDark ? "#161B22" : "#F6F8FA";
   const border = isDark ? "#21262D" : "#D0D7DE";
   const inputBg = isDark ? "#161B22" : "#FFFFFF";
   const textPrimary = isDark ? "#FFFFFF" : "#111827";
@@ -48,38 +49,56 @@ function SubjectDetailsScreen() {
 
   const loadLookupData = async () => {
     if (!profile?.institution_id) return;
-    // Fetch teachers and classes for dropdowns
-    const [teacherRes, classRes] = await Promise.all([
-      supabase.from("teachers").select("id, user_id, users:user_id(full_name, institution_id)").eq("institution_id", profile.institution_id),
-      supabase
-        .from("v_classes_detailed")
-        .select("id, name, display_name, grade_level, form_level, stream")
-        .eq("institution_id", profile.institution_id)
-        .order("grade_level", { ascending: true })
-        .order("form_level", { ascending: true })
-        .order("stream", { ascending: true }),
-    ]);
-    if (teacherRes.data) setTeachers(teacherRes.data);
-    if (classRes.data) {
-      setClasses(
-        classRes.data.map((cls: any) => ({
-          ...cls,
-          name: formatClassLabel(cls),
-        }))
-      );
+    try {
+      const [teacherRes, classRes, levelsData] = await Promise.all([
+        supabase
+          .from("teachers")
+          .select("id, user_id, users:user_id(full_name, institution_id)")
+          .eq("institution_id", profile.institution_id),
+        supabase
+          .from("v_classes_detailed")
+          .select("id, name, display_name, grade_level, form_level, stream")
+          .eq("institution_id", profile.institution_id)
+          .order("grade_level", { ascending: true })
+          .order("form_level", { ascending: true }),
+        (async () => {
+          try {
+            const domainOptions = await ClassService.getClassOptions();
+            if (domainOptions?.levels && domainOptions.levels.length > 0) {
+              return domainOptions.levels;
+            }
+          } catch {
+            // fallback
+          }
+          const { data } = await (supabase.from("class_levels") as any)
+            .select("id, name, level_number")
+            .eq("institution_id", profile.institution_id)
+            .order("level_number", { ascending: true });
+          return data || [];
+        })(),
+      ]);
+
+      if (teacherRes.data) setTeachers(teacherRes.data);
+      if (classRes.data) {
+        setClasses(
+          classRes.data.map((c: any) => ({
+            id: c.id,
+            name: formatClassLabel(c),
+            grade_level: c.grade_level,
+          }))
+        );
+      }
+      if (levelsData) setLevels(levelsData);
+    } catch (err) {
+      console.error("Failed to load lookup data:", err);
     }
   };
 
   const fetchSubject = async () => {
-    if (!profile?.institution_id) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
     try {
-      // id from useLocalSearchParams can be string | string[] | undefined
       const subjectId = Array.isArray(id) ? id[0] : id;
-      if (!subjectId) throw new Error("Invalid subject ID");
+      if (!subjectId || !profile?.institution_id) return;
+
       const { data, error } = await supabase
         .from("subjects")
         .select(`
@@ -95,7 +114,11 @@ function SubjectDetailsScreen() {
       
       const subjectData = data as any;
       const teacherIds = subjectData.subject_teachers ? subjectData.subject_teachers.map((st: any) => st.teacher_id) : [];
-      const populatedSubject = { ...subjectData, teacher_ids: teacherIds };
+      const populatedSubject = { 
+        ...subjectData, 
+        teacher_ids: teacherIds,
+        level_ids: Array.isArray(subjectData.level_ids) ? subjectData.level_ids : [],
+      };
       setSubject(populatedSubject as any);
       setForm(populatedSubject);
     } catch {
@@ -118,6 +141,14 @@ function SubjectDetailsScreen() {
       updatedIds = [...currentIds, teacherId];
     }
     handleChange("teacher_ids", updatedIds);
+  };
+
+  const handleLevelToggle = (levelId: string) => {
+    const current = Array.isArray(form.level_ids) ? form.level_ids : [];
+    const updated = current.includes(levelId)
+      ? current.filter((lid: string) => lid !== levelId)
+      : [...current, levelId];
+    handleChange("level_ids", updated);
   };
 
   const handleSave = async () => {
@@ -145,6 +176,7 @@ function SubjectDetailsScreen() {
 
       const refreshed = await SubjectAPI.updateSubject(String(subjectId), {
         ...subjectUpdateData,
+        level_ids: Array.isArray(form.level_ids) && form.level_ids.length > 0 ? form.level_ids : null,
         teacher_ids: teacher_ids || [],
         class_id: form.class_id || null,
         class_ids: Array.isArray(form?.metadata?.class_ids) ? form.metadata.class_ids : [],
@@ -181,6 +213,7 @@ function SubjectDetailsScreen() {
       const nextSubject = {
         ...(refreshed as any),
         teacher_ids: refreshedTeacherIds,
+        level_ids: Array.isArray((refreshed as any)?.level_ids) ? (refreshed as any).level_ids : (form.level_ids || []),
       };
 
       setSubject(nextSubject as any);
@@ -302,6 +335,78 @@ function SubjectDetailsScreen() {
             multiline
             onChangeText={(v) => handleChange("description", v)}
           />
+
+          {/* Grade/Level Scoping */}
+          <View style={{ marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <Text style={{ color: textMuted, fontSize: 13 }}>
+                Grade / Level Scoping
+              </Text>
+              <Text style={{ fontSize: 11, color: (form.level_ids || []).length === 0 ? '#10b981' : '#FF6B00', fontWeight: '600' }}>
+                {(form.level_ids || []).length === 0 ? 'All Levels (Global)' : `${form.level_ids.length} Level(s) Scoped`}
+              </Text>
+            </View>
+            <Text style={{ fontSize: 11, color: textMuted, marginBottom: 8 }}>
+              Restricts this subject to specific levels. When empty, it is available across all levels.
+            </Text>
+            {editing ? (
+              <View style={{ backgroundColor: inputBg, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: border }}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {levels.map((lvl) => {
+                    const isSelected = (form.level_ids || []).includes(lvl.id);
+                    return (
+                      <TouchableOpacity
+                        key={lvl.id}
+                        onPress={() => handleLevelToggle(lvl.id)}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 10,
+                          borderWidth: 1,
+                          borderColor: isSelected ? '#FF6B00' : border,
+                          backgroundColor: isSelected ? (isDark ? 'rgba(255,107,0,0.15)' : '#fff7ed') : inputBg,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Ionicons
+                          name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+                          size={14}
+                          color={isSelected ? "#FF6B00" : textMuted}
+                          style={{ marginRight: 6 }}
+                        />
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight: isSelected ? '700' : '500',
+                            color: isSelected ? '#FF6B00' : textPrimary,
+                          }}
+                        >
+                          {lvl.name || lvl.code || lvl.id}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  {levels.length === 0 && (
+                    <Text style={{ color: textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 10 }}>
+                      No levels defined
+                    </Text>
+                  )}
+                </View>
+              </View>
+            ) : (
+              <View style={{ backgroundColor: inputBg, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: border }}>
+                <Text style={{ color: textPrimary, fontSize: 14, fontWeight: '500' }}>
+                  {(() => {
+                    const levelIds = Array.isArray(form.level_ids) ? form.level_ids : [];
+                    if (levelIds.length === 0) return 'All Levels (Global)';
+                    const names = levels.filter((l) => levelIds.includes(l.id)).map((l) => l.name || l.code);
+                    return names.length > 0 ? names.join(', ') : `${levelIds.length} Level(s) Scoped`;
+                  })()}
+                </Text>
+              </View>
+            )}
+          </View>
 
           {/* Teachers Section */}
           <Text style={{ color: textMuted, fontSize: 13, marginBottom: 6 }}>

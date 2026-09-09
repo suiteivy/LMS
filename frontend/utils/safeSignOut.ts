@@ -29,10 +29,17 @@ export async function safeSignOut(
   demoUserId?: string | null,
   skipDemoCleanup?: boolean,
 ): Promise<void> {
-  // 1. Persist reason before clearing anything (skip for demo sessions)
+  // Notify API layer to drop tokens and block in-flight requests
+  try {
+    const { setSigningOutState } = await import('@/services/api');
+    setSigningOutState(true);
+  } catch {}
+
+  // 1. Persist reason and deliberate logout marker
   if (!isDemoSession) {
     try {
       await AsyncStorage.setItem('logout_reason', reason);
+      await AsyncStorage.setItem('deliberate_logout', 'true');
     } catch {
       // storage failure is non-critical
     }
@@ -64,19 +71,43 @@ export async function safeSignOut(
     // non-critical – continue with local sign-out
   }
 
-  // 3. Call Supabase signOut FIRST (before demo user deletion)
+  // 3. Call Supabase signOut FIRST (wrapped so failure doesn't abort storage clearance)
   try {
     const { error: signOutError } = await supabase.auth.signOut({ scope } as any);
     if (signOutError) {
       console.warn('[safeSignOut] supabase.auth.signOut error (non-fatal):', signOutError?.message || signOutError);
     }
   } catch (e: any) {
-    // Supabase may throw if the refresh token is already invalid (403).
-    // This is expected during token-expired or revocation flows – swallow it.
     console.warn('[safeSignOut] supabase.auth.signOut error (non-fatal):', e?.message ?? e);
   }
 
-  // 4. If demo user, trigger demo cleanup AFTER signout (unless already handled and confirmed)
+  // 4. Force-purge all Supabase session keys from client storage to prevent accidental re-login
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (key && (key.startsWith('sb-') || key.includes('auth-token') || key.includes('supabase'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => window.localStorage.removeItem(k));
+    } catch (storageErr) {
+      console.warn('[safeSignOut] Error purging localStorage tokens:', storageErr);
+    }
+  }
+
+  try {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const authKeys = allKeys.filter(k => k.startsWith('sb-') || k.includes('auth-token') || k.includes('supabase'));
+    if (authKeys.length > 0) {
+      await AsyncStorage.multiRemove(authKeys);
+    }
+  } catch (asyncErr) {
+    console.warn('[safeSignOut] Error purging AsyncStorage tokens:', asyncErr);
+  }
+
+  // 5. If demo user, trigger demo cleanup AFTER signout
   if (isDemoUser && targetDemoUserId && !skipDemoCleanup) {
     try {
       await fetch(`${getApiBaseUrl()}/demo/end`, {
@@ -89,7 +120,7 @@ export async function safeSignOut(
     }
   }
 
-  // 4. Clear demo-related keys (best-effort)
+  // 6. Clear demo-related keys
   try {
     await Promise.allSettled([
       AsyncStorage.removeItem('demo_expiry'),
@@ -101,7 +132,7 @@ export async function safeSignOut(
     // non-critical
   }
 
-  // 5. Show toast unless silent or demo session
+  // 7. Show toast unless silent or demo session
   if (!silent && !isDemoSession) {
     const msg = LOGOUT_MESSAGES[reason] ?? LOGOUT_MESSAGES[LogoutReason.UNKNOWN];
     const isError = reason === LogoutReason.INSTITUTION_SUSPENDED || reason === LogoutReason.AUTH_ERROR_403;
@@ -113,4 +144,12 @@ export async function safeSignOut(
       position: 'top',
     });
   }
+
+  // Release signing out flag after settle
+  setTimeout(async () => {
+    try {
+      const { setSigningOutState } = await import('@/services/api');
+      setSigningOutState(false);
+    } catch {}
+  }, 1200);
 }

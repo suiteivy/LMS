@@ -1,14 +1,17 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { TimetableAPI } from "@/services/TimetableService";
+import { useAuth } from "@/contexts/AuthContext";
+import { downloadTimetablePdf } from "@/utils/timetablePdfGenerator";
 import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
-import { Calendar, MapPin, User, Clock } from "lucide-react-native";
+import { Calendar, Download, MapPin, User, Clock } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useParentStudentContext } from "@/hooks/useParentStudentContext";
 import { ParentService } from "@/services/ParentService";
 import { formatClassLabel } from "@/utils/classLabel";
+import { showError, showSuccess } from "@/utils/toast";
 
 export default function ParentStudentTimetablePage() {
     const params = useLocalSearchParams<{ studentId?: string; studentName?: string; classId?: string }>();
@@ -18,7 +21,9 @@ export default function ParentStudentTimetablePage() {
         ready,
     } = useParentStudentContext(params as any);
 
+    const { institutionName, institutionLogo } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
     const [timetable, setTimetable] = useState<any[]>([]);
     const [selectedDay, setSelectedDay] = useState(new Date());
     const [classLabel, setClassLabel] = useState<string>('');
@@ -55,6 +60,28 @@ export default function ParentStudentTimetablePage() {
         }
     };
 
+    const handleDownloadPdf = async () => {
+        if (!timetable.length) {
+            showError("No schedule", "No timetable entries to export.");
+            return;
+        }
+        try {
+            setDownloadingPdf(true);
+            await downloadTimetablePdf({
+                title: `${resolvedName ? `${resolvedName}'s` : 'Student'} Timetable`,
+                subtitle: `Class: ${classLabel || 'Class Timetable'} • ${institutionName || 'Academic Schedule'}`,
+                institutionName,
+                institutionLogo,
+                entries: timetable,
+            });
+            showSuccess("PDF Ready", "Student timetable PDF generated successfully.");
+        } catch (error) {
+            showError("Export failed", "Failed to generate timetable PDF.");
+        } finally {
+            setDownloadingPdf(false);
+        }
+    };
+
     const weekDays = Array.from({ length: 7 }, (_, i) => {
         const start = startOfWeek(new Date(), { weekStartsOn: 1 });
         return addDays(start, i);
@@ -73,6 +100,22 @@ export default function ParentStudentTimetablePage() {
                 subtitle="Portal"
                 role="Parent/Guardian"
                 onBack={() => router.back()}
+                rightActions={
+                    timetable.length > 0 ? (
+                        <TouchableOpacity
+                            onPress={handleDownloadPdf}
+                            disabled={downloadingPdf}
+                            className="flex-row items-center px-3 py-1.5 rounded-full border bg-white dark:bg-[#21262D] border-gray-200 dark:border-gray-700 shadow-sm"
+                            accessibilityRole="button"
+                            accessibilityLabel="Download Timetable PDF"
+                        >
+                            <Download size={14} color="#FF6900" style={{ marginRight: 6 }} />
+                            <Text className="text-[#FF6900] font-bold text-xs">
+                                {downloadingPdf ? 'Exporting...' : 'PDF'}
+                            </Text>
+                        </TouchableOpacity>
+                    ) : null
+                }
             />
 
             <View className="px-4 md:px-8 pt-4">

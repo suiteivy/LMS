@@ -208,7 +208,6 @@ const schemas = {
         class_stream_id: { ...commonRules.uuid, required: false },
         department: { type: 'string', required: false },
         qualification: { type: 'string', required: false },
-        specialization: { type: 'string', required: false },
         position: { type: 'string', required: false },
         subject_ids: { type: 'array', required: false },
         class_teacher_id: { ...commonRules.uuid, required: false },
@@ -238,11 +237,21 @@ const schemas = {
         teacher_role_enabled: { type: 'boolean', required: false },
         department: { type: 'string', required: false },
         qualification: { type: 'string', required: false },
-        specialization: { type: 'string', required: false },
         position: { type: 'string', required: false },
-        hire_date: { type: 'string', required: false },
         subject_ids: { type: 'array', required: false },
         class_teacher_id: { ...commonRules.uuid, required: false }
+    },
+
+    updateInstitution: {
+        name: { ...commonRules.name, required: false, maxLength: 200 },
+        email: { ...commonRules.email, required: false },
+        phone: { ...commonRules.phone, required: false },
+        location: { type: 'string', maxLength: 200, required: false },
+        type: { type: 'string', required: false },
+        principal_name: { type: 'string', required: false },
+        logo_url: { type: 'string', required: false },
+        category_id: { ...commonRules.uuid, required: false },
+        category_ids: { type: 'array', required: false },
     },
 
     idParam: {

@@ -71,7 +71,27 @@ export default function CredentialDeliveryScreen() {
               <ActivityIndicator color="#FF6B00" />
             </View>
           ) : error ? (
-            <Text style={{ color: '#fca5a5', fontWeight: '600' }}>{error}</Text>
+            <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+              <Text style={{ color: '#fca5a5', fontWeight: '600', fontSize: 15, marginBottom: 10, textAlign: 'center' }}>
+                {error}
+              </Text>
+              <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, marginBottom: 20, textAlign: 'center', lineHeight: 18 }}>
+                This one-time credentials link has expired or has already been used. Please request a new link or sign in.
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.replace('/(auth)/signIn' as any)}
+                style={{
+                  backgroundColor: '#FF6900',
+                  paddingVertical: 12,
+                  paddingHorizontal: 24,
+                  borderRadius: 12,
+                  width: '100%',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '800' }}>Return to Sign In</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <>
               <View style={{ marginBottom: 14 }}>

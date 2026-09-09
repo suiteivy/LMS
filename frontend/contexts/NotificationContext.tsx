@@ -1,4 +1,4 @@
-import React, { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { NotificationAPI } from '../services/NotificationService';
 import { Notification } from '../types/types';
 import { useAuth } from './AuthContext';
@@ -28,7 +28,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const requiresCredentialSetup = !!profile?.must_change_password || !!profile?.requires_security_questions_setup;
 
     const fetchNotifications = useCallback(async () => {
-        if (!session?.access_token || requiresCredentialSetup) return;
+        if (!session?.access_token || !profile || requiresCredentialSetup) return;
         try {
             setLoading(true);
             const data = await NotificationAPI.getUserNotifications();
@@ -51,7 +51,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         } finally {
             setLoading(false);
         }
-    }, [session?.access_token, requiresCredentialSetup]);
+    }, [session?.access_token, profile, requiresCredentialSetup]);
 
     // Listen to realtime changes on the notifications table
     useRealtimeQuery('notifications', fetchNotifications);
@@ -61,21 +61,21 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         const currentToken = session?.access_token || null;
 
-        if (currentToken && !requiresCredentialSetup) {
+        if (currentToken && profile && !requiresCredentialSetup) {
             if (lastToken.current !== currentToken) {
                 lastToken.current = currentToken;
                 fetchNotifications();
             }
             // Simple polling every 60 seconds - only if token exists
             const interval = setInterval(() => {
-                if (session?.access_token) fetchNotifications();
+                if (session?.access_token && profile && !requiresCredentialSetup) fetchNotifications();
             }, 60000);
             return () => clearInterval(interval);
         } else {
             lastToken.current = null;
             setNotifications([]);
         }
-    }, [session?.access_token, requiresCredentialSetup]);
+    }, [session?.access_token, profile, requiresCredentialSetup, fetchNotifications]);
 
     const markAsRead = async (id: string) => {
         try {

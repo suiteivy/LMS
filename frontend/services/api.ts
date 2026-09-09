@@ -66,14 +66,28 @@ const baseURL = getApiBaseUrl();
 
 let latestAccessToken: string | null = null;
 let authContextReady = false;
+let isSigningOut = false;
+
+export const setSigningOutState = (signingOut: boolean) => {
+  isSigningOut = signingOut;
+  if (signingOut) {
+    latestAccessToken = null;
+  }
+};
 
 const setLatestAccessToken = (token?: string | null) => {
+  if (isSigningOut) {
+    latestAccessToken = null;
+    return;
+  }
   latestAccessToken = token || null;
 };
 
 supabase.auth.getSession()
   .then(({ data }) => {
-    setLatestAccessToken(data?.session?.access_token || null);
+    if (!isSigningOut) {
+      setLatestAccessToken(data?.session?.access_token || null);
+    }
     authContextReady = true;
   })
   .catch(() => {
@@ -81,6 +95,10 @@ supabase.auth.getSession()
   });
 
 supabase.auth.onAuthStateChange((_event, session) => {
+  if (isSigningOut) {
+    setLatestAccessToken(null);
+    return;
+  }
   setLatestAccessToken(session?.access_token || null);
   authContextReady = true;
 });
@@ -236,6 +254,17 @@ api.interceptors.request.use(
     
     
     try {
+      if (isSigningOut && !isLikelyPublicRoute(config.url)) {
+        const unauthError: any = new Error('No authentication token available');
+        unauthError.isAuthError = true;
+        unauthError.config = config;
+        unauthError.response = {
+          status: 401,
+          data: { error: 'No token provided', code: 'NO_TOKEN' },
+        };
+        return Promise.reject(unauthError);
+      }
+
       let token = latestAccessToken;
 
       if (!token || isTokenExpired(token)) {
@@ -329,7 +358,7 @@ api.interceptors.response.use(
           // If standard 401 occurred (e.g. token expired) and request hasn't been retried yet,
           // attempt a single token refresh and retry before concluding unauthorized.
           const originalConfig = error.config as (InternalAxiosRequestConfig & { _isRetry?: boolean }) | undefined;
-          if (originalConfig && !originalConfig._isRetry && !shouldForceSignOut && !isLikelyPublicRoute(originalConfig.url)) {
+          if (originalConfig && !originalConfig._isRetry && !shouldForceSignOut && !isSigningOut && !isLikelyPublicRoute(originalConfig.url)) {
             originalConfig._isRetry = true;
             try {
               const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();

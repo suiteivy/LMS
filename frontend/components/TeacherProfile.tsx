@@ -34,9 +34,8 @@ export default function TeacherProfile() {
         activeClasses: 0,
         totalStudents: 0
     });
-    const [teacherDetails, setTeacherDetails] = useState<{ department: string | null; hire_date: string | null }>({
-        department: null,
-        hire_date: null
+    const [teacherDetails, setTeacherDetails] = useState<{ department: string | null }>({
+        department: null
     });
     const avatarUri = resolveAvatarUri(profile?.avatar_url);
 
@@ -94,14 +93,13 @@ export default function TeacherProfile() {
             // Fetch Teacher Details
             const { data: teacherData, error: teacherError } = (await supabase
                 .from('teachers')
-                .select('department, hire_date')
+                .select('department')
                 .eq('id', teacherId)
                 .single()) as any;
 
             if (!teacherError && teacherData) {
                 setTeacherDetails({
-                    department: teacherData.department,
-                    hire_date: teacherData.hire_date
+                    department: teacherData.department
                 });
             }
 
@@ -284,7 +282,6 @@ export default function TeacherProfile() {
                             </View>
                             <View>
                                 <InfoRow label="Department" value={teacherDetails.department || 'General Faculty'} icon={GraduationCap} color="#ec4899" isDark={isDark} />
-                                <InfoRow label="Hire Date" value={teacherDetails.hire_date || 'N/A'} icon={Calendar} color="#8b5cf6" isDark={isDark} />
                                 <InfoRow label="Total Subjects" value={stats.totalSubjects.toString()} icon={BookOpen} color="#3b82f6" isDark={isDark} />
                                 <InfoRow label="Active Classes" value={stats.activeClasses.toString()} icon={Layers} color="#10b981" isDark={isDark} />
                                 <InfoRow label="Total Students" value={stats.totalStudents.toString()} icon={Users} color="#f59e0b" isDark={isDark} />

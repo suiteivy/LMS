@@ -68,7 +68,7 @@ export default function TeacherHome() {
     const { isDark } = useTheme();
 
     // Switcher/Role state
-    const { mode, setMode, syncRoles, canToggle } = useTeacherRoleMode();
+    const { mode, setMode, syncRoles, canToggle, isSubjectTeacher, isClassTeacher, isLibrarian } = useTeacherRoleMode();
     const [roles, setRoles] = useState<string[]>([]);
     const [classTeacherOf, setClassTeacherOf] = useState<any[]>([]);
     const [assignedSubjects, setAssignedSubjects] = useState<any[]>([]);
@@ -362,23 +362,37 @@ export default function TeacherHome() {
                     <View className="bg-white dark:bg-[#161B22] rounded-[32px] border border-gray-100 dark:border-gray-800 p-5 mb-8 shadow-sm">
                         {/* Mode Selector - Tabs */}
                         {canToggle && (
-                            <View className="flex-row bg-gray-105 dark:bg-[#161B22] rounded-2xl p-1 mb-5">
-                                <TouchableOpacity 
-                                    onPress={() => setMode('subject')}
-                                    className={`flex-1 py-2.5 rounded-xl items-center ${mode === 'subject' ? 'bg-[#FF6900]' : 'bg-transparent'}`}
-                                >
-                                    <Text className={`font-bold text-xs uppercase tracking-wider ${mode === 'subject' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                                        Subject Teacher Mode
-                                    </Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity 
-                                    onPress={() => setMode('class')}
-                                    className={`flex-1 py-2.5 rounded-xl items-center ${mode === 'class' ? 'bg-[#FF6900]' : 'bg-transparent'}`}
-                                >
-                                    <Text className={`font-bold text-xs uppercase tracking-wider ${mode === 'class' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                                        Class Teacher Mode
-                                    </Text>
-                                </TouchableOpacity>
+                            <View className="flex-row bg-gray-100 dark:bg-[#0D1117] rounded-2xl p-1 mb-5 gap-1">
+                                {isSubjectTeacher && (
+                                    <TouchableOpacity 
+                                        onPress={() => setMode('subject')}
+                                        className={`flex-1 py-2.5 px-2 rounded-xl items-center justify-center ${mode === 'subject' ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
+                                    >
+                                        <Text numberOfLines={1} className={`font-bold text-[11px] uppercase tracking-wider ${mode === 'subject' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                            Subject Mode
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                                {isClassTeacher && (
+                                    <TouchableOpacity 
+                                        onPress={() => setMode('class')}
+                                        className={`flex-1 py-2.5 px-2 rounded-xl items-center justify-center ${mode === 'class' ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
+                                    >
+                                        <Text numberOfLines={1} className={`font-bold text-[11px] uppercase tracking-wider ${mode === 'class' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                            Class Mode
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                                {isLibrarian && (
+                                    <TouchableOpacity 
+                                        onPress={() => setMode('librarian')}
+                                        className={`flex-1 py-2.5 px-2 rounded-xl items-center justify-center ${mode === 'librarian' ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
+                                    >
+                                        <Text numberOfLines={1} className={`font-bold text-[11px] uppercase tracking-wider ${mode === 'librarian' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                            Librarian Desk
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
                         )}
 
@@ -460,7 +474,7 @@ export default function TeacherHome() {
                                     )}
                                 </View>
                             </View>
-                        ) : (
+                        ) : mode === 'class' ? (
                             /* Class Teacher Dashboard Mode */
                             <View>
                                 <Text className="text-gray-400 dark:text-gray-550 text-[10px] font-bold uppercase tracking-wider mb-2">Designated Classes</Text>
@@ -499,6 +513,38 @@ export default function TeacherHome() {
                                         <Text className="text-gray-400 dark:text-gray-550 text-xs font-semibold">No assigned classes as Class Teacher</Text>
                                     </View>
                                 )}
+                            </View>
+                        ) : (
+                            /* Librarian Desk Mode */
+                            <View>
+                                <Text className="text-gray-400 dark:text-gray-550 text-[10px] font-bold uppercase tracking-wider mb-2">Library Desk</Text>
+                                <View className="bg-orange-50/20 dark:bg-orange-950/10 border border-orange-100/20 dark:border-gray-800 p-4 rounded-3xl mb-3">
+                                    <View className="flex-row items-center gap-3 mb-3">
+                                        <View className="bg-orange-500/10 p-2 rounded-xl">
+                                            <BookOpen size={16} color="#FF6900" />
+                                        </View>
+                                        <View>
+                                            <Text className="text-gray-900 dark:text-white font-black text-sm">Librarian Circulation Active</Text>
+                                            <Text className="text-gray-450 dark:text-gray-500 text-[10px]">Issue and return book loans directly</Text>
+                                        </View>
+                                    </View>
+                                    
+                                    <View className="flex-row gap-2 mt-2">
+                                        <TouchableOpacity 
+                                            onPress={() => router.push("/(teacher)/library" as any)}
+                                            className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] border border-gray-200 dark:border-gray-800 py-2.5 rounded-xl items-center active:bg-[#F6F8FA] dark:active:bg-gray-900"
+                                        >
+                                            <Text className="text-gray-700 dark:text-gray-200 font-bold text-xs">Catalog</Text>
+                                        </TouchableOpacity>
+                                        
+                                        <TouchableOpacity 
+                                            onPress={() => router.push("/(teacher)/management/library" as any)}
+                                            className="flex-1 bg-[#FF6900] py-2.5 rounded-xl items-center active:bg-orange-600"
+                                        >
+                                            <Text className="text-white font-bold text-xs">Circulation Desk</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
                             </View>
                         )}
                     </View>

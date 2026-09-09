@@ -151,6 +151,9 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
   }
 
   // Default variant   smaller
+  const levelIds = Array.isArray((Subject as any).level_ids) ? (Subject as any).level_ids : [];
+  const isGlobal = levelIds.length === 0;
+
   return (
     <View
       style={{
@@ -165,9 +168,42 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Text style={{ fontWeight: '700', fontSize: 15, color: t.textPrimary, flex: 1, marginRight: 8 }} numberOfLines={2}>
-          {Subject.title}
-        </Text>
+        <View style={{ flex: 1, marginRight: 8 }}>
+          <Text style={{ fontWeight: '700', fontSize: 15, color: t.textPrimary, marginBottom: 6 }} numberOfLines={2}>
+            {Subject.title}
+          </Text>
+          {/* Level scoping badge */}
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderRadius: 99,
+                backgroundColor: isGlobal
+                  ? (isDark ? 'rgba(16,185,129,0.15)' : '#d1fae5')
+                  : (isDark ? 'rgba(255,107,0,0.15)' : '#fff7ed'),
+              }}
+            >
+              <Ionicons
+                name={isGlobal ? 'globe-outline' : 'layers-outline'}
+                size={11}
+                color={isGlobal ? '#10b981' : '#FF6B00'}
+                style={{ marginRight: 4 }}
+              />
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: '600',
+                  color: isGlobal ? '#10b981' : '#FF6B00',
+                }}
+              >
+                {isGlobal ? 'All Levels' : `${levelIds.length} Level${levelIds.length > 1 ? 's' : ''}`}
+              </Text>
+            </View>
+          </View>
+        </View>
         {onDelete ? (
           <TouchableOpacity
             onPress={handleDeletePress}

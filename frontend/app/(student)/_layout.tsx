@@ -6,6 +6,7 @@ import {
   Bell,
   BookOpen,
   Building,
+  Calendar,
   CreditCard,
   Glasses,
   MessageSquare,
@@ -19,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // Full nav used by sidebar on web
 const NAV_ITEMS: NavItem[] = [
   { name: "index", title: "Home", icon: Building, route: "/(student)" },
+  { name: "calendar", title: "Calendar", icon: Calendar, route: "/(student)/calendar" },
   { name: "grades", title: "Performance", icon: Star, route: "/(student)/grades" },
   { name: "library", title: "Library", icon: Glasses, route: "/(student)/library" },
   { name: "assignments", title: "Assignments", icon: PenBox, route: "/(student)/assignments" },

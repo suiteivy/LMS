@@ -80,7 +80,7 @@ const enrichSubjectsWithClassIds = async (subjects = [], institution_id) => {
 // CREATE SUBJECT
 exports.createSubject = async (req, res) => {
   try {
-    const { title, description, fee_amount, teacher_id, teacher_ids, class_ids, fee_config, materials, metadata } = req.body;
+    const { title, description, fee_amount, teacher_id, teacher_ids, class_ids, level_ids, fee_config, materials, metadata } = req.body;
     let teacherId;
     const institution_id = req.institution_id;
 
@@ -153,6 +153,8 @@ exports.createSubject = async (req, res) => {
     }
 
     const normalizedFeeAmount = Number.isFinite(Number(fee_amount)) ? Number(fee_amount) : 0;
+    const normalizedLevelIds = Array.isArray(level_ids) ? level_ids.filter(Boolean) : null;
+    const finalLevelIds = normalizedLevelIds && normalizedLevelIds.length > 0 ? normalizedLevelIds : null;
 
     const { data, error } = await supabase.from("subjects").insert([
       {
@@ -161,12 +163,14 @@ exports.createSubject = async (req, res) => {
         fee_amount: normalizedFeeAmount,
         teacher_id: teacherId,
         class_id: primaryClassId,
+        level_ids: finalLevelIds,
         institution_id,
         fee_config: fee_config || {},
         materials: materials || [],
         metadata: {
           ...(metadata || {}),
           class_ids: normalizedClassIds,
+          level_ids: finalLevelIds,
         }
       },
     ]).select().single();
@@ -339,8 +343,17 @@ exports.getSubjects = async (req, res) => {
       count = fallback.count;
     }
 
+    const { level_id } = req.query || {};
     const subjects = await enrichSubjectsWithClassIds(data || [], institution_id);
-    return res.json(paginatedResponse(subjects, count, page, limit));
+    let finalSubjects = subjects;
+    if (level_id) {
+      finalSubjects = subjects.filter((s) => {
+        const sLevels = s.level_ids || s?.metadata?.level_ids;
+        if (!sLevels || (Array.isArray(sLevels) && sLevels.length === 0)) return true;
+        return Array.isArray(sLevels) && sLevels.includes(level_id);
+      });
+    }
+    return res.json(paginatedResponse(finalSubjects, level_id ? finalSubjects.length : count, page, limit));
   } catch (err) {
     console.error("getSubjects error:", err);
     res.status(500).json({ error: "Server error" });
@@ -603,6 +616,22 @@ exports.getSubjectsByClass = async (req, res) => {
       return res.status(500).json({ error: linksError.message });
     }
 
+    let classLevelId = null;
+    try {
+      const { data: classRow } = await supabase
+        .from("classes")
+        .select("level_id")
+        .eq("id", classId)
+        .maybeSingle();
+      classLevelId = classRow?.level_id || null;
+    } catch (_) {}
+
+    const isLevelMatch = (s) => {
+      const sLevels = s.level_ids || s?.metadata?.level_ids;
+      if (!sLevels || (Array.isArray(sLevels) && sLevels.length === 0)) return true;
+      return classLevelId ? sLevels.includes(classLevelId) : true;
+    };
+
     if (linksError && isMissingSubjectClassesTableError(linksError)) {
       const { data: subjects, error } = await supabase
         .from("subjects")
@@ -613,9 +642,17 @@ exports.getSubjectsByClass = async (req, res) => {
       if (error) return res.status(500).json({ error: error.message });
 
       const filtered = (subjects || []).filter((s) => {
+        if (!isLevelMatch(s)) return false;
         if (s.class_id === classId) return true;
         const ids = s?.metadata?.class_ids;
-        return Array.isArray(ids) && ids.includes(classId);
+        if (Array.isArray(ids) && ids.includes(classId)) return true;
+        if (classLevelId) {
+          const sLevels = s.level_ids || s?.metadata?.level_ids;
+          if (Array.isArray(sLevels) && sLevels.includes(classLevelId)) {
+            if (!s.class_id && (!Array.isArray(ids) || ids.length === 0)) return true;
+          }
+        }
+        return false;
       });
       return res.json(filtered.map(hydrateSubjectClassIds));
     }
@@ -630,10 +667,18 @@ exports.getSubjectsByClass = async (req, res) => {
 
     const linkedIds = new Set((links || []).map((l) => l.subject_id).filter(Boolean));
     const filtered = (subjects || []).filter((s) => {
+      if (!isLevelMatch(s)) return false;
       if (linkedIds.has(s.id)) return true;
       if (s.class_id === classId) return true;
       const ids = s?.metadata?.class_ids;
-      return Array.isArray(ids) && ids.includes(classId);
+      if (Array.isArray(ids) && ids.includes(classId)) return true;
+      if (classLevelId) {
+        const sLevels = s.level_ids || s?.metadata?.level_ids;
+        if (Array.isArray(sLevels) && sLevels.includes(classLevelId)) {
+          if (!s.class_id && (!Array.isArray(ids) || ids.length === 0)) return true;
+        }
+      }
+      return false;
     });
 
     const enriched = await enrichSubjectsWithClassIds(filtered, institution_id);
@@ -764,6 +809,7 @@ exports.updateSubject = async (req, res) => {
       teacher_ids,
       class_id,
       class_ids,
+      level_ids,
       fee_config,
       materials,
       metadata,
@@ -823,11 +869,18 @@ exports.updateSubject = async (req, res) => {
 
     const primaryTeacherId = allTeacherIds.length > 0 ? allTeacherIds[0] : null;
     const primaryClassId = normalizedClassIds.length > 0 ? normalizedClassIds[0] : null;
+    const normalizedLevelIds = level_ids !== undefined
+      ? (Array.isArray(level_ids) ? level_ids.filter(Boolean) : null)
+      : undefined;
+    const finalLevelIds = normalizedLevelIds !== undefined
+      ? (normalizedLevelIds && normalizedLevelIds.length > 0 ? normalizedLevelIds : null)
+      : undefined;
 
     const mergedMetadata = {
       ...((existing && existing.metadata) || {}),
       ...(metadata || {}),
       class_ids: normalizedClassIds,
+      ...(finalLevelIds !== undefined ? { level_ids: finalLevelIds } : {}),
     };
 
     const updatePayload = {
@@ -836,6 +889,7 @@ exports.updateSubject = async (req, res) => {
       ...(fee_amount !== undefined ? { fee_amount: Number.isFinite(Number(fee_amount)) ? Number(fee_amount) : 0 } : {}),
       teacher_id: primaryTeacherId,
       class_id: primaryClassId,
+      ...(finalLevelIds !== undefined ? { level_ids: finalLevelIds } : {}),
       ...(fee_config !== undefined ? { fee_config } : {}),
       ...(materials !== undefined ? { materials } : {}),
       metadata: mergedMetadata,

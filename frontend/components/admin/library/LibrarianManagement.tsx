@@ -501,19 +501,23 @@ export const LibrarianManagement: React.FC = () => {
             <Modal
                 visible={toggleModalVisible}
                 transparent
-                animationType="slide"
+                animationType="fade"
                 onRequestClose={() => setToggleModalVisible(false)}
             >
-                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 16 }}>
                     <View
                         style={{
                             backgroundColor: cardBg,
-                            borderTopLeftRadius: 36,
-                            borderTopRightRadius: 36,
+                            borderRadius: 24,
                             padding: 24,
-                            paddingBottom: 40,
-                            borderTopWidth: 1,
+                            width: "100%",
+                            maxWidth: 520,
+                            borderWidth: 1,
                             borderColor: border,
+                            shadowColor: "#000",
+                            shadowOpacity: 0.25,
+                            shadowRadius: 20,
+                            elevation: 10,
                         }}
                     >
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>

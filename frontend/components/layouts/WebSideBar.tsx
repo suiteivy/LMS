@@ -8,7 +8,7 @@ import {
   ArrowLeftRight,
 } from "lucide-react-native";
 import React, { useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CloudoraLogo } from "@/components/common/CloudoraLogo";
 
@@ -28,7 +28,7 @@ interface WebSidebarProps {
 
 export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps) => {
   const { isDark } = useTheme();
-  const { availableRoles, activeRole, switchActiveRole } = useAuth();
+  const { availableRoles, activeRole, switchActiveRole, institutionName, institutionLogo } = useAuth();
   const insets = useSafeAreaInsets();
   const segments = useSegments();
   const [collapsed, setCollapsed] = useState(false);
@@ -62,20 +62,36 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
         {/* Unboxed Logo / Role badge */}
         {!collapsed && (
           <View style={{ paddingHorizontal: 24, marginBottom: 20, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <CloudoraLogo size={32} glow glowIntensity={0.6} />
-            <View>
+            {institutionLogo ? (
+              <Image
+                source={{ uri: institutionLogo }}
+                style={{ width: 32, height: 32, borderRadius: 8 }}
+                resizeMode="contain"
+              />
+            ) : (
+              <CloudoraLogo size={32} glow glowIntensity={0.6} />
+            )}
+            <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 10, fontWeight: '800', color: '#FF6900', textTransform: 'uppercase', letterSpacing: 2 }}>
                 {role}
               </Text>
-              <Text style={{ fontSize: 18, fontWeight: '900', color: textPrimary, marginTop: 1 }}>
-                Portal
+              <Text style={{ fontSize: 16, fontWeight: '900', color: textPrimary, marginTop: 1 }} numberOfLines={1}>
+                {institutionName || 'Portal'}
               </Text>
             </View>
           </View>
         )}
         {collapsed && (
           <View style={{ alignItems: 'center', marginBottom: 20 }}>
-            <CloudoraLogo size={28} glow glowIntensity={0.6} />
+            {institutionLogo ? (
+              <Image
+                source={{ uri: institutionLogo }}
+                style={{ width: 28, height: 28, borderRadius: 6 }}
+                resizeMode="contain"
+              />
+            ) : (
+              <CloudoraLogo size={28} glow glowIntensity={0.6} />
+            )}
           </View>
         )}
 

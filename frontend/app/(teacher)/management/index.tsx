@@ -62,8 +62,8 @@ const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, ba
 export default function ManagementIndex() {
     const tier = useSubscriptionTier();
     const { hasDiary, hasAnalytics } = tier;
-    const { teacherId, isDemo, isLibrarian } = useAuth();
-    const { mode, setMode, canToggle } = useTeacherRoleMode();
+    const { teacherId, isDemo, isLibrarian: isLibrarianAuth } = useAuth();
+    const { mode, setMode, canToggle, isSubjectTeacher, isClassTeacher, isLibrarian } = useTeacherRoleMode();
     const [pendingCount, setPendingCount] = useState<number | null>(null);
     const [submittedCount, setSubmittedCount] = useState<number | null>(null);
     const [classCount, setClassCount] = useState<number | null>(null);
@@ -303,6 +303,19 @@ export default function ManagementIndex() {
             }
         }
 
+        // In Librarian Mode: hide classroom-specific cards, keep circulation, resources, messages, announcements
+        if (mode === 'librarian') {
+            if (
+                feature.route === "/(teacher)/management/assignments" ||
+                feature.route === "/(teacher)/management/grade-entry" ||
+                feature.route === "/(teacher)/management/report-cards" ||
+                feature.route === "/(teacher)/management/attendance" ||
+                feature.route === "/(teacher)/management/diary"
+            ) {
+                return false;
+            }
+        }
+
         return true;
     });
 
@@ -328,23 +341,37 @@ export default function ManagementIndex() {
 
                     {/* Mode Selector - Tabs */}
                     {canToggle && (
-                        <View className="flex-row bg-gray-105 dark:bg-[#161B22] rounded-2xl p-1 mb-6 border border-gray-100 dark:border-gray-800">
-                            <TouchableOpacity 
-                                onPress={() => setMode('subject')}
-                                className={`flex-1 py-2.5 rounded-xl items-center ${mode === 'subject' ? 'bg-[#FF6900]' : 'bg-transparent'}`}
-                            >
-                                <Text className={`font-bold text-xs uppercase tracking-wider ${mode === 'subject' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                                    Subject Teacher Mode
-                                </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity 
-                                onPress={() => setMode('class')}
-                                className={`flex-1 py-2.5 rounded-xl items-center ${mode === 'class' ? 'bg-[#FF6900]' : 'bg-transparent'}`}
-                            >
-                                <Text className={`font-bold text-xs uppercase tracking-wider ${mode === 'class' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                                    Class Teacher Mode
-                                </Text>
-                            </TouchableOpacity>
+                        <View className="flex-row bg-gray-100 dark:bg-[#0D1117] rounded-2xl p-1 mb-6 border border-gray-200 dark:border-gray-800 gap-1">
+                            {isSubjectTeacher && (
+                                <TouchableOpacity 
+                                    onPress={() => setMode('subject')}
+                                    className={`flex-1 py-2.5 px-2 rounded-xl items-center justify-center ${mode === 'subject' ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
+                                >
+                                    <Text numberOfLines={1} className={`font-bold text-[11px] uppercase tracking-wider ${mode === 'subject' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                        Subject Mode
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                            {isClassTeacher && (
+                                <TouchableOpacity 
+                                    onPress={() => setMode('class')}
+                                    className={`flex-1 py-2.5 px-2 rounded-xl items-center justify-center ${mode === 'class' ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
+                                >
+                                    <Text numberOfLines={1} className={`font-bold text-[11px] uppercase tracking-wider ${mode === 'class' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                        Class Mode
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                            {isLibrarian && (
+                                <TouchableOpacity 
+                                    onPress={() => setMode('librarian')}
+                                    className={`flex-1 py-2.5 px-2 rounded-xl items-center justify-center ${mode === 'librarian' ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
+                                >
+                                    <Text numberOfLines={1} className={`font-bold text-[11px] uppercase tracking-wider ${mode === 'librarian' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                        Librarian Desk
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     )}
 

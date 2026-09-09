@@ -3,9 +3,10 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityInd
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { supabase } from "@/libs/supabase";
-import { User, Phone, Mail, Shield, LogOut, ChevronRight, Save, Zap, Star, Search } from "lucide-react-native";
+import { User, Phone, Mail, Shield, LogOut, ChevronRight, Save, Zap, Star, Search, Image as ImageIcon } from "lucide-react-native";
 import { showSuccess, showError } from "@/utils/toast";
 import { AddonRequestModal } from "@/components/shared/SubscriptionComponents";
+import { InstitutionBrandingModal } from "@/components/InstitutionBrandingModal";
 import { getPlanLabel } from "@/services/SubscriptionService";
 import { api } from "@/services/api";
 
@@ -27,6 +28,7 @@ export default function SettingsScreen() {
     const [fullName, setFullName] = useState(profile?.full_name || "");
     const [phone, setPhone] = useState(profile?.phone || "");
     const [requestModalVisible, setRequestModalVisible] = useState(false);
+    const [brandingModalVisible, setBrandingModalVisible] = useState(false);
     const [subscriptionSnapshot, setSubscriptionSnapshot] = useState<any>(null);
     const [adminRows, setAdminRows] = useState<any[]>([]);
     const [adminsLoading, setAdminsLoading] = useState(false);
@@ -347,6 +349,39 @@ export default function SettingsScreen() {
                     )}
                 </View>
 
+                {/* Institution Branding Card */}
+                <Text className="text-lg font-bold text-gray-900 dark:text-white mb-3 px-1">Institution Branding</Text>
+                <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-3xl p-6 mb-6">
+                    <View className="flex-row items-center justify-between mb-4">
+                        <View className="flex-row items-center">
+                            <View className="w-10 h-10 bg-orange-50 rounded-xl items-center justify-center mr-3">
+                                <ImageIcon size={20} color="#FF6B00" />
+                            </View>
+                            <View>
+                                <Text className="text-gray-900 dark:text-white font-extrabold text-base">School Logo & Visual Identity</Text>
+                                <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">Headers, report cards & PDFs</Text>
+                            </View>
+                        </View>
+                    </View>
+                    <TouchableOpacity
+                        onPress={() => setBrandingModalVisible(true)}
+                        style={{
+                            width: '100%',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            flexDirection: 'row',
+                            backgroundColor: '#FF6900',
+                            paddingHorizontal: 16,
+                            paddingVertical: 12,
+                            borderRadius: 12,
+                            gap: 8,
+                        }}
+                    >
+                        <ImageIcon size={16} color="white" />
+                        <Text style={{ color: 'white', fontWeight: '800', fontSize: 13 }}>Configure Institution Logo</Text>
+                    </TouchableOpacity>
+                </View>
+
                 {/* Account Actions */}
                 <Text className="text-lg font-bold text-gray-900 dark:text-white mb-3 px-1">Account</Text>
                 <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-3xl overflow-hidden mb-6">
@@ -480,6 +515,10 @@ export default function SettingsScreen() {
                 visible={requestModalVisible}
                 onClose={() => setRequestModalVisible(false)}
                 currentAddons={activeAddons}
+            />
+            <InstitutionBrandingModal
+                visible={brandingModalVisible}
+                onClose={() => setBrandingModalVisible(false)}
             />
         </ScrollView>
     );

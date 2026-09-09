@@ -16,6 +16,7 @@ export const useSubjectForm = () => {
     description: "",
     class_id: "",
     class_ids: [],
+    level_ids: [],
     teacher_ids: [],
   });
 
@@ -52,6 +53,7 @@ export const useSubjectForm = () => {
         institution_id: profile?.institution_id || "",
         class_id: formData.class_id || undefined,
         class_ids: formData.class_ids || [],
+        level_ids: formData.level_ids && formData.level_ids.length > 0 ? formData.level_ids : undefined,
         teacher_ids: formData.teacher_ids || [],
         fee_amount: 0,
       });

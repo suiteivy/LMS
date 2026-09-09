@@ -47,7 +47,6 @@ interface FormData {
     parent_relationship: string;
     department: string;
     qualification: string;
-    specialization: string;
     position: string;
     subject_ids: string[];
     class_teacher_id: string;
@@ -123,7 +122,7 @@ const initialFormData: FormData = {
     class_stream_id: '',
     existing_parent_id: '',
     parent_relationship: 'guardian',
-    department: '', qualification: '', specialization: '', position: 'teacher',
+    department: '', qualification: '', position: 'teacher',
     subject_ids: [], class_teacher_id: '',
     occupation: '', parent_address: '',
     linked_students: [],

@@ -2,13 +2,14 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Slot, Tabs } from "expo-router";
-import { Bell, CreditCard, LayoutDashboard, MessageSquare, Settings } from "lucide-react-native";
+import { Bell, Calendar, CreditCard, LayoutDashboard, MessageSquare, Settings } from "lucide-react-native";
 import { Platform, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // All nav items   finance tab conditionally removed for free plan at runtime
 const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: LayoutDashboard, route: "/(parent)" },
+    { name: "calendar", title: "Calendar", icon: Calendar, route: "/(parent)/calendar" },
     { name: "messages", title: "Chat", icon: MessageSquare, route: "/(parent)/messages" },
     { name: "announcements", title: "Updates", icon: Bell, route: "/(parent)/announcements" },
     { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(parent)/accessibility/settings" },
@@ -21,7 +22,7 @@ import { useRouter } from "expo-router";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 function ParentTabs() {
-    const HIDDEN_ROUTES = ["diary", "library", "reports"];
+    const HIDDEN_ROUTES = ["diary", "library", "reports", "calendar"];
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
     const { hasMessaging } = useSubscriptionTier();

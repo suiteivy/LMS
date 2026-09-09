@@ -353,6 +353,5 @@ test('adminUpdateUser allows assigning teacher role and class teacher position t
   assert.equal(teacherUpserted.user_id, 'admin-user-1');
   assert.equal(teacherUpserted.position, 'class_teacher');
   assert.equal(teacherUpserted.department, 'Sciences');
-  assert.equal(teacherUpserted.specialization, 'Physics');
   assert.equal(classTeacherAssigned?.teacher_id, 'tea-generated-1');
 });

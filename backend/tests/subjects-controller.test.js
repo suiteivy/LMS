@@ -58,7 +58,10 @@ test('getSubjects falls back cleanly when relationship metadata is unavailable',
           eq() {
             return this;
           },
-          async order() {
+          order() {
+            return this;
+          },
+          async range() {
             if (String(this._select).includes('subject_teachers(')) {
               return {
                 data: null,
@@ -109,12 +112,13 @@ test('getSubjects falls back cleanly when relationship metadata is unavailable',
   const res = createRes();
   await controller.getSubjects({ institution_id: 'inst-1' }, res);
 
+  const rows = Array.isArray(res.state.body) ? res.state.body : (res.state.body?.data || []);
   assert.equal(res.state.statusCode, 200);
-  assert.equal(Array.isArray(res.state.body), true);
-  assert.equal(res.state.body.length, 1);
-  assert.deepEqual(res.state.body[0].subject_teachers, []);
-  assert.equal(res.state.body[0].teacher, null);
-  assert.deepEqual(res.state.body[0].class_ids, ['class-a']);
+  assert.equal(Array.isArray(rows), true);
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows[0].subject_teachers, []);
+  assert.equal(rows[0].teacher, null);
+  assert.deepEqual(rows[0].class_ids, ['class-a']);
 });
 
 test('updateSubject syncs teacher/class links and returns enriched subject', async () => {
@@ -283,4 +287,97 @@ test('updateSubject syncs teacher/class links and returns enriched subject', asy
 
   assert.equal(res.state.body.id, 'sub-1');
   assert.deepEqual(res.state.body.class_ids.sort(), ['class-a', 'class-b']);
+});
+
+test('createSubject and getSubjects support level_ids scoping with backward compatibility', async () => {
+  let insertedSubject = null;
+  const mockSupabase = {
+    from(table) {
+      if (table === 'subjects') {
+        return {
+          insert(payload) {
+            insertedSubject = payload[0];
+            return {
+              select() {
+                return {
+                  single: async () => ({
+                    data: { id: 'sub-scoped-1', ...insertedSubject },
+                    error: null,
+                  }),
+                };
+              },
+            };
+          },
+          select(columns) {
+            return {
+              eq() {
+                return {
+                  order() {
+                    return {
+                      range: async () => ({
+                        data: [
+                          { id: 'sub-all', title: 'English', level_ids: null, metadata: {} },
+                          { id: 'sub-lvl-1', title: 'Advanced Physics', level_ids: ['lvl-10'], metadata: { level_ids: ['lvl-10'] } },
+                          { id: 'sub-lvl-2', title: 'Primary Art', level_ids: ['lvl-1'], metadata: { level_ids: ['lvl-1'] } },
+                        ],
+                        count: 3,
+                        error: null,
+                      }),
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+      if (table === 'subject_classes') {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  in: async () => ({ data: [], error: null }),
+                };
+              },
+            };
+          },
+        };
+      }
+      throw new Error(`Unexpected table ${table}`);
+    },
+  };
+
+  const controller = loadControllerWithMocks({ mockSupabase });
+
+  // 1. Verify createSubject stores level_ids
+  const createReq = {
+    institution_id: 'inst-1',
+    userRole: 'admin',
+    body: {
+      title: 'Advanced Physics',
+      level_ids: ['lvl-10'],
+    },
+  };
+  const createResInstance = createRes();
+  await controller.createSubject(createReq, createResInstance);
+  assert.equal(createResInstance.state.statusCode, 201);
+  assert.ok(insertedSubject);
+  assert.deepEqual(insertedSubject.level_ids, ['lvl-10']);
+  assert.deepEqual(insertedSubject.metadata.level_ids, ['lvl-10']);
+
+  // 2. Verify getSubjects with level_id filter includes both level-matched and unscoped (all-levels) subjects
+  const getReq = {
+    institution_id: 'inst-1',
+    query: { level_id: 'lvl-10' },
+  };
+  const getResInstance = createRes();
+  await controller.getSubjects(getReq, getResInstance);
+  assert.equal(getResInstance.state.statusCode, 200);
+  const rows = getResInstance.state.body.data;
+  assert.equal(rows.length, 2);
+  const titles = rows.map((r) => r.title);
+  assert.ok(titles.includes('English'), 'Unscoped subject available to all levels must be included');
+  assert.ok(titles.includes('Advanced Physics'), 'Scoped subject for this level must be included');
+  assert.ok(!titles.includes('Primary Art'), 'Subject scoped to different level must be excluded');
 });

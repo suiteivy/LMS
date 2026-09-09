@@ -17,6 +17,7 @@ import { GradingAPI } from '@/services/GradingService';
 import { api } from '@/services/api';
 import { router } from 'expo-router';
 import { usePrint } from '@/hooks/usePrint';
+import { GradingScaleModal } from '@/components/results/GradingScaleModal';
 import {
   Award,
   FileText,
@@ -193,6 +194,7 @@ export default function ReportCardsScreen() {
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [showScaleModal, setShowScaleModal] = useState(false);
 
   const selectedTermObj = selectedTerm
     ? terms.find((t) => t.id === selectedTerm) || null
@@ -263,6 +265,25 @@ export default function ReportCardsScreen() {
         title="Report Cards"
         role="Student"
         onBack={() => router.back()}
+        rightActions={
+          <TouchableOpacity
+            onPress={() => setShowScaleModal(true)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 20,
+              backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8',
+              borderWidth: 1,
+              borderColor: isDark ? '#78350F' : '#FFEDD5',
+              gap: 6,
+            }}
+          >
+            <Award size={14} color="#FF6900" />
+            <Text style={{ color: '#FF6900', fontSize: 12, fontWeight: '700' }}>Scale</Text>
+          </TouchableOpacity>
+        }
       />
 
       {/* Term Selector */}
@@ -617,6 +638,12 @@ export default function ReportCardsScreen() {
           <View style={{ height: 40 }} />
         </ScrollView>
       )}
+
+      {/* ── Grading Scale Modal ── */}
+      <GradingScaleModal
+        visible={showScaleModal}
+        onClose={() => setShowScaleModal(false)}
+      />
     </View>
   );
 }

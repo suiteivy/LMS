@@ -504,15 +504,22 @@ export default function CreateClassScreen() {
             </ScrollView>
 
             {/* Teacher Selection Modal */}
-            <Modal visible={showTeacherModal} animationType="slide" transparent>
-                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
+            <Modal visible={showTeacherModal} animationType="fade" transparent onRequestClose={() => setShowTeacherModal(false)}>
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 16 }}>
                     <View
                         style={{
                             backgroundColor: surface,
-                            borderTopLeftRadius: 20,
-                            borderTopRightRadius: 20,
-                            maxHeight: "60%",
+                            borderRadius: 24,
+                            width: "100%",
+                            maxWidth: 520,
+                            maxHeight: "75%",
                             paddingBottom: 20,
+                            borderWidth: 1,
+                            borderColor: border,
+                            shadowColor: "#000",
+                            shadowOpacity: 0.25,
+                            shadowRadius: 20,
+                            elevation: 10,
                         }}
                         accessibilityState={{ busy: loadingTeachers }}
                     >

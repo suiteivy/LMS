@@ -5,7 +5,7 @@ import { SchoolProvider } from "@/contexts/SchoolContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { Slot, Tabs } from "expo-router";
-import { House, LayoutGrid, Settings, Users, Wallet, MessageSquare, Bell } from "lucide-react-native";
+import { House, LayoutGrid, Settings, Users, Wallet, MessageSquare, Bell, Calendar } from "lucide-react-native";
 import { Platform, useWindowDimensions, View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: House, route: "/(admin)" },
     { name: "management/index", title: "Manage", icon: LayoutGrid, route: "/(admin)/management" },
+    { name: "calendar/index", title: "Calendar", icon: Calendar, route: "/(admin)/calendar" },
     { name: "users/index", title: "Users", icon: Users, route: "/(admin)/users" },
     { name: "finance/index", title: "Finance", icon: Wallet, route: "/(admin)/finance" },
     { name: "communication/index", title: "Communication", icon: MessageSquare, route: "/(admin)/communication" },
@@ -24,6 +25,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
 export const BETA_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: House, route: "/(admin)" },
     { name: "management/index", title: "Manage", icon: LayoutGrid, route: "/(admin)/management" },
+    { name: "calendar/index", title: "Calendar", icon: Calendar, route: "/(admin)/calendar" },
     { name: "users/index", title: "Users", icon: Users, route: "/(admin)/users" },
     { name: "communication/index", title: "Communication", icon: MessageSquare, route: "/(admin)/communication" },
     { name: "notifications", title: "Alerts", icon: Bell, route: "/(admin)/notifications" },
@@ -34,6 +36,7 @@ const MOBILE_TAB_NAMES = ["index", "notifications", "accessibility/settings"];
 
 const ALL_ROUTES = [
     "index",
+    "calendar/index",
     "notifications",
     "request-feature",
     "communication/index",

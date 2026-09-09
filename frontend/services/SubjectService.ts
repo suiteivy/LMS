@@ -9,6 +9,7 @@ export interface SubjectData {
     teacher_id?: string;
     class_id?: string;
     class_ids?: string[];
+    level_ids?: string[] | null;
     teacher_ids?: string[];
     teachers?: {
         users: {
@@ -21,7 +22,7 @@ export interface SubjectData {
 
 export const SubjectAPI = {
     // Get all subjects
-    getSubjects: async (params?: { page?: number; limit?: number }): Promise<SubjectData[]> => {
+    getSubjects: async (params?: { page?: number; limit?: number; level_id?: string }): Promise<SubjectData[]> => {
         try {
             const response = await api.get("/subjects", { params });
             return Array.isArray(response.data) ? response.data : (response.data?.data || []);
@@ -31,7 +32,18 @@ export const SubjectAPI = {
         }
     },
 
-    getSubjectsPaginated: async (params?: { page?: number; limit?: number }): Promise<any> => {
+    // Get subjects scoped to a specific class level (falls back to all-levels subjects too)
+    getSubjectsByLevel: async (levelId: string): Promise<SubjectData[]> => {
+        try {
+            const response = await api.get("/subjects", { params: { level_id: levelId } });
+            return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+        } catch (error) {
+            console.error("Get subjects by level error", error);
+            throw error;
+        }
+    },
+
+    getSubjectsPaginated: async (params?: { page?: number; limit?: number; level_id?: string }): Promise<any> => {
         try {
             const response = await api.get("/subjects", { params });
             return response.data;

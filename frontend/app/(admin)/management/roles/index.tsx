@@ -1,10 +1,11 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useRouter } from 'expo-router';
-import { Check, Lock, Shield, X, Trash2, Plus } from 'lucide-react-native';
+import { Check, Lock, Shield, X, Trash2, Plus, BookOpen } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Modal, ScrollView, Text, TouchableOpacity, View, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { RoleAPI, CustomRole, Permission } from "@/services/RoleService";
+import { LibrarianManagement } from "@/components/admin/library/LibrarianManagement";
 
 const RoleCard = ({ role, onEdit, onDelete, isDark }: { role: CustomRole; onEdit: (role: CustomRole) => void; onDelete: (id: string) => void; isDark: boolean }) => {
     const surface = isDark ? '#161B22' : '#F6F8FA';
@@ -206,6 +207,7 @@ const PermissionModal = ({ visible, onClose, role, availablePermissions, onSave,
 export default function RolesAndPermissions() {
     const router = useRouter();
     const { isDark } = useTheme();
+    const [activeTab, setActiveTab] = useState<'roles' | 'librarians'>('roles');
     const [roles, setRoles] = useState<CustomRole[]>([]);
     const [availablePermissions, setAvailablePermissions] = useState<Permission[]>([]);
     const [selectedRole, setSelectedRole] = useState<CustomRole | null>(null);
@@ -270,23 +272,57 @@ export default function RolesAndPermissions() {
         <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Management"
-                subtitle="Permissions"
+                subtitle={activeTab === 'roles' ? "Permissions" : "Librarians"}
                 role="Admin"
                 onBack={() => router.back()}
                 rightActions={
-                    <TouchableOpacity 
-                        style={{ backgroundColor: '#FF6B00', width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
-                        onPress={() => {
-                            setSelectedRole(null);
-                            setModalVisible(true);
-                        }}
-                    >
-                        <Plus size={20} color="white" />
-                    </TouchableOpacity>
+                    activeTab === 'roles' ? (
+                        <TouchableOpacity 
+                            style={{ backgroundColor: '#FF6B00', width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                            onPress={() => {
+                                setSelectedRole(null);
+                                setModalVisible(true);
+                            }}
+                        >
+                            <Plus size={20} color="white" />
+                        </TouchableOpacity>
+                    ) : undefined
                 }
             />
 
-            {loading ? (
+            {/* Segmented Tab Bar */}
+            <View className="px-5 pt-3 pb-1">
+                <View className="flex-row bg-[#F6F8FA] dark:bg-[#0F141C] p-1 rounded-2xl border border-gray-200 dark:border-gray-800">
+                    <TouchableOpacity
+                        onPress={() => setActiveTab('roles')}
+                        className={`flex-1 flex-row items-center justify-center py-2.5 rounded-xl ${
+                            activeTab === 'roles' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
+                        }`}
+                    >
+                        <Shield size={16} color={activeTab === 'roles' ? '#FF6B00' : isDark ? '#9ca3af' : '#6b7280'} style={{ marginRight: 6 }} />
+                        <Text className={`font-bold text-xs ${activeTab === 'roles' ? 'text-[#FF6B00]' : 'text-gray-500 dark:text-gray-400'}`}>
+                            Roles & Permissions
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setActiveTab('librarians')}
+                        className={`flex-1 flex-row items-center justify-center py-2.5 rounded-xl ${
+                            activeTab === 'librarians' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
+                        }`}
+                    >
+                        <BookOpen size={16} color={activeTab === 'librarians' ? '#FF6B00' : isDark ? '#9ca3af' : '#6b7280'} style={{ marginRight: 6 }} />
+                        <Text className={`font-bold text-xs ${activeTab === 'librarians' ? 'text-[#FF6B00]' : 'text-gray-500 dark:text-gray-400'}`}>
+                            Librarian Assignment
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {activeTab === 'librarians' ? (
+                <View className="flex-1">
+                    <LibrarianManagement />
+                </View>
+            ) : loading ? (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                     <ActivityIndicator size="large" color="#FF6B00" />
                 </View>

@@ -4,6 +4,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { router } from 'expo-router';
 import {
     AlertCircle,
+    Award,
     BookOpen,
     CheckCircle2,
     ChevronDown,
@@ -16,6 +17,7 @@ import {
     Users,
     XCircle,
 } from 'lucide-react-native';
+import { GradingScaleModal } from '@/components/results/GradingScaleModal';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -243,6 +245,9 @@ export default function AdminResults() {
     const [releasingAll, setReleasingAll] = useState(false);
     const [processingStudentId, setProcessingStudentId] = useState<string | null>(null);
     const [manualRefreshing, setManualRefreshing] = useState(false);
+    const [completenessFilter, setCompletenessFilter] = useState<'all' | 'incomplete'>('all');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [showScaleModal, setShowScaleModal] = useState(false);
 
     const loadFilters = useCallback(async () => {
         setLoadingFilters(true);
@@ -571,6 +576,25 @@ export default function AdminResults() {
                 role="Admin"
                 onBack={() => router.back()}
                 showNotification={false}
+                rightActions={
+                    <TouchableOpacity
+                        onPress={() => setShowScaleModal(true)}
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8',
+                            borderWidth: 1,
+                            borderColor: isDark ? '#78350F' : '#FFEDD5',
+                            borderRadius: 10,
+                            paddingHorizontal: 10,
+                            paddingVertical: 6,
+                            gap: 6,
+                        }}
+                    >
+                        <Award size={14} color="#FF6900" />
+                        <Text style={{ color: '#FF6900', fontWeight: '700', fontSize: 12 }}>Grading Scale</Text>
+                    </TouchableOpacity>
+                }
             />
 
             <ScrollView
@@ -770,18 +794,29 @@ export default function AdminResults() {
                                     padding: 16, borderRadius: 16, marginBottom: 16,
                                     borderWidth: 1, borderColor: incompleteSubjects === 0 ? '#059669' : '#D97706',
                                 }}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                                        {incompleteSubjects === 0 ? (
-                                            <CheckCircle2 size={20} color="#059669" />
-                                        ) : (
-                                            <AlertCircle size={20} color="#D97706" />
-                                        )}
-                                        <Text style={{
-                                            marginLeft: 8, fontSize: 15, fontWeight: '700', color: textPrimary,
-                                        }}>
-                                            {incompleteSubjects === 0 ? 'All Complete!' : `${incompleteSubjects} Incomplete`}
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            {incompleteSubjects === 0 ? (
+                                                <CheckCircle2 size={20} color="#059669" />
+                                            ) : (
+                                                <AlertCircle size={20} color="#D97706" />
+                                            )}
+                                            <Text style={{
+                                                marginLeft: 8, fontSize: 15, fontWeight: '700', color: textPrimary,
+                                            }}>
+                                                {incompleteSubjects === 0 ? 'All Complete!' : `${incompleteSubjects} Incomplete`}
+                                            </Text>
+                                        </View>
+                                        <Text style={{ fontWeight: '800', fontSize: 14, color: incompleteSubjects === 0 ? '#059669' : '#D97706' }}>
+                                            {totalSubjects > 0 ? Math.round((completeSubjects / totalSubjects) * 100) : 0}% Complete
                                         </Text>
                                     </View>
+
+                                    {/* Progress Bar */}
+                                    <View style={{ height: 6, borderRadius: 3, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)', marginBottom: 8, overflow: 'hidden' }}>
+                                        <View style={{ height: '100%', borderRadius: 3, backgroundColor: incompleteSubjects === 0 ? '#059669' : '#D97706', width: `${totalSubjects > 0 ? Math.round((completeSubjects / totalSubjects) * 100) : 0}%` }} />
+                                    </View>
+
                                     <Text style={{ color: textSecondary, fontSize: 13, lineHeight: 20 }}>
                                         {completeSubjects}/{totalSubjects} subjects complete
                                         {totalMissingGrades > 0 && `, ${totalMissingGrades} missing grade${totalMissingGrades !== 1 ? 's' : ''}`}
@@ -789,8 +824,40 @@ export default function AdminResults() {
                                 </View>
                             )}
 
+                            {/* Completeness Filter Toggle */}
+                            {completenessResults.length > 0 && (
+                                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                                    <TouchableOpacity
+                                        onPress={() => setCompletenessFilter('all')}
+                                        style={{
+                                            paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10,
+                                            backgroundColor: completenessFilter === 'all' ? '#FF6900' : card,
+                                            borderWidth: 1, borderColor: completenessFilter === 'all' ? '#FF6900' : border,
+                                        }}
+                                    >
+                                        <Text style={{ color: completenessFilter === 'all' ? '#FFFFFF' : textSecondary, fontSize: 12, fontWeight: '700' }}>
+                                            All ({totalSubjects})
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={() => setCompletenessFilter('incomplete')}
+                                        style={{
+                                            paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10,
+                                            backgroundColor: completenessFilter === 'incomplete' ? '#EF4444' : card,
+                                            borderWidth: 1, borderColor: completenessFilter === 'incomplete' ? '#EF4444' : border,
+                                        }}
+                                    >
+                                        <Text style={{ color: completenessFilter === 'incomplete' ? '#FFFFFF' : textSecondary, fontSize: 12, fontWeight: '700' }}>
+                                            Needs Attention ({incompleteSubjects})
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+
                             {/* Per-subject completeness */}
-                            {completenessResults.map(subject => (
+                            {completenessResults
+                                .filter(s => completenessFilter === 'all' || !s.is_complete)
+                                .map(subject => (
                                 <View
                                     key={subject.subject_id}
                                     style={{
@@ -961,6 +1028,41 @@ export default function AdminResults() {
                                         </TouchableOpacity>
                                     </View>
 
+                                    {/* Status Filter Pills */}
+                                    {reportCards.length > 0 && (
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+                                            <View style={{ flexDirection: 'row', gap: 8 }}>
+                                                {[
+                                                    { key: 'all', label: `All (${reportCards.length})` },
+                                                    { key: 'draft', label: `Draft (${reportCards.filter(r => r.status === 'draft').length})` },
+                                                    { key: 'pending_review', label: `Pending (${reportCards.filter(r => r.status === 'pending_review').length})` },
+                                                    { key: 'published', label: `Published (${reportCards.filter(r => r.status === 'published').length})` },
+                                                    { key: 'released', label: `Released (${reportCards.filter(r => r.status === 'released').length})` },
+                                                ].map(item => {
+                                                    const active = statusFilter === item.key;
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={item.key}
+                                                            onPress={() => setStatusFilter(item.key)}
+                                                            style={{
+                                                                paddingHorizontal: 12,
+                                                                paddingVertical: 6,
+                                                                borderRadius: 10,
+                                                                backgroundColor: active ? '#FF6900' : card,
+                                                                borderWidth: 1,
+                                                                borderColor: active ? '#FF6900' : border,
+                                                            }}
+                                                        >
+                                                            <Text style={{ color: active ? '#FFFFFF' : textSecondary, fontSize: 12, fontWeight: '700' }}>
+                                                                {item.label}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+                                            </View>
+                                        </ScrollView>
+                                    )}
+
                                     {/* Per-student cards */}
                                     {reportCards.length === 0 ? (
                                         <View style={{
@@ -972,8 +1074,20 @@ export default function AdminResults() {
                                                 No report cards found for this class and term
                                             </Text>
                                         </View>
+                                    ) : reportCards.filter(r => statusFilter === 'all' || r.status === statusFilter).length === 0 ? (
+                                        <View style={{
+                                            backgroundColor: card, padding: 32, borderRadius: 20,
+                                            alignItems: 'center', borderWidth: 1, borderColor: border, borderStyle: 'dashed',
+                                        }}>
+                                            <Users size={40} color={textMuted} />
+                                            <Text style={{ color: textSecondary, fontWeight: '500', marginTop: 12, textAlign: 'center' }}>
+                                                No report cards match the selected status filter
+                                            </Text>
+                                        </View>
                                     ) : (
-                                        reportCards.map(rc => {
+                                        reportCards
+                                            .filter(r => statusFilter === 'all' || r.status === statusFilter)
+                                            .map(rc => {
                                             const isProcessing = processingStudentId === rc.id || processingStudentId === rc.student_id;
                                             return (
                                                 <View
@@ -1106,6 +1220,12 @@ export default function AdminResults() {
 
                 </View>
             </ScrollView>
+
+            {/* ── Grading Scale Modal ── */}
+            <GradingScaleModal
+                visible={showScaleModal}
+                onClose={() => setShowScaleModal(false)}
+            />
         </View>
     );
 }

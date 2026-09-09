@@ -32,6 +32,7 @@ const CreateSubject = () => {
     const { profile } = useAuth();
     const [classes, setClasses] = React.useState<any[]>([]);
     const [teachers, setTeachers] = React.useState<any[]>([]);
+    const [levels, setLevels] = React.useState<any[]>([]);
 
     useEffect(() => {
         const fetchClasses = async () => {
@@ -40,6 +41,7 @@ const CreateSubject = () => {
                 if (data && data.length > 0) {
                     const options = data.map((c: any) => ({
                         value: c.id,
+                        level_id: c.level_id,
                         label: formatClassLabel(c)
                     }));
                     setClasses(options);
@@ -50,7 +52,7 @@ const CreateSubject = () => {
             }
 
             const { data } = await (supabase.from('classes') as any)
-                .select('id, display_name, grade_level, form_level, stream')
+                .select('id, display_name, grade_level, form_level, stream, level_id')
                 .eq('institution_id', profile?.institution_id || '')
                 .order('grade_level', { ascending: true })
                 .order('form_level', { ascending: true })
@@ -59,6 +61,7 @@ const CreateSubject = () => {
             if (data) {
                 const options = data.map((c: any) => ({
                     value: c.id,
+                    level_id: c.level_id,
                     label: formatClassLabel(c)
                 }));
                 setClasses(options);
@@ -73,9 +76,34 @@ const CreateSubject = () => {
                 setTeachers(data);
             }
         };
+        const fetchLevels = async () => {
+            try {
+                const domainOptions = await ClassService.getClassOptions();
+                if (domainOptions && domainOptions.levels && domainOptions.levels.length > 0) {
+                    setLevels(domainOptions.levels);
+                    return;
+                }
+            } catch (err) {
+                console.warn('ClassService.getClassOptions error:', err);
+            }
+            const { data } = await (supabase.from('class_levels') as any)
+                .select('id, name, level_number')
+                .eq('institution_id', profile?.institution_id || '')
+                .order('sort_order', { ascending: true })
+                .order('level_number', { ascending: true });
+            if (data) setLevels(data);
+        };
         fetchClasses();
         fetchTeachers();
+        fetchLevels();
     }, [profile?.institution_id]);
+
+    const handleLevelToggle = (levelId: string) => {
+        const current = new Set<string>(formData.level_ids || []);
+        if (current.has(levelId)) current.delete(levelId);
+        else current.add(levelId);
+        handleInputChange("level_ids", Array.from(current));
+    };
 
     const handleTeacherToggle = (teacherId: string) => {
         const currentIds = formData.teacher_ids || [];
@@ -196,6 +224,60 @@ const CreateSubject = () => {
                                         fontSize: 15,
                                     }}
                                 />
+                            </View>
+
+                            {/* Level Scoping */}
+                            <View style={{ marginBottom: 16 }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                    <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary }}>
+                                        Grade/Level Scoping
+                                    </Text>
+                                    <Text style={{ fontSize: 11, color: (formData.level_ids || []).length === 0 ? '#10b981' : '#FF6B00', fontWeight: '600' }}>
+                                        {(formData.level_ids || []).length === 0 ? 'All Levels (Default)' : `${formData.level_ids?.length} Level(s) Selected`}
+                                    </Text>
+                                </View>
+                                <Text style={{ fontSize: 11, color: textSecondary, marginBottom: 8 }}>
+                                    Restricts this subject to specific levels. Leave empty to allow all levels.
+                                </Text>
+                                {levels.length > 0 ? (
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                                        {levels.map((lvl) => {
+                                            const isSelected = (formData.level_ids || []).includes(lvl.id);
+                                            return (
+                                                <TouchableOpacity
+                                                    key={lvl.id}
+                                                    onPress={() => handleLevelToggle(lvl.id)}
+                                                    style={{
+                                                        paddingHorizontal: 12,
+                                                        paddingVertical: 8,
+                                                        borderRadius: 10,
+                                                        borderWidth: 1,
+                                                        borderColor: isSelected ? '#FF6B00' : border,
+                                                        backgroundColor: isSelected ? (isDark ? 'rgba(255,107,0,0.15)' : '#fff7ed') : inputBg,
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                    }}
+                                                >
+                                                    <Ionicons
+                                                        name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+                                                        size={14}
+                                                        color={isSelected ? "#FF6B00" : textSecondary}
+                                                        style={{ marginRight: 6 }}
+                                                    />
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 12,
+                                                            fontWeight: isSelected ? '700' : '500',
+                                                            color: isSelected ? '#FF6B00' : textPrimary,
+                                                        }}
+                                                    >
+                                                        {lvl.name || `Level ${lvl.level_number || ''}`}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                ) : null}
                             </View>
 
                             <View style={{ marginBottom: 16 }}>

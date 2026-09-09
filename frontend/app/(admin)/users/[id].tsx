@@ -96,9 +96,7 @@ export default function UserDetailsScreen() {
 
     const [department, setDepartment] = useState('');
     const [qualification, setQualification] = useState('');
-    const [specialization, setSpecialization] = useState('');
     const [position, setPosition] = useState('');
-    const [hireDate, setHireDate] = useState('');
 
     const [occupation, setOccupation] = useState('');
     const [parentAddress, setParentAddress] = useState('');
@@ -268,9 +266,7 @@ export default function UserDetailsScreen() {
                             setTeacherRecord(tData);
                             setDepartment(tData.department || '');
                             setQualification(tData.qualification || '');
-                            setSpecialization(tData.specialization || '');
                             setPosition(tData.position || '');
-                            setHireDate(tData.hire_date || '');
 
                             const [subRes, clsRes] = await Promise.all([
                                 supabase.from('subjects').select('id').eq('teacher_id', tData.id),
@@ -366,7 +362,7 @@ export default function UserDetailsScreen() {
             setLinkedParents(rd.parent_students?.map((ps: any) => ps.parent_id) || []);
         } else if (role === 'teacher') {
             setDepartment(rd.department || ''); setQualification(rd.qualification || '');
-            setSpecialization(rd.specialization || ''); setPosition(rd.position || ''); setHireDate(rd.hire_date || '');
+            setPosition(rd.position || '');
             setClassId(rd.classes?.[0]?.id || null);
         } else if (role === 'parent') {
             setOccupation(rd.occupation || ''); setParentAddress(rd.address || '');
@@ -470,16 +466,12 @@ export default function UserDetailsScreen() {
                 setIsTeacherRoleEnabled(true);
                 setDepartment(teacherRecord.department || '');
                 setQualification(teacherRecord.qualification || '');
-                setSpecialization(teacherRecord.specialization || '');
                 setPosition(teacherRecord.position || '');
-                setHireDate(teacherRecord.hire_date || '');
             } else {
                 setIsTeacherRoleEnabled(false);
                 setDepartment('');
                 setQualification('');
-                setSpecialization('');
                 setPosition('');
-                setHireDate('');
                 setSubjectIds([]);
                 setClassId(null);
             }
@@ -521,9 +513,7 @@ export default function UserDetailsScreen() {
                 Object.assign(body, {
                     department: department || null,
                     qualification: qualification || null,
-                    specialization: specialization || null,
                     position: position || null,
-                    hire_date: hireDate || null,
                     subject_ids: subjectIds ?? []
                 });
             }
@@ -539,9 +529,7 @@ export default function UserDetailsScreen() {
                     teacher_role_enabled: isTeacherRoleEnabled,
                     department: isTeacherRoleEnabled ? (department || null) : null,
                     qualification: isTeacherRoleEnabled ? (qualification || null) : null,
-                    specialization: isTeacherRoleEnabled ? (specialization || null) : null,
                     position: isTeacherRoleEnabled ? (position || 'teacher') : null,
-                    hire_date: isTeacherRoleEnabled ? (hireDate || null) : null,
                     subject_ids: isTeacherRoleEnabled ? (subjectIds ?? []) : [],
                     class_teacher_id: isTeacherRoleEnabled ? (classId ?? null) : null
                 });
@@ -867,9 +855,7 @@ export default function UserDetailsScreen() {
                 {user.role === 'teacher' && roleData && (
                     <View style={{ marginHorizontal: 24, marginTop: 16, backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16 }}>
                         <Text style={{ fontSize: 11, fontWeight: '700', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>👨‍🏫 Teacher Details</Text>
-                        {renderField('Specialization', specialization, setSpecialization)}
                         {renderField('Position', position, setPosition)}
-                        <DatePicker label="Hire Date" value={hireDate} onChange={setHireDate} isDark={isDark} inline />
                         {renderChipList('Assigned Subjects', allSubjects, subjectIds, setSubjectIds, s => s.title, '#3b82f6')}
                         {renderChipList('Assigned Classes', 
                             classes, 
@@ -949,10 +935,8 @@ export default function UserDetailsScreen() {
                                 <Text style={{ fontSize: 11, fontWeight: '700', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
                                     👨‍🏫 Teacher Details & Assignments
                                 </Text>
-                                {renderField('Specialization', specialization, setSpecialization)}
                                 {renderField('Department', department, setDepartment)}
                                 {renderField('Position (e.g. Class Teacher, Teacher)', position, setPosition)}
-                                <DatePicker label="Hire Date" value={hireDate} onChange={setHireDate} isDark={isDark} inline />
                                 {renderChipList('Assigned Subjects', allSubjects, subjectIds, setSubjectIds, s => s.title, '#3b82f6')}
                                 {renderChipList(
                                     'Class Teacher Assignment (Assigned Class)',
