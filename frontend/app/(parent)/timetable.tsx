@@ -3,11 +3,12 @@ import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { TimetableAPI } from "@/services/TimetableService";
 import { useAuth } from "@/contexts/AuthContext";
 import { downloadTimetablePdf } from "@/utils/timetablePdfGenerator";
+import { CalendarAPI, CancelledDateInfo } from "@/services/CalendarService";
 import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
-import { Calendar, Download, MapPin, User, Clock } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Calendar, Download, MapPin, User } from "lucide-react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useParentStudentContext } from "@/hooks/useParentStudentContext";
 import { ParentService } from "@/services/ParentService";
 import { formatClassLabel } from "@/utils/classLabel";
@@ -27,24 +28,18 @@ export default function ParentStudentTimetablePage() {
     const [timetable, setTimetable] = useState<any[]>([]);
     const [selectedDay, setSelectedDay] = useState(new Date());
     const [classLabel, setClassLabel] = useState<string>('');
+    const [cancelledDates, setCancelledDates] = useState<CancelledDateInfo[]>([]);
 
-    useEffect(() => {
-        if (!ready) return;
-        if (resolvedClassId) {
-            fetchTimetable();
-        } else {
-            setLoading(false);
-        }
-    }, [ready, resolvedClassId]);
-
-    const fetchTimetable = async () => {
+    const fetchTimetable = useCallback(async () => {
         try {
             setLoading(true);
-            const [data, students] = await Promise.all([
+            const [data, students, cancelled] = await Promise.all([
                 TimetableAPI.getClassTimetable(resolvedClassId),
                 ParentService.getLinkedStudents().catch(() => []),
+                CalendarAPI.getCancelledDates().catch(() => []),
             ]);
             setTimetable(data || []);
+            setCancelledDates(cancelled || []);
 
             const matchedStudent = (students || []).find((s: any) => s.id === params.studentId);
             const resolvedClass = matchedStudent?.class_name || formatClassLabel({
@@ -58,13 +53,18 @@ export default function ParentStudentTimetablePage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [resolvedClassId, params.studentId]);
+
+    useEffect(() => {
+        if (!ready) return;
+        if (resolvedClassId) {
+            fetchTimetable();
+        } else {
+            setLoading(false);
+        }
+    }, [ready, resolvedClassId, fetchTimetable]);
 
     const handleDownloadPdf = async () => {
-        if (!timetable.length) {
-            showError("No schedule", "No timetable entries to export.");
-            return;
-        }
         try {
             setDownloadingPdf(true);
             await downloadTimetablePdf({
@@ -73,9 +73,12 @@ export default function ParentStudentTimetablePage() {
                 institutionName,
                 institutionLogo,
                 entries: timetable,
+                cancelledDates,
+                referenceDate: selectedDay,
+                fileName: `${resolvedName || 'student'}-timetable-${format(selectedDay, 'yyyy-MM-dd')}`,
             });
             showSuccess("PDF Ready", "Student timetable PDF generated successfully.");
-        } catch (error) {
+        } catch {
             showError("Export failed", "Failed to generate timetable PDF.");
         } finally {
             setDownloadingPdf(false);
@@ -101,7 +104,7 @@ export default function ParentStudentTimetablePage() {
                 role="Parent/Guardian"
                 onBack={() => router.back()}
                 rightActions={
-                    timetable.length > 0 ? (
+                    (
                         <TouchableOpacity
                             onPress={handleDownloadPdf}
                             disabled={downloadingPdf}
@@ -114,7 +117,7 @@ export default function ParentStudentTimetablePage() {
                                 {downloadingPdf ? 'Exporting...' : 'PDF'}
                             </Text>
                         </TouchableOpacity>
-                    ) : null
+                    )
                 }
             />
 

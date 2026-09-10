@@ -92,6 +92,13 @@ const toMinutes = (t: string): number => {
 
 const overlaps = (s1: number, e1: number, s2: number, e2: number) => s1 < e2 && s2 < e1;
 
+const localDateKey = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+};
+
 function detectConflicts(entries: TimetableEntry[]): Conflict[] {
     const conflicts: Conflict[] = [];
     let idSeq = 0;
@@ -439,19 +446,24 @@ export default function TimetableBuilder() {
     const conflictingIds = new Set(conflicts.flatMap(c => c.affectedEntryIds));
 
     const handleDownloadPdf = async () => {
-        if (!timetable.length) {
-            showError("No schedule", "No timetable entries to export for this class.");
-            return;
-        }
         const classTitle = selectedClass ? formatClassLabel(selectedClass) : "Class";
         try {
             setDownloadingPdf(true);
+            const activeDayIndex = DAYS.indexOf(selectedDay as any);
+            const weekAnchor = new Date();
+            const dow = weekAnchor.getDay();
+            const diffToMon = dow === 0 ? -6 : 1 - dow;
+            weekAnchor.setDate(weekAnchor.getDate() + diffToMon + Math.max(activeDayIndex, 0));
+
             await downloadTimetablePdf({
                 title: `${classTitle} Timetable`,
                 subtitle: `Academic Schedule • ${institutionName || 'School Timetable'}`,
                 institutionName,
                 institutionLogo,
                 entries: timetable,
+                cancelledDates,
+                referenceDate: weekAnchor,
+                fileName: `${classTitle}-timetable-${localDateKey(weekAnchor)}`,
             });
             showSuccess("PDF Ready", "Timetable PDF generated successfully.");
         } catch (error) {
@@ -670,7 +682,7 @@ export default function TimetableBuilder() {
                 onBack={() => router.back()}
                 rightActions={
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        {selectedClassId && timetable.length > 0 && (
+                        {selectedClassId && (
                             <TouchableOpacity
                                 onPress={handleDownloadPdf}
                                 disabled={downloadingPdf}
@@ -760,7 +772,7 @@ export default function TimetableBuilder() {
                 const dow = ws.getDay();
                 const diffToMon = (dow === 0 ? -6 : 1 - dow);
                 ws.setDate(ws.getDate() + diffToMon + activeDayIndex);
-                const dateStr = ws.toISOString().slice(0, 10);
+                const dateStr = localDateKey(ws);
                 const cancelled = cancelledDates.find(c => c.event_date === dateStr);
                 if (!cancelled) return null;
                 return (

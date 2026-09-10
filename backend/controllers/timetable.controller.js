@@ -2,6 +2,7 @@
 const supabase = require("../utils/supabaseClient.js");
 const { buildClassLabel } = require('../utils/classLabel');
 const { recomputeForTimetableDayMutation } = require('../services/dailyHours.service.js');
+const { getStudentCurrentClassEnrollment } = require('../utils/studentClassEnrollment');
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -69,6 +70,139 @@ async function validateClassAndSubject({ class_id, subject_id, institution_id })
   }
 
   return { ok: true };
+}
+
+async function resolveTeacherIdForUser(userId) {
+  const { data: teacher } = await supabase
+    .from('teachers')
+    .select('id')
+    .eq('user_id', userId)
+    .single();
+  return teacher?.id || null;
+}
+
+async function isTeacherAllowedClassTimetable({ teacherId, class_id, institution_id }) {
+  if (!teacherId || !class_id || !institution_id) return false;
+
+  const { data: classTeacherRow, error: classTeacherError } = await supabase
+    .from('classes')
+    .select('id')
+    .eq('id', class_id)
+    .eq('institution_id', institution_id)
+    .eq('teacher_id', teacherId)
+    .maybeSingle();
+
+  if (classTeacherError) throw classTeacherError;
+  if (classTeacherRow) return true;
+
+  const { data: primarySubjects, error: primarySubjectsError } = await supabase
+    .from('subjects')
+    .select('id')
+    .eq('class_id', class_id)
+    .eq('teacher_id', teacherId)
+    .eq('institution_id', institution_id)
+    .limit(1);
+
+  if (primarySubjectsError) throw primarySubjectsError;
+  if ((primarySubjects || []).length > 0) return true;
+
+  const { data: linkedSubjectRows, error: linkedSubjectRowsError } = await supabase
+    .from('subject_teachers')
+    .select('subject_id')
+    .eq('teacher_id', teacherId)
+    .eq('institution_id', institution_id);
+
+  if (linkedSubjectRowsError) throw linkedSubjectRowsError;
+
+  const linkedSubjectIds = (linkedSubjectRows || []).map((row) => row.subject_id).filter(Boolean);
+  if (linkedSubjectIds.length === 0) return false;
+
+  const { data: linkedSubjectClassMatches, error: linkedSubjectClassMatchesError } = await supabase
+    .from('subject_classes')
+    .select('subject_id')
+    .eq('institution_id', institution_id)
+    .eq('class_id', class_id)
+    .in('subject_id', linkedSubjectIds)
+    .limit(1);
+
+  if (linkedSubjectClassMatchesError && linkedSubjectClassMatchesError.code !== '42P01') {
+    throw linkedSubjectClassMatchesError;
+  }
+
+  if ((linkedSubjectClassMatches || []).length > 0) return true;
+
+  const { data: linkedSubjectMatches, error: linkedSubjectMatchesError } = await supabase
+    .from('subjects')
+    .select('id')
+    .in('id', linkedSubjectIds)
+    .eq('class_id', class_id)
+    .eq('institution_id', institution_id)
+    .limit(1);
+
+  if (linkedSubjectMatchesError) throw linkedSubjectMatchesError;
+  return (linkedSubjectMatches || []).length > 0;
+}
+
+async function isParentAllowedClassTimetable({ userId, class_id, institution_id }) {
+  if (!userId || !class_id || !institution_id) return false;
+
+  const { data: parent } = await supabase
+    .from('parents')
+    .select('id')
+    .eq('user_id', userId)
+    .single();
+
+  if (!parent?.id) return false;
+
+  const { data: links, error: linksError } = await supabase
+    .from('parent_students')
+    .select('student_id')
+    .eq('parent_id', parent.id);
+
+  if (linksError) throw linksError;
+  const linkedStudentIds = (links || []).map((row) => row.student_id).filter(Boolean);
+  if (linkedStudentIds.length === 0) return false;
+
+  const enrollments = await Promise.all(
+    linkedStudentIds.map((studentId) => getStudentCurrentClassEnrollment(studentId, institution_id))
+  );
+
+  const allowedClassIds = new Set(
+    enrollments.map((enrollment) => enrollment?.class_id).filter(Boolean)
+  );
+
+  return allowedClassIds.has(class_id);
+}
+
+async function canAccessClassTimetable({ userRole, userId, class_id, institution_id }) {
+  if (['admin', 'master_admin'].includes(userRole)) {
+    return true;
+  }
+
+  if (userRole === 'student') {
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('institution_id', institution_id)
+      .single();
+
+    if (studentError || !student) return false;
+
+    const enrollment = await getStudentCurrentClassEnrollment(student.id, institution_id);
+    return !!enrollment?.class_id && enrollment.class_id === class_id;
+  }
+
+  if (userRole === 'teacher') {
+    const teacherId = await resolveTeacherIdForUser(userId);
+    return isTeacherAllowedClassTimetable({ teacherId, class_id, institution_id });
+  }
+
+  if (userRole === 'parent') {
+    return isParentAllowedClassTimetable({ userId, class_id, institution_id });
+  }
+
+  return false;
 }
 
 /**
@@ -254,6 +388,7 @@ exports.createTimetableEntry = async (req, res) => {
 exports.getClassTimetable = async (req, res) => {
   try {
     const { class_id } = req.params;
+    const { userRole, userId } = req;
     const institution_id =
       req.institution_id && req.institution_id !== "null"
         ? req.institution_id
@@ -261,6 +396,17 @@ exports.getClassTimetable = async (req, res) => {
 
     if (!institution_id)
       return res.status(400).json({ error: "Missing institution context" });
+
+    const allowed = await canAccessClassTimetable({
+      userRole,
+      userId,
+      class_id,
+      institution_id,
+    });
+
+    if (!allowed) {
+      return res.status(403).json({ error: 'Access denied for this class timetable' });
+    }
 
     const { data, error } = await supabase
       .from("timetables")

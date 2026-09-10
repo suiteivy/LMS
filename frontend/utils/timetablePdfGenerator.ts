@@ -1,7 +1,14 @@
 import { Platform } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { File, Paths } from 'expo-file-system';
 import { TimetableEntry } from '@/services/TimetableService';
+
+type CancelledDateLike = {
+  event_date: string;
+  title?: string | null;
+  description?: string | null;
+};
 
 export interface TimetablePdfOptions {
   title: string;
@@ -10,10 +17,70 @@ export interface TimetablePdfOptions {
   institutionLogo?: string | null;
   entries: TimetableEntry[];
   includeWeekends?: boolean;
+  cancelledDates?: CancelledDateLike[];
+  referenceDate?: Date;
+  fileName?: string;
 }
 
 const DEFAULT_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const ALL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+function escapeHtml(value: string | null | undefined): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function normalizePdfFileName(stem: string | undefined): string {
+  const source = (stem || 'timetable').replace(/\.pdf$/i, '');
+  const normalized = source
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  const fallback = normalized || 'timetable';
+  return `${fallback}.pdf`;
+}
+
+function formatLocalDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function sanitizeImageSource(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = String(url).trim();
+  if (!trimmed) return null;
+
+  const lower = trimmed.toLowerCase();
+  if (lower.startsWith('https://') || lower.startsWith('http://') || lower.startsWith('data:image/')) {
+    return trimmed;
+  }
+
+  return null;
+}
+
+function getWeekDateForDay(day: string, referenceDate: Date): string {
+  const base = new Date(referenceDate);
+  const jsDay = base.getDay();
+  const diffToMonday = jsDay === 0 ? -6 : 1 - jsDay;
+  base.setDate(base.getDate() + diffToMonday);
+
+  let offset = 0;
+  if (day === 'Tuesday') offset = 1;
+  else if (day === 'Wednesday') offset = 2;
+  else if (day === 'Thursday') offset = 3;
+  else if (day === 'Friday') offset = 4;
+  else if (day === 'Saturday') offset = 5;
+  else if (day === 'Sunday') offset = 6;
+  base.setDate(base.getDate() + offset);
+  return formatLocalDateKey(base);
+}
 
 export function generateTimetableHtml({
   title,
@@ -22,14 +89,14 @@ export function generateTimetableHtml({
   institutionLogo,
   entries = [],
   includeWeekends = false,
+  cancelledDates = [],
+  referenceDate = new Date(),
 }: TimetablePdfOptions): string {
-  // Determine if there are weekend entries
   const hasWeekendEntries = entries.some(
     (e) => e.day_of_week === 'Saturday' || e.day_of_week === 'Sunday'
   );
   const activeDays = includeWeekends || hasWeekendEntries ? ALL_DAYS : DEFAULT_DAYS;
 
-  // Extract all distinct time slots and sort them
   const timeSlotMap = new Map<string, { start: string; end: string }>();
   entries.forEach((e) => {
     if (e.start_time && e.end_time) {
@@ -44,8 +111,6 @@ export function generateTimetableHtml({
     a.start.localeCompare(b.start)
   );
 
-  // Group entries by day and time slot
-  // Key: `${day}_${start_time}-${end_time}`
   const gridMap = new Map<string, TimetableEntry[]>();
   entries.forEach((e) => {
     const key = `${e.day_of_week}_${e.start_time}-${e.end_time}`;
@@ -54,19 +119,29 @@ export function generateTimetableHtml({
     gridMap.set(key, list);
   });
 
+  const cancellationsByDay = new Map<string, CancelledDateLike[]>();
+  activeDays.forEach((day) => {
+    const dayDate = getWeekDateForDay(day, referenceDate);
+    const matches = cancelledDates.filter((cancelled) => cancelled.event_date === dayDate);
+    if (matches.length > 0) {
+      cancellationsByDay.set(day, matches);
+    }
+  });
+
   const dateGenerated = new Date().toLocaleDateString('en-US', {
     weekday: 'short',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
+  const safeInstitutionLogo = sanitizeImageSource(institutionLogo);
 
   return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>${title}</title>
+  <title>${escapeHtml(title)}</title>
   <style>
     @page {
       size: A4 landscape;
@@ -144,8 +219,6 @@ export function generateTimetableHtml({
       color: #94a3b8;
       margin-top: 4px;
     }
-
-    /* Timetable Grid Table */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -165,6 +238,11 @@ export function generateTimetableHtml({
       font-size: 10px;
       letter-spacing: 0.05em;
       text-align: center;
+    }
+    .cancelled-day {
+      color: #dc2626;
+      font-weight: 800;
+      margin-left: 3px;
     }
     th.time-col {
       width: 12%;
@@ -195,6 +273,7 @@ export function generateTimetableHtml({
       font-size: 12px;
       color: #9a3412;
       line-height: 1.2;
+      word-break: break-word;
     }
     .sub-meta {
       font-size: 10px;
@@ -203,6 +282,7 @@ export function generateTimetableHtml({
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
+      word-break: break-word;
     }
     .badge {
       display: inline-block;
@@ -218,11 +298,31 @@ export function generateTimetableHtml({
       color: #334155;
     }
     .empty-slot {
-      color: #cbd5e1;
+      color: #94a3b8;
       text-align: center;
       padding: 14px 0;
       font-size: 10px;
       font-style: italic;
+    }
+    .cancelled-slot {
+      background: #fef2f2;
+      border-left: 3px solid #ef4444;
+      border-radius: 4px;
+      padding: 6px 8px;
+      color: #991b1b;
+      min-height: 48px;
+    }
+    .cancelled-slot .label {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .cancelled-slot .reason {
+      font-size: 10px;
+      margin-top: 2px;
+      line-height: 1.3;
+      word-break: break-word;
     }
     .footer {
       margin-top: 14px;
@@ -233,32 +333,24 @@ export function generateTimetableHtml({
       font-size: 9px;
       color: #94a3b8;
     }
-    @media print {
-      body {
-        padding: 0;
-      }
-      .no-print {
-        display: none;
-      }
-    }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="branding">
+      <div class="branding">
       ${
-        institutionLogo
-          ? `<img class="logo" src="${institutionLogo}" alt="Logo" />`
-          : `<div class="logo-placeholder">${(institutionName || 'LMS').charAt(0).toUpperCase()}</div>`
+        safeInstitutionLogo
+          ? `<img class="logo" src="${escapeHtml(safeInstitutionLogo)}" alt="Logo" />`
+          : `<div class="logo-placeholder">${escapeHtml((institutionName || 'LMS').charAt(0).toUpperCase())}</div>`
       }
       <div class="inst-info">
-        <h1>${institutionName || 'Cloudora LMS'}</h1>
-        <p>Official Academic Timetable & Scheduling</p>
+        <h1>${escapeHtml(institutionName || 'Cloudora LMS')}</h1>
+        <p>Official Academic Timetable and Scheduling</p>
       </div>
     </div>
     <div class="meta">
-      <div class="schedule-title">${title}</div>
-      ${subtitle ? `<div class="schedule-subtitle">${subtitle}</div>` : ''}
+      <div class="schedule-title">${escapeHtml(title)}</div>
+      ${subtitle ? `<div class="schedule-subtitle">${escapeHtml(subtitle)}</div>` : ''}
       <div class="gen-date">Generated on: ${dateGenerated}</div>
     </div>
   </div>
@@ -267,7 +359,14 @@ export function generateTimetableHtml({
     <thead>
       <tr>
         <th class="time-col">Period / Time</th>
-        ${activeDays.map((d) => `<th>${d}</th>`).join('')}
+        ${activeDays
+          .map((d) => {
+            const cancelledTag = cancellationsByDay.has(d)
+              ? '<span class="cancelled-day">(Cancelled)</span>'
+              : '';
+            return `<th>${escapeHtml(d)} ${cancelledTag}</th>`;
+          })
+          .join('')}
       </tr>
     </thead>
     <tbody>
@@ -279,13 +378,23 @@ export function generateTimetableHtml({
                 const rowKey = `${slot.start} - ${slot.end}`;
                 return `
         <tr>
-          <td class="time-cell">${rowKey}</td>
+          <td class="time-cell">${escapeHtml(rowKey)}</td>
           ${activeDays
             .map((day) => {
               const cellEntries = gridMap.get(`${day}_${slot.start}-${slot.end}`) || [];
-              if (cellEntries.length === 0) {
-                return `<td><div class="empty-slot">-</div></td>`;
+              const dayCancellations = cancellationsByDay.get(day) || [];
+
+              if (dayCancellations.length > 0) {
+                const reasonText = dayCancellations
+                  .map((cancelled) => cancelled.title || cancelled.description || 'Academic sessions suspended')
+                  .join(' • ');
+                return `<td><div class="cancelled-slot"><div class="label">Cancelled Day</div><div class="reason">${escapeHtml(reasonText)}</div></div></td>`;
               }
+
+              if (cellEntries.length === 0) {
+                return `<td><div class="empty-slot">Free / Break</div></td>`;
+              }
+
               return `
             <td>
               ${cellEntries
@@ -300,11 +409,11 @@ export function generateTimetableHtml({
 
                   return `
                 <div class="slot-card">
-                  <div class="subject-title">${subjectName}</div>
+                  <div class="subject-title">${escapeHtml(subjectName)}</div>
                   <div class="sub-meta">
-                    ${className ? `<span class="badge">${className}</span>` : ''}
-                    ${teacherName ? `<span>👨‍🏫 ${teacherName}</span>` : ''}
-                    ${entry.room_number ? `<span class="badge room-badge">🚪 ${entry.room_number}</span>` : ''}
+                    ${className ? `<span class="badge">${escapeHtml(className)}</span>` : ''}
+                    ${teacherName ? `<span>Teacher: ${escapeHtml(teacherName)}</span>` : ''}
+                    ${entry.room_number ? `<span class="badge room-badge">Room: ${escapeHtml(entry.room_number)}</span>` : ''}
                   </div>
                 </div>
                 `;
@@ -323,7 +432,7 @@ export function generateTimetableHtml({
   </table>
 
   <div class="footer">
-    <span>${institutionName || 'Cloudora LMS'} • Academic Management System</span>
+    <span>${escapeHtml(institutionName || 'Cloudora LMS')} • Academic Management System</span>
     <span>Page 1 of 1</span>
   </div>
 </body>
@@ -331,39 +440,82 @@ export function generateTimetableHtml({
   `.trim();
 }
 
-/**
- * Downloads or opens print preview for a timetable PDF across Web and Native.
- */
 export async function downloadTimetablePdf(options: TimetablePdfOptions): Promise<void> {
   const html = generateTimetableHtml(options);
+  const fileName = normalizePdfFileName(options.fileName || `${options.title}-${formatLocalDateKey(new Date())}`);
 
-  if (Platform.OS === 'web') {
-    // Web: Open a clean print window with auto-print
-    if (typeof window !== 'undefined') {
+  try {
+    const useBase64 = Platform.OS === 'web';
+    const printResult = await Print.printToFileAsync({
+      html,
+      base64: useBase64,
+    });
+
+    const uri = (printResult as any)?.uri as string | undefined;
+    const base64 = (printResult as any)?.base64 as string | undefined;
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !== 'undefined') {
+      if (base64) {
+        const binary = window.atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) {
+          bytes.set([binary.charCodeAt(i)], i);
+        }
+
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = blobUrl;
+        anchor.download = fileName;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(blobUrl);
+        return;
+      }
+
+      if (uri) {
+        const anchor = document.createElement('a');
+        anchor.href = uri;
+        anchor.download = fileName;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        return;
+      }
+
       const printWindow = window.open('', '_blank');
       if (printWindow) {
         printWindow.document.write(html);
         printWindow.document.close();
-        // Give layout a tick to settle, then open print dialog
         setTimeout(() => {
           printWindow.focus();
           printWindow.print();
         }, 250);
-        return;
       }
+      return;
     }
-  }
-
-  // Native iOS / Android or Web fallback
-  try {
-    const { uri } = await Print.printToFileAsync({
-      html,
-      base64: false,
-    });
 
     const isAvailable = await Sharing.isAvailableAsync();
     if (isAvailable) {
-      await Sharing.shareAsync(uri, {
+      if (!uri) {
+        throw new Error('PDF URI unavailable for sharing');
+      }
+
+      let shareUri = uri;
+      try {
+        const sourceFile = new File(uri);
+        const targetFile = new File(Paths.cache, fileName);
+        if (targetFile.exists) {
+          targetFile.delete();
+        }
+        await sourceFile.copy(targetFile);
+        shareUri = targetFile.uri;
+      } catch (renameErr) {
+        console.warn('Unable to rename PDF before share:', renameErr);
+      }
+
+      await Sharing.shareAsync(shareUri, {
         UTI: '.pdf',
         mimeType: 'application/pdf',
         dialogTitle: `Download ${options.title || 'Timetable'} PDF`,

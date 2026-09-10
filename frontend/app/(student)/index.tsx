@@ -7,9 +7,12 @@ import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { CacheService } from "@/services/CacheService";
+import { CalendarAPI } from "@/services/CalendarService";
+import { StudentService } from "@/services/StudentService";
 import { supabase } from "@/libs/supabase";
+import { downloadTimetablePdf } from "@/utils/timetablePdfGenerator";
 import { useRouter } from "expo-router";
-import { showFetchError } from "@/utils/toast";
+import { showError, showFetchError, showSuccess } from "@/utils/toast";
 import {
   ArrowRight,
   Book,
@@ -30,6 +33,13 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+
+const localDateKey = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 // ─── Quick Action ────────────────────────────────────────────────────────────
 
@@ -244,7 +254,7 @@ const SectionHeader = ({ title, actionLabel, onAction, isDark }: SectionHeaderPr
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function Index() {
-  const { profile, displayId, loading: authLoading, studentId, isDemo, logout } = useAuth();
+  const { profile, displayId, loading: authLoading, studentId, isDemo, logout, institutionName, institutionLogo } = useAuth();
   const { isDark } = useTheme();
   const { hasDiary, showFinancials } = useSubscriptionTier();
   const tier = useSubscriptionTier();
@@ -262,6 +272,7 @@ export default function Index() {
   const [todaysSchedule, setTodaysSchedule] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [downloadingTimetablePdf, setDownloadingTimetablePdf] = useState(false);
 
   const cacheKey = studentId ? `student_dashboard_${studentId}` : null;
 
@@ -398,6 +409,30 @@ export default function Index() {
     else setRefreshing(false);
   }, [studentId]);
 
+  const handleDownloadTimetablePdf = async () => {
+    try {
+      setDownloadingTimetablePdf(true);
+      const entries = await StudentService.getTimetable();
+      const cancelledDates = await CalendarAPI.getCancelledDates().catch(() => []);
+
+      await downloadTimetablePdf({
+        title: "Student Class Timetable",
+        subtitle: profile?.full_name ? `Schedule for ${profile.full_name}` : "Academic Schedule",
+        institutionName,
+        institutionLogo,
+        entries: entries || [],
+        cancelledDates: cancelledDates || [],
+        fileName: `${profile?.full_name || 'student'}-timetable-${localDateKey(new Date())}`,
+      });
+
+      showSuccess("PDF Ready", "Timetable PDF generated successfully.");
+    } catch {
+      showError("Export failed", "Failed to generate timetable PDF.");
+    } finally {
+      setDownloadingTimetablePdf(false);
+    }
+  };
+
   if (authLoading || (loadingData && todaysSchedule.length === 0 && gpa === "0.00")) {
     return (
       <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#f8fafc' }}>
@@ -528,7 +563,28 @@ export default function Index() {
                 onAction={() => router.push({ pathname: "/(student)/timetable", params: { backTo: "/(student)" } } as any)}
                 isDark={isDark}
               />
-              <HelpTooltip id="student.dashboard.schedule" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TouchableOpacity
+                  onPress={handleDownloadTimetablePdf}
+                  disabled={downloadingTimetablePdf}
+                  accessibilityRole="button"
+                  accessibilityLabel="Download timetable PDF"
+                  style={{
+                    borderWidth: 1,
+                    borderColor: isDark ? '#374151' : '#e5e7eb',
+                    backgroundColor: isDark ? '#0D1117' : '#ffffff',
+                    borderRadius: 999,
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    marginRight: 8,
+                  }}
+                >
+                  <Text style={{ color: '#FF6900', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                    {downloadingTimetablePdf ? 'Exporting...' : 'PDF'}
+                  </Text>
+                </TouchableOpacity>
+                <HelpTooltip id="student.dashboard.schedule" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
+              </View>
             </View>
 
             {loadingData ? (

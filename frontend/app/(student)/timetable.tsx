@@ -8,7 +8,7 @@ import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { router } from "expo-router";
 import { AlertTriangle, Calendar, Download, MapPin, User } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { showFetchError, showError, showSuccess } from "@/utils/toast";
 
 export default function StudentTimetablePage() {
@@ -41,10 +41,6 @@ export default function StudentTimetablePage() {
     };
 
     const handleDownloadPdf = async () => {
-        if (!timetable.length) {
-            showError("No schedule", "No timetable entries to export.");
-            return;
-        }
         try {
             setDownloadingPdf(true);
             await downloadTimetablePdf({
@@ -53,9 +49,12 @@ export default function StudentTimetablePage() {
                 institutionName,
                 institutionLogo,
                 entries: timetable,
+                cancelledDates,
+                referenceDate: selectedDay,
+                fileName: `${profile?.full_name || 'student'}-timetable-${format(selectedDay, 'yyyy-MM-dd')}`,
             });
-            showSuccess("PDF Ready", "Class timetable PDF generated successfully.");
-        } catch (error) {
+            showSuccess("PDF Ready", "Timetable PDF generated successfully.");
+        } catch {
             showError("Export failed", "Failed to generate timetable PDF.");
         } finally {
             setDownloadingPdf(false);
@@ -84,7 +83,7 @@ export default function StudentTimetablePage() {
                 role="Student"
                 onBack={() => router.back()}
                 rightActions={
-                    timetable.length > 0 ? (
+                    (
                         <TouchableOpacity
                             onPress={handleDownloadPdf}
                             disabled={downloadingPdf}
@@ -97,7 +96,7 @@ export default function StudentTimetablePage() {
                                 {downloadingPdf ? 'Exporting...' : 'PDF'}
                             </Text>
                         </TouchableOpacity>
-                    ) : null
+                    )
                 }
             />
 

@@ -5,13 +5,20 @@ import { useAuth } from "@/contexts/AuthContext";
 import { TimetableAPI, TimetableEntry } from "@/services/TimetableService";
 import { downloadTimetablePdf } from "@/utils/timetablePdfGenerator";
 import { CalendarAPI, CancelledDateInfo } from "@/services/CalendarService";
-import { router } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { AlertTriangle, Calendar, Clock, Download, MapPin, Users } from 'lucide-react-native';
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { showFetchError, showError, showSuccess } from "@/utils/toast";
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const localDateKey = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
 const TimetableCard = ({ entry, isDark }: { entry: TimetableEntry; isDark: boolean }) => {
     return (
@@ -60,9 +67,11 @@ export default function TimetablePage() {
     const [activeDay, setActiveDay] = useState<string>(DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]);
     const [cancelledDates, setCancelledDates] = useState<CancelledDateInfo[]>([]);
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            fetchData();
+        }, [])
+    );
 
     const fetchData = async () => {
         try {
@@ -82,10 +91,6 @@ export default function TimetablePage() {
     };
 
     const handleDownloadPdf = async () => {
-        if (!timetable.length) {
-            showError("No schedule", "No timetable entries to export.");
-            return;
-        }
         try {
             setDownloadingPdf(true);
             await downloadTimetablePdf({
@@ -94,24 +99,25 @@ export default function TimetablePage() {
                 institutionName,
                 institutionLogo,
                 entries: timetable,
+                cancelledDates,
+                referenceDate: weekStart,
+                fileName: `${profile?.full_name || 'teacher'}-teaching-schedule-${activeDateStr}`,
             });
             showSuccess("PDF Ready", "Teaching schedule PDF generated successfully.");
-        } catch (error) {
+        } catch {
             showError("Export failed", "Failed to generate timetable PDF.");
         } finally {
             setDownloadingPdf(false);
         }
     };
 
-    // Cancelled-date check: find entry matching today's ISO date if the activeDay corresponds
-    const todayIso = new Date().toISOString().slice(0, 10);
     // Map activeDay name to the nearest matching calendar date for the current week
     const activeDayIndex = DAYS.indexOf(activeDay); // 0=Mon
     const weekStart = new Date();
     const dow = weekStart.getDay(); // 0=Sun
     const diffToMon = (dow === 0 ? -6 : 1 - dow);
     weekStart.setDate(weekStart.getDate() + diffToMon + activeDayIndex);
-    const activeDateStr = weekStart.toISOString().slice(0, 10);
+    const activeDateStr = localDateKey(weekStart);
     const cancelledForActiveDay = cancelledDates.find(c => c.event_date === activeDateStr);
 
     const filteredEntries = timetable.filter(entry => entry.day_of_week === activeDay)
@@ -125,7 +131,7 @@ export default function TimetablePage() {
                 role="Teacher"
                 fallbackPath="/(teacher)/management"
                 rightActions={
-                    timetable.length > 0 ? (
+                    (
                         <TouchableOpacity
                             onPress={handleDownloadPdf}
                             disabled={downloadingPdf}
@@ -138,7 +144,7 @@ export default function TimetablePage() {
                                 {downloadingPdf ? 'Exporting...' : 'PDF'}
                             </Text>
                         </TouchableOpacity>
-                    ) : null
+                    )
                 }
             />
 

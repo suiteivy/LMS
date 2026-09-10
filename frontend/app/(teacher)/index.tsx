@@ -4,14 +4,23 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeacherAPI } from "@/services/TeacherService";
 import { CacheService } from "@/services/CacheService";
+import { CalendarAPI } from "@/services/CalendarService";
+import { downloadTimetablePdf } from "@/utils/timetablePdfGenerator";
 import { router } from "expo-router";
-import { ArrowRight, BookOpen, Calendar, Clock, GraduationCap, MessageSquare, School, Users, LogOut } from 'lucide-react-native';
+import { ArrowRight, BookOpen, Calendar, Clock, Download, GraduationCap, MessageSquare, School, Users, LogOut } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View, StatusBar } from 'react-native';
 import { SubscriptionBanner, SubscriptionGate } from '@/components/shared/SubscriptionComponents';
 import { formatClassLabel } from '@/utils/classLabel';
 import { useTeacherRoleMode } from '@/hooks/useTeacherRoleMode';
-import { showFetchError } from '@/utils/toast';
+import { showError, showFetchError, showSuccess } from '@/utils/toast';
+
+const localDateKey = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
 // Define Interface for the QuickAction props
 interface QuickActionProps {
@@ -60,11 +69,12 @@ const QuickAction = ({ icon: Icon, label, color, onPress, badge }: QuickActionPr
 };
 
 export default function TeacherHome() {
-    const { profile, isInitializing, session, isDemo, logout } = useAuth();
+    const { profile, institutionName, institutionLogo, isInitializing, session, isDemo, logout } = useAuth();
     const [stats, setStats] = useState<any>(null);
     const [schedule, setSchedule] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [downloadingEmbeddedPdf, setDownloadingEmbeddedPdf] = useState(false);
     const { isDark } = useTheme();
 
     // Switcher/Role state
@@ -246,6 +256,85 @@ export default function TeacherHome() {
 
     const uniqueSubjectTitles = Array.from(new Set(assignedSubjects.map(s => s.title)));
     const activeAssignment = assignedSubjects.find(s => s.title === selectedSubjectTitle && s.class?.id === selectedClassId);
+
+    const buildPdfEntriesFromAssignedSubjects = useCallback((subjects: any[]) => {
+        const allEntries: any[] = [];
+        const seen = new Set<string>();
+
+        (subjects || []).forEach((assignment) => {
+            if (!Array.isArray(assignment?.timetable)) return;
+            const className = assignment.class ? formatClassLabel(assignment.class) : 'Class';
+
+            assignment.timetable.forEach((slot: any, idx: number) => {
+                const dedupeKey = [
+                    assignment.id || 'subject',
+                    assignment.class?.id || 'class',
+                    slot.day_of_week,
+                    slot.start_time,
+                    slot.end_time,
+                    slot.room_number || '',
+                ].join('|');
+
+                if (seen.has(dedupeKey)) return;
+                seen.add(dedupeKey);
+
+                allEntries.push({
+                    id: `${assignment.id || 'subject'}-${assignment.class?.id || 'class'}-${idx}`,
+                    class_id: assignment.class?.id || 'class',
+                    subject_id: assignment.id || 'subject',
+                    day_of_week: slot.day_of_week,
+                    start_time: slot.start_time,
+                    end_time: slot.end_time,
+                    room_number: slot.room_number || null,
+                    institution_id: '',
+                    subjects: {
+                        title: assignment.title || 'Subject',
+                        teacher_id: '',
+                        teachers: {
+                            users: {
+                                first_name: '',
+                                last_name: '',
+                                full_name: profile?.full_name || '',
+                            },
+                        },
+                    },
+                    classes: {
+                        name: className,
+                        display_name: className,
+                    },
+                });
+            });
+        });
+
+        return allEntries;
+    }, [profile?.full_name]);
+
+    const handleDownloadTeacherTimetablePdf = useCallback(async () => {
+        const entries = buildPdfEntriesFromAssignedSubjects(assignedSubjects);
+        if (!entries.length) {
+            showError('No schedule', 'No timetable entries available for this view.');
+            return;
+        }
+
+        try {
+            setDownloadingEmbeddedPdf(true);
+            const cancelledDates = await CalendarAPI.getCancelledDates().catch(() => []);
+            await downloadTimetablePdf({
+                title: 'Teacher Teaching Schedule',
+                subtitle: profile?.full_name ? `Schedule for ${profile.full_name}` : `${institutionName || 'Teacher Schedule'}`,
+                institutionName,
+                institutionLogo,
+                entries,
+                cancelledDates,
+                fileName: `${profile?.full_name || 'teacher'}-teaching-schedule-${localDateKey(new Date())}`,
+            });
+            showSuccess('PDF Ready', 'Timetable PDF generated successfully.');
+        } catch {
+            showError('Export failed', 'Failed to generate timetable PDF.');
+        } finally {
+            setDownloadingEmbeddedPdf(false);
+        }
+    }, [assignedSubjects, buildPdfEntriesFromAssignedSubjects, institutionLogo, institutionName, profile?.full_name]);
 
     const quickActions = useMemo(() => {
         if (mode === 'class') {
@@ -566,7 +655,20 @@ export default function TeacherHome() {
 
                                 {/* Timetable slots */}
                                 <View className="mt-2 border-t border-gray-100 dark:border-gray-800 pt-4">
-                                    <Text className="text-gray-400 dark:text-gray-550 text-[10px] font-bold uppercase tracking-wider mb-3">Weekly Timetable Schedule</Text>
+                                    <View className="flex-row items-center justify-between mb-3">
+                                        <Text className="text-gray-400 dark:text-gray-550 text-[10px] font-bold uppercase tracking-wider">Weekly Timetable Schedule</Text>
+                                        <TouchableOpacity
+                                            onPress={handleDownloadTeacherTimetablePdf}
+                                            disabled={downloadingEmbeddedPdf}
+                                            className="px-3 py-1.5 rounded-xl border border-orange-200 bg-orange-50"
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Download embedded timetable PDF"
+                                        >
+                                            <Text className="text-[#FF6900] font-bold text-[10px] uppercase tracking-widest">
+                                                {downloadingEmbeddedPdf ? 'Exporting...' : 'PDF'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
                                     {activeAssignment?.timetable && activeAssignment.timetable.length > 0 ? (
                                         activeAssignment.timetable.map((slot: any, idx: number) => (
                                             <View key={idx} className="flex-row items-center gap-3 bg-gray-50 dark:bg-[#161B22] border border-gray-100 dark:border-gray-800 p-3 rounded-2xl mb-2">
@@ -671,9 +773,23 @@ export default function TeacherHome() {
                         <Text className="text-xl font-bold text-gray-900 dark:text-white">
                             Today&apos;s Schedule
                         </Text>
-                        <TouchableOpacity onPress={() => router.push({ pathname: "/(teacher)/management/timetable", params: { backTo: "/(teacher)" } } as any)}>
-                            <Text className="text-[#FF6900] font-semibold">View All</Text>
-                        </TouchableOpacity>
+                        <View className="flex-row items-center gap-2">
+                            <TouchableOpacity
+                                onPress={handleDownloadTeacherTimetablePdf}
+                                disabled={downloadingEmbeddedPdf}
+                                className="flex-row items-center px-3 py-1.5 rounded-xl border border-orange-200 bg-orange-50"
+                                accessibilityRole="button"
+                                accessibilityLabel="Download teacher timetable PDF"
+                            >
+                                <Download size={12} color="#FF6900" />
+                                <Text className="text-[#FF6900] font-bold text-[10px] uppercase tracking-widest ml-1.5">
+                                    {downloadingEmbeddedPdf ? 'Exporting...' : 'PDF'}
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => router.push({ pathname: "/(teacher)/management/timetable", params: { backTo: "/(teacher)" } } as any)}>
+                                <Text className="text-[#FF6900] font-semibold">View All</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {loading ? (
