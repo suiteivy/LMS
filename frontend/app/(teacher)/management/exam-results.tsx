@@ -3,7 +3,6 @@ import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { ExamService } from"@/services/ExamService";
 import { useAuth } from "@/contexts/AuthContext";
 import Toast from 'react-native-toast-message';
-import { TeacherAttendanceAPI } from"@/services/TeacherAttendanceService";
 import { showError, showSuccess } from"@/utils/toast";
 import { router, useLocalSearchParams } from"expo-router";
 import { Save, Search, User } from"lucide-react-native";
@@ -34,10 +33,9 @@ export default function ExamResultsPage() {
 
  const fetchInitialData = async () => {
  try {
- setLoading(true);
- const exams = await ExamService.getExams();
- const currentExam = exams.find((e: any) => e.id === examId);
- setExam(currentExam);
+  setLoading(true);
+  const currentExam = await ExamService.getExamById(examId as string);
+  setExam(currentExam);
 
  if (!currentExam) {
  showError("Error","Exam not found");
@@ -45,17 +43,17 @@ export default function ExamResultsPage() {
  return;
  }
 
- const studentList = await TeacherAttendanceAPI.getStudentAttendance(new Date().toISOString().split('T')[0], currentExam.subject_id);
- const existingResults = await ExamService.getExamResults(examId as string);
+  const studentList = await ExamService.getExamRoster(examId as string);
+  const existingResults = await ExamService.getExamResults(examId as string);
 
- const initialScores = studentList.map((s: any) => {
- const existing = existingResults.find((r: any) => r.student_id === s.student_id);
- return {
- student_id: s.student_id,
- student_name: s.name,
- score: existing ? existing.score.toString() :"",
- feedback: existing ? existing.feedback ||"" :""
- };
+  const initialScores = studentList.map((s: any) => {
+  const existing = existingResults.find((r: any) => r.student_id === s.student_id);
+  return {
+  student_id: s.student_id,
+  student_name: s.name || s.full_name || s.student_name || "Unknown Student",
+  score: existing ? existing.score.toString() :"",
+  feedback: existing ? existing.feedback ||"" :""
+  };
  });
 
  setStudentScores(initialScores);

@@ -867,6 +867,7 @@ export default function MasterInstitutionsPage() {
     const usersCount = item.users?.[0]?.count || 0;
     const suspended = String(item.subscription_status || '').toLowerCase() === 'suspended';
     const institutionCurrency = currencies.find((currency) => currency.id === item.currency_id);
+    const defaultCurrency = currencies.find((currency) => currency.is_default);
 
     return (
       <View
@@ -891,7 +892,11 @@ export default function MasterInstitutionsPage() {
               </Text>
             )}
             <Text style={{ color: c.sub, marginTop: 2 }}>
-              Currency: {institutionCurrency ? `${institutionCurrency.code} (${institutionCurrency.symbol})` : 'USD ($)'}
+              Currency: {institutionCurrency
+                ? `${institutionCurrency.code} (${institutionCurrency.symbol})`
+                : defaultCurrency
+                  ? `${defaultCurrency.code} (${defaultCurrency.symbol})`
+                  : 'Not set'}
             </Text>
             <Text style={{ color: suspended ? c.danger : c.success, marginTop: 4, fontWeight: '700' }}>
               {String(item.subscription_status || 'unknown').toUpperCase()}  •  {String(item.subscription_plan || 'basic').toUpperCase()}

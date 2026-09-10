@@ -4,6 +4,7 @@ import { ArrowLeft, Users, Search, Download, Calendar, GraduationCap, X, Phone, 
 import { router } from "expo-router";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { StudentService } from "@/services/StudentService";
 import { TeacherAPI } from "@/services/TeacherService";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -49,6 +50,7 @@ const StudentCard = ({ student, onPress }: { student: StudentListItem; onPress: 
 export default function StudentsPage() {
     const { teacherId } = useAuth();
     const { isDark } = useTheme();
+    const { formatAmount } = useCurrency();
     const [loading, setLoading] = useState(true);
     const [students, setStudents] = useState<StudentListItem[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
@@ -304,7 +306,7 @@ export default function StudentsPage() {
                                                     <View className="flex-row py-3">
                                                         <Text className="text-gray-400 dark:text-gray-500 text-xs font-semibold w-32">Fee Balance</Text>
                                                         <Text className={`text-xs font-black ${Number(studentDetails.profile?.fee_balance) > 0 ? "text-red-500" : "text-green-500"}`}>
-                                                            ${studentDetails.profile?.fee_balance || '0.00'}
+                                                            {formatAmount(Number(studentDetails.profile?.fee_balance || 0))}
                                                         </Text>
                                                     </View>
                                                 </View>

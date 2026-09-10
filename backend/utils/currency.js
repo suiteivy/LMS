@@ -6,8 +6,9 @@ const normalizeAmount = (value) => {
 };
 
 const normalizeCurrency = (currency = {}) => {
-  const code = String(currency.code || 'USD').toUpperCase();
-  const symbol = String(currency.symbol || code);
+  const code = String(currency.code || 'KES').toUpperCase();
+  const fallbackSymbol = code === 'KES' ? 'KSh' : code === 'USD' ? '$' : code;
+  const symbol = String(currency.symbol || fallbackSymbol);
   const decimalPlaces = Number.isInteger(currency.decimal_places)
     ? currency.decimal_places
     : 2;

@@ -18,8 +18,8 @@ export interface TeacherAttendance {
     }
 }
 
-export const TeacherAttendanceAPI = {
-    // Teacher Attendance
+export const AdminTeacherAttendanceAPI = {
+    // Teacher Attendance (admin-only backend routes)
     getAttendance: async (date: string, pagination?: { page?: number; limit?: number }) => {
         const response = await api.get(`/attendance/teachers`, { params: { date, ...(pagination || {}) } });
         return Array.isArray(response.data) ? response.data : (response.data?.data || []);
@@ -28,8 +28,10 @@ export const TeacherAttendanceAPI = {
     markAttendance: async (data: { teacher_id: string; date: string; status: string; notes?: string }) => {
         const response = await api.post('/attendance/teachers', data);
         return response.data;
-    },
+    }
+};
 
+export const TeacherAttendanceAPI = {
     // Student Attendance
     getStudentAttendance: async (date: string, subjectId: string, pagination?: { page?: number; limit?: number }) => {
         const response = await api.get(`/attendance/students`, { params: { date, subject_id: subjectId, ...(pagination || {}) } });

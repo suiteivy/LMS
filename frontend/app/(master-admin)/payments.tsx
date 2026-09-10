@@ -19,6 +19,7 @@ import { TableRowSkeleton } from '@/components/ui/skeletons';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
+import type { CurrencyFormatInput } from '@/utils/currency';
 
 type PaymentRow = {
   id: string;
@@ -31,7 +32,14 @@ type PaymentRow = {
   status?: string | null;
   reference_id?: string | null;
   meta?: Record<string, any> | null;
-  institutions?: { name?: string | null } | null;
+  institutions?: {
+    name?: string | null;
+    currency?: {
+      code?: string | null;
+      symbol?: string | null;
+      decimal_places?: number | null;
+    } | null;
+  } | null;
   users?: { first_name?: string | null; last_name?: string | null; email?: string | null } | null;
 };
 
@@ -45,6 +53,28 @@ type SummaryRow = {
   balance_due: number;
   excess_amount: number;
   is_balanced: boolean;
+  currency?: {
+    code?: string | null;
+    symbol?: string | null;
+    decimal_places?: number | null;
+  } | null;
+};
+
+type NullableCurrencyMeta = {
+  code?: string | null;
+  symbol?: string | null;
+  decimal_places?: number | null;
+} | null | undefined;
+
+const toCurrencyInput = (currency: NullableCurrencyMeta): CurrencyFormatInput | undefined => {
+  if (!currency) return undefined;
+
+  const decimalPlaces = Number(currency.decimal_places);
+  return {
+    code: currency.code ? String(currency.code) : undefined,
+    symbol: currency.symbol ? String(currency.symbol) : undefined,
+    decimal_places: Number.isInteger(decimalPlaces) ? decimalPlaces : undefined,
+  };
 };
 
 const useThemeColors = (isDark: boolean) => ({
@@ -245,7 +275,7 @@ export default function MasterPaymentsPage() {
     }
   };
 
-  const formatAmount = (v: number) => formatMoney(Number(v || 0));
+  const formatAmount = (v: number, currency?: CurrencyFormatInput) => formatMoney(Number(v || 0), currency);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }}>
@@ -301,10 +331,10 @@ export default function MasterPaymentsPage() {
                   <View style={{ borderWidth: 1, borderColor: c.border, borderRadius: 12, padding: 10, marginRight: 10, minWidth: 240, backgroundColor: c.bg }}>
                     <Text style={{ color: c.text, fontWeight: '800' }} numberOfLines={1}>{item.institution_name}</Text>
                     <Text style={{ color: c.sub, marginTop: 2 }}>{String(item.subscription_plan || '').toUpperCase()}  •  {String(item.subscription_status || '').toUpperCase()}</Text>
-                    <Text style={{ color: c.sub, marginTop: 6 }}>Expected: {formatAmount(item.expected_amount)}</Text>
-                    <Text style={{ color: c.sub, marginTop: 2 }}>Paid: {formatAmount(item.paid_amount)}</Text>
-                    {item.balance_due > 0 && <Text style={{ color: c.warn, marginTop: 2, fontWeight: '700' }}>Balance: {formatAmount(item.balance_due)}</Text>}
-                    {item.excess_amount > 0 && <Text style={{ color: c.success, marginTop: 2, fontWeight: '700' }}>Excess: {formatAmount(item.excess_amount)}</Text>}
+                    <Text style={{ color: c.sub, marginTop: 6 }}>Expected: {formatAmount(item.expected_amount, toCurrencyInput(item.currency))}</Text>
+                    <Text style={{ color: c.sub, marginTop: 2 }}>Paid: {formatAmount(item.paid_amount, toCurrencyInput(item.currency))}</Text>
+                    {item.balance_due > 0 && <Text style={{ color: c.warn, marginTop: 2, fontWeight: '700' }}>Balance: {formatAmount(item.balance_due, toCurrencyInput(item.currency))}</Text>}
+                    {item.excess_amount > 0 && <Text style={{ color: c.success, marginTop: 2, fontWeight: '700' }}>Excess: {formatAmount(item.excess_amount, toCurrencyInput(item.currency))}</Text>}
                     <Text style={{ color: badgeColor, marginTop: 6, fontWeight: '800' }}>{badge}</Text>
                   </View>
                 );
@@ -346,7 +376,7 @@ export default function MasterPaymentsPage() {
                   <Text style={{ color: statusColor, fontWeight: '800' }}>{String(item.status || '').toUpperCase()}</Text>
                 </View>
 
-                <Text style={{ color: c.text, fontSize: 18, fontWeight: '800', marginTop: 8 }}>{formatAmount(item.amount)}</Text>
+                <Text style={{ color: c.text, fontSize: 18, fontWeight: '800', marginTop: 8 }}>{formatAmount(item.amount, toCurrencyInput(item.institutions?.currency))}</Text>
                 <Text style={{ color: c.sub, marginTop: 2 }}>
                   {String(item.method || '').toUpperCase()}  •  {String(item.date || '').slice(0, 10)}
                 </Text>

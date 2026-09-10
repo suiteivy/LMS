@@ -5,10 +5,10 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { TeacherAPI } from "@/services/TeacherService";
 import { CacheService } from "@/services/CacheService";
 import { router } from "expo-router";
-import { ArrowRight, BookOpen, Calendar, Clock, GraduationCap, MessageSquare, School, Users, LogOut, ShieldAlert } from 'lucide-react-native';
-import React, { useEffect, useState } from "react";
+import { ArrowRight, BookOpen, Calendar, Clock, GraduationCap, MessageSquare, School, Users, LogOut } from 'lucide-react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View, StatusBar } from 'react-native';
-import { SubscriptionBanner, SubscriptionGate, SubscriptionBadge } from '@/components/shared/SubscriptionComponents';
+import { SubscriptionBanner, SubscriptionGate } from '@/components/shared/SubscriptionComponents';
 import { formatClassLabel } from '@/utils/classLabel';
 import { useTeacherRoleMode } from '@/hooks/useTeacherRoleMode';
 import { showFetchError } from '@/utils/toast';
@@ -60,7 +60,7 @@ const QuickAction = ({ icon: Icon, label, color, onPress, badge }: QuickActionPr
 };
 
 export default function TeacherHome() {
-    const { profile, displayId, signOut, isInitializing, session, isDemo, logout } = useAuth();
+    const { profile, isInitializing, session, isDemo, logout } = useAuth();
     const [stats, setStats] = useState<any>(null);
     const [schedule, setSchedule] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -74,14 +74,20 @@ export default function TeacherHome() {
     const [assignedSubjects, setAssignedSubjects] = useState<any[]>([]);
     const [selectedSubjectTitle, setSelectedSubjectTitle] = useState<string>('');
     const [selectedClassId, setSelectedClassId] = useState<string>('');
+    const hydratedFromCacheRef = useRef(false);
 
     const cacheKey = profile?.id ? `teacher_dashboard_${profile.id}` : null;
 
-    const fetchDashboardData = async () => {
+    useEffect(() => {
+        hydratedFromCacheRef.current = false;
+    }, [cacheKey]);
+
+    const fetchDashboardData = useCallback(async () => {
         if (!isDemo && (isInitializing || !session)) return;
 
         // Try to hydrate from cache first to avoid blank screen
-        if (cacheKey && !stats) {
+        if (cacheKey && !hydratedFromCacheRef.current) {
+            hydratedFromCacheRef.current = true;
             const cached = await CacheService.get<any>(cacheKey, { allowStale: true });
             if (cached.data) {
                 setStats(cached.data.stats || null);
@@ -211,7 +217,7 @@ export default function TeacherHome() {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, [isDemo, isInitializing, session, cacheKey, syncRoles, setMode]);
 
     useEffect(() => {
         if (isInitializing) return;
@@ -221,7 +227,7 @@ export default function TeacherHome() {
         } else {
             setLoading(false);
         }
-    }, [isInitializing, session, isDemo]);
+    }, [isInitializing, session, isDemo, fetchDashboardData]);
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -240,6 +246,117 @@ export default function TeacherHome() {
 
     const uniqueSubjectTitles = Array.from(new Set(assignedSubjects.map(s => s.title)));
     const activeAssignment = assignedSubjects.find(s => s.title === selectedSubjectTitle && s.class?.id === selectedClassId);
+
+    const quickActions = useMemo(() => {
+        if (mode === 'class') {
+            return [
+                {
+                    key: 'classes',
+                    icon: School,
+                    label: 'Classes',
+                    color: '#8b5cf6',
+                    route: '/(teacher)/classes',
+                    gated: true,
+                },
+                {
+                    key: 'attendance',
+                    icon: Calendar,
+                    label: 'Attendance',
+                    color: '#16a34a',
+                    route: '/(teacher)/management/attendance',
+                    gated: false,
+                },
+                {
+                    key: 'reports',
+                    icon: GraduationCap,
+                    label: 'Report Cards',
+                    color: '#f59e0b',
+                    route: '/(teacher)/management/report-cards',
+                    gated: false,
+                },
+                {
+                    key: 'messages',
+                    icon: MessageSquare,
+                    label: 'Messages',
+                    color: '#0891b2',
+                    route: '/(teacher)/management/messages',
+                    gated: true,
+                },
+            ];
+        }
+
+        if (mode === 'librarian') {
+            return [
+                {
+                    key: 'library',
+                    icon: BookOpen,
+                    label: 'Library Desk',
+                    color: '#FF6900',
+                    route: '/(teacher)/management/library',
+                    gated: false,
+                },
+                {
+                    key: 'catalog',
+                    icon: School,
+                    label: 'Catalog',
+                    color: '#8b5cf6',
+                    route: '/(teacher)/library',
+                    gated: false,
+                },
+                {
+                    key: 'announcements',
+                    icon: ArrowRight,
+                    label: 'Announcements',
+                    color: '#f43f5e',
+                    route: '/(teacher)/management/announcements',
+                    gated: false,
+                },
+                {
+                    key: 'messages',
+                    icon: MessageSquare,
+                    label: 'Messages',
+                    color: '#0891b2',
+                    route: '/(teacher)/management/messages',
+                    gated: true,
+                },
+            ];
+        }
+
+        return [
+            {
+                key: 'grades',
+                icon: GraduationCap,
+                label: 'Grade Entry',
+                color: isDark ? '#ff6900' : '#1a1a1a',
+                route: '/(teacher)/management/grade-entry',
+                gated: false,
+            },
+            {
+                key: 'classes',
+                icon: School,
+                label: 'Classes',
+                color: '#8b5cf6',
+                route: '/(teacher)/classes',
+                gated: true,
+            },
+            {
+                key: 'assignments',
+                icon: ArrowRight,
+                label: 'Assignments',
+                color: '#f43f5e',
+                route: '/(teacher)/management/assignments',
+                gated: false,
+            },
+            {
+                key: 'messages',
+                icon: MessageSquare,
+                label: 'Messages',
+                color: '#0891b2',
+                route: '/(teacher)/management/messages',
+                gated: true,
+            },
+        ];
+    }, [mode, isDark]);
 
     return (
         <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
@@ -615,42 +732,27 @@ export default function TeacherHome() {
                             Quick Actions
                         </Text>
                         <View className="flex-row flex-wrap justify-between">
-                            <View className="w-[48%] ">
-                                <QuickAction
-                                    icon={GraduationCap}
-                                    label="Grades"
-                                    color={isDark ? "#ff6900" : "#1a1a1a"}
-                                    onPress={() => router.push({ pathname: "/(teacher)/management/grades", params: { backTo: "/(teacher)" } } as any)}
-                                />
-                            </View>
-                            <View className="w-[48%]">
-                                <SubscriptionGate>
-                                    <QuickAction
-                                        icon={School}
-                                        label="Classes"
-                                        color="#8b5cf6"
-                                        onPress={() => router.push("/(teacher)/classes" as any)}
-                                    />
-                                </SubscriptionGate>
-                            </View>
-                            <View className="w-[48%]">
-                                <QuickAction
-                                    icon={ArrowRight}
-                                    label="Assignments"
-                                    color="#f43f5e"
-                                    onPress={() => router.push({ pathname: "/(teacher)/management/assignments", params: { backTo: "/(teacher)" } } as any)}
-                                />
-                            </View>
-                            <View className="w-[48%]">
-                                <SubscriptionGate>
-                                    <QuickAction
-                                        icon={MessageSquare}
-                                        label="Messages"
-                                        color="#0891b2"
-                                        onPress={() => router.push({ pathname: "/(teacher)/management/messages", params: { backTo: "/(teacher)" } } as any)}
-                                    />
-                                </SubscriptionGate>
-                            </View>
+                            {quickActions.map((action) => (
+                                <View key={action.key} className="w-[48%]">
+                                    {action.gated ? (
+                                        <SubscriptionGate>
+                                            <QuickAction
+                                                icon={action.icon}
+                                                label={action.label}
+                                                color={action.color}
+                                                onPress={() => router.push({ pathname: action.route as any, params: { backTo: '/(teacher)' } } as any)}
+                                            />
+                                        </SubscriptionGate>
+                                    ) : (
+                                        <QuickAction
+                                            icon={action.icon}
+                                            label={action.label}
+                                            color={action.color}
+                                            onPress={() => router.push({ pathname: action.route as any, params: { backTo: '/(teacher)' } } as any)}
+                                        />
+                                    )}
+                                </View>
+                            ))}
                         </View>
                     </View>
                 </View>

@@ -54,20 +54,6 @@ export const FloatingScrollTop: React.FC<FloatingScrollTopProps> = ({
         },
       ]}
     >
-      {/* Sleek cyber tooltip on hover (Web only) */}
-      {isWeb && isHovered && (
-        <View
-          pointerEvents="none"
-          style={[
-            styles.tooltip,
-            { whiteSpace: 'nowrap' } as any,
-          ]}
-        >
-          <Text style={styles.tooltipText}>Back to top</Text>
-          <View style={styles.tooltipArrow} />
-        </View>
-      )}
-
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={onPress}
@@ -107,16 +93,6 @@ export const FloatingScrollTop: React.FC<FloatingScrollTopProps> = ({
             } as any),
           ]}
         />
-
-        {/* Ambient accent core glow */}
-        <View
-          pointerEvents="none"
-          style={[
-            styles.glowCenter,
-            isHovered && styles.glowCenterHovered,
-          ]}
-        />
-
         {/* Arrow / Chevron Icon */}
         <View
           style={[
@@ -178,17 +154,6 @@ const styles = StyleSheet.create({
     height: '50%',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-  },
-  glowCenter: {
-    position: 'absolute',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 107, 0, 0.15)',
-  },
-  glowCenterHovered: {
-    backgroundColor: 'rgba(255, 107, 0, 0.3)',
-    transform: [{ scale: 1.4 }],
   },
   iconWrapper: {
     alignItems: 'center',

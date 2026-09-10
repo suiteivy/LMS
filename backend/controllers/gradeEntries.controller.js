@@ -1264,7 +1264,7 @@ async function getStudentGradingScale(req, res) {
 }
 
 // ─── Performance Trends ────────────────────────────────────────────────────────
-// GET /grade-entries/performance-trends?student_id=X (or class_id=X)
+// GET /grade-entries/performance-trends?student_id=X (or class_id=X or subject_id=X)
 // Returns term-over-term average scores per subject for a student,
 // or class averages per subject per term.
 
@@ -1274,8 +1274,8 @@ async function getPerformanceTrends(req, res) {
     const institution_id = req.user?.institution_id;
     const role = req.user?.role;
 
-    if (!student_id && !class_id) {
-      return sendError(res, 400, 'student_id or class_id is required');
+    if (!student_id && !class_id && !subject_id) {
+      return sendError(res, 400, 'student_id, class_id or subject_id is required');
     }
 
     // 1. Get all terms for this institution
@@ -1296,6 +1296,7 @@ async function getPerformanceTrends(req, res) {
     let gradeQuery = supabase
       .from('grade_entries')
       .select('term_id, subject_id, percentage, letter_grade, subjects(title)')
+      .eq('institution_id', institution_id)
       .in('term_id', termIds);
 
     if (student_id) {
@@ -1310,19 +1311,7 @@ async function getPerformanceTrends(req, res) {
     const { data: gradeEntries, error: gErr } = await gradeQuery;
     if (gErr) throw gErr;
 
-    // 3. Also pull from submissions (assignment grades) for fuller picture
-    let submissionQuery = supabase
-      .from('submissions')
-      .select('id, grade, student_id, assignment:assignments!inner(subject_id, subject:subjects!inner(title), is_published, subject:class_id)')
-      .eq('status', 'graded');
-
-    if (student_id) {
-      submissionQuery = submissionQuery.eq('student_id', student_id);
-    }
-
-    const { data: submissions } = await submissionQuery;
-
-    // 4. Aggregate by term → subject → average percentage
+    // 3. Aggregate by term → subject → average percentage
     const trendsByTerm = {};
     const subjectNames = {};
 
@@ -1341,7 +1330,7 @@ async function getPerformanceTrends(req, res) {
       }
     });
 
-    // 5. Build subject list and term data
+    // 4. Build subject list and term data
     const allSubjectIds = Object.keys(subjectNames);
     const resultTerms = termIds
       .filter((tid) => trendsByTerm[tid])

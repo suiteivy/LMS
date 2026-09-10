@@ -23,14 +23,15 @@ WHERE is_default = true;
 
 INSERT INTO currencies (code, name, symbol, usd_rate, decimal_places, is_default, is_active)
 VALUES
-    ('USD', 'US Dollar', '$', 1, 2, true, true),
-    ('KES', 'Kenyan Shilling', 'KSh', 130, 2, false, true)
+    ('USD', 'US Dollar', '$', 1, 2, false, true),
+    ('KES', 'Kenyan Shilling', 'KSh', 130, 2, true, true)
 ON CONFLICT (code) DO UPDATE
 SET
     name = EXCLUDED.name,
     symbol = EXCLUDED.symbol,
     usd_rate = EXCLUDED.usd_rate,
     decimal_places = EXCLUDED.decimal_places,
+    is_default = EXCLUDED.is_default,
     is_active = true,
     updated_at = NOW();
 
@@ -40,7 +41,7 @@ ADD COLUMN IF NOT EXISTS currency_id UUID REFERENCES currencies(id);
 UPDATE institutions i
 SET currency_id = c.id
 FROM currencies c
-WHERE c.code = 'USD'
+WHERE c.code = 'KES'
   AND i.currency_id IS NULL;
 
 ALTER TABLE institutions

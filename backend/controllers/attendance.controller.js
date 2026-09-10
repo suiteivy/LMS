@@ -5,36 +5,94 @@ const { authorizeTeacherForSubject } = require("../middleware/resolveTeacher.js"
 const { recomputeDailyHoursForInstitutionDate } = require('../services/dailyHours.service.js');
 const { parsePagination, paginatedResponse } = require("../utils/pagination.js");
 
-const getSubjectLinkedClassIds = async (subjectId, institutionId) => {
-    const classIds = new Set();
+const isMissingColumnError = (error, columnName) => {
+    if (!error) return false;
+    const code = String(error.code || "");
+    const message = String(error.message || "").toLowerCase();
+    const normalizedColumn = String(columnName || "").toLowerCase();
+    return code === '42703' && message.includes(normalizedColumn);
+};
 
-    const { data: subjectRow, error: subjectErr } = await supabase
+const fetchSubjectClassLinkSource = async (subjectId, institutionId) => {
+    const { data: subjectWithMetadata, error: subjectWithMetadataError } = await supabase
         .from('subjects')
         .select('class_id, metadata')
         .eq('id', subjectId)
         .eq('institution_id', institutionId)
         .single();
 
-    if (subjectErr) throw subjectErr;
+    if (!subjectWithMetadataError) {
+        return subjectWithMetadata;
+    }
+
+    // Backward compatibility: some deployments do not have subjects.metadata yet.
+    if (subjectWithMetadataError.code !== '42703') {
+        throw subjectWithMetadataError;
+    }
+
+    const { data: fallbackSubject, error: fallbackSubjectError } = await supabase
+        .from('subjects')
+        .select('class_id')
+        .eq('id', subjectId)
+        .eq('institution_id', institutionId)
+        .single();
+
+    if (fallbackSubjectError) {
+        throw fallbackSubjectError;
+    }
+
+    return { class_id: fallbackSubject?.class_id || null, metadata: null };
+};
+
+const getSubjectLinkedClassIds = async (subjectId, institutionId) => {
+    const classIds = new Set();
+
+    const subjectRow = await fetchSubjectClassLinkSource(subjectId, institutionId);
 
     if (subjectRow?.class_id) classIds.add(subjectRow.class_id);
     if (Array.isArray(subjectRow?.metadata?.class_ids)) {
         subjectRow.metadata.class_ids.filter(Boolean).forEach((id) => classIds.add(id));
     }
 
-    const { data: linkRows, error: linkErr } = await supabase
+    let linkRows = [];
+    const { data: scopedLinkRows, error: linkErr } = await supabase
         .from('subject_classes')
         .select('class_id')
         .eq('subject_id', subjectId)
         .eq('institution_id', institutionId);
 
-    if (linkErr && linkErr.code !== '42P01') throw linkErr;
+    if (!linkErr) {
+        linkRows = scopedLinkRows || [];
+    } else if (linkErr.code === '42P01') {
+        linkRows = [];
+    } else if (linkErr.code === '42703') {
+        const { data: fallbackLinkRows, error: fallbackLinkErr } = await supabase
+            .from('subject_classes')
+            .select('class_id')
+            .eq('subject_id', subjectId);
+
+        if (fallbackLinkErr && fallbackLinkErr.code !== '42P01') throw fallbackLinkErr;
+        linkRows = fallbackLinkRows || [];
+    } else {
+        throw linkErr;
+    }
 
     (linkRows || []).forEach((row) => {
         if (row.class_id) classIds.add(row.class_id);
     });
 
-    return Array.from(classIds);
+    const candidateClassIds = Array.from(classIds);
+    if (candidateClassIds.length === 0) return [];
+
+    const { data: scopedClasses, error: scopedClassesError } = await supabase
+        .from('classes')
+        .select('id')
+        .eq('institution_id', institutionId)
+        .in('id', candidateClassIds);
+
+    if (scopedClassesError) throw scopedClassesError;
+
+    return (scopedClasses || []).map((row) => String(row.id));
 };
 
 /**
@@ -55,45 +113,80 @@ exports.getStudentAttendance = async (req, res) => {
             return res.status(403).json({ error: "Unauthorized" });
         }
 
-        // 1. Get all students enrolled in this subject (via enrollments)
-        const { data: enrollments, error: eError } = await supabase
-            .from("students")
-            .select("id, users!inner(first_name, last_name, full_name, avatar_url), enrollments!inner(subject_id)")
-            .eq("institution_id", institution_id)
-            .eq("enrollments.subject_id", subject_id);
+        // 1. Get student IDs enrolled directly to this subject (via enrollments).
+        // Avoid deep relational select here for compatibility with deployments where
+        // PostgREST relation metadata may not resolve consistently.
+        let directEnrollmentRows;
+        {
+            let directQuery = supabase
+                .from('enrollments')
+                .select('student_id')
+                .eq('subject_id', subject_id)
+                .eq('status', 'enrolled')
+                .eq('institution_id', institution_id);
 
-        if (eError) throw eError;
+            let directResult = await directQuery;
+            if (directResult.error && isMissingColumnError(directResult.error, 'institution_id')) {
+                // Legacy schema fallback. Final student rows are still institution-scoped below.
+                directResult = await supabase
+                    .from('enrollments')
+                    .select('student_id')
+                    .eq('subject_id', subject_id)
+                    .eq('status', 'enrolled');
+            }
+
+            if (directResult.error) throw directResult.error;
+            directEnrollmentRows = directResult.data || [];
+        }
 
         // Also get students enrolled via class_enrollments (class → subject links)
         let classEnrolledStudents = [];
         const linkedClassIds = await getSubjectLinkedClassIds(subject_id, institution_id);
-        if (_class_id && !linkedClassIds.includes(String(_class_id))) {
+        const normalizedLinkedClassIds = linkedClassIds.map((id) => String(id));
+        if (_class_id && !normalizedLinkedClassIds.includes(String(_class_id))) {
             return res.status(400).json({ error: "Class is not linked to this subject" });
         }
-        const classIdsToCheck = _class_id ? [String(_class_id)] : linkedClassIds;
+        const classIdsToCheck = _class_id ? [String(_class_id)] : normalizedLinkedClassIds;
 
         if (classIdsToCheck.length > 0) {
-            const { data: classEnrolls } = await supabase
+            let classEnrollResult = await supabase
                 .from('class_enrollments')
                 .select('student_id')
                 .eq('institution_id', institution_id)
                 .in('class_id', classIdsToCheck);
-            classEnrolledStudents = (classEnrolls || []).map(e => e.student_id);
+
+            if (classEnrollResult.error && isMissingColumnError(classEnrollResult.error, 'institution_id')) {
+                // Legacy schema fallback. Final student rows are still institution-scoped below.
+                classEnrollResult = await supabase
+                    .from('class_enrollments')
+                    .select('student_id')
+                    .in('class_id', classIdsToCheck);
+            }
+
+            if (classEnrollResult.error) throw classEnrollResult.error;
+            classEnrolledStudents = (classEnrollResult.data || []).map((e) => e.student_id);
         }
 
         // Merge student IDs from both enrollment sources
-        const enrollmentStudentIds = new Set((enrollments || []).map(s => s.id));
-        (classEnrolledStudents || []).forEach(id => enrollmentStudentIds.add(id));
+        const enrollmentStudentIds = new Set(
+            (directEnrollmentRows || []).map((row) => row.student_id).filter(Boolean)
+        );
+        (classEnrolledStudents || []).forEach((id) => {
+            if (id) enrollmentStudentIds.add(id);
+        });
 
-        // Fetch student details for class-enrolled students not already in enrollments
-        let allStudents = [...(enrollments || [])];
-        const newIds = [...enrollmentStudentIds].filter(id => !allStudents.find(s => s.id === id));
-        if (newIds.length > 0) {
-            const { data: extraStudents } = await supabase
+        // 1b. Resolve student profile rows for the merged student set.
+        let allStudents = [];
+        const mergedStudentIds = Array.from(enrollmentStudentIds);
+        if (mergedStudentIds.length > 0) {
+            const { data: studentRows, error: studentError } = await supabase
                 .from('students')
                 .select('id, users!inner(first_name, last_name, full_name, avatar_url)')
-                .in('id', newIds);
-            if (extraStudents) allStudents = [...allStudents, ...extraStudents];
+                .eq('institution_id', institution_id)
+                .in('id', mergedStudentIds);
+
+            if (studentError) throw studentError;
+            allStudents = studentRows || [];
         }
 
         // 2. Get attendance records for date and subject
@@ -107,8 +200,9 @@ exports.getStudentAttendance = async (req, res) => {
         if (aError) throw aError;
 
         // Merge logic — use unified student list
+        const attendanceByStudentId = new Map((attendance || []).map((record) => [record.student_id, record]));
         const result = allStudents.map(s => {
-            const record = attendance?.find(a => a.student_id === s.id);
+            const record = attendanceByStudentId.get(s.id);
             return {
                 student_id: s.id,
                 student_display_id: s.id,
@@ -126,7 +220,13 @@ exports.getStudentAttendance = async (req, res) => {
         const pagedResult = result.slice(from, to + 1);
         res.json(paginatedResponse(pagedResult, result.length, page, limit));
     } catch (err) {
-        console.error("[Attendance] getStudentAttendance error:", err);
+        console.error("[Attendance] getStudentAttendance error:", {
+            message: err?.message,
+            code: err?.code,
+            details: err?.details,
+            hint: err?.hint,
+            stack: err?.stack,
+        });
         res.status(500).json({ error: err.message });
     }
 };

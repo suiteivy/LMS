@@ -18,9 +18,12 @@ const resolveCurrencyMeta = (currency?: CurrencyFormatInput) => {
     return { code, symbol: code, decimal_places: 2 };
   }
 
+  const code = String(currency.code || 'KES').toUpperCase();
+  const fallbackSymbol = code === 'KES' ? 'KSh' : code === 'USD' ? '$' : code;
+
   return {
-    code: String(currency.code || 'KES').toUpperCase(),
-    symbol: String(currency.symbol || 'KSh'),
+    code,
+    symbol: String(currency.symbol || fallbackSymbol),
     decimal_places: Number.isInteger(currency.decimal_places) ? currency.decimal_places : 2,
   };
 };

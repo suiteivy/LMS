@@ -57,9 +57,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_currencies_single_default
 
 INSERT INTO currencies (code, name, symbol, usd_rate, decimal_places, is_default, is_active)
 VALUES
-    ('USD', 'US Dollar', '$', 1, 2, true, true),
-    ('KES', 'Kenyan Shilling', 'KSh', 130, 2, false, true)
-ON CONFLICT (code) DO NOTHING;
+    ('USD', 'US Dollar', '$', 1, 2, false, true),
+    ('KES', 'Kenyan Shilling', 'KSh', 130, 2, true, true)
+ON CONFLICT (code) DO UPDATE
+SET
+    name = EXCLUDED.name,
+    symbol = EXCLUDED.symbol,
+    usd_rate = EXCLUDED.usd_rate,
+    decimal_places = EXCLUDED.decimal_places,
+    is_default = EXCLUDED.is_default,
+    is_active = EXCLUDED.is_active;
 
 -- 1. Institutions
 CREATE TABLE institutions (
@@ -89,7 +96,7 @@ CREATE TABLE institutions (
 UPDATE institutions i
 SET currency_id = c.id
 FROM currencies c
-WHERE c.code = 'USD'
+WHERE c.code = 'KES'
   AND i.currency_id IS NULL;
 
 ALTER TABLE institutions

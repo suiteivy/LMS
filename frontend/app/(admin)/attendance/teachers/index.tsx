@@ -1,6 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
-import { TeacherAttendance, TeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
+import { TeacherAttendance, AdminTeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
 import {DatePicker} from '@/components/common/DatePicker';
 import { useRouter } from "expo-router";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
@@ -39,7 +39,7 @@ export default function TeacherAttendancePage() {
         setLoading(true);
         try {
             const dateStr = getLocalDateString(date);
-            const data = await TeacherAttendanceAPI.getAttendance(dateStr);
+            const data = await AdminTeacherAttendanceAPI.getAttendance(dateStr);
             setAttendance(data);
             setPendingChanges({});
         } catch (error: any) {
@@ -64,7 +64,7 @@ export default function TeacherAttendancePage() {
             const dateStr = getLocalDateString(date);
             await Promise.all(
                 changes.map(([teacherId, status]) => 
-                    TeacherAttendanceAPI.markAttendance({ teacher_id: teacherId, date: dateStr, status, notes: "" })
+                    AdminTeacherAttendanceAPI.markAttendance({ teacher_id: teacherId, date: dateStr, status, notes: "" })
                 )
             );
             Alert.alert("Success", "Attendance saved successfully");

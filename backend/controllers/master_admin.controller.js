@@ -149,6 +149,19 @@ const getDefaultCurrencyId = async (adminClient) => {
     return defaultCurrency?.id || null;
 };
 
+const getDefaultCurrencyMeta = async (adminClient) => {
+    const { data: defaultCurrency, error } = await adminClient
+        .from('currencies')
+        .select('code, symbol, decimal_places')
+        .eq('is_default', true)
+        .eq('is_active', true)
+        .maybeSingle();
+
+    if (error) throw error;
+    if (defaultCurrency?.code) return defaultCurrency;
+    return { code: 'KES', symbol: 'KSh', decimal_places: 2 };
+};
+
 const ensureActiveCurrencyId = async (adminClient, currencyId, { allowDefaultFallback = false } = {}) => {
     const normalizedCurrencyId = toUuidString(currencyId);
     if (!normalizedCurrencyId) {
@@ -170,7 +183,7 @@ const ensureActiveCurrencyId = async (adminClient, currencyId, { allowDefaultFal
 const getInstitutionCurrency = async (adminClient, institutionId) => {
     const normalizedInstitutionId = toUuidString(institutionId);
     if (!normalizedInstitutionId) {
-        return { code: 'USD', symbol: '$', decimal_places: 2 };
+        return getDefaultCurrencyMeta(adminClient);
     }
 
     const { data } = await adminClient
@@ -179,7 +192,7 @@ const getInstitutionCurrency = async (adminClient, institutionId) => {
         .eq('id', normalizedInstitutionId)
         .maybeSingle();
 
-    return data?.currency || { code: 'USD', symbol: '$', decimal_places: 2 };
+    return data?.currency || getDefaultCurrencyMeta(adminClient);
 };
 
 const normalizeCategoryIds = (payload) => {
@@ -2734,7 +2747,7 @@ exports.getAllPayments = async (req, res) => {
             .from('financial_transactions')
             .select(`
                 *,
-                institutions:institution_id(name),
+                institutions:institution_id(name, currency:currency_id(code, symbol, decimal_places)),
                 users:user_id(first_name, last_name, email)
             `)
             .order('date', { ascending: false });
@@ -2912,7 +2925,7 @@ exports.getPaymentsSummaryByInstitution = async (_req, res) => {
         const [{ data: institutions, error: instError }, { data: txs, error: txError }] = await Promise.all([
             adminClient
                 .from('institutions')
-                .select('id, name, subscription_plan, subscription_status, subscription_tracking_start_date, subscription_cycle'),
+                .select('id, name, subscription_plan, subscription_status, subscription_tracking_start_date, subscription_cycle, currency:currency_id(code, symbol, decimal_places)'),
             adminClient
                 .from('financial_transactions')
                 .select('institution_id, amount, status, type, direction, meta')
@@ -2921,6 +2934,8 @@ exports.getPaymentsSummaryByInstitution = async (_req, res) => {
 
         if (instError) throw instError;
         if (txError) throw txError;
+
+        const defaultCurrency = await getDefaultCurrencyMeta(adminClient);
 
         const totalsByInstitution = new Map();
         for (const tx of txs || []) {
@@ -2941,6 +2956,7 @@ exports.getPaymentsSummaryByInstitution = async (_req, res) => {
             return {
                 institution_id: inst.id,
                 institution_name: inst.name,
+                currency: inst.currency || defaultCurrency,
                 subscription_plan: inst.subscription_plan,
                 subscription_status: inst.subscription_status,
                 subscription_tracking_start: inst.subscription_tracking_start_date,

@@ -38,7 +38,7 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({
     },
     {
       label: "Revenue",
-      value: "$45,678",
+      value: "45,678",
       icon: "cash",
       color: "yellow",
       trend: { value: "+15%", isPositive: true }

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
-import { ArrowLeft, TrendingUp, Users, BookOpen, Award, Download, Zap } from 'lucide-react-native';
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, ScrollView, StatusBar } from 'react-native';
+import { TrendingUp, Users, BookOpen, Award, Zap } from 'lucide-react-native';
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,7 +10,7 @@ import { GradingAPI } from "@/services/GradingService";
 import { SubscriptionBanner, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
-import { TrendChart, SubjectTrendCard } from "@/components/common/TrendChart";
+import { TrendChart } from "@/components/common/TrendChart";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -68,10 +68,9 @@ const SubjectAnalyticsCard = ({ Subject }: { Subject: SubjectAnalytics }) => {
 };
 
 export default function AnalyticsPage() {
-    const { profile, teacherId, isDemo } = useAuth();
+    const { teacherId, isDemo } = useAuth();
     const tier = useSubscriptionTier();
     const { isDark } = useTheme();
-    const [selectedPeriod, setSelectedPeriod] = useState("All Time");
     const [subjectAnalytics, setSubjectAnalytics] = useState<SubjectAnalytics[]>([]);
     const [loading, setLoading] = useState(true);
     const [topPerformers, setTopPerformers] = useState<any[]>([]);
@@ -80,7 +79,7 @@ export default function AnalyticsPage() {
         router.push({ pathname: '/(teacher)/accessibility/settings', params: { manual: '1', anchor: anchor || 'promotion-engine' } } as any);
     };
 
-    const fetchAnalytics = async () => {
+    const fetchAnalytics = useCallback(async () => {
         setLoading(true);
         try {
             if (isDemo) {
@@ -101,13 +100,26 @@ export default function AnalyticsPage() {
             const data = await TeacherAPI.getAnalytics();
             setSubjectAnalytics(data);
 
-            const assignedSubjects = await SubjectAPI.getFilteredSubjects();
+            const assignedSubjectsRaw = await SubjectAPI.getFilteredSubjects();
+            const assignedSubjects = Array.isArray(assignedSubjectsRaw) ? assignedSubjectsRaw : [];
             const assignedSubjectIds = (assignedSubjects || []).map((s: any) => s.id).filter(Boolean);
 
-            // Fetch performance trends for first subject (overview)
-            if (data.length > 0) {
-                const trendData = await GradingAPI.getPerformanceTrends({}).catch(() => ({ terms: [], subjects: [] }));
-                setTrends(trendData);
+            // Fetch performance trends for one assigned class+subject (overview)
+            if (data.length > 0 && assignedSubjects.length > 0) {
+                const firstSubject: any = assignedSubjects[0];
+                const trendClassId = firstSubject?.class_id || firstSubject?.class_ids?.[0] || null;
+                const trendSubjectId = firstSubject?.id || null;
+
+                if (trendClassId && trendSubjectId) {
+                    const trendData = await GradingAPI
+                        .getPerformanceTrends({ class_id: trendClassId, subject_id: trendSubjectId })
+                        .catch(() => ({ terms: [], subjects: [] }));
+                    setTrends(trendData);
+                } else {
+                    setTrends({ terms: [], subjects: [] });
+                }
+            } else {
+                setTrends({ terms: [], subjects: [] });
             }
 
             if (assignedSubjectIds.length === 0) {
@@ -116,17 +128,24 @@ export default function AnalyticsPage() {
                 return;
             }
 
+            const { data: assignments, error: assignmentError } = await supabase
+                .from('assignments')
+                .select('id')
+                .in('subject_id', assignedSubjectIds);
+
+            if (assignmentError) throw assignmentError;
+
+            const assignmentIds = (assignments || []).map((assignment: any) => assignment.id).filter(Boolean);
+            if (assignmentIds.length === 0) {
+                setTopPerformers([]);
+                setLoading(false);
+                return;
+            }
+
             const { data: allSubmissions, error: submissionError } = await supabase
                 .from('submissions')
-                .select(`
-                    grade,
-                    student_id,
-                    students (full_name),
-                    assignment:assignments!inner (
-                        subject_id
-                    )
-                `)
-                .in('assignment.subject_id', assignedSubjectIds)
+                .select('grade, student_id, students(full_name), assignment_id')
+                .in('assignment_id', assignmentIds)
                 .eq('status', 'graded');
 
             if (submissionError) throw submissionError;
@@ -163,13 +182,13 @@ export default function AnalyticsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [isDemo]);
 
     useEffect(() => {
         if (teacherId || isDemo) {
             fetchAnalytics();
         }
-    }, [teacherId, isDemo]);
+    }, [teacherId, isDemo, fetchAnalytics]);
 
     const totalStudents = subjectAnalytics.reduce((acc, c) => acc + (c.students || 0), 0);
     const avgCompletion = subjectAnalytics.length > 0

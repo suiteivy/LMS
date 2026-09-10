@@ -18,7 +18,13 @@ exports.getDashboardStats = async (req, res) => {
         // row created by the DB trigger (it lives on the users table).
         const { data: teacher, error: tError } = await supabase
         .from('teachers')
-        .select('id')
+        .select(`
+            id,
+            department,
+            qualification,
+            position,
+            users:user_id(full_name, email, avatar_url)
+        `)
         .eq('user_id', userId)
         .single();
 

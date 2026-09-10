@@ -984,8 +984,8 @@ const dashboardStats = [
   },
   {
     label: 'Revenue',
-    value: 'KES 3,185,000',
-    subValue: '$24,688',
+    value: '3,185,000',
+    subValue: '24,688',
     icon: 'wallet',
     color: 'yellow',
   },

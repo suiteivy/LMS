@@ -10,16 +10,15 @@ import {
     GraduationCap,
     Megaphone,
     MessageSquare,
-    PenLine,
     Award
 } from 'lucide-react-native';
 import { ScrollView, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
-import { useTeacherRoleMode } from "@/hooks/useTeacherRoleMode";
+import { useTeacherRoleMode, type TeacherRoleMode } from "@/hooks/useTeacherRoleMode";
 import { CacheService } from "@/services/CacheService";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 interface FeatureCardProps {
     icon: any;
@@ -62,7 +61,7 @@ const FeatureCard = ({ icon: Icon, title, description, color, bgColor, route, ba
 export default function ManagementIndex() {
     const tier = useSubscriptionTier();
     const { hasDiary, hasAnalytics } = tier;
-    const { teacherId, isDemo, isLibrarian: isLibrarianAuth } = useAuth();
+    const { teacherId, isDemo } = useAuth();
     const { mode, setMode, canToggle, isSubjectTeacher, isClassTeacher, isLibrarian } = useTeacherRoleMode();
     const [pendingCount, setPendingCount] = useState<number | null>(null);
     const [submittedCount, setSubmittedCount] = useState<number | null>(null);
@@ -70,15 +69,7 @@ export default function ManagementIndex() {
     const [classStudentCount, setClassStudentCount] = useState<number | null>(null);
     const [statsLoading, setStatsLoading] = useState(true);
 
-    useEffect(() => {
-        if (teacherId || isDemo) {
-            fetchAllStats();
-        } else {
-            setStatsLoading(false);
-        }
-    }, [teacherId, isDemo]);
-
-    const fetchAllStats = async () => {
+    const fetchAllStats = useCallback(async () => {
         try {
             setStatsLoading(true);
             if (isDemo) {
@@ -175,16 +166,24 @@ export default function ManagementIndex() {
         } finally {
             setStatsLoading(false);
         }
-    };
+    }, [teacherId, isDemo]);
+
+    useEffect(() => {
+        if (teacherId || isDemo) {
+            fetchAllStats();
+        } else {
+            setStatsLoading(false);
+        }
+    }, [teacherId, isDemo, fetchAllStats]);
 
     const features: FeatureCardProps[] = [
         {
             icon: GraduationCap,
             title: "Performance",
-            description: "Grades and assessment tracking",
+            description: "Grade entry and assessment scoring",
             color: "#FF6900",
             bgColor: "#f3f4f6",
-            route: "/(teacher)/management/grades",
+            route: "/(teacher)/management/grade-entry",
             tooltipId: 'teacher.manage.performance'
         },
         {
@@ -233,15 +232,6 @@ export default function ManagementIndex() {
             tooltipId: 'teacher.manage.resources'
         },
         {
-            icon: PenLine,
-            title: "Grade Entry",
-            description: "Enter and manage grades for your subjects",
-            color: "#3b82f6",
-            bgColor: "#dbeafe",
-            route: "/(teacher)/management/grade-entry",
-            tooltipId: 'teacher.manage.grade_entry'
-        },
-        {
             icon: Award,
             title: "Report Cards",
             description: "View and manage student report cards",
@@ -280,43 +270,43 @@ export default function ManagementIndex() {
         }] : [])
     ];
 
+    const subjectModeRoutes = [
+        '/(teacher)/management/grade-entry',
+        '/(teacher)/management/assignments',
+        '/(teacher)/management/attendance',
+        '/(teacher)/management/resources',
+        '/(teacher)/management/messages',
+        '/(teacher)/management/announcements',
+        '/(teacher)/management/analytics',
+    ];
+
+    const classModeRoutes = [
+        '/(teacher)/management/attendance',
+        '/(teacher)/management/report-cards',
+        '/(teacher)/management/diary',
+        '/(teacher)/management/messages',
+        '/(teacher)/management/announcements',
+        '/(teacher)/management/analytics',
+    ];
+
+    const librarianModeRoutes = [
+        '/(teacher)/management/library',
+        '/(teacher)/management/messages',
+        '/(teacher)/management/announcements',
+    ];
+
+    const isRouteVisibleForMode = (route: string, roleMode: TeacherRoleMode) => {
+        if (roleMode === 'subject') return subjectModeRoutes.includes(route);
+        if (roleMode === 'class') return classModeRoutes.includes(route);
+        return librarianModeRoutes.includes(route);
+    };
+
     const visibleFeatures = features.filter((feature) => {
         if (feature.route === "/(teacher)/management/analytics" && !hasAnalytics) {
             return false;
         }
 
-        // In Subject Mode: hide Class-mode-only cards (Report Cards, Virtual Diary)
-        if (mode === 'subject') {
-            if (feature.route === "/(teacher)/management/report-cards" || feature.route === "/(teacher)/management/diary") {
-                return false;
-            }
-        }
-
-        // In Class Mode: hide Subject-mode-only cards (Coursework, Grade Entry, Academic Vault)
-        if (mode === 'class') {
-            if (
-                feature.route === "/(teacher)/management/assignments" ||
-                feature.route === "/(teacher)/management/grade-entry" ||
-                feature.route === "/(teacher)/management/resources"
-            ) {
-                return false;
-            }
-        }
-
-        // In Librarian Mode: hide classroom-specific cards, keep circulation, resources, messages, announcements
-        if (mode === 'librarian') {
-            if (
-                feature.route === "/(teacher)/management/assignments" ||
-                feature.route === "/(teacher)/management/grade-entry" ||
-                feature.route === "/(teacher)/management/report-cards" ||
-                feature.route === "/(teacher)/management/attendance" ||
-                feature.route === "/(teacher)/management/diary"
-            ) {
-                return false;
-            }
-        }
-
-        return true;
+        return isRouteVisibleForMode(feature.route, mode);
     });
 
     return (

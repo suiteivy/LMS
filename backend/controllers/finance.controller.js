@@ -18,6 +18,18 @@ const DEFAULT_RECORDED_BY_LABEL = 'Unknown';
 const ANNUAL_TERM_NAME = 'Annual';
 const FINANCE_ADMIN_ROLES = ['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'];
 
+const getDefaultCurrencyMeta = async () => {
+    const { data } = await supabase
+        .from('currencies')
+        .select('code, symbol, decimal_places')
+        .eq('is_default', true)
+        .eq('is_active', true)
+        .maybeSingle();
+
+    if (data?.code) return data;
+    return { code: 'KES', symbol: 'KSh', decimal_places: 2 };
+};
+
 const normalizeRoleForAccess = (value) => {
     const role = String(value || '').trim().toLowerCase();
     if (!role) return null;
@@ -896,13 +908,15 @@ const calculateInstitutionRevenue = async (institution_id) => {
 };
 
 const getInstitutionCurrency = async (institutionId) => {
+    if (!institutionId) return getDefaultCurrencyMeta();
+
     const { data } = await supabase
         .from('institutions')
         .select('currency:currency_id(code, symbol, decimal_places)')
         .eq('id', institutionId)
         .maybeSingle();
 
-    return data?.currency || { code: 'USD', symbol: '$', decimal_places: 2 };
+    return data?.currency || getDefaultCurrencyMeta();
 };
 
 /**

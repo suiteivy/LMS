@@ -159,9 +159,9 @@ export default function ExamsPage() {
  </View>
 
  <TouchableOpacity
- onPress={() => router.push(`/management/exam-results?examId=${exam.id}`)}
- className="flex-row items-center justify-between bg-gray-900 p-4 rounded-lg active:bg-gray-800"
- >
+ onPress={() => router.push({ pathname: "/(teacher)/management/exam-results", params: { examId: exam.id } } as any)}
+  className="flex-row items-center justify-between bg-gray-900 p-4 rounded-lg active:bg-gray-800"
+  >
  <Text className="text-white font-bold text-sm ml-2">Manage Student Results</Text>
  <ChevronRight size={18} color="white" />
  </TouchableOpacity>

@@ -218,7 +218,7 @@ export default function AnalyticsScreen() {
 
                                 <View className="mb-4">
                                     <View className="flex-row justify-between mb-1.5">
-                                        <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">Database Usage</Text>
+                                        <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">Studend Capacity</Text>
                                         <Text className="text-gray-900 dark:text-white text-xs font-black">
                                             {parseInt(stats.find(s => s.label === "Total Students")?.value || "0", 10) > 1000 ? "Medium" : "Low"}
                                         </Text>
@@ -232,17 +232,6 @@ export default function AnalyticsScreen() {
                                         }} />
                                     </View>
                                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] mt-1">Based on student records</Text>
-                                </View>
-
-                                <View>
-                                    <View className="flex-row justify-between mb-1.5">
-                                        <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">Server Status</Text>
-                                        <Text className="text-[10px] font-black" style={{ color: '#10b981' }}>Optimal</Text>
-                                    </View>
-                                    <View className="h-1.5 bg-[#EAEEF2] dark:bg-[#161B22] rounded-full overflow-hidden">
-                                        <View style={{ height: '100%', backgroundColor: '#10b981', width: '100%', borderRadius: 999 }} />
-                                    </View>
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] mt-1">All services operational</Text>
                                 </View>
                             </View>
                         </>

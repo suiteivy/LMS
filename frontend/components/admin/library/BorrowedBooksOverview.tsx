@@ -1,4 +1,5 @@
 import { EmptyState } from "@/components/common/EmptyState";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { LibraryAPI, useLibraryAPI } from "@/services/LibraryService";
 import { FrontendBorrowedBook } from "@/types/types";
@@ -49,6 +50,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
 }) => {
     // State management
     const { isDark } = useTheme();
+    const { formatAmount } = useCurrency();
     const pageBg = isDark ? "#161B22" : "#FFFFFF";
     const cardBg = isDark ? "#161B22" : "#FFFFFF";
     const surfaceBg = isDark ? "#1C2128" : "#F6F8FA";
@@ -67,7 +69,23 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
     const [fineAmount, setFineAmount] = useState("0");
     const [notes, setNotes] = useState("");
     const [refreshing, setRefreshing] = useState(false);
-    const [showReturnConfirm, setShowReturnConfirm] = useState(false)
+    const [showReturnConfirm, setShowReturnConfirm] = useState(false);
+
+    const normalizeMoneyValue = (value: number) => {
+        const numericValue = Number(value);
+        return Number.isFinite(numericValue) ? numericValue : 0;
+    };
+
+    const parseFineInput = (value: string) => {
+        const parsed = Number.parseFloat(value);
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+            return 0;
+        }
+        return parsed;
+    };
+
+    const formatMoney = (value: number) => formatAmount(normalizeMoneyValue(value));
+    const parsedFineAmount = parseFineInput(fineAmount);
 
     // API hook
     const { loading, error, executeWithLoading, clearError } = useLibraryAPI();
@@ -201,16 +219,14 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
     };
 
     const confirmReturn = async () => {
-        if (!selectedBook) return
-        setShowReturnConfirm(true)
-
-
+        if (!selectedBook) return;
+        setShowReturnConfirm(true);
     };
 
     const processReturn = async () => {
-        if (!selectedBook) return
-        const finalFine = parseFloat(fineAmount) || 0
-        setShowReturnConfirm(false)
+        if (!selectedBook) return;
+        const finalFine = parsedFineAmount;
+        setShowReturnConfirm(false);
 
         try {
             const notesToSubmit = returnCondition
@@ -218,25 +234,25 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                 : notes;
 
             if (onReturnBook) {
-                onReturnBook(selectedBook.id, finalFine, notesToSubmit)
+                onReturnBook(selectedBook.id, finalFine, notesToSubmit);
             } else {
-                await executeWithLoading(() => LibraryAPI.returnBook(selectedBook.id, notesToSubmit))
-                await fetchBorrowedBooks()
+                await executeWithLoading(() => LibraryAPI.returnBook(selectedBook.id, notesToSubmit));
+                await fetchBorrowedBooks();
             }
 
-            setShowReturnModal(false)
-            setSelectedBook(null)
+            setShowReturnModal(false);
+            setSelectedBook(null);
 
             Toast.show({
                 type: 'success',
                 text1: 'Book Returned',
                 text2: `${selectedBook.bookTitle} has been processed successfully.`,
                 position: 'top'
-            })
+            });
 
-            router.push('/management/library')
+            router.push('/management/library');
         } catch (error) {
-            console.error("Failed to return book:", error)
+            console.error("Failed to return book:", error);
             Toast.show({
                 type: 'error',
                 text1: 'Return Failed',
@@ -244,7 +260,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                 position: 'top',
             });
         }
-    }
+    };
 
     const handleExtendDueDate = async (borrowId: string, book: ExtendedBorrowedBook) => {
         const canRenew = (book.renewalCount || 0) < (book.maxRenewals || 1);
@@ -381,7 +397,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
     const handleProcessFine = async (borrowId: string, amount: number) => {
         Alert.alert(
             "Process Fine",
-            `Process fine of $${amount.toFixed(2)} for overdue book?`,
+            `Process fine of ${formatMoney(amount)} for overdue book?`,
             [
                 { text: "Cancel", style: "cancel" },
                 {
@@ -396,7 +412,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                                 // This might involve calling a separate API endpoint
                                 Alert.alert(
                                     "Fine Processed",
-                                    `Fine of $${amount.toFixed(2)} has been recorded.`,
+                                    `Fine of ${formatMoney(amount)} has been recorded.`,
                                     [{ text: "OK" }]
                                 );
                             }
@@ -438,17 +454,14 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
         };
     };
 
-    const overdueBooksCount = borrowedBooks.filter(
-        (book) => book.status === "overdue"
-    ).length;
-    const activeBorrowsCount = borrowedBooks.filter(
-        (book) => book.status === "borrowed"
-    ).length;
-    const dueSoonCount = borrowedBooks.filter((book) => {
-        if (book.status !== "borrowed") return false;
-        const daysRemaining = getDaysRemaining(book.dueDate);
-        return daysRemaining <= 3 && daysRemaining >= 0;
-    }).length;
+    const getFilterCount = (
+        filter: "all" | "borrowed" | "returned" | "overdue"
+    ) => {
+        if (filter === "all") return filterCounts.all;
+        if (filter === "borrowed") return filterCounts.borrowed;
+        if (filter === "returned") return filterCounts.returned;
+        return filterCounts.overdue;
+    };
 
     const renderBorrowedBookItem = (borrowedBook: ExtendedBorrowedBook) => {
         const daysRemaining = getDaysRemaining(borrowedBook.dueDate);
@@ -484,7 +497,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                         </View>
                         {fine > 0 && (
                             <Text className="text-xs text-red-600 dark:text-red-400 font-medium">
-                                Fine: ${fine.toFixed(2)}
+                                Fine: {formatMoney(fine)}
                             </Text>
                         )}
                     </View>
@@ -713,7 +726,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                                             : "text-slate-700 dark:text-gray-300"
                                             }`}
                                     >
-                                        {filter.replace(/_/g, ' ')} ({filterCounts[filter]})
+                                        {filter.replace(/_/g, ' ')} ({getFilterCount(filter)})
                                     </Text>
                                 </TouchableOpacity>
                             )
@@ -830,7 +843,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
 
                             <View className="mb-4">
                                 <Text className="text-sm font-medium text-slate-700 dark:text-gray-200 mb-2">
-                                    Fine Amount ($)
+                                    Fine Amount
                                 </Text>
                                 <TextInput
                                     className="bg-gray-50 dark:bg-gray-800 border border-[#D0D7DE] dark:border-[#21262D] rounded-lg p-3 text-slate-800 dark:text-white"
@@ -842,8 +855,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                                 />
                                 {selectedBook.status === "overdue" && (
                                     <Text className="text-xs text-red-600 mt-1">
-                                        Suggested fine: $
-                                        {calculateFine(selectedBook.dueDate).toFixed(2)}
+                                        Suggested fine: {formatMoney(calculateFine(selectedBook.dueDate))}
                                     </Text>
                                 )}
                             </View>
@@ -906,9 +918,9 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                                     <Text style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280', marginBottom: 4 }}>
                                         Condition: <Text style={{ fontWeight: '700', textTransform: 'capitalize', color: isDark ? '#ffffff' : '#111827' }}>{returnCondition}</Text>
                                     </Text>
-                                    {parseFloat(fineAmount) > 0 && (
+                                    {parsedFineAmount > 0 && (
                                         <Text style={{ fontSize: 12, color: '#ef4444', fontWeight: '700', marginBottom: 4 }}>
-                                            Fine: ${parseFloat(fineAmount).toFixed(2)}
+                                            Fine: {formatMoney(parsedFineAmount)}
                                         </Text>
                                     )}
                                     {notes

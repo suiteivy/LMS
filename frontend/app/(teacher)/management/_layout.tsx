@@ -15,14 +15,21 @@ export default function ManagementLayout() {
             >
                 <Stack.Screen name="index" />
                 <Stack.Screen name="grades" />
+                <Stack.Screen name="grade-entry" />
+                <Stack.Screen name="report-cards" />
                 <Stack.Screen name="assignments" />
+                <Stack.Screen name="submissions" />
+                <Stack.Screen name="exams" />
+                <Stack.Screen name="exam-results" />
                 <Stack.Screen name="attendance" />
                 <Stack.Screen name="announcements" />
+                <Stack.Screen name="messages" />
+                <Stack.Screen name="notifications" />
+                <Stack.Screen name="timetable" />
+                <Stack.Screen name="library" />
                 <Stack.Screen name="analytics" />
                 <Stack.Screen name="resources" />
                 <Stack.Screen name="diary" />
-                <Stack.Screen name="grade-entry" />
-                <Stack.Screen name="report-cards" />
             </Stack>
         </View>
     );

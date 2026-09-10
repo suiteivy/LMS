@@ -964,8 +964,9 @@ exports.getLibrariansList = async (req, res) => {
 
     const { data: designations, error: desErr } = await supabase
       .from('librarian_designations')
-      .select('id, user_id, designated_by, designated_at, designated_by_user:designated_by(full_name)')
-      .eq('institution_id', institution_id);
+      .select('id, user_id, assigned_by, assigned_at, assigned_by_user:assigned_by(full_name)')
+      .eq('institution_id', institution_id)
+      .eq('is_active', true);
 
     if (desErr) {
       return res.status(500).json({ error: desErr.message });
@@ -983,9 +984,9 @@ exports.getLibrariansList = async (req, res) => {
         is_main: !!user.is_main,
         phone: user.phone || null,
         is_librarian: !!des,
-        designated_at: des?.designated_at || null,
-        designated_by: des?.designated_by || null,
-        designated_by_name: des?.designated_by_user?.full_name || null
+        designated_at: des?.assigned_at || null,
+        designated_by: des?.assigned_by || null,
+        designated_by_name: des?.assigned_by_user?.full_name || null
       };
     });
 
@@ -1045,15 +1046,15 @@ exports.toggleLibrarianDesignation = async (req, res) => {
           .insert([{
             institution_id,
             user_id: userId,
-            designated_by: req.userId,
-            designated_at: new Date().toISOString()
+            assigned_by: req.userId,
+            assigned_at: new Date().toISOString()
           }]);
         if (insErr) throw insErr;
       }
 
       await supabase.from('librarian_audit_logs').insert([{
         institution_id,
-        target_user_id: userId,
+        user_id: userId,
         performed_by: req.userId,
         action: 'grant',
         notes: reason || `Librarian designation granted by ${req.user?.full_name || 'Admin'}`
@@ -1078,7 +1079,7 @@ exports.toggleLibrarianDesignation = async (req, res) => {
 
       await supabase.from('librarian_audit_logs').insert([{
         institution_id,
-        target_user_id: userId,
+        user_id: userId,
         performed_by: req.userId,
         action: 'revoke',
         notes: reason || `Librarian designation revoked by ${req.user?.full_name || 'Admin'}`
@@ -1116,7 +1117,7 @@ exports.getLibrarianAuditLogs = async (req, res) => {
         action,
         notes,
         created_at,
-        target:target_user_id(id, full_name, email, role),
+        target:user_id(id, full_name, email, role),
         performer:performed_by(id, full_name, email)
       `)
       .eq('institution_id', institution_id)

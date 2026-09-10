@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { formatCurrency } from '../utils/currency';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { formatCurrency, type CurrencyFormatInput } from '../utils/currency';
 import { SettingsService, ExchangeRates } from '@/services/SettingsService';
 import { useAuth } from './AuthContext';
 import { CurrencyRecord, CurrencyService } from '@/services/CurrencyService';
+import { supabase } from '@/libs/supabase';
 
 interface CurrencyContextType {
     rates: ExchangeRates;
@@ -11,7 +12,7 @@ interface CurrencyContextType {
     loading: boolean;
     convertUSDToKES: (amount: number) => number;
     convertAmount: (amount: number, fromCode: string, toCode: string) => number;
-    formatAmount: (amount: number, currencyCode?: string) => string;
+    formatAmount: (amount: number, currency?: CurrencyFormatInput) => string;
     formatKES: (amount: number) => string;
     formatUSD: (amount: number) => string;
     refreshRates: () => Promise<void>;
@@ -20,12 +21,13 @@ interface CurrencyContextType {
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { session, profile } = useAuth();
+    const { session, profile, refreshProfile } = useAuth();
+    const refreshProfileRef = useRef(refreshProfile);
     const [rates, setRates] = useState<ExchangeRates>({ KES: 130.0, last_updated: null });
     const [currencies, setCurrencies] = useState<CurrencyRecord[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchRates = async () => {
+    const fetchRates = useCallback(async () => {
         try {
             // Only fetch if we have a valid session to avoid 401s
             if (!session) return;
@@ -43,13 +45,54 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         } finally {
             setLoading(false);
         }
-    };
+    }, [session]);
 
     useEffect(() => {
         if (session) {
             fetchRates();
         }
-    }, [session]);
+    }, [session, fetchRates]);
+
+    useEffect(() => {
+        refreshProfileRef.current = refreshProfile;
+    }, [refreshProfile]);
+
+    const institutionId = useMemo(() => {
+        const institutionRaw = (profile as any)?.institutions;
+        const institution = Array.isArray(institutionRaw) ? institutionRaw[0] : institutionRaw;
+        return institution?.id || (profile as any)?.institution_id || null;
+    }, [profile]);
+
+    useEffect(() => {
+        if (!session || !institutionId) return;
+
+        const channel = supabase
+            .channel(`institution-currency-${institutionId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'institutions',
+                    filter: `id=eq.${institutionId}`,
+                },
+                async (payload) => {
+                    const previousCurrencyId = (payload.old as any)?.currency_id || null;
+                    const nextCurrencyId = (payload.new as any)?.currency_id || null;
+                    if (previousCurrencyId === nextCurrencyId) return;
+
+                    await Promise.allSettled([
+                        refreshProfileRef.current(),
+                        fetchRates(),
+                    ]);
+                },
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [session, institutionId, fetchRates]);
 
     const convertUSDToKES = (amount: number) => {
         return convertAmount(amount, 'USD', 'KES');
@@ -107,10 +150,24 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         [currencies]
     );
 
-    const formatAmount = (amount: number, currencyCode?: string) => {
-        const code = String(currencyCode || institutionCurrency?.code || defaultCurrency?.code || 'KES').toUpperCase();
-        const currency = currencies.find((c) => c.code === code);
-        return formatCurrency(amount, currency || institutionCurrency || code);
+    const formatAmount = (amount: number, currencyInput?: CurrencyFormatInput) => {
+        if (currencyInput) {
+            if (typeof currencyInput === 'string') {
+                const code = String(currencyInput).toUpperCase();
+                const currency = currencies.find((c) => String(c.code || '').toUpperCase() === code);
+                return formatCurrency(amount, currency || code);
+            }
+
+            const code = String(currencyInput.code || '').toUpperCase();
+            if (code) {
+                const currency = currencies.find((c) => String(c.code || '').toUpperCase() === code);
+                return formatCurrency(amount, currency || { ...currencyInput, code });
+            }
+
+            return formatCurrency(amount, currencyInput);
+        }
+
+        return formatCurrency(amount, institutionCurrency || defaultCurrency || 'KES');
     };
 
     const formatKES = (amount: number) => {
