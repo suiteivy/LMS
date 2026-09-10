@@ -16,6 +16,59 @@ const PAYMENT_MIN_RETENTION_DAYS = 365;
 const PAYMENT_MIN_RETENTION_MS = PAYMENT_MIN_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 const DEFAULT_RECORDED_BY_LABEL = 'Unknown';
 const ANNUAL_TERM_NAME = 'Annual';
+const FINANCE_ADMIN_ROLES = ['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'];
+
+const normalizeRoleForAccess = (value) => {
+    const role = String(value || '').trim().toLowerCase();
+    if (!role) return null;
+    if (role === 'bursar') return 'bursary';
+    return role;
+};
+
+const expandRoleAliases = (role) => {
+    const normalized = normalizeRoleForAccess(role);
+    if (!normalized) return [];
+
+    const expanded = new Set([normalized]);
+
+    if (normalized === 'admin') expanded.add('school_admin');
+    if (normalized === 'school_admin') expanded.add('admin');
+
+    if (normalized === 'master_admin') expanded.add('platform_admin');
+    if (normalized === 'platform_admin') expanded.add('master_admin');
+
+    return Array.from(expanded);
+};
+
+const hasRequiredFinanceRole = (req, allowedRoles = FINANCE_ADMIN_ROLES) => {
+    const allowed = new Set();
+    allowedRoles.forEach((role) => {
+        expandRoleAliases(role).forEach((alias) => allowed.add(alias));
+    });
+
+    const userRoles = new Set();
+    const addRole = (role) => {
+        expandRoleAliases(role).forEach((alias) => userRoles.add(alias));
+    };
+
+    addRole(req.userRole);
+    addRole(req?.user?.active_role);
+    addRole(req?.user?.role);
+
+    if (Array.isArray(req?.user?.available_roles)) {
+        req.user.available_roles.forEach(addRole);
+    }
+
+    if (Array.isArray(req?.user?.roles)) {
+        req.user.roles.forEach(addRole);
+    }
+
+    for (const role of userRoles) {
+        if (allowed.has(role)) return true;
+    }
+
+    return false;
+};
 
 const normalizeNumeric = (value, fallback = 0) => {
     const parsed = Number(value);
@@ -392,8 +445,8 @@ exports.getTransactions = async (req, res) => {
 
 exports.getRevenueOverview = async (req, res) => {
     try {
-        const { institution_id, userRole } = req;
-        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) {
+        const { institution_id } = req;
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) {
             return res.status(403).json({ error: 'Unauthorized' });
         }
 
@@ -407,8 +460,8 @@ exports.getRevenueOverview = async (req, res) => {
 
 exports.getRevenueDeductions = async (req, res) => {
     try {
-        const { institution_id, userRole } = req;
-        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) {
+        const { institution_id } = req;
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) {
             return res.status(403).json({ error: 'Unauthorized' });
         }
 
@@ -466,8 +519,8 @@ exports.getRevenueDeductions = async (req, res) => {
 
 exports.createRevenueDeduction = async (req, res) => {
     try {
-        const { institution_id, userRole, userId } = req;
-        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) {
+        const { institution_id, userId } = req;
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) {
             return res.status(403).json({ error: 'Unauthorized' });
         }
 
@@ -554,8 +607,8 @@ exports.createRevenueDeduction = async (req, res) => {
 
 exports.getPayments = async (req, res) => {
     try {
-        const { institution_id, userRole } = req;
-        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) {
+        const { institution_id } = req;
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) {
             return res.status(403).json({ error: 'Unauthorized' });
         }
 

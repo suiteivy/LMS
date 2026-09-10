@@ -144,7 +144,7 @@ export const SettingsService = {
         selected_question_key: string,
         selected_question_answer: string,
         new_password: string,
-    ): Promise<{ message: string; selected_question_key: string; selected_question_prompt: string }> => {
+    ): Promise<{ message: string; selected_question_key?: string | null; selected_question_prompt?: string | null }> => {
         const response = await api.post('/auth/complete-credential-setup', {
             selected_question_key,
             selected_question_answer,
@@ -180,7 +180,19 @@ export const SettingsService = {
         expires_at?: string;
         expires_at_formatted?: string;
     }> => {
-        const response = await api.get(`/auth/credential-delivery/${encodeURIComponent(token)}`, { skipErrorToast: true });
+        const response = await api.get(
+            `/auth/credential-delivery/${encodeURIComponent(token)}`,
+            { skipErrorToast: true, skipErrorLog: true }
+        );
+        return response.data;
+    },
+
+    consumeCredentialDelivery: async (token: string): Promise<{ consumed: boolean }> => {
+        const response = await api.post(
+            `/auth/credential-delivery/${encodeURIComponent(token)}/consume`,
+            {},
+            { skipErrorToast: true, skipErrorLog: true }
+        );
         return response.data;
     },
 };

@@ -865,16 +865,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsInitializing(true);
       try {
         await refreshMaintenanceStatus();
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timeout')), 6000));
-
         let initialSession: Session | null = null;
         const isDeliberatelyLoggedOut = await AsyncStorage.getItem('deliberate_logout').catch(() => null);
 
         if (isDeliberatelyLoggedOut !== 'true') {
+          const sessionPromise = supabase.auth.getSession();
+          const timeoutPromise = new Promise<{ timedOut: true }>((resolve) => {
+            setTimeout(() => resolve({ timedOut: true }), 6000);
+          });
           try {
-            const result = await Promise.race([sessionPromise, timeoutPromise]) as any;
-            initialSession = result?.data?.session || null;
+            const raced = await Promise.race([
+              sessionPromise
+                .then((result) => ({ result }))
+                .catch((error) => ({ error })),
+              timeoutPromise,
+            ]) as any;
+
+            if (raced?.timedOut) {
+              console.warn('[AuthContext] getSession timeout');
+            } else if (raced?.error) {
+              console.warn('[AuthContext] getSession timeout/error:', raced.error?.message || raced.error);
+            } else {
+              initialSession = raced?.result?.data?.session || null;
+            }
           } catch (sessErr: any) {
             console.warn('[AuthContext] getSession timeout/error:', sessErr?.message || sessErr);
           }
@@ -895,11 +908,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           // Race protection: timeout for getUser (5 seconds instead of 15 seconds)
           const userPromise = supabase.auth.getUser();
-          const userTimeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getUser timeout')), 5000));
+          const userTimeoutPromise = new Promise<{ timedOut: true }>((resolve) => {
+            setTimeout(() => resolve({ timedOut: true }), 5000);
+          });
 
           let activeUser: User | null = initialSession.user;
           try {
-            const { data: { user: validatedUser } } = await Promise.race([userPromise, userTimeoutPromise]) as any;
+            const raced = await Promise.race([
+              userPromise
+                .then((result) => ({ result }))
+                .catch((error) => ({ error })),
+              userTimeoutPromise,
+            ]) as any;
+
+            if (raced?.timedOut) {
+              throw new Error('getUser timeout');
+            }
+
+            if (raced?.error) {
+              throw raced.error;
+            }
+
+            const validatedUser = raced?.result?.data?.user || null;
             if (validatedUser) {
               activeUser = validatedUser;
             }
@@ -949,6 +979,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
+    const initializeAuthSafe = () => {
+      initializeAuth().catch((err) => {
+        console.warn('[AuthContext] initializeAuth unhandled rejection:', err?.message || err);
+        setIsInitializing(false);
+        setLoading(false);
+      });
+    };
+
     const watchdog = setTimeout(() => {
       if (isInitializing || loading) {
         console.warn(`[AuthContext] Watchdog triggered (10s limit): clearing stuck loading states. Initializing: ${isInitializing}, Loading: ${loading}`);
@@ -957,7 +995,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     }, 10000);
 
-    initializeAuth();
+    initializeAuthSafe();
 
     const navTimer = setTimeout(() => setIsNavReady(true), 1);
     const maintenancePollTimer = setInterval(() => {

@@ -28,6 +28,8 @@ const {
     getTransactionReceipt,
 } = require("../controllers/finance.controller.js");
 
+const FINANCE_DASHBOARD_ROLES = ['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'];
+
 // Funds
 router.get("/funds", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), getFunds);
 router.post("/funds", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), createFund);
@@ -38,10 +40,10 @@ router.post("/allocations", authMiddleware, authorizeRoles(['admin', 'bursary', 
 
 // Transactions
 router.get("/transactions", authMiddleware, getTransactions);
-router.get('/payments', authMiddleware, authorizeRoles(['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin']), getPayments);
-router.get('/revenue/overview', authMiddleware, authorizeRoles(['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin']), getRevenueOverview);
-router.get('/revenue/deductions', authMiddleware, authorizeRoles(['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin']), getRevenueDeductions);
-router.post('/revenue/deductions', authMiddleware, authorizeRoles(['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin']), createRevenueDeduction);
+router.get('/payments', authMiddleware, authorizeRoles(FINANCE_DASHBOARD_ROLES), getPayments);
+router.get('/revenue/overview', authMiddleware, authorizeRoles(FINANCE_DASHBOARD_ROLES), getRevenueOverview);
+router.get('/revenue/deductions', authMiddleware, authorizeRoles(FINANCE_DASHBOARD_ROLES), getRevenueDeductions);
+router.post('/revenue/deductions', authMiddleware, authorizeRoles(FINANCE_DASHBOARD_ROLES), createRevenueDeduction);
 router.post("/transactions", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), createTransaction);
 router.put("/transactions/:id/process", authMiddleware, authorizeRoles(['admin', 'bursary', 'master_admin']), processTransaction);
 

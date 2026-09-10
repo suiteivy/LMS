@@ -16,6 +16,7 @@ const {
   setupSecurityQuestions,
   verifySecurityQuestions,
   getCredentialDeliveryByToken,
+  consumeCredentialDeliveryToken,
   transferMainAdmin,
   getInstitutionAdmins,
   updateAdminDelegation,
@@ -45,6 +46,7 @@ router.get("/forgot-password/check-email", rateLimiters.passwordResetCheckEmail,
 router.post("/reset-password", rateLimiters.passwordResetRequest, resetPassword);
 router.post("/verify-security-questions", rateLimiters.passwordResetVerify, verifySecurityQuestions);
 router.get("/credential-delivery/:token", getCredentialDeliveryByToken);
+router.post("/credential-delivery/:token/consume", authMiddleware, consumeCredentialDeliveryToken);
 
 // Protected: User management with subscription check, admin role check, and validation
 router.post(

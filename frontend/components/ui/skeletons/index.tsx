@@ -34,7 +34,7 @@ interface BaseSkeletonProps {
   minVisible?: number;
 }
 
-const shouldRender = (
+const useShouldRender = (
   loading: boolean,
   showAfter: number,
   minVisible: number
@@ -47,7 +47,7 @@ export const ListItemSkeleton = ({
   showAfter = 200,
   minVisible = 300,
 }: BaseSkeletonProps & { withAvatar?: boolean; lines?: number }) => {
-  const visible = shouldRender(loading, showAfter, minVisible);
+  const visible = useShouldRender(loading, showAfter, minVisible);
   if (!visible) return null;
   return (
     <View accessibilityRole="progressbar" accessibilityState={{ busy: true }}>
@@ -73,7 +73,7 @@ export const TableRowSkeleton = ({
   minVisible = 300,
   columns = 4,
 }: BaseSkeletonProps & { columns?: number; columnWidths?: string[] }) => {
-  const visible = shouldRender(loading, showAfter, minVisible);
+  const visible = useShouldRender(loading, showAfter, minVisible);
   if (!visible) return null;
   return (
     <View accessibilityRole="progressbar" accessibilityState={{ busy: true }}>
@@ -96,7 +96,7 @@ export const TableRowSkeleton = ({
 };
 
 export const CardSkeleton = ({ loading = true, label = "Loading card...", showAfter = 200, minVisible = 300 }: BaseSkeletonProps) => {
-  const visible = shouldRender(loading, showAfter, minVisible);
+  const visible = useShouldRender(loading, showAfter, minVisible);
   if (!visible) return null;
   return (
     <View accessibilityRole="progressbar" accessibilityState={{ busy: true }} className="rounded-xl border border-[#D0D7DE] dark:border-[#21262D] bg-[#F6F8FA] dark:bg-[#161B22] p-4">
@@ -115,7 +115,7 @@ export const CardGridSkeleton = ({
   showAfter = 200,
   minVisible = 300,
 }: BaseSkeletonProps & { columns?: number }) => {
-  const visible = shouldRender(loading, showAfter, minVisible);
+  const visible = useShouldRender(loading, showAfter, minVisible);
   if (!visible) return null;
   return (
     <View accessibilityRole="progressbar" accessibilityState={{ busy: true }}>
@@ -130,7 +130,7 @@ export const CardGridSkeleton = ({
 };
 
 export const DetailHeaderSkeleton = ({ loading = true, label = "Loading details...", showAfter = 200, minVisible = 300 }: BaseSkeletonProps) => {
-  const visible = shouldRender(loading, showAfter, minVisible);
+  const visible = useShouldRender(loading, showAfter, minVisible);
   if (!visible) return null;
   return (
     <View accessibilityRole="progressbar" accessibilityState={{ busy: true }} className="mb-4">
@@ -142,7 +142,7 @@ export const DetailHeaderSkeleton = ({ loading = true, label = "Loading details.
 };
 
 export const DashboardStatCardSkeleton = ({ loading = true, count = 4, label = "Loading dashboard stats...", showAfter = 200, minVisible = 300 }: BaseSkeletonProps) => {
-  const visible = shouldRender(loading, showAfter, minVisible);
+  const visible = useShouldRender(loading, showAfter, minVisible);
   if (!visible) return null;
   return (
     <View accessibilityRole="progressbar" accessibilityState={{ busy: true }}>
@@ -160,7 +160,7 @@ export const DashboardStatCardSkeleton = ({ loading = true, count = 4, label = "
 };
 
 export const ConversationListItemSkeleton = ({ loading = true, count = 5, label = "Loading conversations...", showAfter = 200, minVisible = 300 }: BaseSkeletonProps) => {
-  const visible = shouldRender(loading, showAfter, minVisible);
+  const visible = useShouldRender(loading, showAfter, minVisible);
   if (!visible) return null;
   return (
     <View accessibilityRole="progressbar" accessibilityState={{ busy: true }}>
@@ -181,7 +181,7 @@ export const ConversationListItemSkeleton = ({ loading = true, count = 5, label 
 };
 
 export const ChatMessageSkeleton = ({ loading = true, count = 6, label = "Loading messages...", showAfter = 200, minVisible = 300 }: BaseSkeletonProps) => {
-  const visible = shouldRender(loading, showAfter, minVisible);
+  const visible = useShouldRender(loading, showAfter, minVisible);
   if (!visible) return null;
   return (
     <View accessibilityRole="progressbar" accessibilityState={{ busy: true }} className="px-3 py-2">
@@ -199,7 +199,7 @@ export const ChatMessageSkeleton = ({ loading = true, count = 6, label = "Loadin
 };
 
 export const FormFieldSkeleton = ({ loading = true, count = 5, label = "Loading form...", showAfter = 200, minVisible = 300 }: BaseSkeletonProps) => {
-  const visible = shouldRender(loading, showAfter, minVisible);
+  const visible = useShouldRender(loading, showAfter, minVisible);
   if (!visible) return null;
   return (
     <View accessibilityRole="progressbar" accessibilityState={{ busy: true }}>
@@ -217,7 +217,7 @@ export const FormFieldSkeleton = ({ loading = true, count = 5, label = "Loading 
 };
 
 export const AdminDashboardSkeleton = ({ loading = true, label = "Loading admin overview...", showAfter = 200, minVisible = 300 }: BaseSkeletonProps) => {
-  const visible = shouldRender(loading, showAfter, minVisible);
+  const visible = useShouldRender(loading, showAfter, minVisible);
   if (!visible) return null;
   return (
     <View accessibilityRole="progressbar" accessibilityState={{ busy: true }} className="px-5 pt-4">
@@ -274,7 +274,7 @@ export const AdminDashboardSkeleton = ({ loading = true, label = "Loading admin 
 };
 
 export const TeacherDashboardSkeleton = ({ loading = true, label = "Loading teacher portal...", showAfter = 200, minVisible = 300 }: BaseSkeletonProps) => {
-  const visible = shouldRender(loading, showAfter, minVisible);
+  const visible = useShouldRender(loading, showAfter, minVisible);
   if (!visible) return null;
   return (
     <View accessibilityRole="progressbar" accessibilityState={{ busy: true }} className="p-6 pt-2">
@@ -322,7 +322,7 @@ export const TeacherDashboardSkeleton = ({ loading = true, label = "Loading teac
 };
 
 export const StudentDashboardSkeleton = ({ loading = true, label = "Loading student portal...", showAfter = 200, minVisible = 300 }: BaseSkeletonProps) => {
-  const visible = shouldRender(loading, showAfter, minVisible);
+  const visible = useShouldRender(loading, showAfter, minVisible);
   if (!visible) return null;
   return (
     <View accessibilityRole="progressbar" accessibilityState={{ busy: true }} className="p-5 pt-4">
@@ -373,7 +373,7 @@ export const StudentDashboardSkeleton = ({ loading = true, label = "Loading stud
 };
 
 export const ParentDashboardSkeleton = ({ loading = true, label = "Loading parent portal...", showAfter = 200, minVisible = 300 }: BaseSkeletonProps) => {
-  const visible = shouldRender(loading, showAfter, minVisible);
+  const visible = useShouldRender(loading, showAfter, minVisible);
   if (!visible) return null;
   return (
     <View accessibilityRole="progressbar" accessibilityState={{ busy: true }} className="p-5 pt-4">
@@ -416,4 +416,3 @@ export const ParentDashboardSkeleton = ({ loading = true, label = "Loading paren
     </View>
   );
 };
-

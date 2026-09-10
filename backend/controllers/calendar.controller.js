@@ -1,6 +1,65 @@
 const supabase = require('../utils/supabaseClient.js');
 const { withSupabaseRetry } = require('../utils/supabaseRetry.js');
 
+function isValidDateOnlyString(value) {
+  if (typeof value !== 'string') return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+
+  const [yearStr, monthStr, dayStr] = value.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+function formatDateOnlyUTC(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getMonthDateRange(yearLike, monthLike) {
+  const year = Number(yearLike);
+  const month = Number(monthLike);
+  const isWholeYear = Number.isInteger(year) && year >= 1970 && year <= 9999;
+  const isWholeMonth = Number.isInteger(month) && month >= 1 && month <= 12;
+
+  if (!isWholeYear || !isWholeMonth) {
+    const err = new Error('Invalid year/month query parameters');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 0));
+  return {
+    start: formatDateOnlyUTC(start),
+    end: formatDateOnlyUTC(end),
+  };
+}
+
+function isMissingColumnError(errorLike, columnName) {
+  const needle = String(columnName || '').trim().toLowerCase();
+  if (!needle) return false;
+
+  const merged = [
+    errorLike?.message,
+    errorLike?.details,
+    errorLike?.hint,
+    errorLike?.code,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return merged.includes(`column ${needle} does not exist`) || merged.includes(`.${needle} does not exist`);
+}
+
 /**
  * GET /calendar/events
  * Fetch all calendar events for the user's institution
@@ -14,38 +73,66 @@ exports.getEvents = async (req, res) => {
 
     const { start_date, end_date, month, year } = req.query || {};
 
-    let query = supabase
-      .from('calendar_events')
-      .select('*')
-      .order('event_date', { ascending: true })
-      .order('start_time', { ascending: true });
-
-    if (req.userRole !== 'master_admin') {
-      query = query.eq('institution_id', institutionId);
+    if (start_date && !isValidDateOnlyString(start_date)) {
+      return res.status(400).json({ error: 'Invalid start_date format. Expected YYYY-MM-DD.' });
     }
 
-    if (start_date) {
-      query = query.gte('event_date', start_date);
-    }
-    if (end_date) {
-      query = query.lte('event_date', end_date);
+    if (end_date && !isValidDateOnlyString(end_date)) {
+      return res.status(400).json({ error: 'Invalid end_date format. Expected YYYY-MM-DD.' });
     }
 
+    if ((year && !month) || (!year && month)) {
+      return res.status(400).json({ error: 'Both year and month are required together.' });
+    }
+
+    let monthRange = null;
     if (year && month) {
-      const padMonth = String(month).padStart(2, '0');
-      const startOfMonth = `${year}-${padMonth}-01`;
-      // Approximate month end
-      const endOfMonth = `${year}-${padMonth}-31`;
-      query = query.gte('event_date', startOfMonth).lte('event_date', endOfMonth);
+      monthRange = getMonthDateRange(year, month);
     }
 
-    const { data, error } = await withSupabaseRetry(() => query);
+    const buildEventsQuery = (includeStartTimeOrder = true) => {
+      let query = supabase
+        .from('calendar_events')
+        .select('*')
+        .order('event_date', { ascending: true });
+
+      if (includeStartTimeOrder) {
+        query = query.order('start_time', { ascending: true });
+      }
+
+      if (req.userRole !== 'master_admin') {
+        query = query.eq('institution_id', institutionId);
+      }
+
+      if (start_date) {
+        query = query.gte('event_date', start_date);
+      }
+      if (end_date) {
+        query = query.lte('event_date', end_date);
+      }
+      if (monthRange) {
+        query = query.gte('event_date', monthRange.start).lte('event_date', monthRange.end);
+      }
+
+      return query;
+    };
+
+    let { data, error } = await withSupabaseRetry(() => buildEventsQuery(true));
+
+    if (error && isMissingColumnError(error, 'start_time')) {
+      ({ data, error } = await withSupabaseRetry(() => buildEventsQuery(false)));
+    }
+
     if (error) throw error;
 
     return res.status(200).json({ events: data || [] });
   } catch (err) {
     console.error('getEvents error:', err);
-    return res.status(500).json({ error: err.message || 'Failed to fetch calendar events' });
+    const statusCode = Number(err?.statusCode || 500);
+    if (statusCode >= 400 && statusCode < 500) {
+      return res.status(statusCode).json({ error: 'Invalid calendar query parameters.' });
+    }
+    return res.status(500).json({ error: 'Failed to fetch calendar events' });
   }
 };
 
@@ -85,6 +172,10 @@ exports.createEvent = async (req, res) => {
 
     if (!event_date || typeof event_date !== 'string') {
       return res.status(400).json({ error: 'Valid event date (YYYY-MM-DD) is required.' });
+    }
+
+    if (!isValidDateOnlyString(event_date)) {
+      return res.status(400).json({ error: 'Invalid event date format. Expected YYYY-MM-DD.' });
     }
 
     const isCancelClasses = Boolean(cancel_classes);
@@ -166,7 +257,7 @@ exports.createEvent = async (req, res) => {
     });
   } catch (err) {
     console.error('createEvent error:', err);
-    return res.status(500).json({ error: err.message || 'Failed to create calendar event' });
+    return res.status(500).json({ error: 'Failed to create calendar event' });
   }
 };
 
@@ -212,7 +303,12 @@ exports.updateEvent = async (req, res) => {
     const updatePayload = {};
     if (title !== undefined) updatePayload.title = title.trim();
     if (description !== undefined) updatePayload.description = description ? description.trim() : null;
-    if (event_date !== undefined) updatePayload.event_date = event_date;
+    if (event_date !== undefined) {
+      if (!isValidDateOnlyString(event_date)) {
+        return res.status(400).json({ error: 'Invalid event date format. Expected YYYY-MM-DD.' });
+      }
+      updatePayload.event_date = event_date;
+    }
     if (start_time !== undefined) updatePayload.start_time = start_time || null;
     if (end_time !== undefined) updatePayload.end_time = end_time || null;
     if (event_type !== undefined) updatePayload.event_type = event_type;
@@ -265,7 +361,7 @@ exports.updateEvent = async (req, res) => {
     return res.status(200).json({ event: updatedEvent });
   } catch (err) {
     console.error('updateEvent error:', err);
-    return res.status(500).json({ error: err.message || 'Failed to update calendar event' });
+    return res.status(500).json({ error: 'Failed to update calendar event' });
   }
 };
 
@@ -320,7 +416,7 @@ exports.deleteEvent = async (req, res) => {
     return res.status(200).json({ success: true, message: 'Calendar event deleted' });
   } catch (err) {
     console.error('deleteEvent error:', err);
-    return res.status(500).json({ error: err.message || 'Failed to delete calendar event' });
+    return res.status(500).json({ error: 'Failed to delete calendar event' });
   }
 };
 
@@ -350,6 +446,6 @@ exports.getCancelledDates = async (req, res) => {
     return res.status(200).json({ cancelled_dates: data || [] });
   } catch (err) {
     console.error('getCancelledDates error:', err);
-    return res.status(500).json({ error: err.message || 'Failed to fetch cancelled dates' });
+    return res.status(500).json({ error: 'Failed to fetch cancelled dates' });
   }
 };

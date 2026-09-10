@@ -19,6 +19,15 @@ function createSupabaseMock(resolver) {
           state.select = { columns, options };
           return this;
         },
+        order(column, options) {
+          state.order = state.order || [];
+          state.order.push({ column, options });
+          return this;
+        },
+        or(value) {
+          state.or = value;
+          return this;
+        },
         insert(values) {
           state.insert = values;
           return this;
@@ -30,6 +39,15 @@ function createSupabaseMock(resolver) {
         eq(column, value) {
           state.filters.push({ op: 'eq', column, value });
           return this;
+        },
+        in(column, values) {
+          state.filters.push({ op: 'in', column, values });
+          return this;
+        },
+        range(from, to) {
+          state.range = { from, to };
+          state.terminal = 'range';
+          return Promise.resolve(resolver(state));
         },
         maybeSingle() {
           state.terminal = 'maybeSingle';
@@ -272,4 +290,300 @@ test('releaseFeeStructure allows institution-admin override when strict_current_
   assert.equal(res.state.body.id, 'fee-2');
   assert.equal(res.state.body.is_active, true);
   assert.ok(updatePayload);
+});
+
+test('getRevenueOverview allows access when finance role is available but not active', async () => {
+  const supabase = createSupabaseMock((state) => {
+    if (state.table === 'payments' && state.terminal === 'query') {
+      return {
+        data: [
+          { amount: 300, payment_date: '2026-09-01', status: 'completed' },
+          { amount: 200, payment_date: '2026-09-02', status: 'completed' },
+        ],
+        error: null,
+      };
+    }
+
+    if (state.table === 'financial_transactions' && state.terminal === 'query') {
+      return {
+        data: [
+          { amount: 50, date: '2026-09-02', created_at: '2026-09-02T08:00:00.000Z', type: 'revenue_deduction', direction: 'outflow', status: 'completed' },
+        ],
+        error: null,
+      };
+    }
+
+    throw new Error(`Unexpected query: ${JSON.stringify(state)}`);
+  });
+
+  const controller = loadControllerWithMocks({
+    supabaseMock: supabase,
+  });
+
+  const req = {
+    institution_id: 'inst-1',
+    userRole: 'teacher',
+    user: {
+      role: 'teacher',
+      active_role: 'teacher',
+      available_roles: ['teacher', 'school_admin'],
+      roles: [],
+    },
+  };
+  const res = createRes();
+
+  await controller.getRevenueOverview(req, res);
+
+  assert.equal(res.state.statusCode, 200);
+  assert.equal(res.state.body.gross_revenue, 500);
+  assert.equal(res.state.body.total_deductions, 50);
+  assert.equal(res.state.body.net_revenue, 450);
+});
+
+test('getRevenueOverview denies users without finance roles', async () => {
+  let queryCount = 0;
+  const supabase = createSupabaseMock(() => {
+    queryCount += 1;
+    return { data: [], error: null };
+  });
+
+  const controller = loadControllerWithMocks({
+    supabaseMock: supabase,
+  });
+
+  const req = {
+    institution_id: 'inst-1',
+    userRole: 'teacher',
+    user: {
+      role: 'teacher',
+      active_role: 'teacher',
+      available_roles: ['teacher'],
+      roles: [],
+    },
+  };
+  const res = createRes();
+
+  await controller.getRevenueOverview(req, res);
+
+  assert.equal(res.state.statusCode, 403);
+  assert.equal(res.state.body.error, 'Unauthorized');
+  assert.equal(queryCount, 0);
+});
+
+test('getPayments allows access when finance role exists in available roles', async () => {
+  const supabase = createSupabaseMock((state) => {
+    if (state.table === 'payments' && state.terminal === 'query') {
+      return {
+        data: [
+          {
+            id: 'pay-1',
+            student_id: 'stu-1',
+            amount: 250,
+            payment_method: 'cash',
+            status: 'completed',
+            payment_date: '2026-09-05',
+            students: {
+              id: 'stu-1',
+              users: { first_name: 'Jane', last_name: 'Doe', full_name: 'Jane Doe' },
+            },
+          },
+        ],
+        error: null,
+      };
+    }
+
+    throw new Error(`Unexpected query: ${JSON.stringify(state)}`);
+  });
+
+  const controller = loadControllerWithMocks({ supabaseMock: supabase });
+  const req = {
+    institution_id: 'inst-1',
+    userRole: 'teacher',
+    user: {
+      role: 'teacher',
+      active_role: 'teacher',
+      available_roles: ['teacher', 'school_admin'],
+      roles: [],
+    },
+  };
+  const res = createRes();
+
+  await controller.getPayments(req, res);
+
+  assert.equal(res.state.statusCode, 200);
+  assert.equal(Array.isArray(res.state.body), true);
+  assert.equal(res.state.body.length, 1);
+  assert.equal(res.state.body[0].student_name, 'Jane Doe');
+});
+
+test('getPayments denies users without finance roles', async () => {
+  let queryCount = 0;
+  const supabase = createSupabaseMock(() => {
+    queryCount += 1;
+    return { data: [], error: null };
+  });
+
+  const controller = loadControllerWithMocks({ supabaseMock: supabase });
+  const req = {
+    institution_id: 'inst-1',
+    userRole: 'teacher',
+    user: {
+      role: 'teacher',
+      active_role: 'teacher',
+      available_roles: ['teacher'],
+      roles: [],
+    },
+  };
+  const res = createRes();
+
+  await controller.getPayments(req, res);
+
+  assert.equal(res.state.statusCode, 403);
+  assert.equal(res.state.body.error, 'Unauthorized');
+  assert.equal(queryCount, 0);
+});
+
+test('getRevenueDeductions allows access when finance role exists in available roles', async () => {
+  const supabase = createSupabaseMock((state) => {
+    if (state.table === 'financial_transactions' && state.terminal === 'range') {
+      return {
+        data: [
+          {
+            id: 'ded-1',
+            amount: 125,
+            date: '2026-09-04',
+            created_at: '2026-09-04T10:30:00.000Z',
+            status: 'completed',
+            target_label: 'Stationery',
+            recorded_by_label: 'Finance Admin',
+            meta: { reason: 'Printer ink' },
+          },
+        ],
+        error: null,
+      };
+    }
+
+    throw new Error(`Unexpected query: ${JSON.stringify(state)}`);
+  });
+
+  const controller = loadControllerWithMocks({ supabaseMock: supabase });
+  const req = {
+    institution_id: 'inst-1',
+    userRole: 'teacher',
+    query: {},
+    user: {
+      role: 'teacher',
+      active_role: 'teacher',
+      available_roles: ['teacher', 'school_admin'],
+      roles: [],
+    },
+  };
+  const res = createRes();
+
+  await controller.getRevenueDeductions(req, res);
+
+  assert.equal(res.state.statusCode, 200);
+  assert.equal(Array.isArray(res.state.body), true);
+  assert.equal(res.state.body.length, 1);
+  assert.equal(res.state.body[0].reason, 'Printer ink');
+});
+
+test('getRevenueDeductions denies users without finance roles', async () => {
+  let queryCount = 0;
+  const supabase = createSupabaseMock(() => {
+    queryCount += 1;
+    return { data: [], error: null };
+  });
+
+  const controller = loadControllerWithMocks({ supabaseMock: supabase });
+  const req = {
+    institution_id: 'inst-1',
+    userRole: 'teacher',
+    query: {},
+    user: {
+      role: 'teacher',
+      active_role: 'teacher',
+      available_roles: ['teacher'],
+      roles: [],
+    },
+  };
+  const res = createRes();
+
+  await controller.getRevenueDeductions(req, res);
+
+  assert.equal(res.state.statusCode, 403);
+  assert.equal(res.state.body.error, 'Unauthorized');
+  assert.equal(queryCount, 0);
+});
+
+test('createRevenueDeduction allows access when finance role exists in available roles', async () => {
+  const supabase = createSupabaseMock((state) => {
+    if (state.table === 'payments' && state.terminal === 'query') {
+      return {
+        data: [{ amount: 400, payment_date: '2026-09-01', status: 'completed' }],
+        error: null,
+      };
+    }
+
+    if (state.table === 'financial_transactions' && state.terminal === 'query') {
+      return {
+        data: [],
+        error: null,
+      };
+    }
+
+    if (state.table === 'financial_transactions' && state.insert && state.terminal === 'single') {
+      const row = state.insert[0];
+      return {
+        data: {
+          id: 'ded-new',
+          amount: row.amount,
+          date: row.date,
+          created_at: '2026-09-10T10:00:00.000Z',
+          status: row.status,
+          target_label: row.target_label,
+          recorded_by_user_id: row.recorded_by_user_id,
+          recorded_by_label: row.recorded_by_label,
+          origin_type: row.origin_type,
+          origin_id: row.origin_id,
+          origin_label: row.origin_label,
+          target_type: row.target_type,
+          target_id: row.target_id,
+          meta: row.meta,
+          user_id: row.user_id,
+        },
+        error: null,
+      };
+    }
+
+    if (state.table === 'users' && state.terminal === 'maybeSingle') {
+      return {
+        data: { first_name: 'Finance', last_name: 'Admin', full_name: 'Finance Admin', email: 'finance@example.com' },
+        error: null,
+      };
+    }
+
+    throw new Error(`Unexpected query: ${JSON.stringify(state)}`);
+  });
+
+  const controller = loadControllerWithMocks({ supabaseMock: supabase });
+  const req = {
+    institution_id: 'inst-1',
+    userRole: 'teacher',
+    userId: 'user-1',
+    body: { amount: 100, reason: 'Ink', target: 'Stationery' },
+    user: {
+      role: 'teacher',
+      active_role: 'teacher',
+      available_roles: ['teacher', 'school_admin'],
+      roles: [],
+    },
+  };
+  const res = createRes();
+
+  await controller.createRevenueDeduction(req, res);
+
+  assert.equal(res.state.statusCode, 201);
+  assert.equal(res.state.body.amount, 100);
+  assert.equal(res.state.body.reason, 'Ink');
 });

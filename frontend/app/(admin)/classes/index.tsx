@@ -679,7 +679,7 @@ export default function AdminClassManagement() {
                                         No Grade Levels Configured
                                     </Text>
                                     <Text style={{ color: textSecondary, fontSize: 12, marginTop: 2 }}>
-                                        Add your school's grade levels (e.g. Grade 1, Grade 2) before creating classes.
+                                        Add your school&apos;s grade levels (e.g. Grade 1, Grade 2) before creating classes.
                                     </Text>
                                 </View>
                             </View>
@@ -811,7 +811,7 @@ export default function AdminClassManagement() {
                             Confirm Class Removal
                         </Text>
                         <Text style={{ color: textSecondary, fontSize: 14, marginBottom: 20 }}>
-                            Remove "{pendingDeleteClass ? formatClassLabel(pendingDeleteClass) : 'this class'}"?
+                            Remove {pendingDeleteClass ? formatClassLabel(pendingDeleteClass) : 'this class'}?
                         </Text>
                         <View style={{ flexDirection: 'row', gap: 10 }}>
                             <TouchableOpacity
@@ -1374,7 +1374,7 @@ export default function AdminClassManagement() {
                                     <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB', padding: 16, borderRadius: 14, alignItems: 'center', borderWidth: 1, borderColor: border, borderStyle: 'dashed' }}>
                                         <Ionicons name="layers-outline" size={32} color={textMuted} />
                                         <Text style={{ color: textSecondary, fontSize: 13, marginTop: 8, textAlign: 'center' }}>
-                                            No grade levels added yet. Use the form below to add your school's grade levels.
+                                            No grade levels added yet. Use the form below to add your school&apos;s grade levels.
                                         </Text>
                                     </View>
                                 ) : (

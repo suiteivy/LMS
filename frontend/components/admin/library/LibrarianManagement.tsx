@@ -485,7 +485,7 @@ export const LibrarianManagement: React.FC = () => {
                                         {log.notes ? (
                                             <View style={{ marginTop: 6, backgroundColor: surfaceBg, padding: 8, borderRadius: 8 }}>
                                                 <Text style={{ fontSize: 11, color: textPrimary, fontStyle: "italic" }}>
-                                                    "{log.notes}"
+                                                    {log.notes}
                                                 </Text>
                                             </View>
                                         ) : null}

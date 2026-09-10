@@ -36,9 +36,11 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
  if (!isInitializing && requireAuth) {
  if (!user) {
  } else if (allowedRoles && profile) {
- const currentRole = activeRole || profile.role
- const isAllowed = allowedRoles.includes(currentRole) ||
-   (availableRoles && availableRoles.length > 0 && allowedRoles.some(r => allowedRoles.includes(r)))
+ const normalizedAllowedRoles = allowedRoles.map((role) => String(role || '').toLowerCase())
+ const currentRole = String(activeRole || profile.role || '').toLowerCase()
+ const normalizedAvailableRoles = (availableRoles || []).map((role) => String(role || '').toLowerCase())
+ const isAllowed = normalizedAllowedRoles.includes(currentRole) ||
+   normalizedAvailableRoles.some((role) => normalizedAllowedRoles.includes(role))
 
  if (!isAllowed) {
  const redirectPath = getRoleRedirect(profile, isPlatformAdmin, activeRole || undefined) || '/(auth)/signIn';

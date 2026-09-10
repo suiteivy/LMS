@@ -4,15 +4,16 @@ import {
   Alert,
   Modal,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import {
   AlertTriangle,
   Bell,
-  Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -25,11 +26,13 @@ import {
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
+import { GlassCard } from '@/components/ui/GlassCard';
 import {
   CalendarAPI,
   CalendarEvent,
   CreateCalendarEventDto,
 } from '@/services/CalendarService';
+import { darkColors, lightColors } from '@/constants/appTheme';
 import { showError, showSuccess } from '@/utils/toast';
 
 type ValidCalendarRole = 'Admin' | 'Teacher' | 'Student' | 'Parent/Guardian' | 'Master Admin';
@@ -46,11 +49,54 @@ const MONTH_NAMES = [
 ];
 
 const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAY_COLUMN_WIDTH = '14.2857%' as const;
+
+const EVENT_TYPE_STYLES: Record<string, { color: string; label: string }> = {
+  event: { color: '#FF6B00', label: 'Event' },
+  exam: { color: '#EF4444', label: 'Exam' },
+  holiday: { color: '#10B981', label: 'Holiday' },
+  meeting: { color: '#3B82F6', label: 'Meeting' },
+};
+
+const getLocalDateOnly = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getEventTypeStyle = (event: CalendarEvent) => {
+  if (event.cancel_classes) return { color: '#EF4444', label: 'No Classes' };
+  return EVENT_TYPE_STYLES[String(event.event_type || 'event').toLowerCase()] || EVENT_TYPE_STYLES.event;
+};
+
+function LegendPill({ label, color, bg, textColor }: { label: string; color: string; bg: string; textColor: string }) {
+  return (
+    <View style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderRadius: 99,
+      borderWidth: 1,
+      borderColor: `${color}66`,
+      backgroundColor: bg,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+    }}>
+      <View style={{ width: 7, height: 7, borderRadius: 99, backgroundColor: color, marginRight: 6 }} />
+      <Text style={{ color: textColor, fontSize: 11, fontWeight: '700' }}>{label}</Text>
+    </View>
+  );
+}
 
 export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalendarViewProps) {
   const { isDark } = useTheme();
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
+  const { width } = useWindowDimensions();
   const isAdmin = profile?.role === 'admin' || profile?.role === 'master_admin' || userRole === 'admin';
+  const colors = isDark ? darkColors : lightColors;
+  const screenBackgroundColor = isDark ? '#161B22' : colors.bg;
+  const isDesktop = width >= 1100;
+  const isTablet = width >= 760;
 
   const resolvedRoleTitle: ValidCalendarRole = roleTitle || (
     userRole === 'admin' ? 'Admin' :
@@ -63,8 +109,7 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDateStr, setSelectedDateStr] = useState<string>(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
+    return getLocalDateOnly(new Date());
   });
 
   // Modal State
@@ -84,6 +129,7 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
 
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
+  const todayStr = getLocalDateOnly(new Date());
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -104,7 +150,7 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
     fetchEvents();
   }, [fetchEvents]);
 
-  // Calendar Grid calculation (Monday-first)
+  // Calendar Grid calculation (Monday-first, fixed 6 rows = 42 cells)
   const calendarDays = useMemo(() => {
     const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
     const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
@@ -136,15 +182,13 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
     }
 
     // Next month padding to fill grid
-    const remaining = 35 - days.length;
-    if (remaining > 0) {
-      for (let d = 1; d <= remaining; d++) {
+    const remaining = 42 - days.length;
+    for (let d = 1; d <= remaining; d++) {
         const m = currentMonth + 2 > 12 ? 1 : currentMonth + 2;
         const y = currentMonth + 2 > 12 ? currentYear + 1 : currentYear;
         const pad = String(m).padStart(2, '0');
         const padD = String(d).padStart(2, '0');
         days.push({ dateStr: `${y}-${pad}-${padD}`, dayNumber: d, isCurrentMonth: false });
-      }
     }
 
     return days;
@@ -164,6 +208,28 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
   const selectedEvents = useMemo(() => {
     return eventsByDate.get(selectedDateStr) || [];
   }, [eventsByDate, selectedDateStr]);
+
+  const upcomingEvents = useMemo(() => {
+    return [...events]
+      .filter((event) => event.event_date >= todayStr)
+      .sort((a, b) => {
+        const left = `${a.event_date}T${a.start_time || '00:00:00'}`;
+        const right = `${b.event_date}T${b.start_time || '00:00:00'}`;
+        return left.localeCompare(right);
+      })
+      .slice(0, 5);
+  }, [events, todayStr]);
+
+  const selectedDateLabel = useMemo(() => {
+    const safeDate = new Date(`${selectedDateStr}T00:00:00`);
+    if (Number.isNaN(safeDate.getTime())) return selectedDateStr;
+    return safeDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }, [selectedDateStr]);
 
   const handlePrevMonth = () => {
     setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
@@ -233,7 +299,7 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
       setModalVisible(false);
       fetchEvents();
     } catch (err: any) {
-      showError('Save Failed', err?.response?.data?.error || err?.message || 'Failed to save event');
+      showError('Save Failed', err?.message || 'Failed to save event');
     } finally {
       setSubmitting(false);
     }
@@ -263,18 +329,18 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
   };
 
   return (
-    <View className={`flex-1 ${isDark ? 'bg-[#0F0B2E]' : 'bg-[#F8FAFC]'}`}>
+    <View style={{ flex: 1, backgroundColor: screenBackgroundColor }}>
       <UnifiedHeader
         title="School Calendar"
         subtitle="Events & Schedules"
         role={resolvedRoleTitle}
         onBack={onBack}
         rightActions={
-          <View className="flex-row items-center gap-2">
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             {isAdmin && (
               <TouchableOpacity
                 onPress={() => handleOpenCreateModal()}
-                className="flex-row items-center bg-[#FF6900] px-3.5 py-1.5 rounded-full shadow-sm"
+                style={styles.addButton}
                 accessibilityRole="button"
                 accessibilityLabel="Create Calendar Event"
               >
@@ -284,247 +350,306 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
             )}
             <TouchableOpacity
               onPress={fetchEvents}
-              className={`p-2 rounded-full border ${isDark ? 'bg-[#161B22] border-[#21262D]' : 'bg-white border-gray-200'}`}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: colors.border,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.surface,
+              }}
               accessibilityRole="button"
               accessibilityLabel="Refresh Events"
             >
-              <RefreshCw size={15} color={isDark ? '#9CA3AF' : '#4B5563'} />
+              <RefreshCw size={15} color={colors.textSub} />
             </TouchableOpacity>
           </View>
         }
       />
 
-      <ScrollView className="flex-1 p-4 md:p-6" showsVerticalScrollIndicator={false}>
-        {/* Month Navigation Bar */}
-        <View className={`flex-row justify-between items-center px-4 py-3 rounded-2xl mb-4 border ${isDark ? 'bg-[#161B22] border-[#21262D]' : 'bg-white border-gray-100'} shadow-sm`}>
-          <TouchableOpacity
-            onPress={handlePrevMonth}
-            className={`p-2 rounded-xl border ${isDark ? 'bg-[#21262D] border-gray-700' : 'bg-gray-50 border-gray-200'}`}
-            accessibilityLabel="Previous month"
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
+        <View style={{ gap: 14 }}>
+          <GlassCard
+            variant="modal"
+            borderRadius={22}
+            accentColor={colors.accent}
+            glowColor={isDark ? 'rgba(255,107,0,0.25)' : 'rgba(255,107,0,0.18)'}
+            contentStyle={{ paddingHorizontal: 16, paddingVertical: 14 }}
           >
-            <ChevronLeft size={18} color={isDark ? '#E5E7EB' : '#1F2937'} />
-          </TouchableOpacity>
-
-          <View className="items-center">
-            <Text className={`font-black text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {MONTH_NAMES[currentMonth]} {currentYear}
-            </Text>
-            <Text className={`text-[11px] font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              {events.length} event{events.length !== 1 ? 's' : ''} scheduled
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            onPress={handleNextMonth}
-            className={`p-2 rounded-xl border ${isDark ? 'bg-[#21262D] border-gray-700' : 'bg-gray-50 border-gray-200'}`}
-            accessibilityLabel="Next month"
-          >
-            <ChevronRight size={18} color={isDark ? '#E5E7EB' : '#1F2937'} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Days of week Header */}
-        <View className="flex-row mb-2">
-          {WEEK_DAYS.map((w, idx) => (
-            <View key={w} className="flex-1 items-center py-1">
-              <Text className={`text-[11px] font-bold uppercase tracking-wider ${idx >= 5 ? 'text-orange-500' : isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {w}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Calendar Day Grid */}
-        <View className={`rounded-3xl border overflow-hidden mb-6 p-2 ${isDark ? 'bg-[#161B22] border-[#21262D]' : 'bg-white border-gray-100'} shadow-sm`}>
-          <View className="flex-row flex-wrap">
-            {calendarDays.map((item) => {
-              const dayEvents = eventsByDate.get(item.dateStr) || [];
-              const isSelected = item.dateStr === selectedDateStr;
-              const hasCancelClasses = dayEvents.some((e) => e.cancel_classes);
-              const isToday = item.dateStr === new Date().toISOString().split('T')[0];
-
-              return (
-                <TouchableOpacity
-                  key={item.dateStr}
-                  onPress={() => setSelectedDateStr(item.dateStr)}
-                  activeOpacity={0.7}
-                  style={{ width: '14.28%', minHeight: 62 }}
-                  className={`p-1.5 items-center justify-between rounded-2xl border transition-all ${
-                    isSelected
-                      ? 'border-[#FF6900] bg-orange-500/10'
-                      : isToday
-                      ? 'border-blue-500/40 bg-blue-500/5'
-                      : 'border-transparent'
-                  }`}
-                >
-                  <View className="items-center">
-                    <Text
-                      className={`text-xs font-bold ${
-                        isSelected
-                          ? 'text-[#FF6900]'
-                          : !item.isCurrentMonth
-                          ? 'text-gray-400 opacity-40'
-                          : isDark
-                          ? 'text-gray-200'
-                          : 'text-gray-800'
-                      }`}
-                    >
-                      {item.dayNumber}
-                    </Text>
-                  </View>
-
-                  {/* Event Badges on Day */}
-                  <View className="flex-row gap-1 items-center mt-1">
-                    {dayEvents.slice(0, 3).map((e, eIdx) => (
-                      <View
-                        key={e.id || eIdx}
-                        className={`w-2 h-2 rounded-full ${
-                          e.cancel_classes ? 'bg-red-500' : 'bg-[#FF6900]'
-                        }`}
-                      />
-                    ))}
-                  </View>
-
-                  {hasCancelClasses && (
-                    <Text className="text-[8px] font-black text-red-500 uppercase tracking-tighter mt-0.5">
-                      No Class
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Selected Date Events Section */}
-        <View className="mb-8">
-          <View className="flex-row justify-between items-center mb-3 px-1">
-            <View>
-              <Text className={`text-base font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {new Date(selectedDateStr + 'T00:00:00').toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
-              </Text>
-              <Text className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {selectedEvents.length} scheduled event{selectedEvents.length !== 1 ? 's' : ''}
-              </Text>
-            </View>
-
-            {isAdmin && (
-              <TouchableOpacity
-                onPress={() => handleOpenCreateModal(selectedDateStr)}
-                className="flex-row items-center bg-[#FF6900] px-3 py-1.5 rounded-full"
-              >
-                <Plus size={13} color="#ffffff" style={{ marginRight: 4 }} />
-                <Text className="text-white text-xs font-bold">Add Event</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <TouchableOpacity onPress={handlePrevMonth} style={[styles.monthNavBtn, { borderColor: colors.border, backgroundColor: colors.surface2 }]} accessibilityLabel="Previous month">
+                <ChevronLeft size={18} color={colors.text} />
               </TouchableOpacity>
-            )}
-          </View>
 
-          {loading ? (
-            <View className="p-8 items-center">
-              <ActivityIndicator color="#FF6900" size="small" />
-            </View>
-          ) : selectedEvents.length === 0 ? (
-            <View className={`p-8 rounded-3xl border items-center justify-center ${isDark ? 'bg-[#161B22] border-[#21262D]' : 'bg-white border-gray-100'}`}>
-              <CalendarIcon size={32} color={isDark ? '#4B5563' : '#9CA3AF'} style={{ marginBottom: 8 }} />
-              <Text className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                No events scheduled for this day
-              </Text>
-              <Text className={`text-xs mt-1 text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                Regular academic schedule applies unless specified.
-              </Text>
-            </View>
-          ) : (
-            <View className="gap-3">
-              {selectedEvents.map((event) => (
-                <View
-                  key={event.id}
-                  className={`p-4 rounded-3xl border ${
-                    event.cancel_classes
-                      ? isDark
-                        ? 'bg-red-950/30 border-red-800/60'
-                        : 'bg-red-50 border-red-200'
-                      : isDark
-                      ? 'bg-[#161B22] border-[#21262D]'
-                      : 'bg-white border-gray-100'
-                  } shadow-sm`}
-                >
-                  <View className="flex-row justify-between items-start mb-2">
-                    <View className="flex-1 mr-2">
-                      <View className="flex-row items-center gap-2 mb-1">
-                        <Text className={`text-base font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                          {event.title}
-                        </Text>
-                        <View className="bg-orange-500/20 px-2 py-0.5 rounded-md">
-                          <Text className="text-[#FF6900] text-[10px] font-bold uppercase">
-                            {event.event_type || 'Event'}
-                          </Text>
-                        </View>
-                      </View>
+              <View style={{ alignItems: 'center', gap: 2 }}>
+                <Text style={{ color: colors.text, fontWeight: '900', fontSize: isTablet ? 22 : 18 }}>
+                  {MONTH_NAMES[currentMonth]} {currentYear}
+                </Text>
+                <Text style={{ color: colors.textSub, fontWeight: '700', fontSize: 12 }}>
+                  {events.length} total event{events.length !== 1 ? 's' : ''}
+                </Text>
+              </View>
 
-                      {(event.start_time || event.end_time) && (
-                        <View className="flex-row items-center mt-1">
-                          <Clock size={13} color={isDark ? '#9CA3AF' : '#6B7280'} style={{ marginRight: 4 }} />
-                          <Text className={`text-xs font-semibold ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                            {event.start_time || 'Start'} {event.end_time ? `- ${event.end_time}` : ''}
-                          </Text>
-                        </View>
-                      )}
+              <TouchableOpacity onPress={handleNextMonth} style={[styles.monthNavBtn, { borderColor: colors.border, backgroundColor: colors.surface2 }]} accessibilityLabel="Next month">
+                <ChevronRight size={18} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+              <LegendPill label="Today" color={colors.blue} bg={colors.blueDim} textColor={colors.text} />
+              <LegendPill label="Selected" color={colors.accent} bg={colors.accentDim} textColor={colors.text} />
+              <LegendPill label="Has Event" color={EVENT_TYPE_STYLES.event.color} bg={'rgba(255,107,0,0.12)'} textColor={colors.text} />
+              <LegendPill label="Cancelled Classes" color={colors.red} bg={colors.redDim} textColor={colors.text} />
+            </View>
+          </GlassCard>
+
+          <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: 14 }}>
+            <View style={{ flex: isDesktop ? 1.45 : 1 }}>
+              <GlassCard
+                variant="elevated"
+                borderRadius={24}
+                accentColor={colors.accent}
+                glowColor={isDark ? 'rgba(255,107,0,0.24)' : 'rgba(255,107,0,0.14)'}
+                contentStyle={{ padding: isTablet ? 14 : 10 }}
+              >
+                <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                  {WEEK_DAYS.map((w, idx) => (
+                    <View key={w} style={{ width: DAY_COLUMN_WIDTH, alignItems: 'center', paddingVertical: 4 }}>
+                      <Text style={{
+                        color: idx >= 5 ? colors.accent : colors.textSub,
+                        fontWeight: '800',
+                        fontSize: 11,
+                        letterSpacing: 0.3,
+                        textTransform: 'uppercase',
+                      }}>
+                        {w}
+                      </Text>
                     </View>
+                  ))}
+                </View>
 
-                    {isAdmin && (
-                      <View className="flex-row items-center gap-2">
-                        <TouchableOpacity
-                          onPress={() => handleOpenEditModal(event)}
-                          className={`p-2 rounded-full ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}
-                          accessibilityLabel="Edit event"
-                        >
-                          <Edit2 size={14} color={isDark ? '#9CA3AF' : '#4B5563'} />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => handleDeleteEvent(event)}
-                          className={`p-2 rounded-full ${isDark ? 'bg-red-950/60' : 'bg-red-50'}`}
-                          accessibilityLabel="Delete event"
-                        >
-                          <Trash2 size={14} color="#EF4444" />
-                        </TouchableOpacity>
-                      </View>
-                    )}
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                  {calendarDays.map((item) => {
+                    const dayEvents = eventsByDate.get(item.dateStr) || [];
+                    const isSelected = item.dateStr === selectedDateStr;
+                    const isToday = item.dateStr === todayStr;
+                    const hasCancelClasses = dayEvents.some((entry) => entry.cancel_classes);
+                    const markerEvents = dayEvents.slice(0, 3);
+
+                    const cellStyle = [
+                      styles.dayCell,
+                      {
+                        width: DAY_COLUMN_WIDTH,
+                        minHeight: isTablet ? 90 : 76,
+                        borderColor: isSelected
+                          ? colors.accent
+                          : isToday
+                          ? colors.blue
+                          : 'transparent',
+                        backgroundColor: isSelected
+                          ? colors.accentDim
+                          : isToday
+                          ? colors.blueDim
+                          : 'transparent',
+                      },
+                    ];
+
+                    return (
+                      <TouchableOpacity key={item.dateStr} onPress={() => setSelectedDateStr(item.dateStr)} style={cellStyle} activeOpacity={0.82}>
+                        <View style={{ alignItems: 'center', width: '100%' }}>
+                          <Text style={{
+                            color: isSelected
+                              ? colors.accent
+                              : !item.isCurrentMonth
+                              ? colors.textMuted
+                              : colors.text,
+                            opacity: item.isCurrentMonth ? 1 : 0.45,
+                            fontWeight: '800',
+                            fontSize: 12,
+                          }}>
+                            {item.dayNumber}
+                          </Text>
+
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, minHeight: 10 }}>
+                            {markerEvents.map((event, idx) => {
+                              const marker = getEventTypeStyle(event);
+                              return <View key={`${event.id}-${idx}`} style={{ width: 6, height: 6, borderRadius: 99, backgroundColor: marker.color }} />;
+                            })}
+                            {dayEvents.length > 3 ? (
+                              <View style={{ minWidth: 14, height: 14, borderRadius: 99, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border }}>
+                                <Text style={{ color: colors.textSub, fontSize: 9, fontWeight: '800' }}>+{dayEvents.length - 3}</Text>
+                              </View>
+                            ) : null}
+                          </View>
+
+                          {hasCancelClasses ? (
+                            <View style={{ marginTop: 4, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, backgroundColor: colors.redDim, borderWidth: 1, borderColor: colors.redBorder }}>
+                              <Text style={{ color: colors.red, fontSize: 8, fontWeight: '900', textTransform: 'uppercase' }}>Cancelled</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </GlassCard>
+            </View>
+
+            <View style={{ flex: 1, gap: 14 }}>
+              <GlassCard
+                variant="modal"
+                borderRadius={22}
+                accentColor={colors.accent}
+                contentStyle={{ padding: 16 }}
+              >
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.text, fontWeight: '900', fontSize: 17 }}>{selectedDateLabel}</Text>
+                    <Text style={{ color: colors.textSub, fontSize: 12, marginTop: 2 }}>
+                      {selectedEvents.length} event{selectedEvents.length !== 1 ? 's' : ''} for selected day
+                    </Text>
                   </View>
 
-                  {event.description ? (
-                    <Text className={`text-xs mt-1.5 leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                      {event.description}
-                    </Text>
+                  {isAdmin ? (
+                    <TouchableOpacity onPress={() => handleOpenCreateModal(selectedDateStr)} style={styles.inlineAddBtn}>
+                      <Plus size={13} color="#fff" style={{ marginRight: 4 }} />
+                      <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>Add</Text>
+                    </TouchableOpacity>
                   ) : null}
+                </View>
 
-                  {/* Cancellation Banner */}
-                  {event.cancel_classes && (
-                    <View className="flex-row items-center bg-red-500/10 border border-red-500/30 rounded-xl p-2.5 mt-3">
-                      <AlertTriangle size={15} color="#EF4444" style={{ marginRight: 6 }} />
-                      <Text className="text-xs font-black text-red-500 flex-1">
-                        All classes are CANCELLED on this date.
+                <View style={{ marginTop: 12, gap: 10 }}>
+                  {loading ? (
+                    <View style={{ paddingVertical: 22, alignItems: 'center' }}>
+                      <ActivityIndicator size="small" color={colors.accent} />
+                    </View>
+                  ) : selectedEvents.length === 0 ? (
+                    <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 14, backgroundColor: colors.surface2 }}>
+                      <Text style={{ color: colors.text, fontWeight: '700', fontSize: 13 }}>No events scheduled</Text>
+                      <Text style={{ color: colors.textSub, marginTop: 4, fontSize: 12 }}>
+                        Regular class flow applies unless an event is added.
                       </Text>
                     </View>
-                  )}
+                  ) : (
+                    selectedEvents.map((event) => {
+                      const typeChip = getEventTypeStyle(event);
+                      return (
+                        <View
+                          key={event.id}
+                          style={{
+                            borderRadius: 14,
+                            borderWidth: 1,
+                            borderColor: event.cancel_classes ? colors.redBorder : colors.border,
+                            backgroundColor: event.cancel_classes ? colors.redDim : colors.surface2,
+                            padding: 12,
+                          }}
+                        >
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>{event.title}</Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                                <View style={{ borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: `${typeChip.color}1A`, borderWidth: 1, borderColor: `${typeChip.color}66` }}>
+                                  <Text style={{ fontSize: 10, fontWeight: '800', color: typeChip.color, textTransform: 'uppercase' }}>{typeChip.label}</Text>
+                                </View>
+                                {(event.start_time || event.end_time) ? (
+                                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Clock size={12} color={colors.textSub} style={{ marginRight: 4 }} />
+                                    <Text style={{ color: colors.textSub, fontSize: 11, fontWeight: '700' }}>
+                                      {event.start_time || 'Start'}{event.end_time ? ` - ${event.end_time}` : ''}
+                                    </Text>
+                                  </View>
+                                ) : null}
+                              </View>
+                            </View>
 
-                  {/* Linked Announcement indicator */}
-                  {event.announcement_id && (
-                    <View className="flex-row items-center mt-2.5">
-                      <Bell size={12} color="#10B981" style={{ marginRight: 4 }} />
-                      <Text className="text-[10px] font-bold text-emerald-500">
-                        School-wide announcement published
-                      </Text>
-                    </View>
+                            {isAdmin ? (
+                              <View style={{ flexDirection: 'row', gap: 6 }}>
+                                <TouchableOpacity onPress={() => handleOpenEditModal(event)} style={[styles.iconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} accessibilityLabel="Edit event">
+                                  <Edit2 size={13} color={colors.textSub} />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => handleDeleteEvent(event)} style={[styles.iconBtn, { backgroundColor: colors.redDim, borderColor: colors.redBorder }]} accessibilityLabel="Delete event">
+                                  <Trash2 size={13} color={colors.red} />
+                                </TouchableOpacity>
+                              </View>
+                            ) : null}
+                          </View>
+
+                          {event.description ? (
+                            <Text style={{ color: colors.textSub, marginTop: 8, fontSize: 12, lineHeight: 18 }}>
+                              {event.description}
+                            </Text>
+                          ) : null}
+
+                          {event.cancel_classes ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                              <AlertTriangle size={13} color={colors.red} style={{ marginRight: 6 }} />
+                              <Text style={{ color: colors.red, fontSize: 11, fontWeight: '900' }}>
+                                Classes cancelled for this date.
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      );
+                    })
                   )}
                 </View>
-              ))}
+              </GlassCard>
+
+              <GlassCard
+                variant="subtle"
+                borderRadius={22}
+                accentTop={false}
+                contentStyle={{ padding: 16 }}
+              >
+                <Text style={{ color: colors.text, fontWeight: '900', fontSize: 15 }}>Upcoming Events</Text>
+                <Text style={{ color: colors.textSub, marginTop: 2, marginBottom: 10, fontSize: 12 }}>
+                  Next scheduled school moments across all dates.
+                </Text>
+
+                {upcomingEvents.length === 0 ? (
+                  <Text style={{ color: colors.textSub, fontSize: 12 }}>No upcoming events currently scheduled.</Text>
+                ) : (
+                  <View style={{ gap: 8 }}>
+                    {upcomingEvents.map((event) => {
+                      const typeChip = getEventTypeStyle(event);
+                      return (
+                        <TouchableOpacity
+                          key={`upcoming-${event.id}`}
+                          onPress={() => {
+                            setSelectedDateStr(event.event_date);
+                            const [y, m] = event.event_date.split('-').map((entry) => Number(entry));
+                            if (y && m) setCurrentDate(new Date(y, m - 1, 1));
+                          }}
+                          style={{
+                            borderRadius: 12,
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                            backgroundColor: colors.surface,
+                            padding: 10,
+                          }}
+                        >
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ color: colors.text, fontWeight: '800', fontSize: 12 }}>{event.title}</Text>
+                              <Text style={{ color: colors.textSub, fontSize: 11, marginTop: 2 }}>
+                                {new Date(`${event.event_date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })}
+                                {event.start_time ? ` • ${event.start_time}` : ''}
+                              </Text>
+                            </View>
+                            <View style={{ borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3, backgroundColor: `${typeChip.color}1A`, borderWidth: 1, borderColor: `${typeChip.color}66` }}>
+                              <Text style={{ color: typeChip.color, fontSize: 10, fontWeight: '800' }}>{typeChip.label}</Text>
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </GlassCard>
             </View>
-          )}
+          </View>
         </View>
       </ScrollView>
 
@@ -683,3 +808,46 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
 }
 
 export default SchoolCalendarView;
+
+const styles = StyleSheet.create({
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF6900',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  inlineAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF6900',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  monthNavBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayCell: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 2,
+    paddingVertical: 6,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  iconBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

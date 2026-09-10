@@ -8,6 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
 import { FinanceService } from '@/services/FinanceService';
 import { FeeStructure, Payment } from '@/types/types';
+import { showError } from '@/utils/toast';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -71,7 +72,11 @@ export default function FinanceDashboard() {
             setPayments(transformedPayments);
             setFeeStructures(feesData || []);
         } catch (error) {
-            console.error('Error fetching finance data:', error);
+            if (FinanceService.isPermissionDeniedError(error)) {
+                showError('Permission Denied', "You don't have access to this section.");
+            } else {
+                showError('Unable to load finance data', 'Please try again shortly.');
+            }
         } finally {
             setLoading(false);
         }
@@ -90,7 +95,12 @@ export default function FinanceDashboard() {
             await FinanceService.recordPayment(paymentData);
             fetchAllData();
         } catch (error) {
-            console.error('Error recording payment:', error);
+            if (FinanceService.isPermissionDeniedError(error)) {
+                showError('Permission Denied', "You don't have access to record payments.");
+            } else {
+                showError('Unable to record payment', 'Please try again shortly.');
+            }
+            throw error;
         }
     };
 
@@ -102,8 +112,8 @@ export default function FinanceDashboard() {
                 await FinanceService.createFeeStructure(feeData);
             }
             fetchAllData();
-        } catch (error) {
-            console.error('Error saving fee structure:', error);
+        } catch {
+            showError('Unable to save fee structure', 'Please try again shortly.');
         }
     };
 
@@ -111,8 +121,8 @@ export default function FinanceDashboard() {
         try {
             await FinanceService.createFeeStructure(feeData);
             fetchAllData();
-        } catch (error) {
-            console.error('Error creating fee structure:', error);
+        } catch {
+            showError('Unable to create fee structure', 'Please try again shortly.');
         }
     };
 
@@ -120,9 +130,9 @@ export default function FinanceDashboard() {
         try {
             await FinanceService.deleteFeeStructure(feeStructureId);
             await fetchAllData();
-        } catch (error) {
-            console.error('Error deleting fee structure:', error);
-            throw error;
+        } catch {
+            showError('Unable to delete fee structure', 'Please try again shortly.');
+            throw new Error('Unable to delete fee structure');
         }
     };
 
@@ -140,9 +150,9 @@ export default function FinanceDashboard() {
                 await FinanceService.revertReleaseFeeStructure(feeStructureId);
             }
             await fetchAllData();
-        } catch (error) {
-            console.error('Error toggling fee structure release:', error);
-            throw error;
+        } catch {
+            showError('Unable to update fee structure status', 'Please try again shortly.');
+            throw new Error('Unable to update fee structure status');
         }
     };
 

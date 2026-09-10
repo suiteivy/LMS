@@ -173,8 +173,8 @@ function ReportCard({ report, isDark }: { report: any; isDark: boolean }) {
             {/* Teacher remarks */}
             {data.comments && (
                 <View className="bg-orange-50/30 dark:bg-[#161B22] p-4 rounded-xl mb-4">
-                    <Text className="text-[#FF6900] text-[8px] font-bold uppercase tracking-widest mb-2">Teacher's Remarks</Text>
-                    <Text className="text-gray-600 dark:text-gray-400 text-xs italic">"{data.comments}"</Text>
+                    <Text className="text-[#FF6900] text-[8px] font-bold uppercase tracking-widest mb-2">Teacher&apos;s Remarks</Text>
+                    <Text className="text-gray-600 dark:text-gray-400 text-xs italic">{data.comments}</Text>
                 </View>
             )}
 

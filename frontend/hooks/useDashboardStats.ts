@@ -4,6 +4,7 @@ import { supabase } from '@/libs/supabase';
 import { RevenueService } from '@/services/RevenueService';
 import { CacheService } from '@/services/CacheService';
 import { StatsData } from '@/types/types';
+import { hasFinanceDashboardAccess } from '@/utils/financeAccess';
 import { showFetchError } from '@/utils/toast';
 import { useEffect, useState } from 'react';
 
@@ -14,9 +15,15 @@ export const useDashboardStats = () => {
     
     const { formatAmount } = useCurrency();
 
-    const { isInitializing, session, isDemo, profile } = useAuth(); // Import useAuth to check session status
+    const { isInitializing, session, profile, activeRole, availableRoles, canonicalRole } = useAuth();
     const requiresCredentialSetup = !!profile?.must_change_password || !!profile?.requires_security_questions_setup;
     const cacheKey = profile?.institution_id ? `admin_dashboard_stats_${profile.institution_id}` : null;
+    const canRequestFinanceStats = hasFinanceDashboardAccess({
+        activeRole,
+        role: profile?.role,
+        canonicalRole,
+        availableRoles,
+    });
 
     const fetchStats = async () => {
         if (requiresCredentialSetup || !profile?.institution_id) {
@@ -30,8 +37,15 @@ export const useDashboardStats = () => {
         if (cacheKey && stats.length === 0) {
             const cached = await CacheService.get<{ stats: StatsData[]; revenueData: { day: string; amount: number }[] }>(cacheKey, { allowStale: true });
             if (cached.data) {
-                setStats(cached.data.stats || []);
-                setRevenueData(cached.data.revenueData || []);
+                const cachedStats = cached.data.stats || [];
+                const cachedRevenueData = cached.data.revenueData || [];
+                if (canRequestFinanceStats) {
+                    setStats(cachedStats);
+                    setRevenueData(cachedRevenueData);
+                } else {
+                    setStats(cachedStats.filter((stat) => stat.label !== 'Revenue'));
+                    setRevenueData([]);
+                }
                 setLoading(false);
             }
         }
@@ -41,7 +55,6 @@ export const useDashboardStats = () => {
             let studentCount = 0;
             let teacherCount = 0;
             let subjectCount = 0;
-            let totalRevenue = 0;
             let presentToday = 0;
 
             const getLocalDateString = (d: Date) => {
@@ -96,86 +109,70 @@ export const useDashboardStats = () => {
                 ? `${presentToday} present today (${absentCount} absent)`
                 : "No data recorded today";
 
-            try {
-                const overview = await RevenueService.getOverview();
-                totalRevenue = Number(overview?.net_revenue || 0);
-                setRevenueData((overview?.last_7_days || []).map((row) => ({ day: row.day, amount: Number(row.net || 0) })));
+            const baseStatsData: StatsData[] = [
+                {
+                    label: "Total Students",
+                    value: studentCount.toString(),
+                    icon: "users",
+                    color: "blue",
+                },
+                {
+                    label: "Teachers",
+                    value: teacherCount.toString(),
+                    icon: "school",
+                    color: "green",
+                },
+                {
+                    label: "Attendance",
+                    value: `${attendanceRate}%`,
+                    subValue: subValue,
+                    icon: "calendar",
+                    color: "orange",
+                },
+            ];
 
-                const paymentsCount = Number(overview?.payment_count || 0);
+            let statsData: StatsData[] = baseStatsData;
+            let nextRevenueData: { day: string; amount: number }[] = [];
 
-                const statsData: StatsData[] = [
-                    {
-                        label: "Total Students",
-                        value: studentCount.toString(),
-                        icon: "users",
-                        color: "blue",
-                    },
-                    {
-                        label: "Teachers",
-                        value: teacherCount.toString(),
-                        icon: "school",
-                        color: "green",
-                    },
-                    {
-                        label: "Attendance",
-                        value: `${attendanceRate}%`,
-                        subValue: subValue,
-                        icon: "calendar",
-                        color: "orange",
-                    },
-                    {
-                        label: "Revenue",
-                        value: formatAmount(totalRevenue),
-                        subValue: `${paymentsCount} completed payments (net after deductions)`,
-                        icon: "wallet",
-                        color: "yellow",
-                    },
-                ];
-                setStats(statsData);
-                if (cacheKey) {
-                    CacheService.set(cacheKey, { stats: statsData, revenueData }, 5 * 60 * 1000);
-                }
-            } catch (revenueError) {
-                if ((revenueError as any)?.response?.status !== 401 && (revenueError as any)?.response?.status !== 428) {
-                    console.error('Error fetching revenue overview:', revenueError);
-                }
-                setRevenueData([]);
+            if (canRequestFinanceStats) {
+                try {
+                    const overview = await RevenueService.getOverview();
+                    const totalRevenue = Number(overview?.net_revenue || 0);
+                    const paymentsCount = Number(overview?.payment_count || 0);
 
-                const statsData: StatsData[] = [
-                    {
-                        label: "Total Students",
-                        value: studentCount.toString(),
-                        icon: "users",
-                        color: "blue",
-                    },
-                    {
-                        label: "Teachers",
-                        value: teacherCount.toString(),
-                        icon: "school",
-                        color: "green",
-                    },
-                    {
-                        label: "Attendance",
-                        value: `${attendanceRate}%`,
-                        subValue: subValue,
-                        icon: "calendar",
-                        color: "orange",
-                    },
-                    {
-                        label: "Revenue",
-                        value: formatAmount(0),
-                        subValue: "Revenue unavailable",
-                        icon: "wallet",
-                        color: "yellow",
-                    },
-                ];
-                setStats(statsData);
-                if (cacheKey) {
-                    CacheService.set(cacheKey, { stats: statsData, revenueData: [] }, 5 * 60 * 1000);
+                    nextRevenueData = (overview?.last_7_days || []).map((row) => ({
+                        day: row.day,
+                        amount: Number(row.net || 0),
+                    }));
+
+                    statsData = [
+                        ...baseStatsData,
+                        {
+                            label: "Revenue",
+                            value: formatAmount(totalRevenue),
+                            subValue: `${paymentsCount} completed payments (net after deductions)`,
+                            icon: "wallet",
+                            color: "yellow",
+                        },
+                    ];
+                } catch (revenueError) {
+                    // Revenue is optional in shared dashboards; omit quietly on permission
+                    // boundaries and transient endpoint failures.
+                    const statusCode = Number((revenueError as any)?.response?.status || 0);
+                    if (!RevenueService.isPermissionDeniedError(revenueError) && statusCode !== 401 && statusCode !== 428) {
+                        showFetchError('revenue statistics', revenueError);
+                        nextRevenueData = [];
+                    }
                 }
             }
+
+            setRevenueData(nextRevenueData);
+            setStats(statsData);
+
+            if (cacheKey) {
+                CacheService.set(cacheKey, { stats: statsData, revenueData: nextRevenueData }, 5 * 60 * 1000);
+            }
         } catch (e) {
-            console.error('Exception in useDashboardStats:', e);
             showFetchError('dashboard statistics', e);
         } finally {
             setLoading(false);
@@ -245,7 +242,7 @@ export const useDashboardStats = () => {
             supabase.removeChannel(transactionChannel);
             supabase.removeChannel(attendanceChannel);
         };
-    }, [isInitializing, session, requiresCredentialSetup]);
+    }, [isInitializing, session, requiresCredentialSetup, canRequestFinanceStats]);
 
     return { stats, loading, revenueData, refresh: fetchStats };
 };

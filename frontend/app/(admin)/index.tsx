@@ -1,6 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCurrency } from "@/contexts/CurrencyContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { router } from "expo-router";
@@ -59,7 +58,6 @@ export default function AdminDashboard() {
   } = useAuth();
   const { stats, loading, refresh: refreshStats } = useDashboardStats();
   const { isDark } = useTheme();
-  const { formatAmount } = useCurrency();
   const [refreshing, setRefreshing] = useState(false);
 
   const tier = useSubscriptionTier();
@@ -74,6 +72,7 @@ export default function AdminDashboard() {
   }, [refreshStats]);
 
   const attendanceValue = stats.find(s => s.label === "Attendance")?.value || "0%";
+  const revenueStat = stats.find((s) => s.label === "Revenue");
   const totalStudents = parseInt(stats.find(s => s.label === "Total Students")?.value || "0");
   const planMax = subscriptionPlan === 'beta' ? 30 : subscriptionPlan === 'basic' ? 900 : subscriptionPlan === 'pro' ? 1000 : 5000;
   const capacityPct = `${Math.min((totalStudents / planMax) * 100, 100)}%`;
@@ -135,11 +134,11 @@ export default function AdminDashboard() {
 
         {/* ── Hero Inline Stats ── */}
         <View className="flex-row items-start justify-between mb-6 mt-2">
-          {tier.showFinancials && (
+          {tier.showFinancials && revenueStat && (
             <View>
               <Text className="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest mb-1">Revenue</Text>
               <Text className="text-gray-900 dark:text-white text-3xl font-black" numberOfLines={1} adjustsFontSizeToFit>
-                {stats.find(s => s.label === "Revenue")?.value || formatAmount(0)}
+                {revenueStat.value}
               </Text>
             </View>
           )}

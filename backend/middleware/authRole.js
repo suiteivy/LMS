@@ -6,6 +6,30 @@
  * @param {string[]} roles - array of allowed role names, e.g. ['admin', 'teacher']
  * @returns {(req, res, next) => void}
  */
+function normalizeRoleName(role) {
+  const value = String(role || '').trim().toLowerCase();
+  if (!value) return null;
+
+  if (value === 'bursar') return 'bursary';
+  if (value === 'school_admin') return 'admin';
+  if (value === 'platform_admin') return 'master_admin';
+
+  return value;
+}
+
+function expandRoleAliases(role) {
+  const normalized = normalizeRoleName(role);
+  if (!normalized) return [];
+
+  const expanded = new Set([normalized]);
+
+  if (normalized === 'admin') expanded.add('school_admin');
+  if (normalized === 'master_admin') expanded.add('platform_admin');
+  if (normalized === 'bursary') expanded.add('bursar');
+
+  return Array.from(expanded);
+}
+
 function authorizeRoles(roles = []) {
   return (req, res, next) => {
     try {
@@ -15,27 +39,35 @@ function authorizeRoles(roles = []) {
         return res.status(401).json({ error: "Unauthorized" });
       }
 
-      const activeRole = (user.active_role || user.role || '').toLowerCase();
-      const normalizedAllowed = roles.map(r => String(r || '').toLowerCase());
-      let isAllowed = normalizedAllowed.includes(activeRole);
+      const allowedRoles = new Set();
+      roles.forEach((role) => {
+        expandRoleAliases(role).forEach((alias) => allowedRoles.add(alias));
+      });
+
+      const userRoles = new Set();
+      const addUserRole = (role) => {
+        expandRoleAliases(role).forEach((alias) => userRoles.add(alias));
+      };
+
+      addUserRole(user.active_role);
+      addUserRole(user.role);
+
+      let isAllowed = Array.from(userRoles).some((role) => allowedRoles.has(role));
 
       // Check available roles (e.g. admin who is also teacher)
       if (!isAllowed && Array.isArray(user.available_roles) && user.available_roles.length > 0) {
-        isAllowed = user.available_roles.some(r => normalizedAllowed.includes(String(r || '').toLowerCase()));
+        user.available_roles.forEach(addUserRole);
+        isAllowed = Array.from(userRoles).some((role) => allowedRoles.has(role));
       }
 
-      // Check custom roles as well (case-insensitive and handling bursary/bursar normalization)
+      // Check custom roles as well
       if (!isAllowed && user.roles && user.roles.length > 0) {
-        const normalizedUserRoles = user.roles.map(r => {
-          const roleLower = r.toLowerCase();
-          if (roleLower === 'bursar') return 'bursary';
-          return roleLower;
-        });
-        isAllowed = roles.some(r => normalizedUserRoles.includes(r.toLowerCase()));
+        user.roles.forEach(addUserRole);
+        isAllowed = Array.from(userRoles).some((role) => allowedRoles.has(role));
       }
 
-      // Master Admins inherit standard 'admin' route privileges 
-      if (!isAllowed && ((user.role === 'master_admin') || (user.available_roles?.includes('master_admin'))) && normalizedAllowed.includes('admin')) {
+      // Master admins (including platform_admin alias) inherit standard admin route privileges
+      if (!isAllowed && userRoles.has('master_admin') && allowedRoles.has('admin')) {
         isAllowed = true;
       }
 

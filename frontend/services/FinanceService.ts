@@ -1,7 +1,22 @@
 import { api } from "./api";
 import { Payment, FeeStructure } from "@/types/types";
 
+type HttpLikeError = {
+    response?: {
+        status?: number;
+    };
+};
+
+export const isPermissionDeniedError = (error: unknown): boolean => {
+    const status = Number((error as HttpLikeError)?.response?.status || 0);
+    return status === 403;
+};
+
 export class FinanceService {
+    static isPermissionDeniedError(error: unknown): boolean {
+        return isPermissionDeniedError(error);
+    }
+
     static async getPayments(studentId?: string): Promise<Payment[]> {
         // Use unified transactions endpoint
         let url = '/finance/transactions?type=fee_payment';
@@ -53,12 +68,18 @@ export class FinanceService {
 
     static async recordPayment(paymentData: any) {
         // Calls new recordFeePayment endpoint
-        const response = await api.post('/finance/fees/pay', paymentData);
+        const response = await api.post('/finance/fees/pay', paymentData, {
+            skipErrorToast: true,
+            skipErrorLog: true,
+        });
         return response.data;
     }
 
     static async getInstitutionPayments(): Promise<Payment[]> {
-        const response = await api.get('/finance/payments');
+        const response = await api.get('/finance/payments', {
+            skipErrorToast: true,
+            skipErrorLog: true,
+        });
         return (response.data || []).map((p: any) => ({
             id: p.id,
             student_id: p.student_id,

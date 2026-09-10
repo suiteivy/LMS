@@ -43,6 +43,23 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+export const isBenignSupabaseSignOutError = (error: any): boolean => {
+  const status = Number(error?.status || error?.code || 0);
+  const message = String(error?.message || '').toLowerCase();
+
+  if (status === 401 || status === 403) {
+    return true;
+  }
+
+  return (
+    message.includes('invalid refresh token') ||
+    message.includes('refresh token not found') ||
+    message.includes('session not found') ||
+    message.includes('jwt expired') ||
+    message.includes('already signed out')
+  );
+};
+
 // Handle Back-Forward Cache (bfcache) in web environments to avoid WebSocket abortion errors
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
   window.addEventListener('pagehide', () => {
@@ -97,6 +114,10 @@ export const authService = {
       }
 
       const { error } = await supabase.auth.signOut();
+      const signOutError = isBenignSupabaseSignOutError(error) ? null : error;
+      if (error && !signOutError) {
+        console.warn('[authService.signOut] Benign Supabase sign-out error ignored:', error?.message || error);
+      }
 
       if (isDemo && userId) {
         try {
@@ -110,7 +131,7 @@ export const authService = {
         }
       }
 
-      return { error };
+      return { error: signOutError };
     } catch (error) {
       return { error };
     }

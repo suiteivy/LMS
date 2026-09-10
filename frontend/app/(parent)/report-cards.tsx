@@ -529,8 +529,7 @@ export default function ParentReportCardsScreen() {
           <FileText size={48} color={isDark ? '#3B3660' : '#D1D5DB'} />
           <Text style={styles.emptyTitle}>No report cards available yet</Text>
           <Text style={styles.emptySubtitle}>
-            {childName}'s report cards will appear here once published by the
-            school.
+            {`${childName}'s report cards will appear here once published by the school.`}
           </Text>
         </View>
       ) : (

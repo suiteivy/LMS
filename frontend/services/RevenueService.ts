@@ -1,5 +1,16 @@
 import { api } from './api';
 
+type HttpLikeError = {
+  response?: {
+    status?: number;
+  };
+};
+
+export const isPermissionDeniedError = (error: unknown): boolean => {
+  const status = Number((error as HttpLikeError)?.response?.status || 0);
+  return status === 403;
+};
+
 export interface RevenueOverview {
   gross_revenue: number;
   total_deductions: number;
@@ -36,6 +47,10 @@ export interface RevenueDeductionLog {
 }
 
 export class RevenueService {
+  static isPermissionDeniedError(error: unknown): boolean {
+    return isPermissionDeniedError(error);
+  }
+
   static async getOverview(): Promise<RevenueOverview> {
     const response = await api.get('/finance/revenue/overview', {
       skipErrorToast: true,
@@ -47,6 +62,8 @@ export class RevenueService {
   static async getDeductions(search?: string): Promise<RevenueDeductionLog[]> {
     const response = await api.get('/finance/revenue/deductions', {
       params: search ? { search } : undefined,
+      skipErrorToast: true,
+      skipErrorLog: true,
     });
     return response.data || [];
   }

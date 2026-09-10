@@ -5,6 +5,7 @@ const { sendEmail } = require("../utils/emailService.js");
 const { sendBulkInAppNotificationsWithHistory } = require('../services/notificationDelivery.service.js');
 const { canonicalRoleFrom, withRoleAliases } = require("../utils/roleAlias.js");
 const { assignStudentToSingleClass } = require('../utils/studentClassEnrollment');
+const { clearUserCache } = require("../middleware/auth.middleware.js");
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const ADMIN_DELEGATED_USER_EDIT_PERMISSIONS = new Set([
@@ -264,6 +265,17 @@ const revokeAllUserSessions = async (userId) => {
     .update({ is_revoked: true })
     .eq('user_id', userId)
     .eq('is_revoked', false);
+};
+
+const invalidateAuthCacheForUser = (userId) => {
+  if (!userId) return;
+  try {
+    if (typeof clearUserCache === 'function') {
+      clearUserCache(userId);
+    }
+  } catch (cacheErr) {
+    console.warn('[AuthController] Failed to clear auth cache:', cacheErr?.message || cacheErr);
+  }
 };
 
 const buildCredentialDeliveryUrl = (token) => {
@@ -1749,6 +1761,8 @@ exports.changePassword = async (req, res) => {
       .update({ must_change_password: false })
       .eq('id', userId);
 
+    invalidateAuthCacheForUser(userId);
+
     await writePasswordAuditLog({
       action: 'change_password',
       actorUserId: userId,
@@ -1953,6 +1967,8 @@ exports.adminResetPassword = async (req, res) => {
         requires_security_questions_setup: true,
       })
       .eq('id', targetUserId);
+
+    invalidateAuthCacheForUser(targetUserId);
 
     await revokeAllUserSessions(targetUserId);
 
@@ -2460,6 +2476,8 @@ exports.resetPassword = async (req, res) => {
       })
       .eq('id', user.id);
 
+    invalidateAuthCacheForUser(user.id);
+
     await revokeAllUserSessions(user.id);
 
     await writePasswordAuditLog({
@@ -2529,6 +2547,8 @@ exports.setupSecurityQuestions = async (req, res) => {
       .update({ requires_security_questions_setup: false })
       .eq('id', userId);
 
+    invalidateAuthCacheForUser(userId);
+
     return res.status(200).json({
       message: 'Security question saved successfully',
       selected_question_key,
@@ -2561,23 +2581,6 @@ exports.completeCredentialSetup = async (req, res) => {
     } = req.body || {};
     const { ip_address: ipAddress, user_agent: userAgent } = getRequestContext(req);
 
-    if (!isValidSecurityQuestionKey(selected_question_key)) {
-      return res.status(400).json({ error: 'A valid security question selection is required' });
-    }
-
-    const normalizedAnswer = normalizeSecurityAnswer(selected_question_answer);
-    if (!normalizedAnswer) {
-      return res.status(400).json({ error: 'Security answer cannot be empty' });
-    }
-
-    if (!new_password || String(new_password).length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    }
-
-    if (String(new_password).length > 72) {
-      return res.status(400).json({ error: 'Password cannot be longer than 72 characters' });
-    }
-
     const { data: userRow, error: userError } = await supabase
       .from('users')
       .select('id, email, must_change_password, requires_security_questions_setup')
@@ -2587,54 +2590,91 @@ exports.completeCredentialSetup = async (req, res) => {
     if (userError) throw userError;
     if (!userRow) return res.status(404).json({ error: 'User not found' });
 
-    const inFirstLoginSetupState = !!userRow.must_change_password && !!userRow.requires_security_questions_setup;
-    if (!inFirstLoginSetupState) {
+    const mustChangePassword = !!userRow.must_change_password;
+    const requiresSecurityQuestionsSetup = !!userRow.requires_security_questions_setup;
+
+    if (!mustChangePassword && !requiresSecurityQuestionsSetup) {
       return res.status(409).json({
         error: 'Credential setup is not required for this account',
         code: 'CREDENTIAL_SETUP_NOT_REQUIRED',
       });
     }
 
-    // Step 1: Update password first. If this fails, no DB setup state mutates.
-    const { error: passwordUpdateError } = await supabase.auth.admin.updateUserById(userId, {
-      password: String(new_password),
-    });
-    if (passwordUpdateError) throw passwordUpdateError;
+    let normalizedAnswer = '';
+    if (requiresSecurityQuestionsSetup) {
+      if (!isValidSecurityQuestionKey(selected_question_key)) {
+        return res.status(400).json({ error: 'A valid security question selection is required' });
+      }
 
-    // Step 2: Persist selected security question answer hash.
-    const s1 = crypto.randomBytes(16).toString('hex');
-    const unusedSalt = crypto.randomBytes(16).toString('hex');
-    const payload = {
-      user_id: userId,
-      question1_salt: s1,
-      question1_hash: hashSecurityAnswer(normalizedAnswer, s1),
-      question2_salt: encodeSecurityQuestionKey(selected_question_key),
-      question2_hash: hashSecurityAnswer(`unused:${unusedSalt}`, unusedSalt),
-      question3_salt: unusedSalt,
-      question3_hash: hashSecurityAnswer(`unused:${unusedSalt}:2`, unusedSalt),
-      updated_at: new Date().toISOString(),
-    };
+      normalizedAnswer = normalizeSecurityAnswer(selected_question_answer);
+      if (!normalizedAnswer) {
+        return res.status(400).json({ error: 'Security answer cannot be empty' });
+      }
+    }
 
-    const { error: upsertError } = await supabase
-      .from('user_security_answers')
-      .upsert(payload, { onConflict: 'user_id' });
+    if (mustChangePassword) {
+      if (!new_password || String(new_password).length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+      }
 
-    if (upsertError) {
-      await writePasswordAuditLog({
-        action: 'change_password',
-        actorUserId: userId,
-        targetUserId: userId,
-        targetEmail: normalizeEmail(userRow.email),
-        outcome: 'failure',
-        reason: 'credential_setup_partial_security_question_failed',
-        ipAddress,
-        userAgent,
+      if (String(new_password).length > 72) {
+        return res.status(400).json({ error: 'Password cannot be longer than 72 characters' });
+      }
+
+      // Step 1: Update password first. If this fails, no DB setup state mutates.
+      const { error: passwordUpdateError } = await supabase.auth.admin.updateUserById(userId, {
+        password: String(new_password),
       });
+      if (passwordUpdateError) throw passwordUpdateError;
+    }
 
-      return res.status(500).json({
-        error: 'Password updated, but security question setup failed. Please retry setup.',
-        code: 'CREDENTIAL_SETUP_PARTIAL_PASSWORD_UPDATED',
+    if (!mustChangePassword && typeof new_password === 'string' && new_password.trim().length > 0) {
+      return res.status(400).json({
+        error: 'Password update is not required for this account',
+        code: 'PASSWORD_UPDATE_NOT_REQUIRED',
       });
+    }
+
+    if (requiresSecurityQuestionsSetup) {
+      // Step 2: Persist selected security question answer hash.
+      const s1 = crypto.randomBytes(16).toString('hex');
+      const unusedSalt = crypto.randomBytes(16).toString('hex');
+      const payload = {
+        user_id: userId,
+        question1_salt: s1,
+        question1_hash: hashSecurityAnswer(normalizedAnswer, s1),
+        question2_salt: encodeSecurityQuestionKey(selected_question_key),
+        question2_hash: hashSecurityAnswer(`unused:${unusedSalt}`, unusedSalt),
+        question3_salt: unusedSalt,
+        question3_hash: hashSecurityAnswer(`unused:${unusedSalt}:2`, unusedSalt),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: upsertError } = await supabase
+        .from('user_security_answers')
+        .upsert(payload, { onConflict: 'user_id' });
+
+      if (upsertError) {
+        await writePasswordAuditLog({
+          action: 'change_password',
+          actorUserId: userId,
+          targetUserId: userId,
+          targetEmail: normalizeEmail(userRow.email),
+          outcome: 'failure',
+          reason: 'credential_setup_partial_security_question_failed',
+          ipAddress,
+          userAgent,
+        });
+
+        return res.status(500).json({
+          error: mustChangePassword
+            ? 'Password updated, but security question setup failed. Please retry setup.'
+            : 'Security question setup failed. Please retry.',
+          code: mustChangePassword
+            ? 'CREDENTIAL_SETUP_PARTIAL_PASSWORD_UPDATED'
+            : 'CREDENTIAL_SETUP_SECURITY_QUESTION_FAILED',
+        });
+      }
     }
 
     const { error: updateFlagsError } = await supabase
@@ -2657,11 +2697,13 @@ exports.completeCredentialSetup = async (req, res) => {
         userAgent,
       });
 
-      return res.status(500).json({
-        error: 'Password and security question were saved, but setup state update failed. Please retry once.',
+        return res.status(500).json({
+        error: 'Credential setup changes were saved, but setup state update failed. Please retry once.',
         code: 'CREDENTIAL_SETUP_PARTIAL_FLAGS_NOT_CLEARED',
       });
     }
+
+    invalidateAuthCacheForUser(userId);
 
     await writePasswordAuditLog({
       action: 'change_password',
@@ -2669,15 +2711,19 @@ exports.completeCredentialSetup = async (req, res) => {
       targetUserId: userId,
       targetEmail: normalizeEmail(userRow.email),
       outcome: 'success',
-      reason: 'credential_setup_completed',
+      reason: `credential_setup_completed_password_${mustChangePassword ? 'updated' : 'skipped'}_security_${requiresSecurityQuestionsSetup ? 'updated' : 'skipped'}`,
       ipAddress,
       userAgent,
     });
 
     return res.status(200).json({
-      message: 'Security question and password updated successfully',
-      selected_question_key,
-      selected_question_prompt: SECURITY_QUESTIONS[selected_question_key],
+      message: mustChangePassword && requiresSecurityQuestionsSetup
+        ? 'Security question and password updated successfully'
+        : mustChangePassword
+          ? 'Password updated successfully'
+          : 'Security question updated successfully',
+      selected_question_key: requiresSecurityQuestionsSetup ? selected_question_key : null,
+      selected_question_prompt: requiresSecurityQuestionsSetup ? SECURITY_QUESTIONS[selected_question_key] : null,
     });
   } catch (err) {
     console.error('completeCredentialSetup error:', err);
@@ -2794,6 +2840,8 @@ exports.verifySecurityQuestions = async (req, res) => {
         })
         .eq('id', userRow.id);
 
+      invalidateAuthCacheForUser(userRow.id);
+
       await revokeAllUserSessions(userRow.id);
 
       await writePasswordAuditLog({
@@ -2852,21 +2900,84 @@ exports.getCredentialDeliveryByToken = async (req, res) => {
       return res.status(410).json({ error: 'Credential token has expired' });
     }
 
-    await supabase
-      .from('credential_delivery_tokens')
-      .update({ consumed_at: new Date().toISOString() })
-      .eq('id', row.id);
-
     return res.status(200).json({
       email: row.target_email,
       temporary_password: row.temporary_password,
-      consumed: true,
+      consumed: false,
       expires_at: row.expires_at,
       expires_at_formatted: formatHumanReadableExpiry(row.expires_at),
     });
   } catch (err) {
     console.error('getCredentialDeliveryByToken error:', err);
     return res.status(500).json({ error: err.message || 'Failed to load credentials' });
+  }
+};
+
+/**
+ * Consume one-time credential token after secure handoff succeeds.
+ * This avoids burning the token before the user has a valid session.
+ */
+exports.consumeCredentialDeliveryToken = async (req, res) => {
+  try {
+    const token = String(req.params?.token || '').trim();
+    const currentUserId = req.userId;
+    const currentUserEmail = normalizeEmail(req.user?.email);
+
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+
+    if (!currentUserId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { data: row, error } = await supabase
+      .from('credential_delivery_tokens')
+      .select('id, target_user_id, target_email, expires_at, consumed_at')
+      .eq('token', token)
+      .maybeSingle();
+
+    if (error || !row) {
+      return res.status(404).json({ error: 'Credential token is invalid' });
+    }
+
+    const tokenTargetUserId = row.target_user_id || null;
+    const tokenTargetEmail = normalizeEmail(row.target_email);
+    if (tokenTargetUserId && tokenTargetUserId !== currentUserId) {
+      return res.status(403).json({ error: 'Credential token does not belong to this account' });
+    }
+
+    if (!tokenTargetUserId && tokenTargetEmail && currentUserEmail && tokenTargetEmail !== currentUserEmail) {
+      return res.status(403).json({ error: 'Credential token does not belong to this account' });
+    }
+
+    const now = Date.now();
+    const expiresAtMs = new Date(row.expires_at).getTime();
+    if (row.consumed_at) {
+      return res.status(410).json({ error: 'Credential token has already been used' });
+    }
+
+    if (Number.isFinite(expiresAtMs) && now > expiresAtMs) {
+      return res.status(410).json({ error: 'Credential token has expired' });
+    }
+
+    const { data: consumedRow, error: consumeError } = await supabase
+      .from('credential_delivery_tokens')
+      .update({ consumed_at: new Date().toISOString() })
+      .eq('id', row.id)
+      .is('consumed_at', null)
+      .select('id')
+      .maybeSingle();
+
+    if (consumeError) throw consumeError;
+    if (!consumedRow) {
+      return res.status(410).json({ error: 'Credential token has already been used' });
+    }
+
+    return res.status(200).json({ consumed: true });
+  } catch (err) {
+    console.error('consumeCredentialDeliveryToken error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to consume credential token' });
   }
 };
 

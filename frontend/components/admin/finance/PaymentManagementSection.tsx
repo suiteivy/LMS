@@ -242,6 +242,8 @@ export const PaymentManagementSection: React.FC<
       await Promise.resolve(onPaymentSubmit(payment));
       resetForm();
       setShowForm(false);
+    } catch {
+      return;
     } finally {
       setSubmittingPayment(false);
     }

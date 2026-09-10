@@ -581,7 +581,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                             )}
                             {borrowedBook.returnNotes && (
                                 <Text className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 italic">
-                                    Return Notes: "{borrowedBook.returnNotes}"
+                                    Return Notes: {borrowedBook.returnNotes}
                                 </Text>
                             )}
                         </View>
@@ -901,7 +901,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
                                     marginBottom: 16,
                                 }}>
                                     <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#ffffff' : '#111827', marginBottom: 4 }}>
-                                        Confirm return of "{selectedBook.bookTitle}"?
+                                        Confirm return of {selectedBook.bookTitle}?
                                     </Text>
                                     <Text style={{ fontSize: 12, color: isDark ? '#9ca3af' : '#6b7280', marginBottom: 4 }}>
                                         Condition: <Text style={{ fontWeight: '700', textTransform: 'capitalize', color: isDark ? '#ffffff' : '#111827' }}>{returnCondition}</Text>

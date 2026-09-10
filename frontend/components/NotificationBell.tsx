@@ -175,7 +175,7 @@ export function NotificationBell() {
                 <View style={{ padding: 32, alignItems: 'center' }}>
                   <AlertCircle size={28} color="#ef4444" />
                   <Text style={{ color: tokens.textPrimary, fontWeight: '700', fontSize: 13, marginTop: 10 }}>
-                    Couldn't load notifications
+                    Couldn&apos;t load notifications
                   </Text>
                   <TouchableOpacity
                     onPress={fetchFresh}
@@ -200,7 +200,7 @@ export function NotificationBell() {
                     <Bell size={28} color={tokens.textMuted} />
                   </View>
                   <Text style={{ color: tokens.textPrimary, fontWeight: '700', fontSize: 13 }}>
-                    You're all caught up
+                    You&apos;re all caught up
                   </Text>
                   <Text style={{ color: tokens.textMuted, fontSize: 12, marginTop: 4, textAlign: 'center' }}>
                     New updates will appear here.

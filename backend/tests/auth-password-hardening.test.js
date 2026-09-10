@@ -29,6 +29,12 @@ function hashSecurityAnswer(answer, salt) {
     .digest('hex');
 }
 
+function createTestJwt(payload) {
+  const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  return `${header}.${body}.sig`;
+}
+
 test('auth middleware returns 428 when password change is required', async () => {
   const mockSupabase = {
     auth: {
@@ -114,6 +120,222 @@ test('auth middleware returns 428 when password change is required', async () =>
   assert.equal(statusCode, 428);
   assert.equal(payload.code, 'MUST_CHANGE_PASSWORD');
   assert.ok(Array.isArray(payload.allow));
+});
+
+test('auth middleware allows credential-delivery token consumption during first-login gate', async () => {
+  const mockSupabase = {
+    auth: {
+      async getUser() {
+        return {
+          data: { user: { id: 'user-1', email: 'student@example.com' } },
+          error: null,
+        };
+      },
+    },
+    from(table) {
+      if (table === 'users') {
+        return {
+          select() {
+            return this;
+          },
+          eq() {
+            return this;
+          },
+          async maybeSingle() {
+            return {
+              data: {
+                id: 'user-1',
+                email: 'student@example.com',
+                role: 'student',
+                institution_id: 'inst-1',
+                must_change_password: true,
+                requires_security_questions_setup: true,
+                admins: [],
+                platform_admins: [],
+              },
+              error: null,
+            };
+          },
+        };
+      }
+
+      if (table === 'user_roles') {
+        return {
+          select() {
+            return this;
+          },
+          async eq() {
+            return { data: [], error: null };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  const { authMiddleware } = loadWithSupabaseMock('../middleware/auth.middleware.js', mockSupabase);
+
+  const req = {
+    headers: { authorization: 'Bearer opaque-token', 'user-agent': 'test-agent' },
+    method: 'POST',
+    originalUrl: '/api/auth/credential-delivery/tok-123/consume',
+    path: '/api/auth/credential-delivery/tok-123/consume',
+    socket: { remoteAddress: '127.0.0.1' },
+    url: '/api/auth/credential-delivery/tok-123/consume',
+  };
+
+  let statusCode = 200;
+  let payload = null;
+  const res = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(body) {
+      payload = body;
+      return this;
+    },
+  };
+
+  let nextCalled = false;
+  await authMiddleware(req, res, () => {
+    nextCalled = true;
+  });
+
+  assert.equal(nextCalled, true);
+  assert.equal(statusCode, 200);
+  assert.equal(payload, null);
+});
+
+test('auth middleware tolerates duplicate session registration and continues request', async () => {
+  const calls = { upsert: 0 };
+  const duplicateInsertError = {
+    code: '23505',
+    message: 'duplicate key value violates unique constraint "user_sessions_session_id_key"',
+  };
+
+  const mockSupabase = {
+    auth: {
+      async getUser() {
+        return {
+          data: { user: { id: 'user-1', email: 'student@example.com' } },
+          error: null,
+        };
+      },
+    },
+    from(table) {
+      if (table === 'user_sessions') {
+        return {
+          select() {
+            return this;
+          },
+          eq() {
+            return this;
+          },
+          async maybeSingle() {
+            return { data: null, error: null };
+          },
+          async upsert(_payload, options) {
+            calls.upsert += 1;
+            assert.equal(options?.onConflict, 'session_id');
+            assert.equal(options?.ignoreDuplicates, true);
+            return { error: duplicateInsertError };
+          },
+        };
+      }
+
+      if (table === 'users') {
+        return {
+          select() {
+            return this;
+          },
+          eq() {
+            return this;
+          },
+          async maybeSingle() {
+            return {
+              data: {
+                id: 'user-1',
+                email: 'student@example.com',
+                role: 'student',
+                institution_id: 'inst-1',
+                must_change_password: false,
+                requires_security_questions_setup: false,
+                admins: [],
+                platform_admins: [],
+              },
+              error: null,
+            };
+          },
+        };
+      }
+
+      if (table === 'user_roles') {
+        return {
+          select() {
+            return this;
+          },
+          async eq() {
+            return { data: [], error: null };
+          },
+        };
+      }
+
+      if (table === 'librarian_designations') {
+        return {
+          select() {
+            return this;
+          },
+          eq() {
+            return this;
+          },
+          async maybeSingle() {
+            return { data: null, error: null };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  const { authMiddleware } = loadWithSupabaseMock('../middleware/auth.middleware.js', mockSupabase);
+
+  const token = createTestJwt({ session_id: 'sess-123', iat: Math.floor(Date.now() / 1000) });
+  const req = {
+    headers: { authorization: `Bearer ${token}`, 'user-agent': 'node-test' },
+    method: 'GET',
+    originalUrl: '/api/auth/search-users?q=a',
+    path: '/api/auth/search-users',
+    socket: { remoteAddress: '127.0.0.1' },
+    url: '/api/auth/search-users?q=a',
+  };
+
+  let statusCode = 200;
+  let payload = null;
+  const res = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(body) {
+      payload = body;
+      return this;
+    },
+  };
+
+  let nextCalled = false;
+  await authMiddleware(req, res, () => {
+    nextCalled = true;
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(nextCalled, true);
+  assert.equal(statusCode, 200);
+  assert.equal(payload, null);
+  assert.equal(calls.upsert, 1);
 });
 
 test('verifySecurityQuestions updates password and clears first-login flags', async () => {
@@ -284,7 +506,7 @@ test('verifySecurityQuestions updates password and clears first-login flags', as
   assert.equal(calls.auditInsert, 1);
 });
 
-test('getCredentialDeliveryByToken consumes valid token and returns credentials', async () => {
+test('getCredentialDeliveryByToken returns valid credentials without consuming token', async () => {
   const calls = { tokenUpdate: 0 };
 
   const mockSupabase = {
@@ -353,5 +575,89 @@ test('getCredentialDeliveryByToken consumes valid token and returns credentials'
   assert.equal(statusCode, 200);
   assert.equal(payload.email, 'new.user@example.com');
   assert.equal(payload.temporary_password, 'Tmp12345');
+  assert.equal(payload.consumed, false);
+  assert.equal(calls.tokenUpdate, 0);
+});
+
+test('consumeCredentialDeliveryToken marks token consumed for matching authenticated user', async () => {
+  const calls = { tokenUpdate: 0 };
+
+  const mockSupabase = {
+    from(table) {
+      if (table !== 'credential_delivery_tokens') {
+        throw new Error(`Unexpected table: ${table}`);
+      }
+
+      return {
+        select() {
+          return this;
+        },
+        eq(column, value) {
+          if (column === 'token') {
+            assert.equal(value, 'tok-456');
+            return {
+              async maybeSingle() {
+                return {
+                  data: {
+                    id: 'row-2',
+                    target_user_id: 'user-1',
+                    target_email: 'new.user@example.com',
+                    expires_at: new Date(Date.now() + 60_000).toISOString(),
+                    consumed_at: null,
+                  },
+                  error: null,
+                };
+              },
+            };
+          }
+
+          if (column === 'id') {
+            assert.equal(value, 'row-2');
+            return this;
+          }
+
+          return this;
+        },
+        is(column, value) {
+          assert.equal(column, 'consumed_at');
+          assert.equal(value, null);
+          return this;
+        },
+        update(payload) {
+          calls.tokenUpdate += 1;
+          assert.ok(payload.consumed_at);
+          return this;
+        },
+        async maybeSingle() {
+          return { data: { id: 'row-2' }, error: null };
+        },
+      };
+    },
+  };
+
+  const authController = loadWithSupabaseMock('../controllers/auth.controller.js', mockSupabase);
+
+  const req = {
+    params: { token: 'tok-456' },
+    userId: 'user-1',
+    user: { email: 'new.user@example.com' },
+  };
+  let statusCode = 200;
+  let payload = null;
+  const res = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(body) {
+      payload = body;
+      return this;
+    },
+  };
+
+  await authController.consumeCredentialDeliveryToken(req, res);
+
+  assert.equal(statusCode, 200);
+  assert.equal(payload.consumed, true);
   assert.equal(calls.tokenUpdate, 1);
 });

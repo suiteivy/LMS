@@ -1,5 +1,5 @@
 import { LogoutReason, LOGOUT_MESSAGES } from '@/types/logout';
-import { supabase } from '@/libs/supabase';
+import { isBenignSupabaseSignOutError, supabase } from '@/libs/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { getApiBaseUrl } from '@/utils/backendUrl';
@@ -75,10 +75,18 @@ export async function safeSignOut(
   try {
     const { error: signOutError } = await supabase.auth.signOut({ scope } as any);
     if (signOutError) {
-      console.warn('[safeSignOut] supabase.auth.signOut error (non-fatal):', signOutError?.message || signOutError);
+      if (isBenignSupabaseSignOutError(signOutError)) {
+        console.warn('[safeSignOut] Benign supabase.auth.signOut error ignored:', signOutError?.message || signOutError);
+      } else {
+        console.warn('[safeSignOut] supabase.auth.signOut error (non-fatal):', signOutError?.message || signOutError);
+      }
     }
   } catch (e: any) {
-    console.warn('[safeSignOut] supabase.auth.signOut error (non-fatal):', e?.message ?? e);
+    if (isBenignSupabaseSignOutError(e)) {
+      console.warn('[safeSignOut] Benign supabase.auth.signOut throw ignored:', e?.message ?? e);
+    } else {
+      console.warn('[safeSignOut] supabase.auth.signOut error (non-fatal):', e?.message ?? e);
+    }
   }
 
   // 4. Force-purge all Supabase session keys from client storage to prevent accidental re-login

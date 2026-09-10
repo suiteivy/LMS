@@ -68,6 +68,12 @@ function getClientIp(req) {
   return String(rawIp).split(',')[0].trim();
 }
 
+function isDuplicateSessionInsertError(error) {
+  const code = String(error?.code || '');
+  const message = String(error?.message || '').toLowerCase();
+  return code === '23505' || message.includes('duplicate key value') || message.includes('user_sessions_session_id_key');
+}
+
 async function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization || "";
@@ -201,7 +207,7 @@ async function authMiddleware(req, res, next) {
           try {
             const { error: insertErr } = await supabase
               .from('user_sessions')
-              .insert({
+              .upsert({
                 user_id: user.id,
                 session_id: sessionId,
                 user_agent: userAgent,
@@ -213,12 +219,32 @@ async function authMiddleware(req, res, next) {
                 last_active_at: new Date().toISOString(),
                 expires_at: expiresAt.toISOString(),
                 is_revoked: false
-              });
+              }, { onConflict: 'session_id', ignoreDuplicates: true });
             if (insertErr) {
-              console.error("[AuthMiddleware] Session registration error:", insertErr.message);
+              if (isDuplicateSessionInsertError(insertErr)) {
+                logger.throttle(
+                  'warn',
+                  'auth:middleware:session-register:duplicate',
+                  '[AuthMiddleware] Session registration duplicate ignored',
+                  { sessionId, userId: user.id },
+                  30_000
+                );
+              } else {
+                console.error("[AuthMiddleware] Session registration error:", insertErr.message);
+              }
             }
           } catch (err) {
-            console.error("[AuthMiddleware] Session registration unexpected error:", err.message);
+            if (isDuplicateSessionInsertError(err)) {
+              logger.throttle(
+                'warn',
+                'auth:middleware:session-register:duplicate-throw',
+                '[AuthMiddleware] Session registration duplicate throw ignored',
+                { sessionId, userId: user.id },
+                30_000
+              );
+            } else {
+              console.error("[AuthMiddleware] Session registration unexpected error:", err.message);
+            }
           }
         };
 
@@ -524,8 +550,24 @@ async function authMiddleware(req, res, next) {
     // before allowing access to broader application endpoints.
     if (req.user.must_change_password || req.user.requires_security_questions_setup) {
       const path = req.originalUrl || req.path || '';
+      const normalizedPath = String(path).split('?')[0];
       const method = (req.method || 'GET').toUpperCase();
       const allowed = [
+        '/api/auth/change-password',
+        '/api/auth/complete-credential-setup',
+        '/api/auth/security-questions/setup',
+        '/api/auth/credential-delivery/:token/consume',
+        '/api/auth/logout',
+        '/api/auth/ping',
+        '/change-password',
+        '/complete-credential-setup',
+        '/security-questions/setup',
+        '/credential-delivery/:token/consume',
+        '/logout',
+        '/ping',
+      ];
+
+      const allowedExact = new Set([
         '/api/auth/change-password',
         '/api/auth/complete-credential-setup',
         '/api/auth/security-questions/setup',
@@ -536,9 +578,13 @@ async function authMiddleware(req, res, next) {
         '/security-questions/setup',
         '/logout',
         '/ping',
-      ];
+      ]);
 
-      const isAllowed = allowed.some((p) => path.startsWith(p));
+      const isCredentialDeliveryConsume =
+        /^\/api\/auth\/credential-delivery\/[^/]+\/consume\/?$/i.test(normalizedPath) ||
+        /^\/credential-delivery\/[^/]+\/consume\/?$/i.test(normalizedPath);
+
+      const isAllowed = allowedExact.has(normalizedPath) || isCredentialDeliveryConsume;
       if (!isAllowed) {
         return res.status(428).json({
           error: 'Password change required before continuing',

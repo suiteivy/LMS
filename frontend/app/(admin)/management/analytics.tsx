@@ -76,6 +76,7 @@ export default function AnalyticsScreen() {
 
     const totalStudents = parseInt(stats.find(s => s.label === "Total Students")?.value || "0", 10) || 0;
     const teachers = parseInt(stats.find(s => s.label === "Teachers")?.value || "0", 10) || 0;
+    const hasRevenueStat = stats.some((s) => s.label === "Revenue");
     const attendanceRate = parseInt((stats.find(s => s.label === "Attendance")?.value || "0").replace('%', ''), 10) || 0;
     const studentTeacherRatio = teachers > 0 ? (totalStudents / teachers).toFixed(1) : "0.0";
     const engagementRate = attendanceRate;
@@ -176,7 +177,7 @@ export default function AnalyticsScreen() {
                             </View>
 
                             {/* Revenue Chart */}
-                            {showFinancials && (
+                            {showFinancials && hasRevenueStat && (
                                 <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mb-4">
                                     <View className="flex-row justify-between items-center mb-4">
                                         <Text className="text-gray-900 dark:text-white font-bold text-base">Revenue (Last 7 Days)</Text>
