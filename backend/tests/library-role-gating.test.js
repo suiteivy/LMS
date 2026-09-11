@@ -284,11 +284,11 @@ test('toggleLibrarianDesignation grants designation and writes audit log', async
   assert.equal(res.state.body.is_librarian, true);
   assert.ok(designationInserted);
   assert.equal(designationInserted.user_id, 'target-teacher-1');
-  assert.equal(designationInserted.designated_by, 'main-admin-uuid');
+  assert.equal(designationInserted.assigned_by, 'main-admin-uuid');
 
   assert.ok(auditLogInserted);
   assert.equal(auditLogInserted.action, 'grant');
-  assert.equal(auditLogInserted.target_user_id, 'target-teacher-1');
+  assert.equal(auditLogInserted.user_id, 'target-teacher-1');
   assert.equal(auditLogInserted.performed_by, 'main-admin-uuid');
   assert.equal(auditLogInserted.notes, 'Assigned as library head');
 });

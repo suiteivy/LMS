@@ -96,7 +96,7 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
         )}
 
         {/* Multi-role switcher */}
-        {availableRoles && availableRoles.length > 1 && !collapsed && (
+        {availableRoles && availableRoles.length > 1 && !collapsed && currentActiveRole !== 'master_admin' && (
           <View style={{
             marginHorizontal: 16,
             marginBottom: 16,

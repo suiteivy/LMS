@@ -132,6 +132,8 @@ export default function UserDetailsScreen() {
         avatar: user.avatar_url || undefined
     } : null;
 
+    const isSelf = !!(user && profile && user.id === profile.id);
+
     useEffect(() => { 
         if (id) { 
             fetchUserDetails(); 
@@ -312,6 +314,13 @@ export default function UserDetailsScreen() {
 
     const confirmCredentialReset = async () => {
         if (!user || resettingLoading) return;
+        if (isSelf) {
+            Alert.alert(
+                'Action Restricted',
+                'Administrators cannot reset their own credentials through the management console. Please use Account Settings or contact Master Admin.'
+            );
+            return;
+        }
         setResettingLoading(true);
         try {
             const res = await SettingsService.adminResetPassword(user.id);
@@ -668,8 +677,8 @@ export default function UserDetailsScreen() {
                             user={mappedUser} variant="detailed" showBackButton
                             onBackPress={() => router.back()} showActions={!isEditing}
                             onEditPress={() => setIsEditing(true)}
-                            onResetCredentialsPress={() => setShowResetModal(true)}
-                            onDeletePress={handleDelete}
+                            onResetCredentialsPress={isSelf ? undefined : () => setShowResetModal(true)}
+                            onDeletePress={isSelf ? undefined : handleDelete}
                         />
                     )}
                 </View>
@@ -684,18 +693,22 @@ export default function UserDetailsScreen() {
                                 <Text style={{ color: 'white', fontWeight: '700', marginLeft: 8 }}>Edit User</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity 
-                                onPress={() => setShowResetModal(true)}
-                                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#1e293b' : '#f1f5f9', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#334155' : '#e2e8f0' }}>
-                                <MaterialCommunityIcons name="lock-reset" size={20} color={textPrimary} />
-                                <Text style={{ color: textPrimary, fontWeight: '700', marginLeft: 8 }}>Reset Credentials</Text>
-                            </TouchableOpacity>
+                            {!isSelf && (
+                                <TouchableOpacity 
+                                    onPress={() => setShowResetModal(true)}
+                                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#1e293b' : '#f1f5f9', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+                                    <MaterialCommunityIcons name="lock-reset" size={20} color={textPrimary} />
+                                    <Text style={{ color: textPrimary, fontWeight: '700', marginLeft: 8 }}>Reset Credentials</Text>
+                                </TouchableOpacity>
+                            )}
 
-                            <TouchableOpacity onPress={handleDelete}
-                                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#2c1a1a' : '#fef2f2', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#7f1d1d' : '#fecaca' }}>
-                                <Ionicons name="trash-outline" size={18} color="#ef4444" />
-                                <Text style={{ color: '#ef4444', fontWeight: '700', marginLeft: 8 }}>Delete User</Text>
-                            </TouchableOpacity>
+                            {!isSelf && (
+                                <TouchableOpacity onPress={handleDelete}
+                                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#2c1a1a' : '#fef2f2', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#7f1d1d' : '#fecaca' }}>
+                                    <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                                    <Text style={{ color: '#ef4444', fontWeight: '700', marginLeft: 8 }}>Delete User</Text>
+                                </TouchableOpacity>
+                            )}
                         </>
                     ) : (
                         <View style={{ flexDirection: 'row', gap: 12 }}>

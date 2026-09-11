@@ -73,8 +73,10 @@ exports.createTicket = async (req, res) => {
     try {
         const { userId, institution_id } = req;
         const { subject, description, category, priority = 'normal' } = req.body;
+        const trimmedSubject = typeof subject === 'string' ? subject.trim() : '';
+        const trimmedDescription = typeof description === 'string' ? description.trim() : '';
 
-        if (!subject || !description) {
+        if (!trimmedSubject || !trimmedDescription) {
             return res.status(400).json({ error: "Subject and Description are required" });
         }
 
@@ -83,8 +85,8 @@ exports.createTicket = async (req, res) => {
             .insert([{
                 user_id: userId,
                 institution_id,
-                subject,
-                description,
+                subject: trimmedSubject,
+                description: trimmedDescription,
                 category,
                 priority,
                 status: 'pending'
@@ -109,6 +111,12 @@ exports.createTicket = async (req, res) => {
         res.status(201).json({
             message: "Ticket created successfully",
             ticket: {
+                ...data,
+                workflow_status: toWorkflowStatus(data.status),
+                can_edit: canEditOrDeleteForUser(data.status),
+                can_delete: canEditOrDeleteForUser(data.status),
+            },
+            request: {
                 ...data,
                 workflow_status: toWorkflowStatus(data.status),
                 can_edit: canEditOrDeleteForUser(data.status),

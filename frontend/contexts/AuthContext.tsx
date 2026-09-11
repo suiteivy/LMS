@@ -641,13 +641,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const parentId = getRoleId(userData.parents);
 
     const rolesSet = new Set<string>();
-    if (userData.role) rolesSet.add(String(userData.role).toLowerCase());
-    if (isPlatformAdminFlag) rolesSet.add('master_admin');
-    if (adminId) rolesSet.add('admin');
-    if (teacherId) rolesSet.add('teacher');
-    if (parentId) rolesSet.add('parent');
-    if (studentId) rolesSet.add('student');
-    if (isLibrarianActive) rolesSet.add('librarian');
+    if (isPlatformAdminFlag || String(userData.role).toLowerCase() === 'master_admin') {
+      rolesSet.add('master_admin');
+    } else {
+      if (userData.role) rolesSet.add(String(userData.role).toLowerCase());
+      if (adminId) rolesSet.add('admin');
+      if (teacherId) rolesSet.add('teacher');
+      if (parentId) rolesSet.add('parent');
+      if (studentId) rolesSet.add('student');
+      if (isLibrarianActive) rolesSet.add('librarian');
+    }
     const newAvailableRoles = Array.from(rolesSet);
     setAvailableRoles(newAvailableRoles);
 

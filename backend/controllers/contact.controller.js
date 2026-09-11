@@ -12,7 +12,7 @@ exports.submitBooking = async (req, res) => {
             return res.status(400).json({ error: "Missing required fields" });
         }
 
-        console.log(`[Email] Sending booking notification to: Support@cloudoraltd.live`);
+        console.log(`[Email] Sending booking notification to: Support@cloudora.live`);
 
         // Check if SMTP credentials exist
         if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
@@ -87,7 +87,7 @@ exports.submitBooking = async (req, res) => {
 
         const mailOptions = {
             from: `"Cloudora LMS Request" <${process.env.SMTP_USER}>`,
-            to: 'Support@cloudoraltd.live',
+            to: 'Support@cloudora.live',
             subject: `New Booking Request: ${plan} Plan (${name})`,
             replyTo: email,
             html: htmlBody,
@@ -98,11 +98,10 @@ exports.submitBooking = async (req, res) => {
 
         res.json({
             success: true,
-            message: "Thank you! Your request has been submitted to Support@cloudoraltd.live."
+            message: "Thank you! Your request has been submitted to Support@cloudora.live."
         });
     } catch (err) {
         console.error("Booking submission error:", err);
         res.status(500).json({ error: "Failed to send the request. Please try again later." });
     }
 };
-

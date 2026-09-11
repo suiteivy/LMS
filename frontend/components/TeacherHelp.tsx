@@ -2,9 +2,8 @@ import { ChevronDown, ChevronUp, LifeBuoy, Mail, Search, X, Send } from 'lucide-
 import React, { useState } from 'react';
 import { Linking, ScrollView, Text, TextInput, TouchableOpacity, View, Modal, ActivityIndicator, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { supabase } from '@/libs/supabase';
 import { useTheme } from '@/contexts/ThemeContext';
-import { getApiBaseUrl } from '@/utils/backendUrl';
+import { SupportService } from '@/services/SupportService';
 
 interface FAQItemProps {
     question: string;
@@ -61,34 +60,25 @@ export default function TeacherHelp() {
 
         setSubmitting(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${getApiBaseUrl()}/settings/support`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    subject: ticketSubject,
-                    description: ticketDescription,
-                    priority: 'normal'
-                })
+            await SupportService.createTicket({
+                subject: ticketSubject,
+                description: ticketDescription,
+                priority: 'normal',
             });
 
-            if (res.ok) {
-                Toast.show({ type: 'success', text1: 'Success', text2: 'Support ticket submitted successfully.' });
-                setSelectedTab(null);
-                setTicketSubject('');
-                setTicketDescription('');
-            } else {
-                const data = await res.json();
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error || 'Failed to submit ticket' });
-            }
+            Toast.show({ type: 'success', text1: 'Success', text2: 'Support ticket submitted successfully.' });
+            setSelectedTab(null);
+            setTicketSubject('');
+            setTicketDescription('');
         } catch (err) {
             console.error("Submit ticket error:", err);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to submit ticket' });
+            const fallbackMessage = 'Failed to submit ticket';
+            const apiMessage =
+                (err as any)?.response?.data?.error ||
+                (err as any)?.response?.data?.message ||
+                (err as any)?.message ||
+                fallbackMessage;
+            Toast.show({ type: 'error', text1: 'Error', text2: apiMessage });
         } finally {
             setSubmitting(false);
         }
@@ -162,13 +152,13 @@ export default function TeacherHelp() {
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            onPress={() => Linking.openURL('mailto:Support@cloudoraltd@gmail.com')}
+                            onPress={() => Linking.openURL('mailto:Support@cloudora.live')}
                             className="w-[48%] bg-white dark:bg-[#161B22] p-5 rounded-lg border border-gray-100 dark:border-gray-600 items-center"
                         >
                             <Mail size={24} color="#3b82f6" />
                             <Text className="mt-2 font-bold text-gray-800 dark:text-white">Email Admin</Text>
-                            <Text className="text-[10px] text-orange-500 font-medium">Support@cloudoraltd@gmail.com</Text>
-                            <Text className="text-[10px] text-gray-400 mt-1">Response in 12h</Text>
+                            <Text className="text-[10px] text-orange-500 font-medium">Support@cloudora.live</Text>
+                            <Text className="text-[10px] text-gray-400 mt-1">Response in 1 business day</Text>
                         </TouchableOpacity>
                     </View>
 

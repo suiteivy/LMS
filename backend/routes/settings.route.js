@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const settingsController = require("../controllers/settings.controller.js");
 const preferencesController = require("../controllers/preferences.controller.js");
+const supportController = require('../controllers/support.controller.js');
 const { authMiddleware } = require("../middleware/auth.middleware.js");
 
 // Public read
@@ -22,6 +23,6 @@ router.put("/preferences", authMiddleware, preferencesController.updatePreferenc
 router.get('/subscription-snapshot', authMiddleware, settingsController.getInstitutionSubscriptionSnapshot);
 
 // Support
-router.post("/support", authMiddleware, settingsController.createSupportRequest);
+router.post('/support', authMiddleware, supportController.createTicket);
 
 module.exports = router;

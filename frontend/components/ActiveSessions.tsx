@@ -14,6 +14,8 @@ interface SessionEntry {
   login_at: string;
   last_active_at: string;
   is_current: boolean;
+  is_active?: boolean;
+  is_revoked?: boolean;
 }
 
 export default function ActiveSessions() {
@@ -231,9 +233,17 @@ export default function ActiveSessions() {
                     <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight mr-2">
                       {item.device_type}
                     </Text>
-                    {item.is_current && (
+                    {item.is_current ? (
                       <View className="bg-orange-500/10 px-2.5 py-0.5 rounded-full border border-orange-500/20">
                         <Text className="text-[#FF6900] text-[8px] font-black uppercase tracking-wider">Current</Text>
+                      </View>
+                    ) : item.is_active ? (
+                      <View className="bg-green-500/10 px-2.5 py-0.5 rounded-full border border-green-500/20">
+                        <Text className="text-green-600 text-[8px] font-black uppercase tracking-wider">Active</Text>
+                      </View>
+                    ) : (
+                      <View className="bg-gray-500/10 px-2.5 py-0.5 rounded-full border border-gray-500/20">
+                        <Text className="text-gray-400 text-[8px] font-black uppercase tracking-wider">Signed Out</Text>
                       </View>
                     )}
                   </View>
@@ -259,7 +269,7 @@ export default function ActiveSessions() {
                   </View>
 
                   <View className="flex-row items-center mt-1">
-                    <Activity size={12} color="#10b981" className="mr-1" />
+                    <Activity size={12} color={item.is_active ? "#10b981" : "#9ca3af"} className="mr-1" />
                     <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-semibold">
                       Active: {formatDate(item.last_active_at)}
                     </Text>
@@ -267,21 +277,27 @@ export default function ActiveSessions() {
                 </View>
               </View>
 
-              <TouchableOpacity
-                disabled={actionLoading === item.id}
-                onPress={() => handleRevoke(item.id, item.is_current)}
-                className={`p-3 rounded-2xl border ${
-                  item.is_current
-                    ? 'bg-red-50 dark:bg-red-950/10 border-red-100 dark:border-red-900/20'
-                    : 'bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-800'
-                } active:opacity-75`}
-              >
-                {actionLoading === item.id ? (
-                  <ActivityIndicator size="small" color="#ef4444" />
-                ) : (
-                  <Trash2 size={16} color="#ef4444" />
-                )}
-              </TouchableOpacity>
+              {item.is_active ? (
+                <TouchableOpacity
+                  disabled={actionLoading === item.id}
+                  onPress={() => handleRevoke(item.id, item.is_current)}
+                  className={`p-3 rounded-2xl border ${
+                    item.is_current
+                      ? 'bg-red-50 dark:bg-red-950/10 border-red-100 dark:border-red-900/20'
+                      : 'bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-800'
+                  } active:opacity-75`}
+                >
+                  {actionLoading === item.id ? (
+                    <ActivityIndicator size="small" color="#ef4444" />
+                  ) : (
+                    <Trash2 size={16} color="#ef4444" />
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <View className="p-2.5 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 items-center justify-center">
+                  <Text className="text-gray-400 dark:text-gray-500 text-[9px] font-bold uppercase tracking-wider">Ended</Text>
+                </View>
+              )}
             </View>
           </View>
         ))

@@ -176,8 +176,39 @@ function AuthHandler() {
   const { isDark } = useTheme();
   const segments = useSegments();
   const router = useRouter();
-  const inAuthGroup = React.useMemo(() => segments.some(s => s === "(auth)"), [segments]);
-  const currentPath = React.useMemo(() => `/${segments.join('/')}`.replace(/\/+$/, '') || '/', [segments]);
+
+  const normalizePath = React.useCallback((path: string) => {
+    let normalized = path.replace(/\/+$/, '') || '/';
+    if (normalized.endsWith('/index')) normalized = normalized.replace(/\/index$/, '') || '/';
+    return normalized;
+  }, []);
+
+  const authPublicPaths = React.useMemo(() => new Set([
+    '/signIn',
+    '/forgot-password',
+    '/verify-security-questions',
+    '/security-questions',
+    '/demo',
+  ]), []);
+
+  const stripRouteGroups = React.useCallback((path: string) => {
+    const withoutGroups = path.replace(/\/\([^/]+\)/g, '');
+    return withoutGroups.replace(/\/{2,}/g, '/');
+  }, []);
+
+  const canonicalizePath = React.useCallback((path: string) => {
+    const normalized = normalizePath(path);
+    const groupStripped = stripRouteGroups(normalized);
+    return normalizePath(groupStripped);
+  }, [normalizePath, stripRouteGroups]);
+
+  const routePath = React.useMemo(() => normalizePath(`/${segments.join('/')}`), [segments, normalizePath]);
+  const currentPath = React.useMemo(() => canonicalizePath(routePath), [routePath, canonicalizePath]);
+  const inAuthGroup = React.useMemo(() => segments.some((s) => s === "(auth)"), [segments]);
+  const isAuthPath = React.useMemo(() => {
+    if (inAuthGroup) return true;
+    return authPublicPaths.has(currentPath);
+  }, [inAuthGroup, currentPath, authPublicPaths]);
   const isMobile = Platform.OS !== 'web';
 
   const pulse = React.useRef(new Animated.Value(0.2)).current;
@@ -209,15 +240,7 @@ function AuthHandler() {
   React.useEffect(() => {
     if (isInitializing || !isNavReady) return;
 
-    // Normalize paths: remove trailing slashes and clarify root
-    const normalizePath = (p: string) => {
-      let normalized = p.replace(/\/+$/, '') || '/';
-      if (normalized.endsWith('/index')) normalized = normalized.replace(/\/index$/, '') || '/';
-      return normalized;
-    };
-
-    const currentPath = normalizePath(`/${segments.join('/')}`);
-    const isRoot = currentPath === '/' || currentPath === '';
+    const isRoot = routePath === '/' || routePath === '';
     const isCredentialDelivery = currentPath === '/credential-delivery';
     const isNotFound = (segments as string[]).includes('+not-found') || currentPath === '/+not-found';
     const isLoader = currentPath === '/loader';
@@ -225,26 +248,31 @@ function AuthHandler() {
 
     const handleRedirect = (path: string) => {
       const normalizedTarget = normalizePath(path);
-      if (currentPath === normalizedTarget) return;
+      const canonicalTarget = canonicalizePath(normalizedTarget);
+      const authEquivalentTarget = authPublicPaths.has(canonicalTarget);
+      if (routePath === normalizedTarget) return;
+      if (authEquivalentTarget && currentPath === canonicalTarget) return;
+
+      const loopKey = authEquivalentTarget ? `auth:${canonicalTarget}` : `route:${normalizedTarget}`;
 
       // Loop prevention
-      if (lastRedirectPath.current === normalizedTarget) {
+      if (lastRedirectPath.current === loopKey) {
         redirectCount.current++;
         if (redirectCount.current > 5) {
-          console.error(`[AuthHandler] REDIRECT LOOP DETECTED on ${normalizedTarget}. Aborting.`);
+          console.error(`[AuthHandler] REDIRECT LOOP DETECTED on ${loopKey}. Aborting.`);
           return;
         }
       } else {
         redirectCount.current = 0;
-        lastRedirectPath.current = normalizedTarget;
+        lastRedirectPath.current = loopKey;
       }
 
       router.replace(normalizedTarget as any);
     };
 
     if (!session) {
-      if (inAuthGroup) {
-        if (currentPath === '/(auth)/demo' && wasDemo) {
+      if (isAuthPath) {
+        if (currentPath === '/demo' && wasDemo) {
           clearWasDemo();
         }
       } else if (!isRoot && !isCredentialDelivery && !isNotFound && !isLoader) {
@@ -256,14 +284,14 @@ function AuthHandler() {
       }
     } else if (profile) {
       const requiresCredentialSetup = !!(profile as any).must_change_password || !!(profile as any).requires_security_questions_setup;
-      if (requiresCredentialSetup && currentPath !== '/(auth)/security-questions') {
+      if (requiresCredentialSetup && currentPath !== '/security-questions') {
         handleRedirect('/(auth)/security-questions');
         return;
       }
 
       // If at root or in auth group, redirect to role-specific dashboard
-      if (isRoot || inAuthGroup) {
-        if (requiresCredentialSetup && currentPath === '/(auth)/security-questions') {
+      if (isRoot || isAuthPath) {
+        if (requiresCredentialSetup && currentPath === '/security-questions') {
           return;
         }
         const redirectPath = getRoleRedirect(profile, isPlatformAdmin);
@@ -272,7 +300,7 @@ function AuthHandler() {
         }
       }
     }
-  }, [session, profile, isInitializing, isNavReady, segments, isPlatformAdmin, inAuthGroup, currentPath, wasDemo, clearWasDemo, getRoleRedirect, router]);
+  }, [session, profile, isInitializing, isNavReady, segments, isPlatformAdmin, isAuthPath, currentPath, wasDemo, clearWasDemo, getRoleRedirect, router, normalizePath, canonicalizePath, routePath, authPublicPaths]);
 
   const handleInteraction = React.useCallback(() => {
     if (session) resetSessionTimer();

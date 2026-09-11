@@ -218,7 +218,7 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
         </View>
 
         {/* Multi-role Switcher in drawer */}
-        {availableRoles && availableRoles.length > 1 && (
+        {availableRoles && availableRoles.length > 1 && (activeRole || profile?.role) !== 'master_admin' && (
           <View style={{
             marginTop: 16,
             padding: 12,

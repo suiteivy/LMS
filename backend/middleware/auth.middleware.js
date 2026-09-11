@@ -205,32 +205,71 @@ async function authMiddleware(req, res, next) {
           }
 
           try {
-            const { error: insertErr } = await supabase
+            // Task 6: Check for existing session entry for this distinct user + device + OS combination
+            let deviceQuery = supabase
               .from('user_sessions')
-              .upsert({
-                user_id: user.id,
-                session_id: sessionId,
-                user_agent: userAgent,
-                device_type: fingerprint.displayName,
-                os_name: fingerprint.osName,
-                ip_address: cleanIp,
-                location,
-                login_at: loginAt.toISOString(),
-                last_active_at: new Date().toISOString(),
-                expires_at: expiresAt.toISOString(),
-                is_revoked: false
-              }, { onConflict: 'session_id', ignoreDuplicates: true });
-            if (insertErr) {
-              if (isDuplicateSessionInsertError(insertErr)) {
-                logger.throttle(
-                  'warn',
-                  'auth:middleware:session-register:duplicate',
-                  '[AuthMiddleware] Session registration duplicate ignored',
-                  { sessionId, userId: user.id },
-                  30_000
-                );
-              } else {
-                console.error("[AuthMiddleware] Session registration error:", insertErr.message);
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('device_type', fingerprint.displayName)
+              .eq('os_name', fingerprint.osName);
+
+            if (typeof deviceQuery?.order === 'function') {
+              deviceQuery = deviceQuery.order('last_active_at', { ascending: false });
+            }
+            if (typeof deviceQuery?.limit === 'function') {
+              deviceQuery = deviceQuery.limit(1);
+            }
+
+            const { data: existingDevice } = typeof deviceQuery?.maybeSingle === 'function'
+              ? await deviceQuery.maybeSingle()
+              : (typeof deviceQuery?.single === 'function' ? await deviceQuery.single() : await deviceQuery);
+
+            if (existingDevice?.id) {
+              const { error: updateErr } = await supabase
+                .from('user_sessions')
+                .update({
+                  session_id: sessionId,
+                  user_agent: userAgent,
+                  ip_address: cleanIp,
+                  location,
+                  login_at: loginAt.toISOString(),
+                  last_active_at: new Date().toISOString(),
+                  expires_at: expiresAt.toISOString(),
+                  is_revoked: false
+                })
+                .eq('id', existingDevice.id);
+
+              if (updateErr && !isDuplicateSessionInsertError(updateErr)) {
+                console.error("[AuthMiddleware] Session update error:", updateErr.message);
+              }
+            } else {
+              const { error: insertErr } = await supabase
+                .from('user_sessions')
+                .upsert({
+                  user_id: user.id,
+                  session_id: sessionId,
+                  user_agent: userAgent,
+                  device_type: fingerprint.displayName,
+                  os_name: fingerprint.osName,
+                  ip_address: cleanIp,
+                  location,
+                  login_at: loginAt.toISOString(),
+                  last_active_at: new Date().toISOString(),
+                  expires_at: expiresAt.toISOString(),
+                  is_revoked: false
+                }, { onConflict: 'session_id', ignoreDuplicates: true });
+              if (insertErr) {
+                if (isDuplicateSessionInsertError(insertErr)) {
+                  logger.throttle(
+                    'warn',
+                    'auth:middleware:session-register:duplicate',
+                    '[AuthMiddleware] Session registration duplicate ignored',
+                    { sessionId, userId: user.id },
+                    30_000
+                  );
+                } else {
+                  console.error("[AuthMiddleware] Session registration error:", insertErr.message);
+                }
               }
             }
           } catch (err) {

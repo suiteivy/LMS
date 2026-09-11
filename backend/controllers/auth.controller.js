@@ -1851,6 +1851,24 @@ exports.adminResetPassword = async (req, res) => {
     if (adminRole === 'master_admin') {
       // Master admin can reset any user
     } else if (adminRole === 'admin') {
+      // Administrators cannot reset their own credentials through the management console
+      if (targetUserId === adminId) {
+        await writePasswordAuditLog({
+          action: 'admin_reset_password',
+          actorUserId: adminId,
+          targetUserId,
+          outcome: 'failure',
+          reason: 'admin_self_reset_denied',
+          ipAddress,
+          userAgent,
+          metadata: { admin_role: adminRole },
+        });
+        return res.status(403).json({
+          error: 'Administrators cannot reset their own credentials through the management console. Please use Account Settings to change your password or contact Master Admin.',
+          code: 'ADMIN_SELF_RESET_DENIED',
+        });
+      }
+
       // Regular admin can only reset users in their own institution
       if (targetUser.institution_id !== adminInstId) {
         await writePasswordAuditLog({
@@ -3047,20 +3065,23 @@ exports.getActiveSessions = async (req, res) => {
       .from('user_sessions')
       .select('*')
       .eq('user_id', currentUserId)
-      .eq('is_revoked', false)
-      .gt('expires_at', new Date().toISOString())
       .order('last_active_at', { ascending: false });
 
     if (error) throw error;
 
-    // Filter out sessions that have exceeded the idle timeout
+    // Build session list with status (current, active, and history)
     const now = Date.now();
     const activeSessions = [];
 
     for (const session of sessions) {
       const lastActive = new Date(session.last_active_at).getTime();
-      if (now - lastActive > IDLE_TIMEOUT_MS) {
-        // Automatically mark as revoked/expired in the background
+      const isExpiredByTime = new Date(session.expires_at).getTime() <= now;
+      const isIdle = (now - lastActive > IDLE_TIMEOUT_MS);
+      const isCurrent = session.session_id === currentSessionId;
+      const isActive = !session.is_revoked && !isExpiredByTime && !isIdle;
+
+      if (!session.is_revoked && (isExpiredByTime || isIdle)) {
+        // Automatically mark idle/expired session as revoked in the background
         (async () => {
           try {
             const { error: revokeErr } = await supabase.from('user_sessions')
@@ -3073,22 +3094,24 @@ exports.getActiveSessions = async (req, res) => {
             console.error("Error auto-revoking idle session in controller:", e.message);
           }
         })();
-      } else {
-        const parsed = parseUserAgent(session.user_agent);
-        const normalizedDevice = parsed.displayName;
-        const normalizedOs = parsed.osName;
-
-        activeSessions.push({
-          id: session.id,
-          device_type: normalizedDevice,
-          os_name: normalizedOs,
-          ip_address: session.ip_address,
-          location: session.location,
-          login_at: session.login_at,
-          last_active_at: session.last_active_at,
-          is_current: session.session_id === currentSessionId
-        });
       }
+
+      const parsed = parseUserAgent(session.user_agent);
+      const normalizedDevice = parsed.displayName;
+      const normalizedOs = parsed.osName;
+
+      activeSessions.push({
+        id: session.id,
+        device_type: normalizedDevice,
+        os_name: normalizedOs,
+        ip_address: session.ip_address,
+        location: session.location,
+        login_at: session.login_at,
+        last_active_at: session.last_active_at,
+        is_current: isCurrent,
+        is_active: isCurrent || isActive,
+        is_revoked: !!session.is_revoked
+      });
     }
 
     res.json(activeSessions);

@@ -39,6 +39,13 @@ export default function UsersManagementScreen() {
     const [resetResult, setResetResult] = useState<any>(null);
 
     const openCredentialReset = (targetUser: User) => {
+        if (profile?.id && targetUser.id === profile.id) {
+            Alert.alert(
+                'Action Restricted',
+                'Administrators cannot reset their own credentials through the management console. Please use Account Settings or contact Master Admin.'
+            );
+            return;
+        }
         setResettingUser(targetUser);
         setShowResetModal(true);
     };
@@ -64,6 +71,13 @@ export default function UsersManagementScreen() {
 
     const confirmCredentialReset = async () => {
         if (!resettingUser || resettingLoading) return;
+        if (profile?.id && resettingUser.id === profile.id) {
+            Alert.alert(
+                'Action Restricted',
+                'Administrators cannot reset their own credentials through the management console. Please use Account Settings or contact Master Admin.'
+            );
+            return;
+        }
         setResettingLoading(true);
         try {
             const res = await SettingsService.adminResetPassword(resettingUser.id);
@@ -253,7 +267,7 @@ export default function UsersManagementScreen() {
                             <UserCard
                                 user={item}
                                 showActions={true}
-                                onResetCredentialsPress={openCredentialReset}
+                                onResetCredentialsPress={item.id === profile?.id ? undefined : openCredentialReset}
                                 onPress={u => router.push(`/(admin)/users/${u.id}` as Href)}
                             />
                         </View>

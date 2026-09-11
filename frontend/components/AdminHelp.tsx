@@ -75,10 +75,16 @@ export default function AdminHelp() {
   setTicketSubject('');
   setTicketDescription('');
  } catch (err) {
- console.error("Submit ticket error:", err);
- Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to submit ticket' });
+  console.error("Submit ticket error:", err);
+  const fallbackMessage = 'Failed to submit ticket';
+  const apiMessage =
+   (err as any)?.response?.data?.error ||
+   (err as any)?.response?.data?.message ||
+   (err as any)?.message ||
+   fallbackMessage;
+  Toast.show({ type: 'error', text1: 'Error', text2: apiMessage });
  } finally {
- setSubmitting(false);
+  setSubmitting(false);
  }
  };
 
@@ -126,7 +132,7 @@ export default function AdminHelp() {
  </TouchableOpacity>
 
  <TouchableOpacity
- onPress={() => Linking.openURL('mailto:Support@cloudoraltd@gmail.com')}
+ onPress={() => Linking.openURL('mailto:Support@cloudora.live')}
  style={{ flex: 1, backgroundColor: themeColors.card, padding: 20, borderRadius: 20, borderWidth: 1, borderColor: themeColors.border, alignItems: 'center' }}
  >
  <Mail size={24} color="#3b82f6" />
@@ -138,7 +144,7 @@ export default function AdminHelp() {
  <View style={{ marginTop: 40, padding: 20, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', borderRadius: 20, borderWidth: 1, borderColor: themeColors.border }}>
  <Text style={{ color: themeColors.text, fontWeight: '700', fontSize: 15, marginBottom: 8 }}>Service Level Agreement</Text>
  <Text style={{ color: themeColors.subtext, fontSize: 13, lineHeight: 20 }}>
- Institution Admins receive priority assistance. Most tickets are addressed within 4-6 business hours. For critical system outages, please use the &apos;Emergency&apos; priority tag in your ticket description.
+ Institution Admins receive priority assistance. Most tickets are addressed within 1 business day. For critical system outages, please use the &apos;Emergency&apos; priority tag in your ticket description.
  </Text>
  </View>
  </View>

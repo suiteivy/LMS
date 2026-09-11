@@ -19,8 +19,8 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
   const contacts = [
     {
       title: 'Institutional Dispatch',
-      value: 'Support@cloudoraltd.live',
-      sub: 'Direct response within 1 Business day',
+      value: 'Support@cloudora.live',
+      sub: 'Direct response within 1 business day',
       icon: <Mail size={22} color="#8B5CF6" />,
       accent: '#8B5CF6',
     },

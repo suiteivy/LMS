@@ -3,8 +3,7 @@ import { ChevronDown, ChevronUp, LifeBuoy, Mail, Search, X, Send } from 'lucide-
 import React, { useState } from 'react';
 import { Linking, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { supabase } from '@/libs/supabase';
-import { getApiBaseUrl } from '@/utils/backendUrl';
+import { SupportService } from '@/services/SupportService';
 
 interface FAQItemProps {
     question: string;
@@ -77,34 +76,25 @@ export default function StudentHelp() {
 
         setSubmitting(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${getApiBaseUrl()}/settings/support`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    subject: ticketSubject,
-                    description: ticketDescription,
-                    priority: 'normal'
-                })
+            await SupportService.createTicket({
+                subject: ticketSubject,
+                description: ticketDescription,
+                priority: 'normal',
             });
 
-            if (res.ok) {
-                Toast.show({ type: 'success', text1: 'Success', text2: 'Support ticket submitted successfully.' });
-                setSelectedTab(null);
-                setTicketSubject('');
-                setTicketDescription('');
-            } else {
-                const data = await res.json();
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error || 'Failed to submit ticket' });
-            }
+            Toast.show({ type: 'success', text1: 'Success', text2: 'Support ticket submitted successfully.' });
+            setSelectedTab(null);
+            setTicketSubject('');
+            setTicketDescription('');
         } catch (err) {
             console.error("Submit ticket error:", err);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to submit ticket' });
+            const fallbackMessage = 'Failed to submit ticket';
+            const apiMessage =
+                (err as any)?.response?.data?.error ||
+                (err as any)?.response?.data?.message ||
+                (err as any)?.message ||
+                fallbackMessage;
+            Toast.show({ type: 'error', text1: 'Error', text2: apiMessage });
         } finally {
             setSubmitting(false);
         }
@@ -206,7 +196,7 @@ export default function StudentHelp() {
 
                         <TouchableOpacity
                             onPress={() => {
-                                Linking.openURL('mailto:Support@cloudoraltd@gmail.com');
+                                Linking.openURL('mailto:Support@cloudora.live');
                                 setSelectedTab(null);
                             }}
                             style={{
@@ -230,8 +220,8 @@ export default function StudentHelp() {
                         >
                             <Mail size={24} color="#3b82f6" />
                             <Text style={{ marginTop: 8, fontWeight: '700', color: tokens.textPrimary }}>Email Us</Text>
-                            <Text style={{ fontSize: 10, color: '#3b82f6', marginTop: 4 }}>Support@cloudoraltd@gmail.com</Text>
-                            <Text style={{ fontSize: 10, color: tokens.textMuted, marginTop: 2 }}>Response in 24h</Text>
+                            <Text style={{ fontSize: 10, color: '#3b82f6', marginTop: 4 }}>Support@cloudora.live</Text>
+                            <Text style={{ fontSize: 10, color: tokens.textMuted, marginTop: 2 }}>Response in 1 business day</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -310,7 +300,7 @@ export default function StudentHelp() {
                                             <Mail size={32} color="#3b82f6" />
                                         </View>
                                         <Text style={{ color: tokens.textPrimary, fontWeight: '700', fontSize: 18 }}>Email Support</Text>
-                                        <Text style={{ color: '#3b82f6', fontWeight: '500', fontSize: 14, marginTop: 4 }}>Support@cloudoraltd@gmail.com</Text>
+                                        <Text style={{ color: '#3b82f6', fontWeight: '500', fontSize: 14, marginTop: 4 }}>Support@cloudora.live</Text>
                                     </View>
 
                                     <Text style={{ color: tokens.textSecondary, textAlign: 'center', marginBottom: 24, fontSize: 14 }}>
@@ -332,7 +322,7 @@ export default function StudentHelp() {
                                             shadowColor: '#f97316',
                                         }}
                                         onPress={() => {
-                                            Linking.openURL('mailto:Support@cloudoraltd@gmail.com');
+                                            Linking.openURL('mailto:Support@cloudora.live');
                                             setSelectedTab(null);
                                         }}
                                     >
