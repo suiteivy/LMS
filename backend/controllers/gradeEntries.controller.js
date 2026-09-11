@@ -489,7 +489,7 @@ async function bulkCreateGradeEntries(req, res) {
     if (incomingStudentIds.length > 0 && incomingSubjectIds.length > 0 && incomingTermIds.length > 0) {
       const { data: existingData } = await supabase
         .from('grade_entries')
-        .select('student_id, subject_id, assessment_type_id, class_id, term_id, source_id')
+        .select('id, student_id, subject_id, assessment_type_id, class_id, term_id, source_id, score, max_score, feedback')
         .eq('institution_id', institution_id)
         .in('student_id', incomingStudentIds)
         .in('subject_id', incomingSubjectIds)
@@ -497,14 +497,17 @@ async function bulkCreateGradeEntries(req, res) {
       existingEntries = existingData || [];
     }
 
-    // Build a Set of composite keys for O(1) duplicate lookups
-    const existingKeySet = new Set(
-      existingEntries.map(e =>
-        `${e.student_id}|${e.subject_id}|${e.assessment_type_id}|${e.class_id}|${e.term_id}|${e.source_id || ''}`
-      )
-    );
+    // Build a Map of composite keys for O(1) duplicate / existing record lookups
+    const existingMap = new Map();
+    existingEntries.forEach(e => {
+      const key = `${e.student_id}|${e.subject_id}|${e.assessment_type_id}|${e.class_id}|${e.term_id}|${e.source_id || ''}`;
+      existingMap.set(key, e);
+    });
 
     const toInsert = [];
+    const toUpdate = [];
+    let updated = 0;
+    const seenInBatch = new Set();
 
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i];
@@ -519,6 +522,7 @@ async function bulkCreateGradeEntries(req, res) {
         feedback,
         source,
         source_id,
+        existing_entry_id,
       } = entry;
 
       // Validate required fields
@@ -555,29 +559,62 @@ async function bulkCreateGradeEntries(req, res) {
         continue;
       }
 
-      // Check duplicate in memory (O(1) lookup instead of DB query)
       const compositeKey = `${student_id}|${subject_id}|${assessment_type_id}|${class_id}|${term_id}|${source_id || ''}`;
-      if (existingKeySet.has(compositeKey)) {
+
+      // If already processed in this batch, avoid double operation
+      if (seenInBatch.has(compositeKey)) {
         skipped++;
         continue;
       }
-      // Also prevent duplicates within the same batch
-      existingKeySet.add(compositeKey);
+      seenInBatch.add(compositeKey);
 
-      toInsert.push({
-        student_id,
-        subject_id,
-        class_id,
-        term_id,
-        assessment_type_id,
-        score: Number(score),
-        max_score: Number(max_score),
-        feedback: feedback || null,
-        source: source || 'manual',
-        source_id: source_id || null,
-        graded_by,
-        institution_id,
-      });
+      // Check if entry already exists
+      const existingMatch = existingMap.get(compositeKey);
+      const targetId = existing_entry_id || (existingMatch ? existingMatch.id : null);
+
+      if (targetId) {
+        // Update existing record
+        toUpdate.push({
+          id: targetId,
+          score: Number(score),
+          max_score: Number(max_score),
+          feedback: feedback !== undefined ? (feedback || null) : (existingMatch?.feedback ?? null),
+          graded_by: graded_by || undefined,
+          updated_at: new Date().toISOString(),
+        });
+      } else {
+        // New record to insert
+        toInsert.push({
+          student_id,
+          subject_id,
+          class_id,
+          term_id,
+          assessment_type_id,
+          score: Number(score),
+          max_score: Number(max_score),
+          feedback: feedback || null,
+          source: source || 'manual',
+          source_id: source_id || null,
+          graded_by,
+          institution_id,
+        });
+      }
+    }
+
+    // Process updates
+    for (const item of toUpdate) {
+      const { id, ...updateFields } = item;
+      const { error: updateErr } = await supabase
+        .from('grade_entries')
+        .update(updateFields)
+        .eq('id', id)
+        .eq('institution_id', institution_id);
+
+      if (updateErr) {
+        errors.push({ id, error: updateErr.message });
+      } else {
+        updated++;
+      }
     }
 
     // Batch insert all valid entries at once (N inserts → 1 insert)
@@ -593,7 +630,7 @@ async function bulkCreateGradeEntries(req, res) {
       }
     }
 
-    return sendSuccess(res, { created, skipped, errors });
+    return sendSuccess(res, { created, updated, skipped, errors });
   } catch (err) {
     return sendError(res, 500, err.message);
   }

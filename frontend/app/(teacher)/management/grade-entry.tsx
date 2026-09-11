@@ -29,6 +29,7 @@ import {
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { GradingScaleModal } from "@/components/results/GradingScaleModal";
+import { GradingScaleRow, getPerformanceLabel } from "@/utils/getPerformanceLabel";
 import {
     ActivityIndicator,
     Alert,
@@ -95,15 +96,8 @@ interface DropdownSelectorProps {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function computeLetterGrade(percentage: number): string {
-    if (percentage >= 90) return "A";
-    if (percentage >= 85) return "A-";
-    if (percentage >= 80) return "B+";
-    if (percentage >= 70) return "B";
-    if (percentage >= 60) return "C+";
-    if (percentage >= 50) return "C";
-    if (percentage >= 40) return "D";
-    return "F";
+function computeLetterGrade(percentage: number, scales: GradingScaleRow[] = []): string {
+    return getPerformanceLabel(percentage, scales).letterGrade;
 }
 
 function computePercentage(score: string, maxScore: number): number | null {
@@ -349,6 +343,7 @@ export default function GradeEntryPage() {
     const [showScaleModal, setShowScaleModal] = useState(false);
     const [showQuickFill, setShowQuickFill] = useState(false);
     const [quickFillValue, setQuickFillValue] = useState("");
+    const [gradingScales, setGradingScales] = useState<GradingScaleRow[]>([]);
 
     // ──────────────────────────────────────────────────────────────────────────
     // Fetch filter options
@@ -359,6 +354,11 @@ export default function GradeEntryPage() {
         fetchSubjects();
         fetchTerms();
         fetchAssessmentTypes();
+        GradingAPI.getGradingScales()
+            .then((scales: any) => {
+                if (Array.isArray(scales)) setGradingScales(scales);
+            })
+            .catch((err: any) => console.warn("Failed to load grading scales", err));
     }, [teacherId]);
 
     useEffect(() => {
@@ -535,7 +535,7 @@ export default function GradeEntryPage() {
                                   ...e,
                                   score: String(existing.score ?? ""),
                                   percentage: pct,
-                                  letterGrade: pct !== null ? computeLetterGrade(pct) : "--",
+                                  letterGrade: pct !== null ? computeLetterGrade(pct, gradingScales) : "--",
                                   feedback: existing.feedback || "",
                                   existingEntryId: existing.id,
                                   status: "existing" as const,
@@ -553,7 +553,7 @@ export default function GradeEntryPage() {
                               score: existing ? String(existing.score ?? "") : "",
                               maxScore,
                               percentage: pct,
-                              letterGrade: pct !== null ? computeLetterGrade(pct) : "--",
+                              letterGrade: pct !== null ? computeLetterGrade(pct, gradingScales) : "--",
                               feedback: existing?.feedback || "",
                               existingEntryId: existing?.id,
                               status: existing ? ("existing" as const) : ("new" as const),
@@ -608,7 +608,7 @@ export default function GradeEntryPage() {
                     ...entry,
                     score: newScore,
                     percentage: pct,
-                    letterGrade: pct !== null ? computeLetterGrade(pct) : "--",
+                    letterGrade: pct !== null ? computeLetterGrade(pct, gradingScales) : "--",
                     status: entry.existingEntryId ? "updated" : "new",
                 };
             })
@@ -639,7 +639,7 @@ export default function GradeEntryPage() {
                     ...entry,
                     score: quickFillValue,
                     percentage: pct,
-                    letterGrade: pct !== null ? computeLetterGrade(pct) : "--",
+                    letterGrade: pct !== null ? computeLetterGrade(pct, gradingScales) : "--",
                     status: entry.existingEntryId ? "updated" : "new",
                 };
             })
@@ -748,7 +748,7 @@ export default function GradeEntryPage() {
                 })),
             };
 
-            await GradingAPI.bulkCreateGradeEntries(payload);
+            const res = await GradingAPI.bulkCreateGradeEntries(payload);
 
             setGradeEntries((prev) =>
                 prev.map((e) => {
@@ -757,7 +757,19 @@ export default function GradeEntryPage() {
                 })
             );
 
-            showSuccess("Grades saved", `${gradedEntries.length} grade(s) saved as ${statusOverride || "draft"}`);
+            const createdCount = res?.created || 0;
+            const updatedCount = res?.updated || 0;
+            const skippedCount = res?.skipped || 0;
+            const errCount = res?.errors?.length || 0;
+
+            if (errCount > 0 && createdCount === 0 && updatedCount === 0) {
+                showError("Save error", res.errors[0]?.error || "Some grades could not be saved");
+            } else {
+                showSuccess(
+                    "Grades saved",
+                    `${createdCount} created, ${updatedCount} updated${skippedCount > 0 ? `, ${skippedCount} unchanged` : ""} (${statusOverride || "draft"})`
+                );
+            }
         } catch (error) {
             console.error("Error saving grades:", error);
             showError("Save failed", "Could not save grades. Please try again.");
@@ -1643,6 +1655,7 @@ export default function GradeEntryPage() {
             <GradingScaleModal
                 visible={showScaleModal}
                 onClose={() => setShowScaleModal(false)}
+                scales={gradingScales}
             />
         </View>
     );

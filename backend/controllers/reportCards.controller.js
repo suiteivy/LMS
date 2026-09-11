@@ -857,23 +857,8 @@ const exportReportCardPDF = async (req, res) => {
 
     const { data: institution } = await supabase
       .from('institutions')
-      .select('name, address, phone, email, logo_url')
+      .select('name, location, phone, email, logo_url')
       .eq('id', institution_id)
-      .single();
-
-    const { data: rankings } = await supabase
-      .from('class_rankings')
-      .select('*')
-      .eq('report_card_id', reportCard.id)
-      .maybeSingle();
-
-    const { data: attendance } = await supabase
-      .from('attendance')
-      .select('total_days, days_present, days_absent, days_late')
-      .eq('student_id', reportCard.student_id)
-      .eq('class_id', reportCard.class_id)
-      .eq('term_id', reportCard.term_id)
-      .eq('institution_id', institution_id)
       .maybeSingle();
 
     const items = reportCard.report_card_items || [];
@@ -882,16 +867,62 @@ const exportReportCardPDF = async (req, res) => {
     const className = buildClassLabel(classInfo) || 'N/A';
     const term = reportCard.terms || {};
 
-    const gradingScale = [
-      { grade: 'A+', min: 90, max: 100, gpa: 4.0 },
-      { grade: 'A', min: 80, max: 89, gpa: 3.7 },
-      { grade: 'B+', min: 75, max: 79, gpa: 3.3 },
-      { grade: 'B', min: 70, max: 74, gpa: 3.0 },
-      { grade: 'C+', min: 65, max: 69, gpa: 2.5 },
-      { grade: 'C', min: 60, max: 64, gpa: 2.0 },
-      { grade: 'D', min: 50, max: 59, gpa: 1.0 },
-      { grade: 'F', min: 0, max: 49, gpa: 0.0 },
-    ];
+    // Calculate attendance summary for student in this term
+    let attendanceSummary = {
+      total_days: 0,
+      days_present: 0,
+      days_absent: 0,
+      days_late: 0,
+    };
+
+    let attQuery = supabase
+      .from('attendance')
+      .select('status')
+      .eq('student_id', reportCard.student_id)
+      .eq('institution_id', institution_id);
+
+    if (term.start_date && term.end_date) {
+      attQuery = attQuery.gte('date', term.start_date).lte('date', term.end_date);
+    } else if (reportCard.class_id) {
+      attQuery = attQuery.eq('class_id', reportCard.class_id);
+    }
+
+    const { data: attRows } = await attQuery;
+    if (attRows && attRows.length > 0) {
+      attendanceSummary.total_days = attRows.length;
+      attRows.forEach((r) => {
+        if (r.status === 'present') attendanceSummary.days_present++;
+        else if (r.status === 'absent') attendanceSummary.days_absent++;
+        else if (r.status === 'late') attendanceSummary.days_late++;
+      });
+    }
+
+    // Fetch dynamic grading scales for the institution
+    const { data: dbScales } = await supabase
+      .from('grading_scales')
+      .select('*')
+      .eq('institution_id', institution_id)
+      .eq('is_active', true)
+      .order('min_score', { ascending: false });
+
+    const gradingScale = (dbScales && dbScales.length > 0)
+      ? dbScales.map((s) => ({
+          grade: s.letter_grade,
+          min: Number(s.min_score),
+          max: Number(s.max_score),
+          gpa: Number(s.gpa_points || 0),
+          desc: s.description || '',
+        }))
+      : [
+          { grade: 'A', min: 80, max: 100, gpa: 4.0, desc: 'Excellent' },
+          { grade: 'B', min: 65, max: 79, gpa: 3.0, desc: 'Good' },
+          { grade: 'C', min: 50, max: 64, gpa: 2.0, desc: 'Average' },
+          { grade: 'D', min: 40, max: 49, gpa: 1.0, desc: 'Pass' },
+          { grade: 'E', min: 0, max: 39, gpa: 0.0, desc: 'Fail' },
+        ];
+
+    const maxScalePoints = Math.max(...gradingScale.map((g) => g.gpa), 0);
+    const pointsColName = maxScalePoints > 5 ? 'Points' : 'GPA Points';
 
     const subjectRows = items
       .map((item) => {
@@ -901,7 +932,7 @@ const exportReportCardPDF = async (req, res) => {
             <td style="padding:8px 12px;border:1px solid #ddd;font-weight:500;">${item.subject_name || subject.name || 'N/A'}</td>
             <td style="padding:8px 12px;border:1px solid #ddd;text-align:center;">${item.average_percentage != null ? item.average_percentage.toFixed(1) + '%' : (item.total_score != null ? item.total_score : '-')}</td>
             <td style="padding:8px 12px;border:1px solid #ddd;text-align:center;">${item.letter_grade || '-'}</td>
-            <td style="padding:8px 12px;border:1px solid #ddd;text-align:center;">${item.gpa_points != null ? Number(item.gpa_points).toFixed(1) : '-'}</td>
+            <td style="padding:8px 12px;border:1px solid #ddd;text-align:center;">${item.gpa_points != null ? Number(item.gpa_points).toFixed(maxScalePoints > 5 ? 0 : 1) : '-'}</td>
             <td style="padding:8px 12px;border:1px solid #ddd;text-align:center;">${item.teacher_remarks || '-'}</td>
           </tr>`;
       })
@@ -911,16 +942,17 @@ const exportReportCardPDF = async (req, res) => {
       .map(
         (g) => `
         <tr>
-          <td style="padding:4px 8px;border:1px solid #ddd;text-align:center;">${g.grade}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;text-align:center;font-weight:600;">${g.grade}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;text-align:center;">${g.min}% - ${g.max}%</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;text-align:center;">${g.gpa.toFixed(1)}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;text-align:center;">${g.gpa.toFixed(maxScalePoints > 5 ? 0 : 1)}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;text-align:center;color:#555;">${g.desc || '-'}</td>
         </tr>`
       )
       .join('');
 
-  const fullName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
-    const attendanceRate = attendance && attendance.total_days > 0
-      ? ((attendance.days_present / attendance.total_days) * 100).toFixed(1)
+    const fullName = `${student.first_name || ''} ${student.last_name || ''}`.trim();
+    const attendanceRate = attendanceSummary.total_days > 0
+      ? ((attendanceSummary.days_present / attendanceSummary.total_days) * 100).toFixed(1)
       : null;
 
     const html = `
@@ -957,7 +989,7 @@ const exportReportCardPDF = async (req, res) => {
     .signatures { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; }
     .signature-block { text-align: center; width: 200px; }
     .signature-line { border-top: 1px solid #333; margin-top: 50px; padding-top: 4px; font-size: 12px; font-weight: 600; }
-    @media print { body { padding: 0; } }
+        @media print { body { padding: 0; } }
   </style>
 </head>
 <body>
@@ -965,7 +997,7 @@ const exportReportCardPDF = async (req, res) => {
     ${institution?.logo_url ? `<img src="${institution.logo_url}" alt="School Logo" style="max-height:60px;margin-bottom:8px;" />` : ''}
     <div class="school-name">${institution?.name || 'School Name'}</div>
     <div class="school-info">
-      ${institution?.address ? `${institution.address}<br/>` : ''}
+      ${institution?.location || institution?.address ? `${institution.location || institution.address}<br/>` : ''}
       ${institution?.phone ? `Phone: ${institution.phone}` : ''}
       ${institution?.phone && institution?.email ? ' | ' : ''}
       ${institution?.email ? `Email: ${institution.email}` : ''}
@@ -1007,7 +1039,7 @@ const exportReportCardPDF = async (req, res) => {
         <th>Subject</th>
         <th style="text-align:center;">Score</th>
         <th style="text-align:center;">Grade</th>
-        <th style="text-align:center;">GPA Points</th>
+        <th style="text-align:center;">${pointsColName}</th>
         <th>Remarks</th>
       </tr>
     </thead>
@@ -1017,13 +1049,13 @@ const exportReportCardPDF = async (req, res) => {
   </table>
 
   <div class="summary-grid">
-      <div class="summary-card">
-        <div class="label">Total GPA</div>
-        <div class="value">${reportCard.gpa != null ? Number(reportCard.gpa).toFixed(2) : 'N/A'}</div>
-      </div>
+    <div class="summary-card">
+      <div class="label">${maxScalePoints > 5 ? 'Mean Grade / Points' : 'Total GPA'}</div>
+      <div class="value">${reportCard.mean_grade ? `${reportCard.mean_grade} (${reportCard.gpa != null ? Number(reportCard.gpa).toFixed(maxScalePoints > 5 ? 0 : 2) : '-'})` : (reportCard.gpa != null ? Number(reportCard.gpa).toFixed(2) : 'N/A')}</div>
+    </div>
     <div class="summary-card">
       <div class="label">Class Rank</div>
-      <div class="value">${rankings?.rank || 'N/A'}${rankings?.total_students ? ` / ${rankings.total_students}` : ''}</div>
+      <div class="value">${reportCard.rank_in_class || 'N/A'}${reportCard.total_students_in_class ? ` / ${reportCard.total_students_in_class}` : ''}</div>
     </div>
     <div class="summary-card">
       <div class="label">Attendance</div>
@@ -1031,11 +1063,11 @@ const exportReportCardPDF = async (req, res) => {
     </div>
     <div class="summary-card">
       <div class="label">Days Present</div>
-      <div class="value">${attendance?.days_present ?? 'N/A'}</div>
+      <div class="value">${attendanceSummary.days_present}</div>
     </div>
     <div class="summary-card">
       <div class="label">Days Absent</div>
-      <div class="value">${attendance?.days_absent ?? 'N/A'}</div>
+      <div class="value">${attendanceSummary.days_absent}</div>
     </div>
   </div>
 
@@ -1052,12 +1084,13 @@ const exportReportCardPDF = async (req, res) => {
   </div>` : ''}
 
   <div class="section-title">Grading Scale</div>
-  <table style="width:60%;margin:0 auto;">
+  <table style="width:75%;margin:0 auto;">
     <thead>
       <tr>
         <th style="text-align:center;">Grade</th>
         <th style="text-align:center;">Percentage Range</th>
-        <th style="text-align:center;">GPA Points</th>
+        <th style="text-align:center;">${pointsColName}</th>
+        <th style="text-align:center;">Standing</th>
       </tr>
     </thead>
     <tbody>

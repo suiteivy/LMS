@@ -44,9 +44,29 @@ export const TeacherAttendanceAPI = {
         class_id?: string;
         status: string;
         date?: string;
-        notes?: string
+        notes?: string;
+        actual_start_time?: string;
+        actual_end_time?: string;
     }) => {
         const response = await api.post('/attendance/students', data);
+        return response.data;
+    },
+
+    bulkMarkStudentAttendance: async (data: {
+        subject_id: string;
+        class_id?: string;
+        date: string;
+        records: { student_id: string; status: string; notes?: string }[];
+        actual_start_time?: string;
+        actual_end_time?: string;
+    }) => {
+        const response = await api.post('/attendance/students/bulk', data);
+        return response.data;
+    },
+
+    // Teacher self check-in (Presence indication synced to Admin side)
+    selfCheckIn: async (data?: { date?: string; status?: string; notes?: string }) => {
+        const response = await api.post('/attendance/teachers/self-checkin', data || {});
         return response.data;
     }
 };

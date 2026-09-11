@@ -64,6 +64,97 @@ function isMissingColumnError(errorLike, columnName) {
  * GET /calendar/events
  * Fetch all calendar events for the user's institution
  */
+
+async function getUserTimetableEvents({ institutionId, userId, userRole, startDate, endDate, cancelledDates }) {
+  try {
+    if (!startDate || !endDate) return [];
+    if (userRole !== 'teacher' && userRole !== 'student') return [];
+
+    let timetableQuery = supabase
+      .from('timetables')
+      .select('id, class_id, subject_id, day_of_week, start_time, end_time, room_number, subject:subjects(title), class:classes(display_name)')
+      .eq('institution_id', institutionId);
+
+    if (userRole === 'teacher') {
+      const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).eq('institution_id', institutionId).single();
+      if (!teacher) return [];
+
+      const { data: primarySubjects } = await supabase.from('subjects').select('id').eq('teacher_id', teacher.id).eq('institution_id', institutionId);
+      const { data: assocSubjects } = await supabase.from('subject_teachers').select('subject_id').eq('teacher_id', teacher.id).eq('institution_id', institutionId);
+
+      const subjectIds = Array.from(new Set([
+        ...(primarySubjects || []).map(s => s.id),
+        ...(assocSubjects || []).map(s => s.subject_id)
+      ])).filter(Boolean);
+
+      if (subjectIds.length === 0) return [];
+      timetableQuery = timetableQuery.in('subject_id', subjectIds);
+    } else if (userRole === 'student') {
+      const { data: student } = await supabase.from('students').select('id, class_id').eq('user_id', userId).eq('institution_id', institutionId).single();
+      if (!student) return [];
+
+      const { data: enrollments } = await supabase.from('enrollments').select('subject_id').eq('student_id', student.id).eq('status', 'enrolled').eq('institution_id', institutionId);
+      const enrolledSubjectIds = (enrollments || []).map(e => e.subject_id).filter(Boolean);
+
+      if (student.class_id && enrolledSubjectIds.length > 0) {
+        timetableQuery = timetableQuery.or(`class_id.eq.${student.class_id},subject_id.in.(${enrolledSubjectIds.join(',')})`);
+      } else if (student.class_id) {
+        timetableQuery = timetableQuery.eq('class_id', student.class_id);
+      } else if (enrolledSubjectIds.length > 0) {
+        timetableQuery = timetableQuery.in('subject_id', enrolledSubjectIds);
+      } else {
+        return [];
+      }
+    }
+
+    const { data: slots, error } = await timetableQuery;
+    if (error || !slots || slots.length === 0) return [];
+
+    const slotsByDay = {};
+    slots.forEach(slot => {
+      const day = String(slot.day_of_week || '').trim().toLowerCase();
+      if (!slotsByDay[day]) slotsByDay[day] = [];
+      slotsByDay[day].push(slot);
+    });
+
+    const results = [];
+    const curr = new Date(`${startDate}T00:00:00Z`);
+    const stop = new Date(`${endDate}T00:00:00Z`);
+    const daysDiff = Math.round((stop - curr) / (1000 * 60 * 60 * 24));
+    if (daysDiff > 65 || daysDiff < 0) return [];
+
+    const weekdayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+    while (curr <= stop) {
+      const dateStr = curr.toISOString().slice(0, 10);
+      const dayName = weekdayNames[curr.getUTCDay()];
+
+      if (!cancelledDates.has(dateStr)) {
+        const daySlots = slotsByDay[dayName] || [];
+        daySlots.forEach(slot => {
+          results.push({
+            id: `tt-${slot.id}-${dateStr}`,
+            title: `${slot.subject?.title || 'Class'}${slot.class?.display_name ? ` (${slot.class.display_name})` : ''}`,
+            description: slot.room_number ? `Room: ${slot.room_number}` : 'Scheduled Class',
+            event_date: dateStr,
+            start_time: slot.start_time,
+            end_time: slot.end_time,
+            event_type: 'class',
+            cancel_classes: false,
+            is_timetable: true
+          });
+        });
+      }
+      curr.setUTCDate(curr.getUTCDate() + 1);
+    }
+
+    return results;
+  } catch (err) {
+    console.error('[getUserTimetableEvents] error:', err);
+    return [];
+  }
+}
+
 exports.getEvents = async (req, res) => {
   try {
     const institutionId = req.institution_id;
@@ -125,7 +216,32 @@ exports.getEvents = async (req, res) => {
 
     if (error) throw error;
 
-    return res.status(200).json({ events: data || [] });
+    const events = (data || []).map(e => ({ ...e, is_timetable: false }));
+    const cancelledDates = new Set(
+      events.filter(e => e.cancel_classes).map(e => e.event_date)
+    );
+
+    const effectiveStart = start_date || monthRange?.start;
+    const effectiveEnd = end_date || monthRange?.end;
+
+    if (effectiveStart && effectiveEnd) {
+      const timetableEvents = await getUserTimetableEvents({
+        institutionId,
+        userId: req.userId,
+        userRole: req.userRole,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
+        cancelledDates
+      });
+      events.push(...timetableEvents);
+    }
+
+    events.sort((a, b) => {
+      if (a.event_date !== b.event_date) return a.event_date.localeCompare(b.event_date);
+      return (a.start_time || '').localeCompare(b.start_time || '');
+    });
+
+    return res.status(200).json({ events });
   } catch (err) {
     console.error('getEvents error:', err);
     const statusCode = Number(err?.statusCode || 500);

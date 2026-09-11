@@ -56,6 +56,7 @@ const EVENT_TYPE_STYLES: Record<string, { color: string; label: string }> = {
   exam: { color: '#EF4444', label: 'Exam' },
   holiday: { color: '#10B981', label: 'Holiday' },
   meeting: { color: '#3B82F6', label: 'Meeting' },
+  class: { color: '#8B5CF6', label: 'Class' },
 };
 
 const getLocalDateOnly = (date: Date) => {
@@ -401,6 +402,7 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
               <LegendPill label="Today" color={colors.blue} bg={colors.blueDim} textColor={colors.text} />
               <LegendPill label="Selected" color={colors.accent} bg={colors.accentDim} textColor={colors.text} />
               <LegendPill label="Has Event" color={EVENT_TYPE_STYLES.event.color} bg={'rgba(255,107,0,0.12)'} textColor={colors.text} />
+              <LegendPill label="Class" color={EVENT_TYPE_STYLES.class.color} bg={'rgba(139,92,246,0.12)'} textColor={colors.text} />
               <LegendPill label="Cancelled Classes" color={colors.red} bg={colors.redDim} textColor={colors.text} />
             </View>
           </GlassCard>

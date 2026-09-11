@@ -11,6 +11,7 @@ import { Award, BarChart3, Star, TrendingUp } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { showFetchError } from "@/utils/toast";
+import { getPerformanceFromGpa } from "@/utils/getPerformanceLabel";
 
 interface GradeProps {
     SubjectName: string;
@@ -83,11 +84,11 @@ export default function Grades() {
     }, [studentId, user?.id, isDemo]);
 
     const getPerformanceStatus = (gpa: number) => {
-        if (gpa >= 4.0) return { label: "Elite Achievement", color: "text-gray-900 dark:text-white" };
-        if (gpa >= 3.7) return { label: "Scholar Distinction", color: "text-gray-900 dark:text-white" };
-        if (gpa >= 3.3) return { label: "Merit Standing", color: "text-gray-500 dark:text-gray-400" };
-        if (gpa >= 3.0) return { label: "Standard Proficiency", color: "text-gray-500 dark:text-gray-400" };
-        return { label: "Academic Advisory", color: "text-[#FF6900]" };
+        const perf = getPerformanceFromGpa(gpa);
+        return {
+            label: perf.label,
+            color: perf.color || "text-gray-900 dark:text-white"
+        };
     };
 
     const fetchGrades = async () => {

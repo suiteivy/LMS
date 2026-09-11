@@ -11,16 +11,20 @@ import { decode } from "base64-arraybuffer";
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { router } from "expo-router";
-import { AlignLeft, Calendar, Edit2, Eye, FileText, Plus, Printer, Target, Trophy, Trash2, Type, Upload, Users, X, BookOpen } from 'lucide-react-native';
+import { 
+    AlignLeft, Calendar, Edit2, Eye, FileText, Plus, Target, Trophy, 
+    Trash2, Type, Upload, Users, X, BookOpen, Download, CheckCircle2, 
+    ArrowRight, ArrowLeft, Award, Layers, Check, ShieldCheck
+} from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
+import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, Platform, Linking } from 'react-native';
 import { DiaryAPI } from "@/services/DiaryService";
 import { SubjectAPI } from "@/services/SubjectService";
+import { GradingAPI } from "@/services/GradingService";
 import { showFetchError } from "@/utils/toast";
-import * as Print from 'expo-print';
-
-import * as Sharing from 'expo-sharing';
 import { DocumentPickerAsset } from 'expo-document-picker';
+
+export type GradingStyle = 'points' | 'percentage' | 'letter_grade' | 'pass_fail' | 'rubric';
 
 interface Assignment {
     id: string;
@@ -36,8 +40,11 @@ interface Assignment {
     attachment_name?: string | null;
     weight: number;
     term: string;
+    term_id?: string | null;
     description?: string;
     points: number;
+    grading_style?: GradingStyle;
+    grades_released?: boolean;
 }
 
 interface SubjectOption {
@@ -45,35 +52,88 @@ interface SubjectOption {
     title: string;
 }
 
-const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: {
+interface TermOption {
+    id: string;
+    name: string;
+    is_active?: boolean;
+}
+
+const GRADING_STYLES: { id: GradingStyle; label: string; description: string }[] = [
+    { id: 'points', label: 'Points Based', description: 'Score out of fixed points (e.g. 100 pts)' },
+    { id: 'percentage', label: 'Percentage (%)', description: 'Direct percentage score (0 - 100%)' },
+    { id: 'letter_grade', label: 'Letter Grade', description: 'Graded by institution scale bands (A, B, C...)' },
+    { id: 'pass_fail', label: 'Pass / Fail', description: 'Binary competence evaluation' },
+    { id: 'rubric', label: 'Rubric Criteria', description: 'Multi-criteria weighted scoring' }
+];
+
+const AssignmentCard = ({ 
+    assignment, 
+    onEdit, 
+    onView, 
+    onDelete,
+    onToggleRelease
+}: {
     assignment: Assignment;
     onEdit: (a: Assignment) => void;
     onView: (a: Assignment) => void;
     onDelete: (a: Assignment) => void;
+    onToggleRelease: (a: Assignment) => void;
 }) => {
-    const getStatusStyle = (status: string) => {
-        if (status === "active") return "bg-green-50 dark:bg-green-950/20 text-green-600 dark:text-green-400 border-green-100 dark:border-green-900";
-        if (status === "draft") return "bg-gray-50 dark:bg-gray-950/20 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800";
-        return "bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900";
-    };
-
-    const progressPercent = assignment.totalStudents > 0
-        ? Math.min((assignment.submissions / assignment.totalStudents) * 100, 100)
-        : 0;
-
     // Data integrity: flag if submissions exceed enrolled students
     const hasIntegrityWarning = assignment.submissions > 0 && assignment.totalStudents === 0;
-    // Cap numerator at denominator for display — orphaned submissions don't inflate the fraction
     const displaySubmissions = assignment.totalStudents > 0
         ? Math.min(assignment.submissions, assignment.totalStudents)
         : assignment.submissions;
 
+    const handleDownloadAttachment = async () => {
+        if (!assignment.attachment_url) return;
+        try {
+            if (Platform.OS === 'web') {
+                window.open(assignment.attachment_url, '_blank');
+            } else {
+                const supported = await Linking.canOpenURL(assignment.attachment_url);
+                if (supported) {
+                    await Linking.openURL(assignment.attachment_url);
+                } else {
+                    Alert.alert("Open Attachment", `File is at: ${assignment.attachment_url}`);
+                }
+            }
+        } catch (err) {
+            console.error("Download error:", err);
+            Alert.alert("Error", "Could not open attachment file in original format");
+        }
+    };
+
+    const getGradingStyleBadge = (style?: GradingStyle) => {
+        switch (style) {
+            case 'percentage': return { label: 'Percentage', bg: 'bg-blue-50 dark:bg-blue-950/20', text: 'text-blue-600 dark:text-blue-400' };
+            case 'letter_grade': return { label: 'Letter Grade', bg: 'bg-purple-50 dark:bg-purple-950/20', text: 'text-purple-600 dark:text-purple-400' };
+            case 'pass_fail': return { label: 'Pass/Fail', bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-600 dark:text-emerald-400' };
+            case 'rubric': return { label: 'Rubric', bg: 'bg-amber-50 dark:bg-amber-950/20', text: 'text-amber-600 dark:text-amber-400' };
+            case 'points':
+            default:
+                return { label: `${assignment.points} Pts`, bg: 'bg-orange-50 dark:bg-orange-950/20', text: 'text-[#FF6900]' };
+        }
+    };
+
+    const styleBadge = getGradingStyleBadge(assignment.grading_style);
+
     return (
         <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3">
-            <View className="flex-row justify-between items-start mb-3">
+            <View className="flex-row justify-between items-start mb-2">
                 <View className="flex-1 pr-3">
                     <Text className="text-gray-900 dark:text-white font-bold text-lg leading-tight">{assignment.title}</Text>
-                    <Text className="text-[#FF6900] text-[10px] font-bold mt-1 uppercase tracking-widest">{assignment.Subject}</Text>
+                    <View className="flex-row items-center gap-2 mt-1 flex-wrap">
+                        <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-widest">{assignment.Subject}</Text>
+                        {assignment.term ? (
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider bg-gray-200/60 dark:bg-gray-800 px-2 py-0.5 rounded">
+                                {assignment.term}
+                            </Text>
+                        ) : null}
+                        <View className={`px-2 py-0.5 rounded ${styleBadge.bg}`}>
+                            <Text className={`text-[10px] font-bold ${styleBadge.text}`}>{styleBadge.label}</Text>
+                        </View>
+                    </View>
                 </View>
                 <View className="flex-row items-center gap-2">
                     <Text className={`text-[10px] font-bold uppercase tracking-widest ${assignment.status === 'active' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
@@ -89,7 +149,7 @@ const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: {
                 </View>
             </View>
 
-            <View className="flex-row mb-4 gap-4">
+            <View className="flex-row mb-3 gap-4 flex-wrap">
                 <View className="flex-row items-center">
                     <Calendar size={14} color="#FF6900" />
                     <Text className="text-gray-900 dark:text-white text-xs font-bold ml-1.5">{assignment.dueDate}</Text>
@@ -103,26 +163,62 @@ const AssignmentCard = ({ assignment, onEdit, onView, onDelete }: {
                         }
                     </Text>
                 </View>
+                {assignment.weight > 0 ? (
+                    <View className="flex-row items-center">
+                        <Trophy size={14} color="#8B5CF6" />
+                        <Text className="text-purple-600 dark:text-purple-400 text-xs font-bold ml-1.5">Weight: {assignment.weight}%</Text>
+                    </View>
+                ) : null}
             </View>
 
+            {/* Original Attachment Download Action */}
+            {assignment.attachment_url ? (
+                <TouchableOpacity
+                    onPress={handleDownloadAttachment}
+                    activeOpacity={0.7}
+                    className="flex-row items-center bg-white dark:bg-[#0D1117] p-2.5 rounded-lg border border-[#D0D7DE] dark:border-[#30363D] mb-3"
+                >
+                    <Download size={15} color="#FF6900" />
+                    <View className="flex-1 ml-2.5">
+                        <Text className="text-gray-900 dark:text-white text-xs font-semibold" numberOfLines={1}>
+                            {assignment.attachment_name || 'Download Attached Material'}
+                        </Text>
+                        <Text className="text-gray-400 text-[9px] uppercase tracking-wider">Original file format preserved</Text>
+                    </View>
+                </TouchableOpacity>
+            ) : null}
+
             {/* Actions */}
-            <View className="flex-row justify-end gap-2 mt-1">
+            <View className="flex-row justify-between items-center mt-1 pt-2 border-t border-[#D0D7DE]/50 dark:border-[#21262D]">
                 <TouchableOpacity
-                    className="flex-row items-center px-4 py-2 bg-[#EAEEF2] dark:bg-[#161B22] rounded-lg"
-                    onPress={() => onView(assignment)}
+                    onPress={() => onToggleRelease(assignment)}
                     activeOpacity={0.7}
+                    className={`flex-row items-center px-3 py-1.5 rounded-lg border ${assignment.grades_released ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300' : 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700'}`}
                 >
-                    <Eye size={14} color="#9CA3AF" />
-                    <Text className="text-gray-900 dark:text-white text-xs ml-2 font-bold">View</Text>
+                    <ShieldCheck size={13} color={assignment.grades_released ? "#10B981" : "#6B7280"} />
+                    <Text className={`text-[11px] font-bold ml-1.5 ${assignment.grades_released ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                        {assignment.grades_released ? "Grades Released" : "Release Grades"}
+                    </Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                    className="flex-row items-center px-4 py-2 bg-[#FF6900] rounded-lg"
-                    onPress={() => onEdit(assignment)}
-                    activeOpacity={0.7}
-                >
-                    <Edit2 size={14} color="white" />
-                    <Text className="text-white text-xs ml-2 font-bold">Edit</Text>
-                </TouchableOpacity>
+
+                <View className="flex-row gap-2">
+                    <TouchableOpacity
+                        className="flex-row items-center px-3 py-1.5 bg-[#EAEEF2] dark:bg-[#161B22] rounded-lg"
+                        onPress={() => onView(assignment)}
+                        activeOpacity={0.7}
+                    >
+                        <Eye size={13} color="#9CA3AF" />
+                        <Text className="text-gray-900 dark:text-white text-xs ml-1.5 font-bold">Submissions</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        className="flex-row items-center px-3 py-1.5 bg-[#FF6900] rounded-lg"
+                        onPress={() => onEdit(assignment)}
+                        activeOpacity={0.7}
+                    >
+                        <Edit2 size={13} color="white" />
+                        <Text className="text-white text-xs ml-1.5 font-bold">Edit</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
     );
@@ -133,23 +229,28 @@ export default function AssignmentsPage() {
     const { isDark } = useTheme();
     const tier = useSubscriptionTier();
     const [showModal, setShowModal] = useState(false);
+    const [modalStep, setModalStep] = useState<1 | 2 | 3 | 4 | 5>(1);
     const [filter, setFilter] = useState<"all" | "active" | "draft" | "closed">("all");
     const [assignments, setAssignments] = useState<Assignment[]>([]);
     const [loading, setLoading] = useState(true);
     const [Subjects, setSubjects] = useState<SubjectOption[]>([]);
+    const [terms, setTerms] = useState<TermOption[]>([]);
     const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
 
     // Form State
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [dueDate, setDueDate] = useState("");
-    const [points, setPoints] = useState("");
+    const [points, setPoints] = useState("100");
+    const [weight, setWeight] = useState("0");
     const [selectedSubjectId, setSelectedSubjectId] = useState("");
-    const [dateObject, setDateObject] = useState(new Date())
+    const [selectedTermId, setSelectedTermId] = useState("");
+    const [termName, setTermName] = useState("");
+    const [gradingStyle, setGradingStyle] = useState<GradingStyle>("points");
+    const [dateObject, setDateObject] = useState(new Date());
     const [selectedFile, setSelectedFile] = useState<DocumentPickerAsset | null>(null);
     const [uploading, setUploading] = useState(false);
-    const [weight, setWeight] = useState("");
-    const [term, setTerm] = useState("");
+
     const openManual = (anchor?: string) => {
         router.push({ pathname: '/(teacher)/accessibility/settings', params: { manual: '1', anchor: anchor || 'grading-ops' } } as any);
     };
@@ -164,8 +265,41 @@ export default function AssignmentsPage() {
         if (teacherId) {
             fetchAssignments();
             fetchSubjects();
+            fetchTerms();
         }
     }, [teacherId]);
+
+    const fetchTerms = async () => {
+        try {
+            const data = await GradingAPI.getTerms();
+            if (Array.isArray(data) && data.length > 0) {
+                const termOptions: TermOption[] = data.map(t => ({
+                    id: t.id,
+                    name: t.name,
+                    is_active: t.is_active
+                }));
+                setTerms(termOptions);
+                const active = termOptions.find(t => t.is_active) || termOptions[0];
+                if (active && !selectedTermId) {
+                    setSelectedTermId(active.id);
+                    setTermName(active.name);
+                }
+            } else {
+                setTerms([
+                    { id: 'term-1', name: 'Term 1' },
+                    { id: 'term-2', name: 'Term 2' },
+                    { id: 'term-3', name: 'Term 3' }
+                ]);
+            }
+        } catch (err) {
+            console.error("Error fetching terms from DB:", err);
+            setTerms([
+                { id: 'term-1', name: 'Term 1' },
+                { id: 'term-2', name: 'Term 2' },
+                { id: 'term-3', name: 'Term 3' }
+            ]);
+        }
+    };
 
     const fetchSubjects = async () => {
         if (!teacherId) return;
@@ -178,7 +312,6 @@ export default function AssignmentsPage() {
             setSubjects([]);
         }
     };
-
 
     const fetchAssignments = async () => {
         if (!teacherId) return;
@@ -197,6 +330,9 @@ export default function AssignmentsPage() {
                     total_points, 
                     weight, 
                     term,
+                    term_id,
+                    grading_style,
+                    grades_released,
                     subject:subjects(title, class_id)
                 `)
                 .eq('teacher_id', teacherId)
@@ -204,15 +340,13 @@ export default function AssignmentsPage() {
 
             if (error) throw error;
 
-            const assignments = (data as any[] || []);
-            const assignmentIds = assignments.map(a => a.id);
-            const subjectIds = [...new Set(assignments.map(a => a.subject_id).filter(Boolean))];
-            const classIds = [...new Set(assignments.map(a => a.subject?.class_id).filter(Boolean))];
+            const assignmentList = (data as any[] || []);
+            const assignmentIds = assignmentList.map(a => a.id);
+            const subjectIds = [...new Set(assignmentList.map(a => a.subject_id).filter(Boolean))];
+            const classIds = [...new Set(assignmentList.map(a => a.subject?.class_id).filter(Boolean))];
 
-            // Enrollment count per subject — query BOTH enrollment tables
             const enrollmentCountsMap: Record<string, number> = {};
             if (subjectIds.length > 0) {
-                // 1. Direct subject enrollments
                 const { data: enrollmentsData } = await supabase
                     .from('enrollments')
                     .select('subject_id')
@@ -223,13 +357,11 @@ export default function AssignmentsPage() {
                     enrollmentCountsMap[e.subject_id] = (enrollmentCountsMap[e.subject_id] || 0) + 1;
                 });
 
-                // 2. Class-based enrollments (student → class → subject)
                 if (classIds.length > 0) {
                     const { data: classEnrollmentsData } = await supabase
                         .from('class_enrollments')
                         .select('student_id, class_id');
 
-                    // Build a map: class_id → list of student_ids
                     const classStudentMap: Record<string, Set<string>> = {};
                     (classEnrollmentsData as any[] || []).forEach(ce => {
                         if (!classStudentMap[ce.class_id]) {
@@ -238,20 +370,17 @@ export default function AssignmentsPage() {
                         classStudentMap[ce.class_id].add(ce.student_id);
                     });
 
-                    // For each subject, count unique students from its class
-                    assignments.forEach(a => {
+                    assignmentList.forEach(a => {
                         const classId = a.subject?.class_id;
                         if (classId && classStudentMap[classId]) {
                             const existingCount = enrollmentCountsMap[a.subject_id] || 0;
                             const classCount = classStudentMap[classId].size;
-                            // Use the higher of the two counts (avoid double-counting)
                             enrollmentCountsMap[a.subject_id] = Math.max(existingCount, classCount);
                         }
                     });
                 }
             }
 
-            // Submission count per assignment — only count non-missing, non-pending statuses
             const submissionCountsMap: Record<string, number> = {};
             if (assignmentIds.length > 0) {
                 const { data: submissionsData } = await supabase
@@ -267,7 +396,7 @@ export default function AssignmentsPage() {
                 });
             }
 
-            const formatted: Assignment[] = assignments.map((a: any) => ({
+            const formatted: Assignment[] = assignmentList.map((a: any) => ({
                 id: a.id,
                 title: a.title,
                 Subject: a.subject?.title || "Unknown Subject",
@@ -282,7 +411,10 @@ export default function AssignmentsPage() {
                 description: a.description || "",
                 points: a.total_points || 100,
                 weight: a.weight || 0,
-                term: a.term || ""
+                term: a.term || "",
+                term_id: a.term_id || null,
+                grading_style: a.grading_style || 'points',
+                grades_released: Boolean(a.grades_released)
             }));
 
             setAssignments(formatted);
@@ -304,20 +436,43 @@ export default function AssignmentsPage() {
         setDateObject(d);
         setDueDate(a.due_date_iso ? a.due_date_iso.split('T')[0] : "");
         setWeight(a.weight.toString());
-        setTerm(a.term || "");
+        setTermName(a.term || "");
+        setSelectedTermId(a.term_id || "");
+        setGradingStyle(a.grading_style || "points");
+        setModalStep(1);
         setShowModal(true);
+    };
+
+    const handleToggleRelease = async (a: Assignment) => {
+        const nextState = !a.grades_released;
+        try {
+            const { error } = await (supabase.from('assignments') as any)
+                .update({ grades_released: nextState })
+                .eq('id', a.id);
+            if (error) throw error;
+
+            setAssignments(prev => prev.map(item => item.id === a.id ? { ...item, grades_released: nextState } : item));
+            Toast.show({
+                type: 'success',
+                text1: nextState ? 'Grades Released' : 'Grades Hidden',
+                text2: nextState ? 'Students and parents can now view assignment grades.' : 'Assignment grades are now restricted.'
+            });
+        } catch (err: any) {
+            Alert.alert("Error", err.message || "Failed to update grade release status");
+        }
     };
 
     const resetForm = () => {
         setTitle("");
         setDescription("");
         setDueDate("");
-        setPoints("");
+        setPoints("100");
+        setWeight("0");
         setSelectedSubjectId("");
         setSelectedFile(null);
         setEditingAssignment(null);
-        setWeight("0");
-        setTerm("");
+        setGradingStyle("points");
+        setModalStep(1);
     };
 
     const handleDelete = async (a: Assignment) => {
@@ -387,23 +542,65 @@ export default function AssignmentsPage() {
         }
     };
 
+    const validateStep = (step: number): boolean => {
+        if (step === 1) {
+            if (!title.trim()) {
+                Alert.alert("Validation", "Please enter an assignment title");
+                return false;
+            }
+        } else if (step === 2) {
+            if (!selectedSubjectId) {
+                Alert.alert("Validation", "Please select a target subject");
+                return false;
+            }
+            if (!termName.trim() && !selectedTermId) {
+                Alert.alert("Validation", "Please choose an academic term from the database");
+                return false;
+            }
+        } else if (step === 3) {
+            const pointsVal = parseInt(points) || 0;
+            if (gradingStyle === 'points' && pointsVal <= 0) {
+                Alert.alert("Validation", "Please enter a valid positive points value");
+                return false;
+            }
+        } else if (step === 4) {
+            if (!dueDate) {
+                Alert.alert("Validation", "Please set a due date for this assignment");
+                return false;
+            }
+        }
+        return true;
+    };
+
+    const goToNextStep = () => {
+        if (!validateStep(modalStep)) return;
+        if (modalStep < 5) {
+            setModalStep((modalStep + 1) as any);
+        }
+    };
+
+    const goToPrevStep = () => {
+        if (modalStep > 1) {
+            setModalStep((modalStep - 1) as any);
+        }
+    };
+
     const saveAssignment = async () => {
         if (uploading) return;
         if (!teacherId) {
             Alert.alert("Error", "Teacher ID not found. Please log out and log back in.");
             return;
         }
-        const missing: string[] = [];
-        if (!title.trim()) missing.push('Title');
-        if (!selectedSubjectId) missing.push('Subject');
-        if (missing.length > 0) {
-            Alert.alert("Missing Fields", `Please fill in: ${missing.join(', ')}`);
+
+        if (!title.trim() || !selectedSubjectId) {
+            Alert.alert("Missing Fields", "Please ensure Title and Subject are selected.");
             return;
         }
 
+        const pointsVal = parseInt(points) || 100;
+        const weightVal = parseFloat(weight) || 0;
+
         if (isDemo) {
-            const pointsVal = parseInt(points) || 100;
-            const weightVal = parseFloat(weight) || 0;
             if (editingAssignment) {
                 setAssignments(prev => prev.map(a => a.id === editingAssignment.id ? {
                     ...a,
@@ -413,7 +610,9 @@ export default function AssignmentsPage() {
                     due_date_iso: dateObject.toISOString(),
                     points: pointsVal,
                     weight: weightVal,
-                    term: term.trim(),
+                    term: termName.trim(),
+                    term_id: selectedTermId || null,
+                    grading_style: gradingStyle,
                     subject_id: selectedSubjectId,
                     Subject: Subjects.find(s => s.id === selectedSubjectId)?.title || a.Subject
                 } : a));
@@ -426,12 +625,15 @@ export default function AssignmentsPage() {
                     due_date_iso: dateObject.toISOString(),
                     points: pointsVal,
                     weight: weightVal,
-                    term: term.trim(),
+                    term: termName.trim(),
+                    term_id: selectedTermId || null,
+                    grading_style: gradingStyle,
                     subject_id: selectedSubjectId,
                     Subject: Subjects.find(s => s.id === selectedSubjectId)?.title || "Selected Subject",
                     submissions: 0,
                     totalStudents: 0,
-                    status: 'active'
+                    status: 'active',
+                    grades_released: false
                 };
                 setAssignments(prev => [newAssign, ...prev]);
             }
@@ -448,13 +650,6 @@ export default function AssignmentsPage() {
         setUploading(true);
         let attachmentUrl = editingAssignment?.attachment_url || null;
         let attachmentName = editingAssignment?.attachment_name || null;
-
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-            Alert.alert("Session Expired", "Please log out and log back in.");
-            setUploading(false);
-            return;
-        }
 
         try {
             if (selectedFile) {
@@ -474,7 +669,7 @@ export default function AssignmentsPage() {
 
                     if (uploadError) {
                         console.error('[saveAssignment] Storage upload error:', uploadError);
-                        Alert.alert("Upload Warning", "File upload failed. The assignment will be saved without the attachment.");
+                        Alert.alert("Upload Warning", "File upload failed. The assignment will be saved without attachment.");
                     } else {
                         const { data: urlData } = supabase.storage
                             .from('course_materials')
@@ -484,22 +679,7 @@ export default function AssignmentsPage() {
                     }
                 } catch (uploadErr: unknown) {
                     console.error('[saveAssignment] File upload catch error:', uploadErr);
-                    Alert.alert("Upload Warning", "Could not upload file. The assignment will be saved without the attachment.");
                 }
-            }
-
-            const weightVal = parseFloat(weight) || 0;
-            if (weightVal < 0 || weightVal > 100) {
-                Alert.alert("Invalid Weight", "Weight must be between 0 and 100%");
-                setUploading(false);
-                return;
-            }
-
-            const pointsVal = parseInt(points) || 100;
-            if (pointsVal <= 0) {
-                Alert.alert("Invalid Points", "Points must be a positive number");
-                setUploading(false);
-                return;
             }
 
             const payload = {
@@ -513,7 +693,9 @@ export default function AssignmentsPage() {
                 attachment_url: attachmentUrl,
                 attachment_name: attachmentName,
                 weight: weightVal,
-                term: term.trim()
+                term: termName.trim(),
+                term_id: selectedTermId || null,
+                grading_style: gradingStyle
             };
 
             if (editingAssignment) {
@@ -527,6 +709,7 @@ export default function AssignmentsPage() {
                 if (error) throw error;
             }
 
+            // Diary Sync
             try {
                 const { data: subjectData } = await (supabase
                     .from('subjects')
@@ -546,14 +729,14 @@ export default function AssignmentsPage() {
                         if (entries && entries.length > 0) {
                             await DiaryAPI.updateEntry(entries[0].id, {
                                 title: `Assignment Update: ${title}`,
-                                content: `The assignment "${title}" has been updated.\nNew Due Date: ${dueDate || 'Not set'}\nPoints: ${pointsVal}`,
+                                content: `The assignment "${title}" has been updated.\nDue Date: ${dueDate || 'Not set'}\nStyle: ${gradingStyle}`,
                             });
                         }
                     } else {
                         await DiaryAPI.createEntry({
                             class_id: subjectData.class_id,
                             title: `New Assignment: ${title}`,
-                            content: `A new assignment has been published: ${title}.\nDue Date: ${dueDate || 'Not set'}\nPoints: ${pointsVal}`,
+                            content: `A new assignment has been published: ${title}.\nDue Date: ${dueDate || 'Not set'}\nGrading: ${gradingStyle}`,
                             entry_date: new Date().toISOString().split('T')[0]
                         });
                     }
@@ -565,6 +748,11 @@ export default function AssignmentsPage() {
             setShowModal(false);
             fetchAssignments();
             resetForm();
+            Toast.show({
+                type: 'success',
+                text1: 'Assignment Saved',
+                text2: editingAssignment ? 'Updated successfully' : 'Created and assigned to class'
+            });
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : "Failed to save assignment";
             Alert.alert("Error", message);
@@ -572,106 +760,6 @@ export default function AssignmentsPage() {
             setUploading(false);
         }
     };
-
-    const handlePrint = async () => {
-        try {
-            const html = `
-                <html>
-                    <head>
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-                        <style>
-                            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-                            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1a1a1a; line-height: 1.5; }
-                            .report-header { border-bottom: 2px solid #FF6900; margin-bottom: 30px; padding-bottom: 10px; }
-                            .report-title { font-size: 24px; font-weight: 700; color: #FF6900; margin: 0; }
-                            .report-meta { font-size: 12px; color: #666; margin-top: 5px; }
-                            
-                            .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; }
-                            .summary-card { background: #f9fafb; padding: 15px; border-radius: 12px; border: 1px solid #eee; }
-                            .summary-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.05em; }
-                            .summary-value { font-size: 18px; font-weight: 700; color: #111827; margin-top: 4px; }
-
-                            table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 20px; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; }
-                            th { background: #f3f4f6; padding: 12px 15px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb; }
-                            td { padding: 15px; font-size: 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
-                            tr:last-child td { border-bottom: none; }
-                            .title-cell { font-weight: 700; color: #111827; }
-                            .subject-cell { color: #FF6900; font-weight: 700; font-size: 11px; }
-                            .status-pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
-                            .status-active { background: #d1fae5; color: #065f46; }
-                            .status-draft { background: #f3f4f6; color: #374151; }
-                            .status-closed { background: #fee2e2; color: #991b1b; }
-                            
-                            .footer { margin-top: 40px; text-align: center; color: #9ca3af; font-size: 10px; border-top: 1px solid #f3f4f6; padding-top: 20px; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="report-header">
-                            <h1 class="report-title">Assignments Summary</h1>
-                            <div class="report-meta">Generated on ${new Date().toLocaleDateString()} \u2022 ${filteredAssignments.length} Assignments Found</div>
-                        </div>
-
-                        <div class="summary-grid">
-                            <div class="summary-card">
-                                <div class="summary-label">Total Submissions</div>
-                                <div class="summary-value">${filteredAssignments.reduce((acc, a) => acc + Math.min(a.submissions, a.totalStudents || Infinity), 0)}</div>
-                            </div>
-                            <div class="summary-card">
-                                <div class="summary-label">Active Assignments</div>
-                                <div class="summary-value">${filteredAssignments.filter(a => a.status === 'active').length}</div>
-                            </div>
-                        </div>
-
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Assignment Details</th>
-                                    <th>Subject</th>
-                                    <th>Due Date</th>
-                                    <th>Submissions</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${filteredAssignments.map(a => `
-                                    <tr>
-                                        <td>
-                                            <div class="title-cell">${a.title}</div>
-                                            <div style="font-size: 10px; color: #666; margin-top: 4px;">${a.description?.substring(0, 100) || 'No description'}${((a.description?.length || 0) > 100) ? '...' : ''}</div>
-                                        </td>
-                                        <td><div class="subject-cell">${a.Subject}</div></td>
-                                        <td>${a.dueDate}</td>
-                                        <td>${a.totalStudents > 0 ? Math.min(a.submissions, a.totalStudents) : a.submissions} / ${a.totalStudents}</td>
-                                        <td><span class="status-pill status-${a.status}">${a.status}</span></td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-
-                        <div class="footer">
-                            Assignments Management Report \u2022 Confidential
-                        </div>
-                    </body>
-                </html>
-            `;
-
-            if (Platform.OS === 'web') {
-                const printWindow = window.open('', '_blank');
-                printWindow?.document.write(html);
-                printWindow?.document.close();
-                setTimeout(() => {
-                    printWindow?.print();
-                }, 500);
-            } else {
-                const { uri } = await Print.printToFileAsync({ html });
-                await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
-            }
-        } catch (error) {
-            console.error('Print error:', error);
-            Alert.alert("Error", "Failed to generate print document");
-        }
-    };
-
 
     return (
         <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
@@ -699,20 +787,12 @@ export default function AssignmentsPage() {
                         </View>
                         <View className="flex-row gap-2">
                             <TouchableOpacity
-                                className="flex-row items-center bg-[#F6F8FA] dark:bg-[#161B22] px-3 py-2 rounded-lg border border-[#D0D7DE] dark:border-[#21262D]"
-                                onPress={handlePrint}
-                                activeOpacity={0.7}
-                            >
-                                <Printer size={16} color="#FF6900" />
-                                <Text className="text-gray-900 dark:text-white font-bold text-xs ml-2 uppercase tracking-widest">Print</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                className="flex-row items-center bg-[#FF6900] px-3 py-2 rounded-lg"
-                                onPress={() => setShowModal(true)}
+                                className="flex-row items-center bg-[#FF6900] px-4 py-2 rounded-lg shadow-sm"
+                                onPress={() => { resetForm(); setShowModal(true); }}
                                 activeOpacity={0.7}
                             >
                                 <Plus size={16} color="white" />
-                                <Text className="text-white font-bold text-xs ml-2 uppercase tracking-widest">New</Text>
+                                <Text className="text-white font-bold text-xs ml-2 uppercase tracking-widest">New Assignment</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -769,213 +849,349 @@ export default function AssignmentsPage() {
                                 onEdit={handleEdit}
                                 onView={(a) => router.push({ pathname: "/(teacher)/management/submissions", params: { assignmentId: a.id } } as any)}
                                 onDelete={handleDelete}
+                                onToggleRelease={handleToggleRelease}
                             />
                         ))
                     )}
                 </View>
             </ScrollView>
 
-            {/* Create/Edit Assignment Modal */}
+            {/* Refactored 5-Step Create/Edit Assignment Modal */}
             <Modal visible={showModal} animationType="slide" transparent>
                 <View className="flex-1 bg-black/70 justify-end">
-                    <View className="bg-[#FFFFFF] dark:bg-[#161B22] rounded-t-3xl p-6 h-[85%] border-t border-[#D0D7DE] dark:border-[#21262D]">
-                        <ScrollView
-                            style={{ paddingHorizontal: 4 }}
-                            showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-                            <View className="flex-row justify-between items-center mb-6">
-                                <View className="flex-row items-center">
-                                    <Text className="text-xl font-bold text-gray-900 dark:text-white">
-                                        {editingAssignment ? "Edit Assignment" : "New Assignment"}
-                                    </Text>
-                                    <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
-                                </View>
+                    <View className="bg-[#FFFFFF] dark:bg-[#161B22] rounded-t-3xl p-6 h-[88%] border-t border-[#D0D7DE] dark:border-[#21262D]">
+                        
+                        {/* Modal Header */}
+                        <View className="flex-row justify-between items-center mb-4">
+                            <View>
+                                <Text className="text-xl font-bold text-gray-900 dark:text-white">
+                                    {editingAssignment ? "Edit Assignment" : "New Assignment"}
+                                </Text>
+                                <Text className="text-xs text-gray-400">Step {modalStep} of 5</Text>
+                            </View>
+                            <TouchableOpacity
+                                className="w-10 h-10 bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]"
+                                onPress={() => { setShowModal(false); resetForm(); }}
+                            >
+                                <X size={20} color="#9CA3AF" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Step Progress Bar */}
+                        <View className="flex-row gap-1.5 mb-5">
+                            {[1, 2, 3, 4, 5].map(step => (
+                                <View 
+                                    key={step} 
+                                    className={`h-1.5 flex-1 rounded-full ${step <= modalStep ? 'bg-[#FF6900]' : 'bg-gray-200 dark:bg-gray-800'}`} 
+                                />
+                            ))}
+                        </View>
+
+                        <ScrollView 
+                            style={{ flex: 1 }} 
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={{ paddingBottom: 30 }}
+                        >
+                            {/* STEP 1: BASICS */}
+                            {modalStep === 1 && (
                                 <View>
-                                    <TouchableOpacity
-                                        className="w-10 h-10 bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]"
-                                        onPress={() => { setShowModal(false); resetForm(); }}
-                                    >
-                                        <X size={20} color="#9CA3AF" />
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-
-                            <View className="mb-6">
-                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-3 ml-1">Subject</Text>
-                                {Subjects.length === 0 ? (
-                                    <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]">
-                                        <Text className="text-gray-500 dark:text-gray-400 font-bold text-xs uppercase tracking-widest text-center">
-                                            No subjects available.
-                                        </Text>
+                                    <View className="flex-row items-center mb-1">
+                                        <Type size={16} color="#FF6900" />
+                                        <Text className="text-base font-bold text-gray-900 dark:text-white ml-2">Step 1: Assignment Basics</Text>
                                     </View>
-                                ) : (
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                        {Subjects.map(c => {
-                                            const isSelected = selectedSubjectId === c.id;
-                                            return (
-                                                <TouchableOpacity
-                                                    key={c.id}
-                                                    onPress={() => setSelectedSubjectId(c.id)}
-                                                    activeOpacity={0.7}
-                                                    className={`mr-3 px-5 py-2.5 rounded-lg border ${isSelected ? "bg-[#FF6900] border-[#FF6900]" : "bg-[#F6F8FA] dark:bg-[#161B22] border-[#D0D7DE] dark:border-[#21262D]"}`}
-                                                >
-                                                    <Text className={`font-bold text-xs ${isSelected ? "text-white" : "text-gray-900 dark:text-gray-400"}`}>{c.title}</Text>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </ScrollView>
-                                )}
-                            </View>
+                                    <Text className="text-xs text-gray-500 dark:text-gray-400 mb-5">Give your assignment a clear title and instructions for students.</Text>
 
-
-                            <View className="mb-6">
-                                <View className="flex-row items-center ml-2 mb-2">
-                                    <Type size={12} color="#6B7280" />
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Title</Text>
-                                    <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
-                                </View>
-
-                                <View className="mb-5">
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Title</Text>
-
-                                    <TextInput
-                                        className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
-                                        placeholder="e.g. Mid-term Research Project"
-                                        placeholderTextColor="#9CA3AF"
-                                        value={title}
-                                        onChangeText={setTitle}
-                                    />
-                                </View>
-
-
-                                <View className="mb-6">
-                                    <View className="flex-row items-center ml-2 mb-2">
-                                        <AlignLeft size={12} color="#6B7280" />
-                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Description</Text>
-                                        <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
-                                    </View>
-
-                                    <View className="mb-5">
-                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Description</Text>
-
+                                    <View className="mb-4">
+                                        <Text className="text-gray-700 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-2">Title *</Text>
                                         <TextInput
-                                            className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-medium border border-[#D0D7DE] dark:border-[#21262D]"
-                                            placeholder="Enter assignment instructions..."
+                                            className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-semibold border border-[#D0D7DE] dark:border-[#21262D]"
+                                            placeholder="e.g. History Mid-Term Essay"
+                                            placeholderTextColor="#9CA3AF"
+                                            value={title}
+                                            onChangeText={setTitle}
+                                        />
+                                    </View>
+
+                                    <View className="mb-4">
+                                        <Text className="text-gray-700 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-2">Instructions / Description</Text>
+                                        <TextInput
+                                            className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-[#D0D7DE] dark:border-[#21262D]"
+                                            placeholder="Specify guidelines, references, and deliverables..."
                                             placeholderTextColor="#9CA3AF"
                                             multiline
                                             textAlignVertical="top"
                                             value={description}
                                             onChangeText={setDescription}
-                                            style={{ minHeight: 100 }}
+                                            style={{ minHeight: 120 }}
                                         />
                                     </View>
+                                </View>
+                            )}
 
-                                    <View className="flex-row gap-3 mb-5">
-                                        <View className="flex-1">
-                                            <DatePicker
-                                                label="Due Date"
-                                                value={dueDate}
-                                                onChange={(v) => {
-                                                    setDueDate(v);
-                                                    if (v) setDateObject(new Date(v));
-                                                }}
-                                                isDark={isDark}
-                                            />
-                                        </View>
+                            {/* STEP 2: TARGETING & TERM FROM DATABASE */}
+                            {modalStep === 2 && (
+                                <View>
+                                    <View className="flex-row items-center mb-1">
+                                        <BookOpen size={16} color="#FF6900" />
+                                        <Text className="text-base font-bold text-gray-900 dark:text-white ml-2">Step 2: Subject & Academic Term</Text>
+                                    </View>
+                                    <Text className="text-xs text-gray-500 dark:text-gray-400 mb-5">Assign this to your enrolled subject and the current institution term.</Text>
 
-                                        <View className="flex-1">
-                                            <View className="flex-row items-center ml-2 mb-2">
-                                                <Target size={12} color="#6B7280" />
-                                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Points</Text>
-                                                <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
+                                    {/* Subject Selection */}
+                                    <View className="mb-5">
+                                        <Text className="text-gray-700 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-2.5">Target Subject *</Text>
+                                        {Subjects.length === 0 ? (
+                                            <View className="bg-[#F6F8FA] dark:bg-[#0D1117] p-4 rounded-xl border border-dashed border-[#D0D7DE] dark:border-[#21262D]">
+                                                <Text className="text-gray-400 text-xs text-center">No assigned subjects available.</Text>
                                             </View>
+                                        ) : (
+                                            <View className="flex-row flex-wrap gap-2">
+                                                {Subjects.map(sub => {
+                                                    const isSelected = selectedSubjectId === sub.id;
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={sub.id}
+                                                            onPress={() => setSelectedSubjectId(sub.id)}
+                                                            activeOpacity={0.7}
+                                                            className={`px-3.5 py-2.5 rounded-xl border ${isSelected ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-[#F6F8FA] dark:bg-[#0D1117] border-[#D0D7DE] dark:border-[#21262D]'}`}
+                                                        >
+                                                            <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-gray-800 dark:text-gray-300'}`}>
+                                                                {sub.title}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+                                            </View>
+                                        )}
+                                    </View>
+
+                                    {/* DB Academic Terms */}
+                                    <View className="mb-4">
+                                        <Text className="text-gray-700 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-2.5">Academic Term (From Database) *</Text>
+                                        <View className="flex-row flex-wrap gap-2">
+                                            {terms.map(t => {
+                                                const isSelected = selectedTermId === t.id || termName === t.name;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={t.id}
+                                                        onPress={() => {
+                                                            setSelectedTermId(t.id);
+                                                            setTermName(t.name);
+                                                        }}
+                                                        activeOpacity={0.7}
+                                                        className={`px-4 py-2.5 rounded-xl border ${isSelected ? 'bg-orange-500 border-orange-500' : 'bg-[#F6F8FA] dark:bg-[#0D1117] border-[#D0D7DE] dark:border-[#21262D]'}`}
+                                                    >
+                                                        <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-gray-800 dark:text-gray-300'}`}>
+                                                            {t.name}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* STEP 3: FLEXIBLE GRADING STYLES */}
+                            {modalStep === 3 && (
+                                <View>
+                                    <View className="flex-row items-center mb-1">
+                                        <Award size={16} color="#FF6900" />
+                                        <Text className="text-base font-bold text-gray-900 dark:text-white ml-2">Step 3: Grading Style & Scale</Text>
+                                    </View>
+                                    <Text className="text-xs text-gray-500 dark:text-gray-400 mb-5">Select how student submissions for this assignment will be evaluated.</Text>
+
+                                    <View className="gap-2.5 mb-5">
+                                        {GRADING_STYLES.map(style => {
+                                            const isSelected = gradingStyle === style.id;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={style.id}
+                                                    onPress={() => setGradingStyle(style.id)}
+                                                    activeOpacity={0.7}
+                                                    className={`p-3.5 rounded-xl border flex-row items-center justify-between ${isSelected ? 'bg-orange-500/10 border-[#FF6900]' : 'bg-[#F6F8FA] dark:bg-[#0D1117] border-[#D0D7DE] dark:border-[#21262D]'}`}
+                                                >
+                                                    <View className="flex-1 pr-2">
+                                                        <Text className={`font-bold text-xs ${isSelected ? 'text-[#FF6900]' : 'text-gray-900 dark:text-white'}`}>{style.label}</Text>
+                                                        <Text className="text-gray-500 text-[11px] mt-0.5">{style.description}</Text>
+                                                    </View>
+                                                    {isSelected ? <Check size={16} color="#FF6900" /> : null}
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+
+                                    <View className="flex-row gap-3 mb-4">
+                                        <View className="flex-1">
+                                            <Text className="text-gray-700 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-2">Max Points / Score</Text>
                                             <TextInput
-                                                className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
+                                                className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
                                                 placeholder="100"
                                                 placeholderTextColor="#9CA3AF"
                                                 keyboardType="numeric"
                                                 value={points}
                                                 onChangeText={setPoints}
-                                                style={{ minHeight: 52 }}
                                             />
-                                        </View >
-                                    </View >
-
-                                    <View className="flex-row gap-3 mb-6">
+                                        </View>
                                         <View className="flex-1">
-                                            <View className="flex-row items-center ml-2 mb-2">
-                                                <Trophy size={12} color="#6B7280" />
-                                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Weight (%)</Text>
-                                                <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
-                                            </View>
+                                            <Text className="text-gray-700 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-2">Report Card Weight (%)</Text>
                                             <TextInput
-                                                className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
-                                                placeholder="25"
+                                                className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
+                                                placeholder="e.g. 20"
                                                 placeholderTextColor="#9CA3AF"
                                                 keyboardType="numeric"
                                                 value={weight}
                                                 onChangeText={setWeight}
                                             />
-                                        </View >
+                                        </View>
+                                    </View>
+                                </View>
+                            )}
 
-                                        <View className="flex-1">
-                                            <View className="flex-row items-center ml-2 mb-2">
-                                                <BookOpen size={12} color="#6B7280" />
-                                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1.5">Term</Text>
-                                                <HelpTooltip id="teacher.manage.coursework" role="teacher" tier={tier} onLearnMore={openManual} />
-                                            </View>
-                                            <TextInput
-                                                className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-5 py-4 text-gray-900 dark:text-white font-bold border border-[#D0D7DE] dark:border-[#21262D]"
-                                                placeholder="Term 1"
-                                                placeholderTextColor="#9CA3AF"
-                                                value={term}
-                                                onChangeText={setTerm}
-                                            />
-                                        </View >
-                                    </View >
+                            {/* STEP 4: SCHEDULE & DUE DATE */}
+                            {modalStep === 4 && (
+                                <View>
+                                    <View className="flex-row items-center mb-1">
+                                        <Calendar size={16} color="#FF6900" />
+                                        <Text className="text-base font-bold text-gray-900 dark:text-white ml-2">Step 4: Scheduling & Due Date</Text>
+                                    </View>
+                                    <Text className="text-xs text-gray-500 dark:text-gray-400 mb-5">Set the deadline for student submission.</Text>
 
-                                    <View className="mb-8">
-                                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1 mb-2">Attachments</Text>
+                                    <View className="mb-5">
+                                        <DatePicker
+                                            label="Assignment Due Date *"
+                                            value={dueDate}
+                                            onChange={(v) => {
+                                                setDueDate(v);
+                                                if (v) setDateObject(new Date(v));
+                                            }}
+                                            isDark={isDark}
+                                        />
+                                    </View>
+
+                                    <View className="bg-[#F6F8FA] dark:bg-[#0D1117] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]">
+                                        <Text className="text-xs font-bold text-gray-800 dark:text-gray-200 mb-1">Submissions Window</Text>
+                                        <Text className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                            Students will be able to submit their work up until 23:59 on the selected due date. Submissions after this date will be tagged as late.
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* STEP 5: ATTACHMENTS & REVIEW */}
+                            {modalStep === 5 && (
+                                <View>
+                                    <View className="flex-row items-center mb-1">
+                                        <CheckCircle2 size={16} color="#FF6900" />
+                                        <Text className="text-base font-bold text-gray-900 dark:text-white ml-2">Step 5: Materials & Final Review</Text>
+                                    </View>
+                                    <Text className="text-xs text-gray-500 dark:text-gray-400 mb-5">Attach original materials (PDF, DOCX, etc.) and confirm settings.</Text>
+
+                                    {/* Upload box */}
+                                    <View className="mb-5">
+                                        <Text className="text-gray-700 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-2">Original Format Attachment</Text>
                                         <TouchableOpacity
                                             onPress={pickDocument}
                                             activeOpacity={0.7}
-                                            className={`flex-row items-center justify-center border-dashed border-2 rounded-xl p-6 ${selectedFile ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-[#D0D7DE] dark:border-[#21262D] bg-[#F6F8FA] dark:bg-[#161B22]'}`}
+                                            className={`flex-row items-center justify-center border-dashed border-2 rounded-xl p-5 ${selectedFile ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-[#D0D7DE] dark:border-[#21262D] bg-[#F6F8FA] dark:bg-[#0D1117]'}`}
                                         >
                                             {selectedFile ? (
                                                 <View className="items-center">
                                                     <FileText size={24} color="#10B981" />
-                                                    <Text className="text-green-900 dark:text-green-400 font-bold mt-2 text-center">{selectedFile.name}</Text>
+                                                    <Text className="text-green-900 dark:text-green-400 font-bold mt-2 text-center text-xs">{selectedFile.name}</Text>
+                                                    <Text className="text-green-600 text-[10px] mt-0.5">Click to replace file</Text>
                                                 </View>
                                             ) : (
                                                 <View className="items-center">
-                                                    <Upload size={24} color="#9CA3AF" />
-                                                    <Text className="text-gray-900 dark:text-white font-bold mt-2">Upload Material</Text>
-                                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">PDF, DOCX, Images</Text>
+                                                    <Upload size={22} color="#9CA3AF" />
+                                                    <Text className="text-gray-900 dark:text-white font-bold mt-1.5 text-xs">Upload Material</Text>
+                                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-widest mt-0.5">PDF, DOCX, PPTX, Images</Text>
                                                 </View>
                                             )}
                                         </TouchableOpacity>
                                     </View>
 
-                                    <TouchableOpacity
-                                        className={`bg-[#FF6900] py-4 rounded-xl items-center ${uploading ? 'opacity-70' : ''}`}
-                                        onPress={saveAssignment}
-                                        disabled={uploading}
-                                        activeOpacity={0.7}
-                                    >
-                                        {uploading ? (
-                                            <ActivityIndicator color="white" />
-                                        ) : (
-                                            <Text className="text-white font-bold text-lg">
-                                                {editingAssignment ? "Update" : "Publish"}
-                                            </Text>
-                                        )}
-                                    </TouchableOpacity>
+                                    {/* Review Card */}
+                                    <View className="bg-[#F6F8FA] dark:bg-[#0D1117] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-5">
+                                        <Text className="text-xs font-bold uppercase tracking-wider text-[#FF6900] mb-3">Assignment Summary</Text>
+                                        <View className="gap-2">
+                                            <View className="flex-row justify-between">
+                                                <Text className="text-xs text-gray-500">Title:</Text>
+                                                <Text className="text-xs font-bold text-gray-900 dark:text-white flex-1 text-right ml-4">{title || 'Untitled'}</Text>
+                                            </View>
+                                            <View className="flex-row justify-between">
+                                                <Text className="text-xs text-gray-500">Subject:</Text>
+                                                <Text className="text-xs font-bold text-gray-900 dark:text-white">{Subjects.find(s => s.id === selectedSubjectId)?.title || 'Not selected'}</Text>
+                                            </View>
+                                            <View className="flex-row justify-between">
+                                                <Text className="text-xs text-gray-500">Term:</Text>
+                                                <Text className="text-xs font-bold text-gray-900 dark:text-white">{termName || 'Default Term'}</Text>
+                                            </View>
+                                            <View className="flex-row justify-between">
+                                                <Text className="text-xs text-gray-500">Grading Style:</Text>
+                                                <Text className="text-xs font-bold text-gray-900 dark:text-white uppercase">{gradingStyle}</Text>
+                                            </View>
+                                            <View className="flex-row justify-between">
+                                                <Text className="text-xs text-gray-500">Total Points & Weight:</Text>
+                                                <Text className="text-xs font-bold text-gray-900 dark:text-white">{points} pts ({weight}%)</Text>
+                                            </View>
+                                            <View className="flex-row justify-between">
+                                                <Text className="text-xs text-gray-500">Due Date:</Text>
+                                                <Text className="text-xs font-bold text-gray-900 dark:text-white">{dueDate || 'Not set'}</Text>
+                                            </View>
+                                        </View>
+                                    </View>
                                 </View>
-                            </View>
+                            )}
                         </ScrollView>
+
+                        {/* Modal Navigation Buttons */}
+                        <View className="flex-row justify-between items-center pt-3 border-t border-[#D0D7DE] dark:border-[#21262D]">
+                            {modalStep > 1 ? (
+                                <TouchableOpacity
+                                    onPress={goToPrevStep}
+                                    activeOpacity={0.7}
+                                    className="flex-row items-center px-4 py-3 bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl border border-[#D0D7DE] dark:border-[#21262D]"
+                                >
+                                    <ArrowLeft size={16} color="#6B7280" />
+                                    <Text className="text-gray-700 dark:text-gray-300 font-bold text-xs ml-1.5 uppercase tracking-wider">Back</Text>
+                                </TouchableOpacity>
+                            ) : (
+                                <View />
+                            )}
+
+                            {modalStep < 5 ? (
+                                <TouchableOpacity
+                                    onPress={goToNextStep}
+                                    activeOpacity={0.7}
+                                    className="flex-row items-center px-6 py-3 bg-[#FF6900] rounded-xl"
+                                >
+                                    <Text className="text-white font-bold text-xs mr-1.5 uppercase tracking-wider">Continue</Text>
+                                    <ArrowRight size={16} color="white" />
+                                </TouchableOpacity>
+                            ) : (
+                                <TouchableOpacity
+                                    onPress={saveAssignment}
+                                    disabled={uploading}
+                                    activeOpacity={0.7}
+                                    className={`flex-row items-center px-6 py-3 bg-green-600 rounded-xl ${uploading ? 'opacity-70' : ''}`}
+                                >
+                                    {uploading ? (
+                                        <ActivityIndicator color="white" size="small" />
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 size={16} color="white" />
+                                            <Text className="text-white font-bold text-xs ml-2 uppercase tracking-wider">
+                                                {editingAssignment ? "Update Assignment" : "Publish Assignment"}
+                                            </Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     </View>
                 </View>
-            </Modal >
-
+            </Modal>
         </View>
     );
 }

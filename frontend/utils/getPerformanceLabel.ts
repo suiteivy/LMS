@@ -4,10 +4,13 @@
 
 export interface GradingScaleRow {
   id?: string;
+  name?: string;
   letter_grade: string;
   min_score: number;
   max_score: number;
   gpa_points: number;
+  points?: number;
+  description?: string;
   is_active?: boolean;
   is_default?: boolean;
   sort_order?: number;
@@ -65,11 +68,13 @@ export function getPerformanceLabel(
 
 function deriveFromScaleRow(row: GradingScaleRow): PerformanceResult {
   const letter = row.letter_grade;
-  const gpa = row.gpa_points;
+  const gpa = Number(row.points ?? row.gpa_points ?? 0);
   const isPassing = gpa > 0;
 
-  // Derive label + color from the grade position in the scale
-  const label = labelFromLetter(letter, gpa);
+  // Prioritize institution-defined description if present
+  const label = (row.description && row.description.trim().length > 0)
+    ? row.description.trim()
+    : labelFromLetter(letter, gpa);
   const colors = colorFromLetter(letter);
 
   return {

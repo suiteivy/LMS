@@ -26,6 +26,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: "assignments", title: "Assignments", icon: PenBox, route: "/(student)/assignments" },
   { name: "finance", title: "Finances", icon: CreditCard, route: "/(student)/finance" },
   { name: "diary", title: "Diary", icon: BookOpen, route: "/(student)/diary" },
+  { name: "vault", title: "Academic Vault", icon: BookOpen, route: "/(student)/vault" },
   { name: "notifications", title: "Updates", icon: MessageSquare, route: "/(student)/notifications" },
   { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(student)/accessibility/settings" },
 ];
@@ -37,7 +38,7 @@ const MOBILE_TAB_NAMES = ["grades", "assignments", "index", "notifications", "ac
 const ALL_OTHER = NAV_ITEMS
   .filter(i => !MOBILE_TAB_NAMES.includes(i.name))
   .map(i => i.name);
-const HIDDEN_ROUTES = [...ALL_OTHER, "attendance", "timetable", "announcements", "grades-enhanced", "report-cards", "analytics"];
+const HIDDEN_ROUTES = [...ALL_OTHER, "attendance", "timetable", "announcements", "grades-enhanced", "report-cards", "analytics", "vault"];
 
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useNotifications } from "@/contexts/NotificationContext";

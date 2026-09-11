@@ -9,7 +9,8 @@ const {
     gradeSubmission,
     createAnnouncement,
     getAnnouncements,
-    deleteAnnouncement
+    deleteAnnouncement,
+    toggleAssignmentGradesRelease
 } = require("../controllers/academic.controller.js");
 
 const { authorizeRoles } = require("../middleware/authRole.js");
@@ -22,6 +23,7 @@ router.put("/materials", authorizeRoles(["admin", "teacher"]), updateMaterials);
 // Assignments
 router.post("/assignments", authorizeRoles(["admin", "teacher"]), createAssignment);
 router.get("/assignments", authorizeRoles(["admin", "teacher", "student"]), getAssignments);
+router.put("/assignments/:id/release-grades", authorizeRoles(["admin", "teacher"]), toggleAssignmentGradesRelease);
 
 // Submissions
 router.post("/submissions", authorizeRoles(["student"]), submitAssignment);

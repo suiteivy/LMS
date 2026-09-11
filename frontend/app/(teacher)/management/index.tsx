@@ -114,13 +114,14 @@ export default function ManagementIndex() {
                         .in('assignment_id', assignmentIds)
                         .neq('status', 'graded');
 
-                    const { count: submitted } = await supabase
+                    const { count: graded } = await supabase
                         .from('submissions')
                         .select('id', { count: 'exact', head: true })
-                        .in('assignment_id', assignmentIds);
+                        .in('assignment_id', assignmentIds)
+                        .eq('status', 'graded');
 
                     setPendingCount(pending || 0);
-                    setSubmittedCount(submitted || 0);
+                    setSubmittedCount(graded || 0);
                 } else {
                     setPendingCount(0);
                     setSubmittedCount(0);
@@ -308,7 +309,6 @@ export default function ManagementIndex() {
 
         return isRouteVisibleForMode(feature.route, mode);
     });
-
     return (
         <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <UnifiedHeader
@@ -367,9 +367,13 @@ export default function ManagementIndex() {
 
                     {/* Quick Stats Row */}
                     <View className="flex-row gap-4 mb-8">
-                        <View className="flex-1 bg-gray-900 dark:bg-[#161B22] p-6 rounded-[32px] shadow-lg border border-transparent dark:border-gray-800 justify-center">
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => mode !== 'class' && router.push('/(teacher)/management/assignments' as any)}
+                            className="flex-1 bg-gray-900 dark:bg-[#161B22] p-6 rounded-[32px] shadow-lg border border-transparent dark:border-gray-800 justify-center active:opacity-90"
+                        >
                             <Text className="text-white/40 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">
-                                {mode === 'class' ? 'Designated Classes' : 'Pending'}
+                                {mode === 'class' ? 'Designated Classes' : 'Awaiting Grading'}
                             </Text>
                             {statsLoading ? (
                                 <ActivityIndicator size="small" color="white" className="mt-2" style={{ alignSelf: 'flex-start' }} />
@@ -378,10 +382,17 @@ export default function ManagementIndex() {
                                     {mode === 'class' ? (classCount ?? 0) : (pendingCount ?? 0)}
                                 </Text>
                             )}
-                        </View>
-                        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm justify-center">
+                            {mode !== 'class' && (
+                                <Text className="text-white/50 text-[9px] font-medium mt-1">Review pending submissions →</Text>
+                            )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => mode !== 'class' && router.push('/(teacher)/management/assignments' as any)}
+                            className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm justify-center active:opacity-90"
+                        >
                             <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">
-                                {mode === 'class' ? 'Class Students' : 'Submitted'}
+                                {mode === 'class' ? 'Class Students' : 'Graded Submissions'}
                             </Text>
                             {statsLoading ? (
                                 <ActivityIndicator size="small" color="#FF6900" className="mt-2" style={{ alignSelf: 'flex-start' }} />
@@ -390,7 +401,10 @@ export default function ManagementIndex() {
                                     {mode === 'class' ? (classStudentCount ?? 0) : (submittedCount ?? 0)}
                                 </Text>
                             )}
-                        </View>
+                            {mode !== 'class' && (
+                                <Text className="text-gray-400 dark:text-gray-500 text-[9px] font-medium mt-1">Completed grading →</Text>
+                            )}
+                        </TouchableOpacity>
                     </View>
 
                     {/* Feature Cards */}

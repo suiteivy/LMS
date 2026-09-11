@@ -1,19 +1,27 @@
 import { api } from "./api";
 import { Database } from "@/types/database";
 
-type Resource = Database['public']['Tables']['resources']['Row'] & {
+export type Resource = Database['public']['Tables']['resources']['Row'] & {
     subject?: {
         title: string;
     } | null;
-    Subject_title?: string; // For compatibility with existing frontend code
+    class?: {
+        name: string;
+    } | null;
+    Subject_title?: string;
+    Class_name?: string;
+    target_audience?: 'everyone' | 'staff_only';
+    class_id?: string | null;
 };
 
 export const ResourceAPI = {
-    // Get all resources (filtered by subject optional)
-    getResources: async (subjectId?: string, pagination?: { page?: number; limit?: number }): Promise<Resource[]> => {
+    // Get all resources (filtered by subject/class/audience optional)
+    getResources: async (filterOptions?: { subjectId?: string; classId?: string; targetAudience?: 'everyone' | 'staff_only' }, pagination?: { page?: number; limit?: number }): Promise<Resource[]> => {
         try {
             const params = {
-                ...(subjectId ? { subject_id: subjectId } : {}),
+                ...(filterOptions?.subjectId ? { subject_id: filterOptions.subjectId } : {}),
+                ...(filterOptions?.classId ? { class_id: filterOptions.classId } : {}),
+                ...(filterOptions?.targetAudience ? { target_audience: filterOptions.targetAudience } : {}),
                 ...(pagination || {}),
             };
             const response = await api.get("/resources", { params });
@@ -22,7 +30,8 @@ export const ResourceAPI = {
             // Transform to match frontend expectations if necessary
             return list.map((r: any) => ({
                 ...r,
-                Subject_title: r.subject?.title || "Unknown Subject"
+                Subject_title: r.subject?.title || "General Resource",
+                Class_name: r.class?.display_name || r.class?.name || null
             }));
         } catch (error) {
             console.error("Get resources error", error);

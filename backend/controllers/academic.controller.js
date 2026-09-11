@@ -93,7 +93,24 @@ exports.updateMaterials = async (req, res) => {
  */
 exports.createAssignment = async (req, res) => {
     try {
-        const { subject_id, teacher_id: bodyTeacherId, title, description, due_date, weight, term, is_published, student_id } = req.body;
+        const {
+            subject_id,
+            teacher_id: bodyTeacherId,
+            title,
+            description,
+            due_date,
+            weight,
+            term,
+            term_id,
+            class_id,
+            total_points,
+            grading_style,
+            attachment_url,
+            attachment_name,
+            is_published,
+            grades_released,
+            student_id
+        } = req.body;
         const { userId, userRole, institution_id } = req;
 
         let effectiveTeacherId = bodyTeacherId;
@@ -111,13 +128,20 @@ exports.createAssignment = async (req, res) => {
             .insert([{
                 subject_id,
                 teacher_id: effectiveTeacherId,
+                class_id: class_id || null,
                 title,
                 description,
                 due_date,
                 institution_id,
                 weight: weight || 0,
-                term,
+                term: term || null,
+                term_id: term_id || null,
+                total_points: total_points ? Number(total_points) : 100,
+                grading_style: grading_style || 'points',
+                attachment_url: attachment_url || null,
+                attachment_name: attachment_name || null,
                 is_published: is_published !== undefined ? is_published : true,
+                grades_released: grades_released !== undefined ? grades_released : false,
                 student_id: student_id || null
             }])
             .select()
@@ -125,6 +149,41 @@ exports.createAssignment = async (req, res) => {
 
         if (error) throw error;
         res.status(201).json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.toggleAssignmentGradesRelease = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { grades_released } = req.body;
+        const { userId, userRole, institution_id } = req;
+
+        if (userRole === 'teacher') {
+            const { data: assignment } = await supabase
+                .from('assignments')
+                .select('subject_id')
+                .eq('id', id)
+                .eq('institution_id', institution_id)
+                .single();
+            if (!assignment) return res.status(404).json({ error: "Assignment not found" });
+            const result = await authorizeTeacherForSubject(userId, assignment.subject_id, res);
+            if (!result) return;
+        } else if (userRole !== 'admin') {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        const { data, error } = await supabase
+            .from("assignments")
+            .update({ grades_released: grades_released !== undefined ? grades_released : true })
+            .eq("id", id)
+            .eq("institution_id", institution_id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json({ success: true, data });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

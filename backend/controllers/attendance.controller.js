@@ -98,6 +98,49 @@ const getSubjectLinkedClassIds = async (subjectId, institutionId) => {
 /**
  * Get Student Attendance for a class/subject on a date
  */
+
+async function checkAttendanceDeadlineLock(institutionId, dateStr, userRole) {
+    if (userRole === 'admin' || userRole === 'master_admin') {
+        return { isLocked: false }; // Admin is explicitly exempt per specifications
+    }
+
+    try {
+        const { data: terms, error } = await supabase
+            .from('terms')
+            .select('id, name, end_date, attendance_deadline, locked_at')
+            .eq('institution_id', institutionId)
+            .lte('start_date', dateStr)
+            .gte('end_date', dateStr);
+
+        if (error || !terms || terms.length === 0) {
+            return { isLocked: false };
+        }
+
+        const term = terms[0];
+        if (term.locked_at) {
+            return { isLocked: true, reason: `Attendance is locked for ${term.name}.` };
+        }
+
+        if (term.attendance_deadline) {
+            let deadlineDate;
+            if (term.attendance_deadline.includes('-')) {
+                deadlineDate = new Date(term.attendance_deadline);
+            } else {
+                deadlineDate = new Date(`${term.end_date}T${term.attendance_deadline}:00`);
+            }
+            if (!isNaN(deadlineDate.getTime()) && new Date() > deadlineDate) {
+                return { 
+                    isLocked: true, 
+                    reason: `Attendance updates for ${term.name} locked on ${deadlineDate.toLocaleString()}. Contact Admin for exemptions.` 
+                };
+            }
+        }
+    } catch (e) {
+        console.error('[checkAttendanceDeadlineLock] error:', e);
+    }
+    return { isLocked: false };
+}
+
 exports.getStudentAttendance = async (req, res) => {
     try {
         const { date, subject_id, class_id: _class_id } = req.query;
@@ -211,6 +254,8 @@ exports.getStudentAttendance = async (req, res) => {
                 last_name: s.users.last_name,
                 avatar_url: s.users.avatar_url,
                 status: record ? record.status : "pending",
+                actual_start_time: record?.actual_start_time || null,
+                actual_end_time: record?.actual_end_time || null,
                 id: record ? record.id : null,
                 notes: record ? record.notes : ""
             };
@@ -234,9 +279,13 @@ exports.getStudentAttendance = async (req, res) => {
 /**
  * Mark Student Attendance
  */
+
+/**
+ * Mark Student Attendance (with deadline lock & actual class times)
+ */
 exports.markStudentAttendance = async (req, res) => {
     try {
-        const { student_id, subject_id, class_id, date, status, notes } = req.body;
+        const { student_id, subject_id, class_id, date, status, notes, actual_start_time, actual_end_time } = req.body;
         const { userId, userRole, institution_id } = req;
 
         if (userRole === 'teacher') {
@@ -251,6 +300,12 @@ exports.markStudentAttendance = async (req, res) => {
         }
 
         const markDate = date || new Date().toISOString().split('T')[0];
+
+        // 1. Enforce admin-set attendance deadline lock (Admin exempt)
+        const lockStatus = await checkAttendanceDeadlineLock(institution_id, markDate, userRole);
+        if (lockStatus.isLocked) {
+            return res.status(403).json({ error: lockStatus.reason });
+        }
 
         const { data: studentRow, error: studentErr } = await supabase
             .from('students')
@@ -308,25 +363,29 @@ exports.markStudentAttendance = async (req, res) => {
             targetClassId = linkedClassIds[0] || null;
         }
 
-        // Upsert
+        // Upsert with actual class times
+        const upsertPayload = {
+            student_id,
+            subject_id,
+            class_id: targetClassId,
+            date: markDate,
+            status,
+            notes,
+            institution_id
+        };
+
+        if (actual_start_time) upsertPayload.actual_start_time = actual_start_time;
+        if (actual_end_time) upsertPayload.actual_end_time = actual_end_time;
+
         const { data, error } = await supabase
             .from("attendance")
-            .upsert({
-                student_id,
-                subject_id,
-                class_id: targetClassId,
-                date: markDate,
-                status,
-                notes,
-                institution_id
-            }, { onConflict: "student_id, subject_id, date" })
+            .upsert(upsertPayload, { onConflict: "student_id, subject_id, date" })
             .select();
 
         if (error) throw error;
 
         // Real-time Notification for Parents on Absence
         if (status === 'absent') {
-            // Parallel: fetch student name + parent links
             const [{ data: student }, { data: parentRelations }] = await Promise.all([
                 supabase
                     .from('students')
@@ -343,7 +402,6 @@ exports.markStudentAttendance = async (req, res) => {
 
             if (parentRelations && parentRelations.length > 0) {
                 const studentName = student?.users?.full_name || 'Your child';
-                // Batch: send all notifications in parallel instead of sequential loop
                 await Promise.all(
                     parentRelations
                         .filter(r => r.parents?.user_id)
@@ -378,8 +436,176 @@ exports.markStudentAttendance = async (req, res) => {
 };
 
 /**
- * Get Teacher Attendance for a date
+ * Bulk Mark Student Attendance
  */
+exports.bulkMarkStudentAttendance = async (req, res) => {
+    try {
+        const { subject_id, class_id, date, records, actual_start_time, actual_end_time } = req.body;
+        const { userId, userRole, institution_id } = req;
+
+        if (userRole === 'teacher') {
+            const result = await authorizeTeacherForSubject(userId, subject_id, res);
+            if (!result) return;
+        } else if (!['admin', 'bursary'].includes(userRole)) {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        if (!subject_id || !Array.isArray(records) || records.length === 0) {
+            return res.status(400).json({ error: "subject_id and non-empty records required" });
+        }
+
+        const markDate = date || new Date().toISOString().split('T')[0];
+
+        // Check deadline lock
+        const lockStatus = await checkAttendanceDeadlineLock(institution_id, markDate, userRole);
+        if (lockStatus.isLocked) {
+            return res.status(403).json({ error: lockStatus.reason });
+        }
+
+        let targetClassId = class_id;
+        if (!targetClassId) {
+            const linkedClassIds = await getSubjectLinkedClassIds(subject_id, institution_id);
+            targetClassId = linkedClassIds[0] || null;
+        }
+
+        const upsertRows = records.map(r => ({
+            student_id: r.student_id,
+            subject_id,
+            class_id: targetClassId,
+            date: markDate,
+            status: r.status || 'present',
+            notes: r.notes || null,
+            actual_start_time: actual_start_time || null,
+            actual_end_time: actual_end_time || null,
+            institution_id
+        }));
+
+        const { data, error } = await supabase
+            .from("attendance")
+            .upsert(upsertRows, { onConflict: "student_id, subject_id, date" })
+            .select();
+
+        if (error) throw error;
+
+        // Recompute daily hours
+        try {
+            const studentIds = records.map(r => r.student_id);
+            await recomputeDailyHoursForInstitutionDate({
+                institution_id,
+                date: markDate,
+                student_ids: studentIds,
+            });
+        } catch (hoursError) {
+            console.error('[Attendance] daily hours recompute failed:', hoursError?.message || hoursError);
+        }
+
+        res.json({ message: "Attendance saved successfully", count: data?.length || 0, data });
+    } catch (err) {
+        console.error("bulkMarkStudentAttendance error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Teacher Presence Self Check-in (Synced to Admin side in real time)
+ */
+exports.selfMarkTeacherPresence = async (req, res) => {
+    try {
+        const { date, status = 'present', notes } = req.body;
+        const { userId, userRole, institution_id } = req;
+
+        if (userRole !== 'teacher') {
+            return res.status(403).json({ error: "Only teachers can mark self presence" });
+        }
+
+        const { data: teacher, error: tErr } = await supabase
+            .from('teachers')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('institution_id', institution_id)
+            .single();
+
+        if (tErr || !teacher) {
+            return res.status(404).json({ error: "Teacher profile not found" });
+        }
+
+        const markDate = date || new Date().toISOString().split('T')[0];
+
+        const { data, error } = await supabase
+            .from("teacher_attendance")
+            .upsert({
+                teacher_id: teacher.id,
+                date: markDate,
+                status,
+                notes: notes || "Teacher presence self check-in",
+                institution_id
+            }, { onConflict: "teacher_id, date" })
+            .select();
+
+        if (error) throw error;
+
+        try {
+            await recomputeDailyHoursForInstitutionDate({
+                institution_id,
+                date: markDate,
+                teacher_ids: [teacher.id],
+            });
+        } catch (hoursError) {
+            console.error('[Attendance] teacher daily hours recompute failed:', hoursError?.message || hoursError);
+        }
+
+        res.json({ message: "Presence marked successfully", attendance: data[0] });
+    } catch (err) {
+        console.error("selfMarkTeacherPresence error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Attendance Retention & Purge Policy (Prunes daily records older than 2 years)
+ */
+exports.cleanupOldAttendanceRecords = async (req, res) => {
+    try {
+        const { userRole, institution_id } = req;
+        if (userRole !== 'admin' && userRole !== 'master_admin') {
+            return res.status(403).json({ error: "Admin only" });
+        }
+
+        const cutoffDate = new Date();
+        cutoffDate.setFullYear(cutoffDate.getFullYear() - 2);
+        const cutoffStr = cutoffDate.toISOString().split('T')[0];
+
+        const { data: sData, error: sErr } = await supabase
+            .from('attendance')
+            .delete()
+            .eq('institution_id', institution_id)
+            .lt('date', cutoffStr)
+            .select('id');
+
+        if (sErr) throw sErr;
+
+        const { data: tData, error: tErr } = await supabase
+            .from('teacher_attendance')
+            .delete()
+            .eq('institution_id', institution_id)
+            .lt('date', cutoffStr)
+            .select('id');
+
+        if (tErr) throw tErr;
+
+        res.json({
+            message: `Retention cleanup complete. Daily records older than 2 years removed.`,
+            student_records_purged: sData?.length || 0,
+            teacher_records_purged: tData?.length || 0,
+            cutoff_date: cutoffStr
+        });
+    } catch (err) {
+        console.error("cleanupOldAttendanceRecords error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+
 exports.getTeacherAttendance = async (req, res) => {
     try {
         const { date } = req.query;
