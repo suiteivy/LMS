@@ -4,11 +4,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { Slot, Tabs } from "expo-router";
-import { BookOpen, Building, LayoutGrid, School, Settings, Users, Bell, Calendar } from "lucide-react-native";
+import { BookOpen, Building, Clock, LayoutGrid, School, Settings, Users, Bell, Calendar } from "lucide-react-native";
 import { Platform, useWindowDimensions, View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// Full nav items for paid plans
+// Full nav items for mobile tab bar
 const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
     { name: "calendar", title: "Calendar", icon: Calendar, route: "/(teacher)/calendar" },
@@ -21,6 +21,16 @@ const ALL_NAV_ITEMS: NavItem[] = [
 const BETA_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
     { name: "calendar", title: "Calendar", icon: Calendar, route: "/(teacher)/calendar" },
+    { name: "notifications", title: "Alerts", icon: Bell, route: "/(teacher)/notifications" },
+    { name: "management", title: "Manage", icon: LayoutGrid, route: "/(teacher)/management" },
+    { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(teacher)/accessibility/settings" },
+];
+
+// Full nav items for web desktop persistent sidebar (includes Timetable)
+const ALL_SIDEBAR_ITEMS: NavItem[] = [
+    { name: "index", title: "Home", icon: Building, route: "/(teacher)" },
+    { name: "calendar", title: "Calendar", icon: Calendar, route: "/(teacher)/calendar" },
+    { name: "timetable", title: "Timetable", icon: Clock, route: "/(teacher)/management/timetable" },
     { name: "notifications", title: "Alerts", icon: Bell, route: "/(teacher)/notifications" },
     { name: "management", title: "Manage", icon: LayoutGrid, route: "/(teacher)/management" },
     { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(teacher)/accessibility/settings" },
@@ -145,6 +155,7 @@ function TeacherTabs() {
                 );
             })}
             <Tabs.Screen name="settings" options={{ href: null, headerShown: false }} />
+            <Tabs.Screen name="timetable" options={{ href: null, headerShown: false }} />
             {/* On free plan, hide paid-only tabs from nav but register them as routes */}
             {/* Register Manage sub-routes as hidden screens (accessible but not in tab bar) */}
             {MANAGE_SUB_ROUTES.map(name => (
@@ -165,7 +176,7 @@ function TeacherTabs() {
 function TeacherSidebar() {
     const { isDemo } = useAuth();
     const { isBeta } = useSubscriptionTier();
-    const items = isBeta ? BETA_NAV_ITEMS : ALL_NAV_ITEMS;
+    const items = ALL_SIDEBAR_ITEMS;
     return (
         <WebSidebar items={items} basePath="(teacher)" role="Teacher">
             <Slot />

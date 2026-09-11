@@ -68,7 +68,7 @@ function isMissingColumnError(errorLike, columnName) {
 async function getUserTimetableEvents({ institutionId, userId, userRole, startDate, endDate, cancelledDates }) {
   try {
     if (!startDate || !endDate) return [];
-    if (userRole !== 'teacher' && userRole !== 'student') return [];
+    if (userRole !== 'teacher' && userRole !== 'student' && userRole !== 'parent') return [];
 
     let timetableQuery = supabase
       .from('timetables')
@@ -105,6 +105,15 @@ async function getUserTimetableEvents({ institutionId, userId, userRole, startDa
       } else {
         return [];
       }
+    } else if (userRole === 'parent') {
+      const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).single();
+      if (!parent) return [];
+
+      const { data: links } = await supabase.from('parent_students').select('student_id, student:students(id, class_id)').eq('parent_id', parent.id);
+      const studentClassIds = Array.from(new Set((links || []).map(l => l.student?.class_id).filter(Boolean)));
+      if (studentClassIds.length === 0) return [];
+
+      timetableQuery = timetableQuery.in('class_id', studentClassIds);
     }
 
     const { data: slots, error } = await timetableQuery;

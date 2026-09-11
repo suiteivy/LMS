@@ -2,14 +2,25 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Slot, Tabs } from "expo-router";
-import { Bell, Calendar, CreditCard, LayoutDashboard, MessageSquare, Settings } from "lucide-react-native";
+import { Bell, BookOpenCheck, Calendar, Clock, CreditCard, LayoutDashboard, MessageSquare, Settings } from "lucide-react-native";
 import { Platform, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// All nav items   finance tab conditionally removed for free plan at runtime
+// All nav items for mobile tab bar
 const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: LayoutDashboard, route: "/(parent)" },
     { name: "calendar", title: "Calendar", icon: Calendar, route: "/(parent)/calendar" },
+    { name: "messages", title: "Chat", icon: MessageSquare, route: "/(parent)/messages" },
+    { name: "announcements", title: "Updates", icon: Bell, route: "/(parent)/announcements" },
+    { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(parent)/accessibility/settings" },
+];
+
+// All nav items for web desktop persistent sidebar (includes Timetable and Assignments)
+const PARENT_SIDEBAR_ITEMS: NavItem[] = [
+    { name: "index", title: "Home", icon: LayoutDashboard, route: "/(parent)" },
+    { name: "calendar", title: "Calendar", icon: Calendar, route: "/(parent)/calendar" },
+    { name: "timetable", title: "Timetable", icon: Clock, route: "/(parent)/timetable" },
+    { name: "assignments", title: "Assignments", icon: BookOpenCheck, route: "/(parent)/assignments" },
     { name: "messages", title: "Chat", icon: MessageSquare, route: "/(parent)/messages" },
     { name: "announcements", title: "Updates", icon: Bell, route: "/(parent)/announcements" },
     { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(parent)/accessibility/settings" },
@@ -104,6 +115,7 @@ function ParentTabs() {
                                                 </View>
                                             )}
                                         </View>
+
                                     );
                                 },
                             }}
@@ -127,12 +139,14 @@ function ParentTabs() {
             <Tabs.Screen name="settings" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="finance" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="grades" options={{ href: null, headerShown: false }} />
+            <Tabs.Screen name="assignments" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="attendance" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="reports" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="diary" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="timetable" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="report-cards" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="analytics" options={{ href: null, headerShown: false }} />
+            <Tabs.Screen name="notifications" options={{ href: null, headerShown: false }} />
             {!hasMessaging && <Tabs.Screen name="messages" options={{ href: null, headerShown: false }} />}
             </Tabs>
 
@@ -148,7 +162,7 @@ function ParentTabs() {
 
 function ParentSidebar() {
     const { hasMessaging } = useSubscriptionTier();
-    const items = ALL_NAV_ITEMS.filter((item) => (item.name === 'messages' ? hasMessaging : true));
+    const items = PARENT_SIDEBAR_ITEMS.filter((item) => (item.name === 'messages' ? hasMessaging : true));
     return (
         <WebSidebar items={items} basePath="(parent)" role="Parent/Guardian">
             <Slot />

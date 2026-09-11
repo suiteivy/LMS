@@ -525,3 +525,134 @@ exports.updateLinkedStudentProfile = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+/**
+ * Get assignments for a linked student
+ */
+exports.getStudentAssignments = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+
+        // 1. Verify link
+        const verification = await verifyParentStudentLink(req.userId, studentId);
+        if (verification.error) {
+            return res.status(verification.status).json({ error: verification.error });
+        }
+
+        // 2. Query student class and subject enrollments
+        const { data: student } = await supabase
+            .from('students')
+            .select('id, class_id')
+            .eq('id', studentId)
+            .single();
+
+        if (!student) {
+            return res.status(404).json({ error: "Student record not found" });
+        }
+
+        // Gather subject IDs
+        const subjectIds = new Set();
+
+        const { data: directEnrollments } = await supabase
+            .from('enrollments')
+            .select('subject_id')
+            .eq('student_id', studentId)
+            .eq('status', 'enrolled');
+
+        (directEnrollments || []).forEach(e => {
+            if (e.subject_id) subjectIds.add(e.subject_id);
+        });
+
+        if (student.class_id) {
+            const { data: classSubjects } = await supabase
+                .from('subjects')
+                .select('id')
+                .eq('class_id', student.class_id);
+
+            (classSubjects || []).forEach(s => {
+                if (s.id) subjectIds.add(s.id);
+            });
+        }
+
+        const subjectIdList = Array.from(subjectIds);
+
+        // Build assignments query
+        let query = supabase
+            .from('assignments')
+            .select(`
+                id,
+                title,
+                description,
+                due_date,
+                total_points,
+                weight,
+                grading_style,
+                attachment_url,
+                attachment_name,
+                is_published,
+                created_at,
+                subject:subjects(id, title),
+                submissions:submissions(id, student_id, status, grade, marks, feedback, submitted_at)
+            `)
+            .eq('is_published', true)
+            .order('due_date', { ascending: false });
+
+        if (student.class_id && subjectIdList.length > 0) {
+            query = query.or(`class_id.eq.${student.class_id},subject_id.in.(${subjectIdList.join(',')})`);
+        } else if (student.class_id) {
+            query = query.eq('class_id', student.class_id);
+        } else if (subjectIdList.length > 0) {
+            query = query.in('subject_id', subjectIdList);
+        } else {
+            return res.json([]);
+        }
+
+        const { data: rawAssignments, error } = await query;
+        if (error) throw error;
+
+        // Process submission status specifically for this student
+        const assignments = (rawAssignments || []).map(assign => {
+            const studentSub = (assign.submissions || []).find(s => s.student_id === studentId);
+            const now = new Date();
+            const dueDate = assign.due_date ? new Date(assign.due_date) : null;
+            let status = 'pending';
+
+            if (studentSub) {
+                if (studentSub.grade != null || studentSub.marks != null || studentSub.status === 'graded') {
+                    status = 'graded';
+                } else {
+                    status = 'submitted';
+                }
+            } else if (dueDate && dueDate < now) {
+                status = 'overdue';
+            }
+
+            return {
+                id: assign.id,
+                title: assign.title,
+                description: assign.description,
+                due_date: assign.due_date,
+                total_points: assign.total_points,
+                weight: assign.weight,
+                grading_style: assign.grading_style || 'points',
+                attachment_url: assign.attachment_url,
+                attachment_name: assign.attachment_name,
+                subject: assign.subject || { title: 'Subject' },
+                submission: studentSub ? {
+                    id: studentSub.id,
+                    status: studentSub.status,
+                    grade: studentSub.grade,
+                    marks: studentSub.marks,
+                    feedback: studentSub.feedback,
+                    submitted_at: studentSub.submitted_at
+                } : null,
+                status
+            };
+        });
+
+        res.json(assignments);
+    } catch (err) {
+        console.error("Get student assignments error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};

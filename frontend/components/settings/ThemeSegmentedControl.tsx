@@ -13,22 +13,23 @@ export function ThemeSegmentedControl() {
   ] as { key: ThemeMode; label: string }[];
 
   const iconFor = (mode: ThemeMode, active: boolean) => {
-    const color = active ? "#FF6B00" : isDark ? "#94A3B8" : "#9CA3AF";
-    if (mode === "light") return <Sun size={12} color={color} strokeWidth={2.4} />;
-    if (mode === "dark") return <Moon size={12} color={color} strokeWidth={2.4} />;
-    return <Laptop size={12} color={color} strokeWidth={2.4} />;
+    const color = active ? "#FF6900" : isDark ? "#8B949E" : "#6E7681";
+    if (mode === "light") return <Sun size={13} color={color} strokeWidth={2.4} />;
+    if (mode === "dark") return <Moon size={13} color={color} strokeWidth={2.4} />;
+    return <Laptop size={13} color={color} strokeWidth={2.4} />;
   };
 
   return (
     <View
       style={{
-        width: "100%",
         flexDirection: "row",
-        backgroundColor: isDark ? "#161B22" : "#F8FAFC",
-        borderRadius: 16,
-        padding: 4,
+        alignSelf: "flex-start",
+        alignItems: "center",
+        backgroundColor: isDark ? "#161B22" : "#F3F4F6",
+        borderRadius: 9999,
+        padding: 3,
         borderWidth: 1,
-        borderColor: isDark ? "rgba(255,255,255,0.12)" : "#E5E7EB",
+        borderColor: isDark ? "#30363D" : "#E5E7EB",
       }}
     >
       {modes.map((mode) => {
@@ -37,28 +38,45 @@ export function ThemeSegmentedControl() {
           <TouchableOpacity
             key={mode.key}
             onPress={() => setTheme(mode.key)}
-            activeOpacity={0.85}
+            activeOpacity={0.7}
             style={{
-              minWidth: 86,
-              flex: 1,
-              paddingHorizontal: 12,
-              paddingVertical: 7,
-              borderRadius: 12,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: isActive ? (isDark ? "#1F2937" : "#FFFFFF") : "transparent",
+              paddingHorizontal: 12,
+              paddingVertical: 5,
+              borderRadius: 9999,
+              backgroundColor: isActive
+                ? isDark
+                  ? "#21262D"
+                  : "#FFFFFF"
+                : "transparent",
               borderWidth: isActive ? 1 : 0,
-              borderColor: isActive ? (isDark ? "#374151" : "#E5E7EB") : "transparent",
+              borderColor: isActive
+                ? isDark
+                  ? "#30363D"
+                  : "rgba(0,0,0,0.06)"
+                : "transparent",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: isActive ? (isDark ? 0.3 : 0.08) : 0,
+              shadowRadius: 2,
+              elevation: isActive ? 1 : 0,
             }}
           >
             {iconFor(mode.key, isActive)}
             <Text
               style={{
                 marginLeft: 5,
-                fontSize: 10,
-                fontWeight: "700",
-                color: isActive ? (isDark ? "#FFFFFF" : "#111827") : isDark ? "#94A3B8" : "#9CA3AF",
+                fontSize: 11,
+                fontWeight: isActive ? "700" : "500",
+                color: isActive
+                  ? isDark
+                    ? "#F0F6FC"
+                    : "#111827"
+                  : isDark
+                  ? "#8B949E"
+                  : "#6B7280",
               }}
             >
               {mode.label}

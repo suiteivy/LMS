@@ -7,6 +7,7 @@ import {
   BookOpen,
   Building,
   Calendar,
+  Clock,
   CreditCard,
   Glasses,
   MessageSquare,
@@ -21,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const NAV_ITEMS: NavItem[] = [
   { name: "index", title: "Home", icon: Building, route: "/(student)" },
   { name: "calendar", title: "Calendar", icon: Calendar, route: "/(student)/calendar" },
+  { name: "timetable", title: "Timetable", icon: Clock, route: "/(student)/timetable" },
   { name: "grades", title: "Performance", icon: Star, route: "/(student)/grades" },
   { name: "library", title: "Library", icon: Glasses, route: "/(student)/library" },
   { name: "assignments", title: "Assignments", icon: PenBox, route: "/(student)/assignments" },
@@ -38,7 +40,7 @@ const MOBILE_TAB_NAMES = ["grades", "assignments", "index", "notifications", "ac
 const ALL_OTHER = NAV_ITEMS
   .filter(i => !MOBILE_TAB_NAMES.includes(i.name))
   .map(i => i.name);
-const HIDDEN_ROUTES = [...ALL_OTHER, "attendance", "timetable", "announcements", "grades-enhanced", "report-cards", "analytics", "vault"];
+const HIDDEN_ROUTES = [...ALL_OTHER, "attendance", "announcements", "grades-enhanced", "report-cards", "analytics"];
 
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useNotifications } from "@/contexts/NotificationContext";

@@ -66,7 +66,7 @@ export default function TeacherHelp() {
                 priority: 'normal',
             });
 
-            Toast.show({ type: 'success', text1: 'Success', text2: 'Support ticket submitted successfully.' });
+            Toast.show({ type: 'success', text1: 'Success', text2: 'Support ticket submitted successfully. Expected response: 1 business day.' });
             setSelectedTab(null);
             setTicketSubject('');
             setTicketDescription('');

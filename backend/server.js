@@ -119,6 +119,7 @@ const { isTransientSupabaseError } = require('./utils/supabaseRetry.js');
 const { retryScheduledNotificationDeliveries } = require('./services/notificationDelivery.service.js');
 const { runUpcomingClassReminderSweepWithRetry } = require('./services/classReminder.service.js');
 const { runFeeDeadlineReminderSweepWithRetry } = require('./services/feeDeadlineReminder.service.js');
+const { runUpcomingEventRemindersSweepWithRetry } = require('./services/eventReminder.service.js');
 const { pruneSystemActivityLogs } = require('./services/systemActivityLog.service.js');
 const { recomputePreviousDayForInstitutionsFromAttendance } = require('./services/dailyHours.service.js');
 
@@ -180,6 +181,21 @@ cron.schedule('0 8 * * *', async () => {
     }
   } catch (error) {
     logger.error('Fee deadline reminder worker failed', { error: error?.message || String(error) });
+  }
+});
+
+// Upcoming assignments, calendar events & attendance deadline reminders: hourly
+cron.schedule('0 * * * *', async () => {
+  try {
+    const result = await runUpcomingEventRemindersSweepWithRetry({
+      attempts: 3,
+      baseDelayMs: 1500,
+    });
+    if ((result?.queued || 0) > 0) {
+      logger.info('Upcoming event reminder worker queued notifications', result);
+    }
+  } catch (error) {
+    logger.error('Upcoming event reminder worker failed', { error: error?.message || String(error) });
   }
 });
 

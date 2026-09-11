@@ -11,6 +11,7 @@ import { router } from 'expo-router';
 import {
   Award,
   BookOpen,
+  BookOpenCheck,
   Calendar,
   CheckCircle,
   Clock,
@@ -173,6 +174,13 @@ function ParentDashboard({ user, logout }: any) {
       label: "Grades",
       color: "#2563eb",
       onPress: () => goTo("/(parent)/grades"),
+      show: true,
+    },
+    {
+      icon: BookOpenCheck,
+      label: "Assignments",
+      color: "#0284c7",
+      onPress: () => goTo("/(parent)/assignments"),
       show: true,
     },
     {

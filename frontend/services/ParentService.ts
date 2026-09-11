@@ -32,9 +32,16 @@ export class ParentService {
         return response.data;
     }
 
+
     /** Get academic reports for a linked student */
     static async getStudentReports(studentId: string) {
         const response = await api.get(`/reports?studentId=${studentId}`);
+        return response.data;
+    }
+
+    /** Get assignments for a linked student */
+    static async getStudentAssignments(studentId: string) {
+        const response = await api.get(`/parent/student/${studentId}/assignments`);
         return response.data;
     }
 
@@ -53,4 +60,3 @@ export class ParentService {
 }
 
 export const ParentAPI = ParentService;
-

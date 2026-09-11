@@ -1,8 +1,8 @@
 import { useTheme } from '@/contexts/ThemeContext';
 import type { SubscriptionTierInfo } from '@/hooks/useSubscriptionTier';
-import { Search, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { LayoutChangeEvent, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { LayoutChangeEvent, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { hasFeatureAccess, type AccessFeatureKey, type SettingsRole } from './access';
 import { SETTINGS_TOOLTIPS, type TooltipTargetId } from './tooltips.config';
 
@@ -160,7 +160,6 @@ interface ReferenceManualProps {
 
 export function ReferenceManual({ role, tier, initialAnchor }: ReferenceManualProps) {
   const { isDark } = useTheme();
-  const [query, setQuery] = useState('');
   const [open, setOpen] = useState<Record<string, boolean>>({ [initialAnchor || 'promotion-engine']: true });
   const [anchorY, setAnchorY] = useState<Record<string, number>>({});
   const [scrollRef, setScrollRef] = useState<ScrollView | null>(null);
@@ -190,13 +189,8 @@ export function ReferenceManual({ role, tier, initialAnchor }: ReferenceManualPr
 
   const visibleModules = useMemo(
     () =>
-      MODULES.filter((m) => (!m.roles || m.roles.includes(role)) && hasFeatureAccess(tier, m.feature))
-        .filter((m) => {
-          if (!query.trim()) return true;
-          const hay = `${m.title} ${m.shortBlurb} ${m.whatItDoes} ${m.whatChanges} ${m.crossLinks.join(' ')}`.toLowerCase();
-          return hay.includes(query.toLowerCase());
-        }),
-    [role, tier, query],
+      MODULES.filter((m) => (!m.roles || m.roles.includes(role)) && hasFeatureAccess(tier, m.feature)),
+    [role, tier],
   );
 
   return (
@@ -205,17 +199,6 @@ export function ReferenceManual({ role, tier, initialAnchor }: ReferenceManualPr
       style={{ flex: 1, backgroundColor: bg }}
       contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
     >
-      <View style={{ backgroundColor: card, borderColor: border, borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
-        <Search size={16} color={muted} />
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search modules, logic, and settings..."
-          placeholderTextColor={muted}
-          style={{ marginLeft: 8, color: text, flex: 1, fontSize: 13 }}
-        />
-      </View>
-
       {visibleModules.map((m) => {
         const isOpen = !!open[m.id];
         return (
@@ -277,7 +260,7 @@ export function ReferenceManual({ role, tier, initialAnchor }: ReferenceManualPr
 
       {visibleModules.length === 0 ? (
         <View style={{ backgroundColor: card, borderColor: border, borderWidth: 1, borderRadius: 14, padding: 14 }}>
-          <Text style={{ color: muted, fontSize: 12 }}>No manual sections available for your current role/tier or search.</Text>
+          <Text style={{ color: muted, fontSize: 12 }}>No manual sections available for your current role/tier.</Text>
         </View>
       ) : null}
     </ScrollView>

@@ -70,76 +70,60 @@ export default function AdminHelp() {
  description: ticketDescription,
  priority: 'high' // Admins get high priority
  });
-  Toast.show({ type: 'success', text1: 'Success', text2: 'Support ticket submitted to Platform Admins.' });
-  setSelectedTab(null);
-  setTicketSubject('');
-  setTicketDescription('');
- } catch (err) {
-  console.error("Submit ticket error:", err);
-  const fallbackMessage = 'Failed to submit ticket';
-  const apiMessage =
-   (err as any)?.response?.data?.error ||
-   (err as any)?.response?.data?.message ||
-   (err as any)?.message ||
-   fallbackMessage;
-  Toast.show({ type: 'error', text1: 'Error', text2: apiMessage });
- } finally {
-  setSubmitting(false);
- }
- };
+   Toast.show({ type: 'success', text1: 'Success', text2: 'Support ticket submitted successfully. Expected response: 1 business day.' });
+   setSelectedTab(null);
+   setTicketSubject('');
+   setTicketDescription('');
+  } catch (err) {
+   console.error("Submit ticket error:", err);
+   const fallbackMessage = 'Failed to submit ticket';
+   const apiMessage =
+    (err as any)?.response?.data?.error ||
+    (err as any)?.response?.data?.message ||
+    (err as any)?.message ||
+    fallbackMessage;
+   Toast.show({ type: 'error', text1: 'Error', text2: apiMessage });
+  } finally {
+   setSubmitting(false);
+  }
+  };
 
- return (
- <>
- <ScrollView style={{ flex: 1, backgroundColor: themeColors.bg }}>
- <View style={{ padding: 24, maxWidth: 600, alignSelf: 'center', width: '100%' }}>
+  return (
+  <>
+  <ScrollView style={{ flex: 1, backgroundColor: themeColors.bg }}>
+  <View style={{ padding: 24, maxWidth: 600, alignSelf: 'center', width: '100%' }}>
 
- {/* Header */}
- <View style={{ alignItems: 'center', marginBottom: 32 }}>
- <View style={{ padding: 16, backgroundColor: `${themeColors.primary}15`, borderRadius: 24, marginBottom: 16 }}>
- <ShieldCheck size={40} color={themeColors.primary} />
- </View>
- <Text style={{ fontSize: 24, fontWeight: '800', color: themeColors.text }}>Admin Support</Text>
- <Text style={{ color: themeColors.subtext, marginTop: 4, textAlign: 'center' }}>Enterprise assistance for Institution Administrators</Text>
- </View>
+  {/* Header */}
+  <View style={{ alignItems: 'center', marginBottom: 32 }}>
+  <View style={{ padding: 16, backgroundColor: `${themeColors.primary}15`, borderRadius: 24, marginBottom: 16 }}>
+  <ShieldCheck size={40} color={themeColors.primary} />
+  </View>
+  <Text style={{ fontSize: 24, fontWeight: '800', color: themeColors.text }}>Admin Help & Support</Text>
+  <Text style={{ fontSize: 13, color: themeColors.subtext, marginTop: 4 }}>Platform guides, system policies, and administrative assistance</Text>
+  </View>
 
- {/* FAQ */}
- <Text style={{ fontSize: 12, fontWeight: '800', color: themeColors.subtext, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 16 }}>Institution Management FAQ</Text>
+  {/* Support Actions */}
+  <Text style={{ fontSize: 12, fontWeight: '700', color: themeColors.subtext, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 16 }}>Need Assistance?</Text>
+  <View style={{ flexDirection: 'row', gap: 16 }}>
+  <TouchableOpacity
+  onPress={() => setSelectedTab('ticket')}
+  style={{ flex: 1, backgroundColor: themeColors.card, padding: 20, borderRadius: 20, borderWidth: 1, borderColor: themeColors.border, alignItems: 'center' }}
+  >
+  <Send size={24} color={themeColors.primary} />
+  <Text style={{ marginTop: 8, fontWeight: '700', color: themeColors.text }}>Submit Ticket</Text>
+  <Text style={{ fontSize: 11, color: themeColors.subtext, marginTop: 2 }}>Priority Support</Text>
+  </TouchableOpacity>
 
- <FAQItem
- question="How do I manage subscription billing?"
- answer="Navigate to the Institution Ownership section in your account settings. You can manage your plan, update payment methods, and view invoices there."
- />
- <FAQItem
- question="How do I add new teachers?"
- answer="Go to the Management Dashboard > Staff. Use the 'Invite Staff' button to send enrollment links to your teachers."
- />
- <FAQItem
- question="Can I customize the institution profile?"
- answer="Yes, in Admin Settings, you can update your institution's name, logo, and contact information that appears on student reports."
- />
-
- {/* Support Options */}
- <Text style={{ fontSize: 12, fontWeight: '800', color: themeColors.subtext, textTransform: 'uppercase', letterSpacing: 2, marginTop: 32, marginBottom: 16 }}>Direct Assistance</Text>
-
- <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 16 }}>
- <TouchableOpacity
- onPress={() => setSelectedTab('ticket')}
- style={{ flex: 1, backgroundColor: themeColors.card, padding: 20, borderRadius: 20, borderWidth: 1, borderColor: themeColors.border, alignItems: 'center' }}
- >
- <Send size={24} color={themeColors.primary} />
- <Text style={{ marginTop: 8, fontWeight: '700', color: themeColors.text }}>Submit Ticket</Text>
- <Text style={{ fontSize: 11, color: themeColors.subtext, marginTop: 2 }}>Priority Support</Text>
- </TouchableOpacity>
-
- <TouchableOpacity
- onPress={() => Linking.openURL('mailto:Support@cloudora.live')}
- style={{ flex: 1, backgroundColor: themeColors.card, padding: 20, borderRadius: 20, borderWidth: 1, borderColor: themeColors.border, alignItems: 'center' }}
- >
- <Mail size={24} color="#3b82f6" />
- <Text style={{ marginTop: 8, fontWeight: '700', color: themeColors.text }}>Email Us</Text>
- <Text style={{ fontSize: 11, color: themeColors.subtext, marginTop: 2 }}>General Inquiries</Text>
- </TouchableOpacity>
- </View>
+  <TouchableOpacity
+  onPress={() => Linking.openURL('mailto:Support@cloudora.live')}
+  style={{ flex: 1, backgroundColor: themeColors.card, padding: 20, borderRadius: 20, borderWidth: 1, borderColor: themeColors.border, alignItems: 'center' }}
+  >
+  <Mail size={24} color="#3b82f6" />
+  <Text style={{ marginTop: 8, fontWeight: '700', color: themeColors.text }}>Email Us</Text>
+  <Text style={{ fontSize: 10, color: '#3b82f6', marginTop: 2 }}>Support@cloudora.live</Text>
+  <Text style={{ fontSize: 10, color: themeColors.subtext, marginTop: 2 }}>Response in 1 business day</Text>
+  </TouchableOpacity>
+  </View>
 
  <View style={{ marginTop: 40, padding: 20, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', borderRadius: 20, borderWidth: 1, borderColor: themeColors.border }}>
  <Text style={{ color: themeColors.text, fontWeight: '700', fontSize: 15, marginBottom: 8 }}>Service Level Agreement</Text>
