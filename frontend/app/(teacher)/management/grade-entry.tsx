@@ -1273,7 +1273,8 @@ export default function GradeEntryPage() {
                             </Text>
                         </View>
                     ) : (
-                        <View>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ minWidth: '100%' }}>
+                          <View style={{ minWidth: 340, flex: 1 }}>
                             {/* Table Header */}
                             <View className="flex-row bg-gray-100 dark:bg-[#161B22] rounded-t-2xl px-4 py-3 items-center">
                                 <Text className="w-[120px] text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Student</Text>
@@ -1370,7 +1371,8 @@ export default function GradeEntryPage() {
                                     );
                                 })}
                             </ScrollView>
-                        </View>
+                          </View>
+                        </ScrollView>
                     )}
                 </View>
             </ScrollView>

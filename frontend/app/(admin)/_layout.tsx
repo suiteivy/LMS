@@ -259,7 +259,8 @@ function AdminSidebar() {
 
 export default function AdminLayout() {
     const { width } = useWindowDimensions();
-    const useWebLayout = Platform.OS === 'web' && width > 768;
+    // Tablet (iPad/Android) at >= 768px and Web both get sidebar layout
+    const useWebLayout = width >= 768;
 
     return (
         <AuthGuard allowedRoles={['admin']}>

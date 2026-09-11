@@ -1,13 +1,12 @@
 import React from 'react';
-import { View, Text, Platform, Dimensions } from 'react-native';
+import { View, Text, Platform, useWindowDimensions } from 'react-native';
 import { Cpu, ShieldCheck, Zap, Database, Server } from 'lucide-react-native';
 import { GlassCard } from '@/components/ui/GlassCard';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 export const TelemetryStrip: React.FC = () => {
   const isWeb = Platform.OS === 'web';
-  const isDesktop = SCREEN_WIDTH >= 1024;
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
 
   const pillars = [
     {

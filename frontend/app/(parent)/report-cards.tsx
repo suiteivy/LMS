@@ -34,8 +34,6 @@ import {
   User,
 } from 'lucide-react-native';
 
-const { width } = Dimensions.get('window');
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ReportCardStatus = 'draft' | 'pending_review' | 'published' | 'released';

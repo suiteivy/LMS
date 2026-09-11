@@ -4,7 +4,7 @@ import {
   Text,
   TouchableOpacity,
   Platform,
-  Dimensions,
+  useWindowDimensions,
   Animated,
   Easing,
 } from 'react-native';
@@ -26,14 +26,13 @@ interface HeroConsoleProps {
   onOpenTrial: () => void;
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 type RoleType = 'admin' | 'teacher' | 'student' | 'parent';
 
 export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOpenTrial }) => {
   const isWeb = Platform.OS === 'web';
-  const isDesktop = SCREEN_WIDTH >= 1024;
-  const isTablet = SCREEN_WIDTH >= 768 && SCREEN_WIDTH < 1024;
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
+  const isTablet = width >= 768 && width < 1024;
 
   const [activeRole, setActiveRole] = useState<RoleType>('admin');
   const [demoHovered, setDemoHovered] = useState(false);

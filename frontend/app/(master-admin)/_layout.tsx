@@ -273,7 +273,8 @@ function MasterAdminSidebar() {
 export default function MasterAdminLayout() {
     const { session, isInitializing, loading, isPlatformAdmin } = useAuth();
     const { width } = useWindowDimensions();
-    const useWebLayout = Platform.OS === 'web' && width > 768;
+    // Tablet (iPad/Android) at >= 768px and Web both get sidebar layout
+    const useWebLayout = width >= 768;
 
     // If loading or initializing, don't flash content
     if (isInitializing || loading) {

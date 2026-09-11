@@ -175,13 +175,13 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
               </Text>
             </View>
 
-            {/* Role & Institution Info (Mobile Desktop specific) */}
+            {/* Role & Institution Info on mobile */}
             {isMobile && (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 8 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 6 }}>
                 <View style={{
                   backgroundColor: surface,
-                  paddingHorizontal: 8,
-                  paddingVertical: 4,
+                  paddingHorizontal: 7,
+                  paddingVertical: 3,
                   borderRadius: 6,
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -208,168 +208,130 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                   }}>
                     {role}
                   </Text>
-            </View>
-                 {institutionName && (
-                   <View style={{
-                     backgroundColor: isDark ? 'rgba(255, 105, 0, 0.12)' : '#fff7ed',
-                     paddingHorizontal: 8,
-                     paddingVertical: 4,
-                     borderRadius: 6,
-                     borderWidth: 1,
-                     borderColor: isDark ? 'rgba(255, 105, 0, 0.2)' : '#ffedd5',
-                   }}>
-                     <Text style={{
-                       fontWeight: 'bold',
-                       color: '#FF6900',
-                       fontSize: 8,
-                       textTransform: 'uppercase',
-                     }}>
-                       {institutionName}
-                     </Text>
-                   </View>
-                 )}
-                 {/* Bell Icon for Notifications */}
-                 <TouchableOpacity
-                   onPress={() => setShowNotifications(true)}
-                   style={{
-                     marginLeft: 8,
-                     backgroundColor: surface,
-                     padding: 6,
-                     borderRadius: 10,
-                     borderWidth: 1,
-                     borderColor: surfaceBorder,
-                     alignItems: 'center',
-                     justifyContent: 'center',
-                     position: 'relative',
-                   }}
-                 >
-                   <Ionicons name="notifications-outline" size={16} color={subtleIconColor} />
-                   {unreadCount > 0 && (
-                     <View style={{
-                       position: 'absolute',
-                       top: -2,
-                       right: -2,
-                       backgroundColor: '#ef4444',
-                       borderRadius: 99,
-                       minWidth: 16,
-                       height: 16,
-                       alignItems: 'center',
-                       justifyContent: 'center',
-                       paddingHorizontal: 4,
-                     }}>
-                       <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>
-                         {unreadCount > 99 ? '99+' : unreadCount}
-                       </Text>
-                     </View>
-                   )}
-                 </TouchableOpacity>
-               </View>
+                </View>
+                {institutionName && (
+                  <View style={{
+                    backgroundColor: isDark ? 'rgba(255, 105, 0, 0.12)' : '#fff7ed',
+                    paddingHorizontal: 7,
+                    paddingVertical: 3,
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    borderColor: isDark ? 'rgba(255, 105, 0, 0.2)' : '#ffedd5',
+                  }}>
+                    <Text style={{
+                      fontWeight: 'bold',
+                      color: '#FF6900',
+                      fontSize: 8,
+                      textTransform: 'uppercase',
+                    }} numberOfLines={1}>
+                      {institutionName}
+                    </Text>
+                  </View>
+                )}
+              </View>
             )}
           </View>
         </View>
 
-        {/* Right side Actions (Mainly for Desktop) */}
-        {!isMobile && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            {rightActions}
+        {/* Right side Actions & Notifications (Desktop + Mobile) */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: isMobile ? 8 : 12, marginLeft: 8 }}>
+          {rightActions}
 
-            {/* Bell Icon for Notifications (Desktop) */}
-            <TouchableOpacity
-              onPress={() => setShowNotifications(true)}
-              style={{
-                backgroundColor: surface,
-                padding: 8,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: surfaceBorder,
+          {/* Bell Icon for Notifications */}
+          <TouchableOpacity
+            onPress={() => setShowNotifications(true)}
+            style={{
+              backgroundColor: surface,
+              padding: isMobile ? 6 : 8,
+              borderRadius: isMobile ? 10 : 12,
+              borderWidth: 1,
+              borderColor: surfaceBorder,
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Open notifications"
+          >
+            <Ionicons name="notifications-outline" size={isMobile ? 16 : 18} color={subtleIconColor} />
+            {unreadCount > 0 && (
+              <View style={{
+                position: 'absolute',
+                top: -3,
+                right: -3,
+                backgroundColor: '#ef4444',
+                borderRadius: 99,
+                minWidth: isMobile ? 15 : 18,
+                height: isMobile ? 15 : 18,
                 alignItems: 'center',
                 justifyContent: 'center',
-                position: 'relative',
-              }}
-            >
-              <Ionicons name="notifications-outline" size={18} color={subtleIconColor} />
-              {unreadCount > 0 && (
+                paddingHorizontal: 3,
+              }}>
+                <Text style={{ color: '#fff', fontSize: isMobile ? 8 : 10, fontWeight: '700' }}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {!isMobile && (
+            <>
+              {institutionName && (
                 <View style={{
-                  position: 'absolute',
-                  top: -3,
-                  right: -3,
-                  backgroundColor: '#ef4444',
-                  borderRadius: 99,
-                  minWidth: 18,
-                  height: 18,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  paddingHorizontal: 5,
+                  backgroundColor: isDark ? 'rgba(255, 105, 0, 0.12)' : '#fff7ed',
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: isDark ? 'rgba(255, 105, 0, 0.2)' : '#ffedd5',
                 }}>
-                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>
-                    {unreadCount > 99 ? '99+' : unreadCount}
+                  <Text style={{
+                    fontWeight: 'bold',
+                    color: '#FF6900',
+                    fontSize: 10,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                  }}>
+                    {institutionName}
                   </Text>
                 </View>
               )}
-            </TouchableOpacity>
-            
-            {institutionName && (
+
               <View style={{
-                backgroundColor: isDark ? 'rgba(255, 105, 0, 0.12)' : '#fff7ed',
+                backgroundColor: surface,
                 paddingHorizontal: 12,
                 paddingVertical: 8,
                 borderRadius: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
                 borderWidth: 1,
-                borderColor: isDark ? 'rgba(255, 105, 0, 0.2)' : '#ffedd5',
+                borderColor: surfaceBorder,
               }}>
+                <Ionicons
+                  name={
+                    role === "Student" ? "school-outline" :
+                      role === "Teacher" ? "briefcase-outline" :
+                        role === "Admin" ? "shield-checkmark-outline" :
+                          role === "Master Admin" ? "globe-outline" : 
+                            "people-outline"
+                  }
+                  size={14}
+                  color={subtleIconColor}
+                />
                 <Text style={{
+                  marginLeft: 6,
                   fontWeight: 'bold',
-                  color: '#FF6900',
+                  color: isDark ? '#e5e5e5' : '#111827',
                   fontSize: 10,
                   textTransform: 'uppercase',
                   letterSpacing: 1,
                 }}>
-                  {institutionName}
+                  {role}
                 </Text>
               </View>
-            )}
-
-            <View style={{
-              backgroundColor: surface,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              borderRadius: 16,
-              flexDirection: 'row',
-              alignItems: 'center',
-              borderWidth: 1,
-              borderColor: surfaceBorder,
-            }}>
-              <Ionicons
-                name={
-                  role === "Student" ? "school-outline" :
-                    role === "Teacher" ? "briefcase-outline" :
-                      role === "Admin" ? "shield-checkmark-outline" :
-                        role === "Master Admin" ? "globe-outline" : 
-                          "people-outline"
-                }
-                size={14}
-                color={subtleIconColor}
-              />
-              <Text style={{
-                marginLeft: 6,
-                fontWeight: 'bold',
-                color: isDark ? '#e5e5e5' : '#111827',
-                fontSize: 10,
-                textTransform: 'uppercase',
-                letterSpacing: 1,
-              }}>
-                {role}
-              </Text>
-            </View>
-          </View>
-        )}
-        
-        {/* Mobile Right Actions */}
-        {isMobile && rightActions && (
-            <View style={{ marginLeft: 12 }}>
-                {rightActions}
-            </View>
-        )}
+            </>
+          )}
+        </View>
       </View>
 
       {/* Slide-out Menu Modal */}

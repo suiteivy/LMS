@@ -4,7 +4,7 @@ import {
   Text,
   TouchableOpacity,
   Platform,
-  Dimensions,
+  useWindowDimensions,
   Animated,
   Easing,
 } from 'react-native';
@@ -23,31 +23,44 @@ import {
 } from 'lucide-react-native';
 import { GlassCard } from '@/components/ui/GlassCard';
 
-export function priceConverter(price: string, currency: 'USD' | 'KSH' = 'KSH') {
-  if (price.toLowerCase() === 'custom') return price;
-  if (currency === 'USD') return price;
+interface ExchangeRateConfig {
+  usdToKsh: number;
+}
 
-  const exchangeRate = 130;
-  const numericPrice = price.replace(/[^0-9.]/g, '');
-  const priceInUsd = parseFloat(numericPrice);
+const DEFAULT_RATES: ExchangeRateConfig = {
+  usdToKsh: 130, // 1 USD = ~130 KSH
+};
 
-  if (isNaN(priceInUsd)) return price;
+function formatPrice(priceInUsd: number, currency: 'USD' | 'KSH', exchangeRate = DEFAULT_RATES.usdToKsh): string {
+  if (currency === 'USD') {
+    return `$${priceInUsd}`;
+  }
 
   const priceInKsh = priceInUsd * exchangeRate;
   return `KSH. ${priceInKsh.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+
+function priceConverter(priceStr: string, curr: 'USD' | 'KSH'): string {
+  const numericMatch = priceStr.match(/\d+/);
+  if (!numericMatch) return priceStr;
+  const num = parseInt(numericMatch[0], 10);
+  if (curr === 'USD') {
+    return priceStr;
+  }
+  const inKsh = num * DEFAULT_RATES.usdToKsh;
+  return priceStr.replace(`$${num}`, `KSH. ${inKsh.toLocaleString()}`);
 }
 
 interface FuturisticPricingProps {
   onSelectPlan: (planName: string) => void;
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 type TierType = 'plans' | 'custom';
 
 export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPlan }) => {
   const isWeb = Platform.OS === 'web';
-  const isDesktop = SCREEN_WIDTH >= 1024;
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
 
   const tierBtnWidth = isDesktop ? 165 : 145;
 

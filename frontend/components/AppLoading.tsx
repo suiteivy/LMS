@@ -8,6 +8,7 @@ import {
   View,
   StyleSheet,
   Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import Svg, {
   Circle,
@@ -22,7 +23,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { LivingBackground } from '@/components/landing/LivingBackground';
 import { CloudoraLogo } from '@/components/common/CloudoraLogo';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -482,6 +482,7 @@ export function AppLoading({
   message?: string;
 }) {
   const { isDark } = useTheme();
+  const { width } = useWindowDimensions();
   const [showRescue, setShowRescue] = useState(false);
   const [connectionNote, setConnectionNote] = useState<string | null>(null);
 
@@ -539,7 +540,7 @@ export function AppLoading({
       <View style={styles.centerStage}>
         {/* Floating Quantum Reactor with Integrated Progress Bar */}
         <QuantumReactorLoader
-          size={SCREEN_WIDTH < 400 ? 170 : 210}
+          size={width < 400 ? 170 : 210}
           progressVal={progressAnim}
           showProgress={true}
         />

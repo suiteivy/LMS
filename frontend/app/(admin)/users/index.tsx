@@ -310,90 +310,93 @@ export default function UsersManagementScreen() {
                         padding: 20,
                         width: '100%',
                         maxWidth: 440,
+                        maxHeight: '90%',
                     }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                            <View style={{ backgroundColor: isDark ? 'rgba(239,68,68,0.2)' : '#FEE2E2', padding: 8, borderRadius: 10, marginRight: 10 }}>
-                                <MaterialCommunityIcons name="lock-reset" size={24} color="#DC2626" />
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                                <View style={{ backgroundColor: isDark ? 'rgba(239,68,68,0.2)' : '#FEE2E2', padding: 8, borderRadius: 10, marginRight: 10 }}>
+                                    <MaterialCommunityIcons name="lock-reset" size={24} color="#DC2626" />
+                                </View>
+                                <Text style={{ color: textPrimary, fontWeight: '800', fontSize: 18, flex: 1 }}>
+                                    Confirm Credential Reset
+                                </Text>
                             </View>
-                            <Text style={{ color: textPrimary, fontWeight: '800', fontSize: 18 }}>
-                                Confirm Credential Reset
-                            </Text>
-                        </View>
 
-                        {!!resettingUser && (
+                            {!!resettingUser && (
+                                <View style={{
+                                    backgroundColor: inputBg,
+                                    borderColor: border,
+                                    borderWidth: 1,
+                                    borderRadius: 10,
+                                    padding: 12,
+                                    marginBottom: 14,
+                                }}>
+                                    <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 14 }}>
+                                        {resettingUser.name || 'User'}
+                                    </Text>
+                                    <Text style={{ color: textSecondary, fontSize: 12, marginTop: 2 }}>
+                                        Email: {resettingUser.email || 'N/A'}
+                                    </Text>
+                                    <Text style={{ color: textSecondary, fontSize: 12, marginTop: 2, textTransform: 'capitalize' }}>
+                                        Role: {resettingUser.role || 'User'}
+                                    </Text>
+                                </View>
+                            )}
+
                             <View style={{
-                                backgroundColor: inputBg,
-                                borderColor: border,
+                                backgroundColor: isDark ? 'rgba(239,68,68,0.12)' : '#FEF2F2',
+                                borderColor: isDark ? '#7f1d1d' : '#FCA5A5',
                                 borderWidth: 1,
                                 borderRadius: 10,
                                 padding: 12,
-                                marginBottom: 14,
+                                marginBottom: 16,
                             }}>
-                                <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 14 }}>
-                                    {resettingUser.name || 'User'}
+                                <Text style={{ color: '#B91C1C', fontWeight: '700', fontSize: 13, marginBottom: 4 }}>
+                                    Security Action Notice
                                 </Text>
-                                <Text style={{ color: textSecondary, fontSize: 12, marginTop: 2 }}>
-                                    Email: {resettingUser.email || 'N/A'}
-                                </Text>
-                                <Text style={{ color: textSecondary, fontSize: 12, marginTop: 2, textTransform: 'capitalize' }}>
-                                    Role: {resettingUser.role || 'User'}
+                                <Text style={{ color: isDark ? '#FCA5A5' : '#991B1B', fontSize: 12, lineHeight: 18 }}>
+                                    Reset credentials for <Text style={{ fontWeight: '800' }}>{resettingUser?.name || resettingUser?.email || 'this user'}</Text>? This will generate a new temporary credential, force logout all active sessions, and require password + security question setup at next login.
                                 </Text>
                             </View>
-                        )}
 
-                        <View style={{
-                            backgroundColor: isDark ? 'rgba(239,68,68,0.12)' : '#FEF2F2',
-                            borderColor: isDark ? '#7f1d1d' : '#FCA5A5',
-                            borderWidth: 1,
-                            borderRadius: 10,
-                            padding: 12,
-                            marginBottom: 16,
-                        }}>
-                            <Text style={{ color: '#B91C1C', fontWeight: '700', fontSize: 13, marginBottom: 4 }}>
-                                Security Action Notice
-                            </Text>
-                            <Text style={{ color: isDark ? '#FCA5A5' : '#991B1B', fontSize: 12, lineHeight: 18 }}>
-                                Reset credentials for <Text style={{ fontWeight: '800' }}>{resettingUser?.name || resettingUser?.email || 'this user'}</Text>? This will generate a new temporary credential, force logout all active sessions, and require password + security question setup at next login.
-                            </Text>
-                        </View>
+                            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 'auto', paddingTop: 8 }}>
+                                <TouchableOpacity
+                                    onPress={() => setShowResetModal(false)}
+                                    disabled={resettingLoading}
+                                    style={{
+                                        borderWidth: 1,
+                                        borderColor: border,
+                                        borderRadius: 10,
+                                        paddingHorizontal: 14,
+                                        paddingVertical: 10,
+                                        backgroundColor: inputBg,
+                                    }}
+                                >
+                                    <Text style={{ color: textSecondary, fontWeight: '700' }}>Cancel</Text>
+                                </TouchableOpacity>
 
-                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
-                            <TouchableOpacity
-                                onPress={() => setShowResetModal(false)}
-                                disabled={resettingLoading}
-                                style={{
-                                    borderWidth: 1,
-                                    borderColor: border,
-                                    borderRadius: 10,
-                                    paddingHorizontal: 14,
-                                    paddingVertical: 10,
-                                    backgroundColor: inputBg,
-                                }}
-                            >
-                                <Text style={{ color: textSecondary, fontWeight: '700' }}>Cancel</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                onPress={confirmCredentialReset}
-                                disabled={resettingLoading}
-                                style={{
-                                    borderWidth: 1,
-                                    borderColor: '#DC2626',
-                                    borderRadius: 10,
-                                    paddingHorizontal: 16,
-                                    paddingVertical: 10,
-                                    backgroundColor: '#DC2626',
-                                    minWidth: 110,
-                                    alignItems: 'center',
-                                }}
-                            >
-                                {resettingLoading ? (
-                                    <ActivityIndicator size="small" color="#FFF" />
-                                ) : (
-                                    <Text style={{ color: '#FFF', fontWeight: '800' }}>Confirm Reset</Text>
-                                )}
-                            </TouchableOpacity>
-                        </View>
+                                <TouchableOpacity
+                                    onPress={confirmCredentialReset}
+                                    disabled={resettingLoading}
+                                    style={{
+                                        borderWidth: 1,
+                                        borderColor: '#DC2626',
+                                        borderRadius: 10,
+                                        paddingHorizontal: 16,
+                                        paddingVertical: 10,
+                                        backgroundColor: '#DC2626',
+                                        minWidth: 110,
+                                        alignItems: 'center',
+                                    }}
+                                >
+                                    {resettingLoading ? (
+                                        <ActivityIndicator size="small" color="#FFF" />
+                                    ) : (
+                                        <Text style={{ color: '#FFF', fontWeight: '800' }}>Confirm Reset</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </ScrollView>
                     </View>
                 </View>
             </Modal>
@@ -422,66 +425,69 @@ export default function UsersManagementScreen() {
                         padding: 20,
                         width: '100%',
                         maxWidth: 460,
+                        maxHeight: '90%',
                     }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                            <Text style={{ color: textPrimary, fontSize: 19, fontWeight: '800' }}>Temporary Credential</Text>
-                            <TouchableOpacity onPress={() => setShowResultModal(false)}>
-                                <MaterialCommunityIcons name="close" size={22} color={textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={{ borderWidth: 1, borderColor: border, borderRadius: 12, padding: 14, backgroundColor: inputBg }}>
-                            {!!(resetResult?.user?.email || resetResult?.email) && (
-                                <Text style={{ color: textSecondary, fontSize: 13, marginBottom: 8 }}>
-                                    Login Email: <Text style={{ color: textPrimary, fontWeight: '700' }}>{resetResult?.user?.email || resetResult?.email}</Text>
-                                </Text>
-                            )}
-
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                                <Text style={{ color: textSecondary, fontSize: 13 }}>Temporary Password:</Text>
-                                <TouchableOpacity
-                                    onPress={() => {
-                                        const pwd = resetResult?.tempPassword;
-                                        if (pwd) copyToClipboard(pwd, 'Password');
-                                    }}
-                                    style={{ backgroundColor: '#FF6900', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
-                                >
-                                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Copy Password</Text>
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                                <Text style={{ color: textPrimary, fontSize: 19, fontWeight: '800' }}>Temporary Credential</Text>
+                                <TouchableOpacity onPress={() => setShowResultModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                    <MaterialCommunityIcons name="close" size={22} color={textSecondary} />
                                 </TouchableOpacity>
                             </View>
 
-                            <Text style={{ color: textPrimary, fontWeight: '800', fontSize: 16, marginBottom: 10, letterSpacing: 1 }}>
-                                {resetResult?.tempPassword || 'N/A'}
-                            </Text>
+                            <View style={{ borderWidth: 1, borderColor: border, borderRadius: 12, padding: 14, backgroundColor: inputBg }}>
+                                {!!(resetResult?.user?.email || resetResult?.email) && (
+                                    <Text style={{ color: textSecondary, fontSize: 13, marginBottom: 8 }}>
+                                        Login Email: <Text style={{ color: textPrimary, fontWeight: '700' }}>{resetResult?.user?.email || resetResult?.email}</Text>
+                                    </Text>
+                                )}
 
-                            {!!resetResult?.credential_delivery?.url && (
-                                <View style={{ marginTop: 6, paddingTop: 10, borderTopWidth: 1, borderTopColor: border }}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                                        <Text style={{ color: textSecondary, fontSize: 12 }}>One-Time Credential Link:</Text>
-                                        <TouchableOpacity
-                                            onPress={() => {
-                                                const url = resetResult.credential_delivery.url;
-                                                if (url) copyToClipboard(url, 'Link');
-                                            }}
-                                            style={{ borderWidth: 1, borderColor: border, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
-                                        >
-                                            <Text style={{ color: textPrimary, fontSize: 11, fontWeight: '700' }}>Copy Link</Text>
-                                        </TouchableOpacity>
-                                    </View>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                    <Text style={{ color: textSecondary, fontSize: 13 }}>Temporary Password:</Text>
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            const pwd = resetResult?.tempPassword;
+                                            if (pwd) copyToClipboard(pwd, 'Password');
+                                        }}
+                                        style={{ backgroundColor: '#FF6900', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+                                    >
+                                        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Copy Password</Text>
+                                    </TouchableOpacity>
                                 </View>
-                            )}
 
-                            <Text style={{ color: textSecondary, fontSize: 12, marginTop: 8 }}>
-                                User will be forced to logout of all sessions and complete password and security question setup at next login.
-                            </Text>
-                        </View>
+                                <Text style={{ color: textPrimary, fontWeight: '800', fontSize: 16, marginBottom: 10, letterSpacing: 1 }}>
+                                    {resetResult?.tempPassword || 'N/A'}
+                                </Text>
 
-                        <TouchableOpacity
-                            onPress={() => setShowResultModal(false)}
-                            style={{ marginTop: 14, backgroundColor: '#FF6900', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
-                        >
-                            <Text style={{ color: '#fff', fontWeight: '800' }}>Done</Text>
-                        </TouchableOpacity>
+                                {!!resetResult?.credential_delivery?.url && (
+                                    <View style={{ marginTop: 6, paddingTop: 10, borderTopWidth: 1, borderTopColor: border }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                            <Text style={{ color: textSecondary, fontSize: 12 }}>One-Time Credential Link:</Text>
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    const url = resetResult.credential_delivery.url;
+                                                    if (url) copyToClipboard(url, 'Link');
+                                                }}
+                                                style={{ borderWidth: 1, borderColor: border, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+                                            >
+                                                <Text style={{ color: textPrimary, fontSize: 11, fontWeight: '700' }}>Copy Link</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                )}
+
+                                <Text style={{ color: textSecondary, fontSize: 12, marginTop: 8 }}>
+                                    User will be forced to logout of all sessions and complete password and security question setup at next login.
+                                </Text>
+                            </View>
+
+                            <TouchableOpacity
+                                onPress={() => setShowResultModal(false)}
+                                style={{ marginTop: 14, backgroundColor: '#FF6900', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+                            >
+                                <Text style={{ color: '#fff', fontWeight: '800' }}>Done</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
                     </View>
                 </View>
             </Modal>

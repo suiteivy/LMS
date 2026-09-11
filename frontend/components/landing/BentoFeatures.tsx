@@ -3,7 +3,7 @@ import {
   View,
   Text,
   Platform,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import {
   BookOpen,
@@ -17,12 +17,11 @@ import {
 } from 'lucide-react-native';
 import { GlassCard } from '@/components/ui/GlassCard';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 export const BentoFeatures: React.FC = () => {
   const isWeb = Platform.OS === 'web';
-  const isDesktop = SCREEN_WIDTH >= 1024;
-  const isTablet = SCREEN_WIDTH >= 768 && SCREEN_WIDTH < 1024;
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
+  const isTablet = width >= 768 && width < 1024;
 
 
   return (

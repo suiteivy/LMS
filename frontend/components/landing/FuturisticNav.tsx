@@ -4,7 +4,7 @@ import {
   Text,
   TouchableOpacity,
   Platform,
-  Dimensions,
+  useWindowDimensions,
   StyleSheet,
 } from 'react-native';
 import { Sparkles, Menu, X } from 'lucide-react-native';
@@ -15,8 +15,6 @@ interface FuturisticNavProps {
   onScrollTo: (sectionKey: string) => void;
   activeSection?: string;
 }
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const NAV_ITEMS = [
   { key: 'features', label: 'Capabilities' },
@@ -51,7 +49,8 @@ export const FuturisticNav: React.FC<FuturisticNavProps> = ({
   activeSection = 'hero',
 }) => {
   const isWeb = Platform.OS === 'web';
-  const isMobile = SCREEN_WIDTH < 900;
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 900;
 
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [focusedKey, setFocusedKey] = useState<string | null>(null);

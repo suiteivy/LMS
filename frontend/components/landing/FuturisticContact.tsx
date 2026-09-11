@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Platform, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
 import { Mail, Phone, Instagram, Linkedin, MoveRight } from 'lucide-react-native';
 import { GlassCard } from '../ui/GlassCard';
 
@@ -7,12 +7,11 @@ interface FuturisticContactProps {
   onOpenBooking: () => void;
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBooking }) => {
   const isWeb = Platform.OS === 'web';
-  const isDesktop = SCREEN_WIDTH >= 1024;
-  const isTablet = SCREEN_WIDTH >= 768 && SCREEN_WIDTH < 1024;
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
+  const isTablet = width >= 768 && width < 1024;
 
   const [setupBtnHovered, setSetupBtnHovered] = useState(false);
 
@@ -101,42 +100,40 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
             marginBottom: 10,
           }}
         >
-          Connect with our Team
+          Connect with Our Solutions Engineering Team
         </Text>
         <Text
           style={{
-            color: 'rgba(255, 255, 255, 0.55)',
+            color: 'rgba(255, 255, 255, 0.65)',
             fontSize: 16,
             textAlign: 'center',
-            maxWidth: 540,
+            maxWidth: 580,
             lineHeight: 24,
           }}
         >
-          Ready to deploy Cloudora at your academy or university? Connect directly with our
-          implementation specialists for institutional onboarding.
+          Dedicated architectural consulting for private schools, universities, and enterprise education trusts.
         </Text>
       </View>
 
-      {/* 4 Contact Terminals Grid */}
+      {/* Modern 2x2 Contact Matrix */}
       <View
         style={{
           flexDirection: 'row',
           flexWrap: 'wrap',
           gap: 16,
           justifyContent: 'center',
-          marginBottom: 54,
+          marginBottom: 48,
         }}
       >
         {contacts.map((c, i) => (
           <GlassCard
             key={i}
-            variant="interactive"
-            hoverable
+            variant="standard"
             accentColor={c.accent}
-            glowColor={`${c.accent}35`}
-            borderRadius={24}
+            glowColor={`${c.accent}20`}
+            borderRadius={20}
             style={{
-              width: isDesktop || isTablet ? '48%' : '100%',
+              width: isDesktop ? '48.5%' : '100%',
               minWidth: 280,
             }}
             contentStyle={{

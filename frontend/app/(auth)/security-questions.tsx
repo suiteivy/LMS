@@ -29,7 +29,6 @@ import { safeSignOut } from '@/utils/safeSignOut';
 import { LogoutReason } from '@/types/logout';
 
 const IconIonicons = Ionicons as any;
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CAN_USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 // ─── Design Tokens ──────────────────────────────────────────────────────────
