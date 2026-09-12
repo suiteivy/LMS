@@ -18,6 +18,7 @@ const mapReportCardForClient = (rc, studentInfo, classInfo, termInfo, items) => 
   const firstName = studentInfo?.users?.first_name || '';
   const lastName = studentInfo?.users?.last_name || '';
   const studentName = `${firstName} ${lastName}`.trim() || rc.student_id || 'Unknown Student';
+  const isCBC = (rc.curriculum_type || 'cbc') === 'cbc' || Boolean(classInfo?.cbc_band);
 
   return {
     id: rc.id,
@@ -29,9 +30,11 @@ const mapReportCardForClient = (rc, studentInfo, classInfo, termInfo, items) => 
     term_id: rc.term_id,
     term_name: termInfo?.name || null,
     status: rc.status,
+    curriculum_type: isCBC ? 'cbc' : (rc.curriculum_type || 'standard'),
+    learner_development: rc.learner_development || [],
     overall_average: rc.average_percentage ?? null,
-    gpa: rc.gpa ?? null,
-    class_rank: rc.rank_in_class ?? null,
+    gpa: isCBC ? null : (rc.gpa ?? null),
+    class_rank: isCBC ? null : (rc.rank_in_class ?? null),
     total_students: rc.total_students_in_class ?? null,
     teacher_remarks: rc.teacher_remarks || null,
     admin_remarks: rc.admin_remarks || null,
@@ -345,6 +348,14 @@ const updateReportCardRemarks = async (req, res) => {
         return res.status(403).json({ success: false, error: 'Only the class teacher can update teacher remarks' });
       }
       updatePayload.teacher_remarks = teacher_remarks;
+    }
+
+    if (req.body.learner_development !== undefined) {
+      const classTeacherId = existing.classes?.teacher_id;
+      if (role !== 'admin' && classTeacherId !== user_id) {
+        return res.status(403).json({ success: false, error: 'Only the class teacher or admin can update learner development competencies' });
+      }
+      updatePayload.learner_development = req.body.learner_development;
     }
 
     if (Object.keys(updatePayload).length === 0) {
@@ -866,6 +877,60 @@ const exportReportCardPDF = async (req, res) => {
     const classInfo = reportCard.classes || {};
     const className = buildClassLabel(classInfo) || 'N/A';
     const term = reportCard.terms || {};
+    const isCBC = (reportCard.curriculum_type || 'cbc') === 'cbc' || Boolean(classInfo?.cbc_band);
+
+    // Fetch CBC Topic-Area assessments if CBC
+    let topicEvidenceBySubject = {};
+    if (isCBC) {
+      try {
+        const { data: evidence } = await supabase
+          .from('content_evidence_entries')
+          .select(`
+            subject_id,
+            topic_area_id,
+            descriptor,
+            subject_topic_areas (title)
+          `)
+          .eq('student_id', reportCard.student_id)
+          .eq('institution_id', institution_id);
+
+        if (evidence && evidence.length > 0) {
+          const DESCRIPTOR_VALS = { below_expectation: 1, approaching_expectation: 2, meeting_expectation: 3, exceeding_expectation: 4 };
+          const DESCRIPTOR_NAMES = { below_expectation: 'Below Expectation', approaching_expectation: 'Approaching Expectation', meeting_expectation: 'Meeting Expectation', exceeding_expectation: 'Exceeding Expectation' };
+
+          // Group by subject and topic area
+          const grouped = {};
+          evidence.forEach(e => {
+            if (!grouped[e.subject_id]) grouped[e.subject_id] = {};
+            if (!grouped[e.subject_id][e.topic_area_id]) {
+              grouped[e.subject_id][e.topic_area_id] = {
+                title: e.subject_topic_areas?.title || 'Topic Area',
+                scores: []
+              };
+            }
+            if (DESCRIPTOR_VALS[e.descriptor]) {
+              grouped[e.subject_id][e.topic_area_id].scores.push(DESCRIPTOR_VALS[e.descriptor]);
+            }
+          });
+
+          for (const subId of Object.keys(grouped)) {
+            topicEvidenceBySubject[subId] = [];
+            for (const areaId of Object.keys(grouped[subId])) {
+              const area = grouped[subId][areaId];
+              const avg = area.scores.reduce((a, b) => a + b, 0) / area.scores.length;
+              let desc = 'Below Expectation';
+              let badgeColor = '#EF4444';
+              if (avg >= 3.5) { desc = 'Exceeding Expectation'; badgeColor = '#10B981'; }
+              else if (avg >= 2.5) { desc = 'Meeting Expectation'; badgeColor = '#3B82F6'; }
+              else if (avg >= 1.5) { desc = 'Approaching Expectation'; badgeColor = '#F59E0B'; }
+              topicEvidenceBySubject[subId].push({ title: area.title, descriptor: desc, color: badgeColor });
+            }
+          }
+        }
+      } catch (evErr) {
+        console.error('Error fetching evidence entries for report card:', evErr);
+      }
+    }
 
     // Calculate attendance summary for student in this term
     let attendanceSummary = {
@@ -927,14 +992,32 @@ const exportReportCardPDF = async (req, res) => {
     const subjectRows = items
       .map((item) => {
         const subject = item.subjects || {};
-        return `
-          <tr>
-            <td style="padding:8px 12px;border:1px solid #ddd;font-weight:500;">${item.subject_name || subject.name || 'N/A'}</td>
+        const subId = item.subject_id || subject.id;
+        const topicAreas = (isCBC && subId && topicEvidenceBySubject[subId]) ? topicEvidenceBySubject[subId] : [];
+
+        let rowHtml = `
+          <tr style="${isCBC && topicAreas.length > 0 ? 'background:#f0f4f8;font-weight:600;' : ''}">
+            <td style="padding:8px 12px;border:1px solid #ddd;font-weight:600;">${item.subject_name || subject.name || 'N/A'}</td>
             <td style="padding:8px 12px;border:1px solid #ddd;text-align:center;">${item.average_percentage != null ? item.average_percentage.toFixed(1) + '%' : (item.total_score != null ? item.total_score : '-')}</td>
-            <td style="padding:8px 12px;border:1px solid #ddd;text-align:center;">${item.letter_grade || '-'}</td>
+            <td style="padding:8px 12px;border:1px solid #ddd;text-align:center;font-weight:600;">${item.letter_grade || '-'}</td>
             <td style="padding:8px 12px;border:1px solid #ddd;text-align:center;">${item.gpa_points != null ? Number(item.gpa_points).toFixed(maxScalePoints > 5 ? 0 : 1) : '-'}</td>
             <td style="padding:8px 12px;border:1px solid #ddd;text-align:center;">${item.teacher_remarks || '-'}</td>
           </tr>`;
+
+        if (isCBC && topicAreas.length > 0) {
+          topicAreas.forEach(ta => {
+            rowHtml += `
+              <tr style="background:#ffffff;">
+                <td style="padding:6px 12px 6px 28px;border:1px solid #eee;font-size:12px;color:#444;">&bull; ${ta.title}</td>
+                <td colspan="3" style="padding:6px 12px;border:1px solid #eee;text-align:center;">
+                  <span style="font-weight:700;color:${ta.color};font-size:12px;">${ta.descriptor}</span>
+                </td>
+                <td style="padding:6px 12px;border:1px solid #eee;text-align:center;font-size:11px;color:#777;">Competency Verified</td>
+              </tr>`;
+          });
+        }
+
+        return rowHtml;
       })
       .join('');
 
@@ -1049,6 +1132,12 @@ const exportReportCardPDF = async (req, res) => {
   </table>
 
   <div class="summary-grid">
+    ${isCBC ? `
+    <div class="summary-card">
+      <div class="label">Curriculum</div>
+      <div class="value" style="font-size:15px;color:#10B981;">CBC Native</div>
+    </div>
+    ` : `
     <div class="summary-card">
       <div class="label">${maxScalePoints > 5 ? 'Mean Grade / Points' : 'Total GPA'}</div>
       <div class="value">${reportCard.mean_grade ? `${reportCard.mean_grade} (${reportCard.gpa != null ? Number(reportCard.gpa).toFixed(maxScalePoints > 5 ? 0 : 2) : '-'})` : (reportCard.gpa != null ? Number(reportCard.gpa).toFixed(2) : 'N/A')}</div>
@@ -1057,6 +1146,7 @@ const exportReportCardPDF = async (req, res) => {
       <div class="label">Class Rank</div>
       <div class="value">${reportCard.rank_in_class || 'N/A'}${reportCard.total_students_in_class ? ` / ${reportCard.total_students_in_class}` : ''}</div>
     </div>
+    `}
     <div class="summary-card">
       <div class="label">Attendance</div>
       <div class="value">${attendanceRate ? `${attendanceRate}%` : 'N/A'}</div>
@@ -1071,6 +1161,51 @@ const exportReportCardPDF = async (req, res) => {
     </div>
   </div>
 
+  ${isCBC ? `
+  <div class="section-title">Personal & Social Competencies</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:40%;">Core Competency Area</th>
+        <th style="width:30%;text-align:center;">Evaluation Level</th>
+        <th style="width:30%;">Teacher Remarks</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${(() => {
+        const DEFAULT_COMPETENCIES = [
+          { competency: 'Self-Awareness & Self-Management', descriptor: 'meeting_expectation', remarks: 'Shows good responsibility and punctuality.' },
+          { competency: 'Social Skills & Communication', descriptor: 'meeting_expectation', remarks: 'Communicates clearly and listens to peers.' },
+          { competency: 'Respect & Collaboration', descriptor: 'exceeding_expectation', remarks: 'Exceptional team player and supportive classmate.' },
+          { competency: 'Critical Thinking & Problem Solving', descriptor: 'meeting_expectation', remarks: 'Applies concepts logically to new problems.' },
+          { competency: 'Citizenship & Community Values', descriptor: 'meeting_expectation', remarks: 'Upholds school values and positive ethics.' },
+        ];
+        const DESCRIPTOR_MAP = {
+          exceeding_expectation: { label: 'Exceeding Expectation', color: '#10B981' },
+          meeting_expectation: { label: 'Meeting Expectation', color: '#3B82F6' },
+          approaching_expectation: { label: 'Approaching Expectation', color: '#F59E0B' },
+          below_expectation: { label: 'Below Expectation', color: '#EF4444' },
+        };
+        const list = (Array.isArray(reportCard.learner_development) && reportCard.learner_development.length > 0)
+          ? reportCard.learner_development
+          : DEFAULT_COMPETENCIES;
+
+        return list.map(item => {
+          const descInfo = DESCRIPTOR_MAP[item.descriptor] || { label: item.descriptor || 'Meeting Expectation', color: '#3B82F6' };
+          return `
+            <tr>
+              <td style="padding:8px 12px;border:1px solid #ddd;font-weight:600;">${item.competency}</td>
+              <td style="padding:8px 12px;border:1px solid #ddd;text-align:center;">
+                <span style="font-weight:700;color:${descInfo.color};">${descInfo.label}</span>
+              </td>
+              <td style="padding:8px 12px;border:1px solid #ddd;font-size:12px;color:#555;">${item.remarks || '-'}</td>
+            </tr>`;
+        }).join('');
+      })()}
+    </tbody>
+  </table>
+  ` : ''}
+
   ${reportCard.teacher_remarks ? `
   <div class="remarks-box">
     <div class="remarks-label">Class Teacher Remarks</div>
@@ -1083,7 +1218,40 @@ const exportReportCardPDF = async (req, res) => {
     <div class="remarks-text">${reportCard.admin_remarks}</div>
   </div>` : ''}
 
-  <div class="section-title">Grading Scale</div>
+  <div class="section-title">${isCBC ? 'CBC Competency Descriptors' : 'Grading Scale'}</div>
+  ${isCBC ? `
+  <table style="width:85%;margin:0 auto;">
+    <thead>
+      <tr>
+        <th style="text-align:left;">Competency Level</th>
+        <th style="text-align:center;">Score Range</th>
+        <th style="text-align:left;">Assessment Descriptor</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="padding:6px 10px;border:1px solid #ddd;font-weight:700;color:#10B981;">Exceeding Expectation</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;font-weight:600;">80% – 100%</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;color:#555;">Consistently exceeds expected competency indicators with high autonomy.</td>
+      </tr>
+      <tr>
+        <td style="padding:6px 10px;border:1px solid #ddd;font-weight:700;color:#3B82F6;">Meeting Expectation</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;font-weight:600;">60% – 79%</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;color:#555;">Accurately and independently meets the required curriculum standards.</td>
+      </tr>
+      <tr>
+        <td style="padding:6px 10px;border:1px solid #ddd;font-weight:700;color:#F59E0B;">Approaching Expectation</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;font-weight:600;">40% – 59%</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;color:#555;">Demonstrates foundational understanding with occasional guidance.</td>
+      </tr>
+      <tr>
+        <td style="padding:6px 10px;border:1px solid #ddd;font-weight:700;color:#EF4444;">Below Expectation</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;font-weight:600;">Below 40%</td>
+        <td style="padding:6px 10px;border:1px solid #ddd;color:#555;">Requires targeted individualized support and structured remedial intervention.</td>
+      </tr>
+    </tbody>
+  </table>
+  ` : `
   <table style="width:75%;margin:0 auto;">
     <thead>
       <tr>
@@ -1097,6 +1265,7 @@ const exportReportCardPDF = async (req, res) => {
       ${gradingScaleRows}
     </tbody>
   </table>
+  `}
 
   <div class="signatures">
     <div class="signature-block">

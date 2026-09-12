@@ -85,13 +85,14 @@ async function getInstitutionCategoryMeta(institutionId) {
     }
 
     typePairs.sort((a, b) => (a.sort_order - b.sort_order) || a.name.localeCompare(b.name));
-    const classTypes = [...new Set(typePairs.map((pair) => pair.name).filter(Boolean))];
+    const rawClassTypes = typePairs.map((pair) => pair.name === 'Form' ? 'Grade' : pair.name).filter(Boolean);
+    const classTypes = [...new Set(rawClassTypes)];
     const primaryType = classTypes[0] || 'Grade';
 
     return {
         institution_name: institution?.name || null,
         school_category_name: null,
-        class_type: primaryType,
+        class_type: primaryType === 'Form' ? 'Grade' : primaryType,
         class_types: classTypes.length > 0 ? classTypes : ['Grade'],
         class_types_by_level_id: {},
     };
@@ -1292,14 +1293,18 @@ exports.getClassOptions = async (req, res) => {
 
             // If no domain class_levels exist yet, check if existing classes have grade/form levels
             if (levelOptions.length === 0) {
-                const levelColumn = defaultClassType === 'Form' ? 'form_level' : 'grade_level';
+                const levelColumn = 'grade_level';
                 const { data: legacyRows } = await (hasDeletedAt
-                    ? supabase.from('classes').select(levelColumn).eq('institution_id', institution_id).is('deleted_at', null)
-                    : supabase.from('classes').select(levelColumn).eq('institution_id', institution_id));
+                    ? supabase.from('classes').select('grade_level, form_level').eq('institution_id', institution_id).is('deleted_at', null)
+                    : supabase.from('classes').select('grade_level, form_level').eq('institution_id', institution_id));
 
                 const foundLegacyLevels = new Set();
                 for (const row of legacyRows || []) {
-                    const v = toFiniteNumber(row?.[levelColumn]);
+                    let v = toFiniteNumber(row?.grade_level);
+                    if (v === undefined && row?.form_level != null) {
+                        const numForm = Number(row.form_level);
+                        v = numForm <= 4 ? numForm + 8 : numForm;
+                    }
                     if (v !== undefined) foundLegacyLevels.add(v);
                 }
                 const sortedLegacy = Array.from(foundLegacyLevels).sort((a, b) => a - b);
@@ -1331,7 +1336,7 @@ exports.getClassOptions = async (req, res) => {
             });
         }
 
-        const levelColumn = defaultClassType === 'Form' ? 'form_level' : 'grade_level';
+        const levelColumn = 'grade_level';
 
         const [classesResponse, studentsResponse] = await Promise.all([
             hasDeletedAt

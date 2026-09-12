@@ -24,8 +24,10 @@ const NAV_ITEMS: NavItem[] = [
 
 const MOBILE_TAB_NAMES = ["accessibility/settings", "index", "institutions", "payments"];
 
+const EXPLICIT_TAB_NAMES = [...MOBILE_TAB_NAMES, "users", "password-audit"];
+
 const ALL_OTHER = NAV_ITEMS
-    .filter(i => !MOBILE_TAB_NAMES.includes(i.name))
+    .filter(i => !EXPLICIT_TAB_NAMES.includes(i.name))
     .map(i => i.name);
 
 const HIDDEN = [...ALL_OTHER];

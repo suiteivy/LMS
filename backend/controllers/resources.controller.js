@@ -7,7 +7,7 @@ const { parsePagination, paginatedResponse } = require("../utils/pagination.js")
  */
 exports.createResource = async (req, res) => {
     try {
-        const { subject_id, class_id, title, url, type, size, target_audience = 'everyone', description } = req.body;
+        const { subject_id, class_id, title, url, type, size, target_audience = 'everyone', description, topic_area_id, topic_id } = req.body;
         const { userId, userRole } = req;
 
         if (!title || !url || !type) {
@@ -54,11 +54,13 @@ exports.createResource = async (req, res) => {
         if (subject_id) insertPayload.subject_id = subject_id;
         if (finalClassId) insertPayload.class_id = finalClassId;
         if (teacherId) insertPayload.teacher_id = teacherId;
+        if (topic_area_id) insertPayload.topic_area_id = topic_area_id;
+        if (topic_id) insertPayload.topic_id = topic_id;
 
         const { data, error } = await supabase
             .from("resources")
             .insert([insertPayload])
-            .select(`*, subject:subjects(title), class:classes(display_name)`)
+            .select(`*, subject:subjects(title), class:classes(display_name), topic_area:subject_topic_areas(name), topic:subject_topics(name)`)
             .single();
 
         if (error) throw error;
@@ -74,19 +76,21 @@ exports.createResource = async (req, res) => {
  */
 exports.getResources = async (req, res) => {
     try {
-        const { subject_id, class_id, status, target_audience } = req.query;
+        const { subject_id, class_id, status, target_audience, topic_area_id, topic_id } = req.query;
         const { userId, userRole } = req;
         const { page, limit, from, to } = parsePagination(req.query, { defaultLimit: 25 });
 
         let query = supabase
             .from("resources")
-            .select(`*, subject:subjects(title), class:classes(display_name)`, { count: 'exact' })
+            .select(`*, subject:subjects(title), class:classes(display_name), topic_area:subject_topic_areas(name), topic:subject_topics(name)`, { count: 'exact' })
             .eq("institution_id", req.institution_id)
             .order('created_at', { ascending: false })
             .range(from, to);
 
         if (subject_id) query = query.eq("subject_id", subject_id);
         if (class_id) query = query.eq("class_id", class_id);
+        if (topic_area_id) query = query.eq("topic_area_id", topic_area_id);
+        if (topic_id) query = query.eq("topic_id", topic_id);
         if (status) query = query.eq("status", status);
 
         if (userRole === 'student') {

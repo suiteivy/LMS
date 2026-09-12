@@ -19,7 +19,7 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, Platform, Linking } from 'react-native';
 import { DiaryAPI } from "@/services/DiaryService";
-import { SubjectAPI } from "@/services/SubjectService";
+import { SubjectAPI, TopicAreaData, TopicData } from "@/services/SubjectService";
 import { GradingAPI } from "@/services/GradingService";
 import { showFetchError } from "@/utils/toast";
 import { DocumentPickerAsset } from 'expo-document-picker';
@@ -45,11 +45,14 @@ interface Assignment {
     points: number;
     grading_style?: GradingStyle;
     grades_released?: boolean;
+    topic_area_id?: string | null;
+    topic_id?: string | null;
 }
 
 interface SubjectOption {
     id: string;
     title: string;
+    class_id?: string;
 }
 
 interface TermOption {
@@ -61,9 +64,9 @@ interface TermOption {
 const GRADING_STYLES: { id: GradingStyle; label: string; description: string }[] = [
     { id: 'points', label: 'Points Based', description: 'Score out of fixed points (e.g. 100 pts)' },
     { id: 'percentage', label: 'Percentage (%)', description: 'Direct percentage score (0 - 100%)' },
-    { id: 'letter_grade', label: 'Letter Grade', description: 'Graded by institution scale bands (A, B, C...)' },
+    { id: 'letter_grade', label: 'Letter Grade', description: 'Graded by institution grade scale (A, B, C...)' },
     { id: 'pass_fail', label: 'Pass / Fail', description: 'Binary competence evaluation' },
-    { id: 'rubric', label: 'Rubric Criteria', description: 'Multi-criteria weighted scoring' }
+    { id: 'rubric', label: 'Descriptor-Based Rubric', description: 'Evaluated against 4 competency levels (Exceeding, Meeting, etc.)' }
 ];
 
 const AssignmentCard = ({ 
@@ -250,6 +253,34 @@ export default function AssignmentsPage() {
     const [dateObject, setDateObject] = useState(new Date());
     const [selectedFile, setSelectedFile] = useState<DocumentPickerAsset | null>(null);
     const [uploading, setUploading] = useState(false);
+    const [topicAreas, setTopicAreas] = useState<TopicAreaData[]>([]);
+    const [selectedTopicAreaId, setSelectedTopicAreaId] = useState<string>("");
+    const [topics, setTopics] = useState<TopicData[]>([]);
+    const [selectedTopicId, setSelectedTopicId] = useState<string>("");
+
+    useEffect(() => {
+        if (selectedSubjectId) {
+            SubjectAPI.getTopicAreas(selectedSubjectId)
+                .then(res => setTopicAreas(Array.isArray(res) ? res : []))
+                .catch(() => setTopicAreas([]));
+        } else {
+            setTopicAreas([]);
+            setSelectedTopicAreaId("");
+            setTopics([]);
+            setSelectedTopicId("");
+        }
+    }, [selectedSubjectId]);
+
+    useEffect(() => {
+        if (selectedTopicAreaId) {
+            SubjectAPI.getTopics(selectedTopicAreaId)
+                .then(res => setTopics(Array.isArray(res) ? res : []))
+                .catch(() => setTopics([]));
+        } else {
+            setTopics([]);
+            setSelectedTopicId("");
+        }
+    }, [selectedTopicAreaId]);
 
     const openManual = (anchor?: string) => {
         router.push({ pathname: '/(teacher)/accessibility/settings', params: { manual: '1', anchor: anchor || 'grading-ops' } } as any);
@@ -414,7 +445,9 @@ export default function AssignmentsPage() {
                 term: a.term || "",
                 term_id: a.term_id || null,
                 grading_style: a.grading_style || 'points',
-                grades_released: Boolean(a.grades_released)
+                grades_released: Boolean(a.grades_released),
+                topic_area_id: a.topic_area_id || null,
+                topic_id: a.topic_id || null
             }));
 
             setAssignments(formatted);
@@ -432,6 +465,8 @@ export default function AssignmentsPage() {
         setDescription(a.description || "");
         setPoints(a.points.toString());
         setSelectedSubjectId(a.subject_id);
+        setSelectedTopicAreaId(a.topic_area_id || "");
+        setSelectedTopicId(a.topic_id || "");
         const d = a.due_date_iso ? new Date(a.due_date_iso) : new Date();
         setDateObject(d);
         setDueDate(a.due_date_iso ? a.due_date_iso.split('T')[0] : "");
@@ -469,6 +504,8 @@ export default function AssignmentsPage() {
         setPoints("100");
         setWeight("0");
         setSelectedSubjectId("");
+        setSelectedTopicAreaId("");
+        setSelectedTopicId("");
         setSelectedFile(null);
         setEditingAssignment(null);
         setGradingStyle("points");
@@ -695,7 +732,9 @@ export default function AssignmentsPage() {
                 weight: weightVal,
                 term: termName.trim(),
                 term_id: selectedTermId || null,
-                grading_style: gradingStyle
+                grading_style: gradingStyle,
+                topic_area_id: selectedTopicAreaId || null,
+                topic_id: selectedTopicId || null
             };
 
             if (editingAssignment) {
@@ -964,6 +1003,72 @@ export default function AssignmentsPage() {
                                             </View>
                                         )}
                                     </View>
+
+                                    {/* Topic Area Selection (CBC 2-Level Breakdown) */}
+                                    {topicAreas.length > 0 && (
+                                        <View className="mb-5">
+                                            <Text className="text-gray-700 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-2.5">Topic Area (CBC Breakdown)</Text>
+                                            <View className="flex-row flex-wrap gap-2">
+                                                <TouchableOpacity
+                                                    onPress={() => setSelectedTopicAreaId("")}
+                                                    activeOpacity={0.7}
+                                                    className={`px-3.5 py-2 rounded-xl border ${!selectedTopicAreaId ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-[#F6F8FA] dark:bg-[#0D1117] border-[#D0D7DE] dark:border-[#21262D]'}`}
+                                                >
+                                                    <Text className={`text-xs font-bold ${!selectedTopicAreaId ? 'text-white' : 'text-gray-800 dark:text-gray-300'}`}>
+                                                        None / General
+                                                    </Text>
+                                                </TouchableOpacity>
+                                                {topicAreas.map(ta => {
+                                                    const isSelected = selectedTopicAreaId === ta.id;
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={ta.id}
+                                                            onPress={() => setSelectedTopicAreaId(ta.id)}
+                                                            activeOpacity={0.7}
+                                                            className={`px-3.5 py-2 rounded-xl border ${isSelected ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-[#F6F8FA] dark:bg-[#0D1117] border-[#D0D7DE] dark:border-[#21262D]'}`}
+                                                        >
+                                                            <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-gray-800 dark:text-gray-300'}`}>
+                                                                {ta.name || (ta as any).title}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {/* Specific Topic Selection */}
+                                    {topics.length > 0 && Boolean(selectedTopicAreaId) && (
+                                        <View className="mb-5">
+                                            <Text className="text-gray-700 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-2.5">Specific Topic</Text>
+                                            <View className="flex-row flex-wrap gap-2">
+                                                <TouchableOpacity
+                                                    onPress={() => setSelectedTopicId("")}
+                                                    activeOpacity={0.7}
+                                                    className={`px-3.5 py-2 rounded-xl border ${!selectedTopicId ? 'bg-orange-500 border-orange-500' : 'bg-[#F6F8FA] dark:bg-[#0D1117] border-[#D0D7DE] dark:border-[#21262D]'}`}
+                                                >
+                                                    <Text className={`text-xs font-bold ${!selectedTopicId ? 'text-white' : 'text-gray-800 dark:text-gray-300'}`}>
+                                                        All in Area
+                                                    </Text>
+                                                </TouchableOpacity>
+                                                {topics.map(tp => {
+                                                    const isSelected = selectedTopicId === tp.id;
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={tp.id}
+                                                            onPress={() => setSelectedTopicId(tp.id)}
+                                                            activeOpacity={0.7}
+                                                            className={`px-3.5 py-2 rounded-xl border ${isSelected ? 'bg-orange-500 border-orange-500' : 'bg-[#F6F8FA] dark:bg-[#0D1117] border-[#D0D7DE] dark:border-[#21262D]'}`}
+                                                        >
+                                                            <Text className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-gray-800 dark:text-gray-300'}`}>
+                                                                {tp.name || (tp as any).title}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+                                            </View>
+                                        </View>
+                                    )}
 
                                     {/* DB Academic Terms */}
                                     <View className="mb-4">

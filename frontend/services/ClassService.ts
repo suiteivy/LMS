@@ -7,6 +7,8 @@ export interface ClassItem {
     level_id?: string | null;
     stream_id?: string | null;
     grade_level?: number;
+    education_level?: string | null;
+    cbc_band?: string | null;
     form_level?: number;
     stream?: string;
     display_name?: string;

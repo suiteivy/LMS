@@ -172,6 +172,12 @@ async function seedCore() {
         { name: 'KCSE Standard Scale', min_score: 35, max_score: 39.99, letter_grade: 'D', gpa_points: 3, description: 'Poor', is_active: true, institution_id: INSTITUTION_ID },
         { name: 'KCSE Standard Scale', min_score: 30, max_score: 34.99, letter_grade: 'D-', gpa_points: 2, description: 'Very Poor', is_active: true, institution_id: INSTITUTION_ID },
         { name: 'KCSE Standard Scale', min_score: 0, max_score: 29.99, letter_grade: 'E', gpa_points: 1, description: 'Fail', is_active: true, institution_id: INSTITUTION_ID },
+        
+        // Competency-Based Assessment Scale (CBC 4-Level Descriptor Scale)
+        { name: 'Competency-Based Scale', min_score: 80, max_score: 100, letter_grade: 'Exceeding Expectation', gpa_points: 4, description: 'Exceeding Expectation', is_active: true, institution_id: INSTITUTION_ID },
+        { name: 'Competency-Based Scale', min_score: 60, max_score: 79.99, letter_grade: 'Meeting Expectation', gpa_points: 3, description: 'Meeting Expectation', is_active: true, institution_id: INSTITUTION_ID },
+        { name: 'Competency-Based Scale', min_score: 40, max_score: 59.99, letter_grade: 'Approaching Expectation', gpa_points: 2, description: 'Approaching Expectation', is_active: true, institution_id: INSTITUTION_ID },
+        { name: 'Competency-Based Scale', min_score: 0, max_score: 39.99, letter_grade: 'Below Expectation', gpa_points: 1, description: 'Below Expectation', is_active: true, institution_id: INSTITUTION_ID },
     ];
     await supabase.from('grading_scales').delete().eq('institution_id', INSTITUTION_ID);
     await supabase.from('grading_scales').insert(gradingScales);
@@ -209,12 +215,12 @@ async function seedCore() {
     // Classes (Single teacher assignment per unique constraint classes_teacher_id_key)
     console.log('--- 5. Upserting Classes & Streams ---');
     await supabase.from('classes').upsert([
-        { id: CLASS_F3_NORTH, class_type: 'Form', form_level: 3, stream: 'North (Simba)', institution_id: INSTITUTION_ID, teacher_id: PRIMARY_TEACHER_ID },
-        { id: CLASS_F3_SOUTH, class_type: 'Form', form_level: 3, stream: 'South (Chui)',  institution_id: INSTITUTION_ID, teacher_id: 'TCH-DEMO-003' },
-        { id: CLASS_F2_EAST,  class_type: 'Form', form_level: 2, stream: 'East (Ndovu)',  institution_id: INSTITUTION_ID, teacher_id: 'TCH-DEMO-002' },
-        { id: CLASS_F2_WEST,  class_type: 'Form', form_level: 2, stream: 'West (Kifaru)', institution_id: INSTITUTION_ID, teacher_id: 'TCH-DEMO-004' },
-        { id: CLASS_F1_ALPHA, class_type: 'Form', form_level: 1, stream: 'Alpha',         institution_id: INSTITUTION_ID, teacher_id: 'TCH-DEMO-005' },
-        { id: CLASS_F1_BETA,  class_type: 'Form', form_level: 1, stream: 'Beta',          institution_id: INSTITUTION_ID, teacher_id: 'TCH-DEMO-006' },
+        { id: CLASS_F3_NORTH, class_type: 'Grade', grade_level: 11, cbc_band: 'senior_secondary', stream: 'North (Simba)', institution_id: INSTITUTION_ID, teacher_id: PRIMARY_TEACHER_ID },
+        { id: CLASS_F3_SOUTH, class_type: 'Grade', grade_level: 11, cbc_band: 'senior_secondary', stream: 'South (Chui)',  institution_id: INSTITUTION_ID, teacher_id: 'TCH-DEMO-003' },
+        { id: CLASS_F2_EAST,  class_type: 'Grade', grade_level: 10, cbc_band: 'senior_secondary', stream: 'East (Ndovu)',  institution_id: INSTITUTION_ID, teacher_id: 'TCH-DEMO-002' },
+        { id: CLASS_F2_WEST,  class_type: 'Grade', grade_level: 10, cbc_band: 'senior_secondary', stream: 'West (Kifaru)', institution_id: INSTITUTION_ID, teacher_id: 'TCH-DEMO-004' },
+        { id: CLASS_F1_ALPHA, class_type: 'Grade', grade_level: 9,  cbc_band: 'junior_secondary', stream: 'Alpha',         institution_id: INSTITUTION_ID, teacher_id: 'TCH-DEMO-005' },
+        { id: CLASS_F1_BETA,  class_type: 'Grade', grade_level: 9,  cbc_band: 'junior_secondary', stream: 'Beta',          institution_id: INSTITUTION_ID, teacher_id: 'TCH-DEMO-006' },
     ]);
 
     // Subjects
@@ -255,7 +261,7 @@ async function seedCore() {
             user_id: s.userId,
             institution_id: INSTITUTION_ID,
             class_id: s.classId,
-            form_level: s.formLevel,
+            grade_level: s.formLevel ? s.formLevel + 8 : 9,
             academic_year: '2026'
         }, { onConflict: 'user_id' });
         if (stErr) { console.error(`Student profile error (${s.name}):`, stErr); throw stErr; }

@@ -57,7 +57,7 @@ async function startDemo(role = 'teacher') {
             user_id: userId,
             institution_id: TEMPLATE_INSTITUTION_ID,
             class_id: '417561a5-48c5-4c45-b736-97d49e74bd35',
-            form_level: 2
+            grade_level: 10
         }).select('id').single();
         if (stuErr) throw new Error(`Student insert failed: ${stuErr.message}`);
 

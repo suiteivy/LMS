@@ -116,5 +116,106 @@ export const SubjectAPI = {
             console.error("Enroll student error", error);
             throw error;
         }
+    },
+
+    // Two-Level Subject Content: Topic Areas (Plain Label)
+    getTopicAreas: async (subjectId: string): Promise<TopicAreaData[]> => {
+        try {
+            const response = await api.get(`/subjects/${subjectId}/topic-areas`);
+            return response.data?.data || [];
+        } catch (error) {
+            console.error("Get topic areas error", error);
+            throw error;
+        }
+    },
+
+    createTopicArea: async (subjectId: string, data: { name: string; description?: string; sort_order?: number }): Promise<TopicAreaData> => {
+        try {
+            const response = await api.post(`/subjects/${subjectId}/topic-areas`, data);
+            return response.data?.data;
+        } catch (error) {
+            console.error("Create topic area error", error);
+            throw error;
+        }
+    },
+
+    updateTopicArea: async (id: string, data: { name?: string; description?: string; sort_order?: number }): Promise<TopicAreaData> => {
+        try {
+            const response = await api.put(`/subjects/topic-areas/${id}`, data);
+            return response.data?.data;
+        } catch (error) {
+            console.error("Update topic area error", error);
+            throw error;
+        }
+    },
+
+    deleteTopicArea: async (id: string): Promise<void> => {
+        try {
+            await api.delete(`/subjects/topic-areas/${id}`);
+        } catch (error) {
+            console.error("Delete topic area error", error);
+            throw error;
+        }
+    },
+
+    // Two-Level Subject Content: Topics (Plain Label)
+    getTopics: async (topicAreaId: string): Promise<TopicData[]> => {
+        try {
+            const response = await api.get(`/subjects/topic-areas/${topicAreaId}/topics`);
+            return response.data?.data || [];
+        } catch (error) {
+            console.error("Get topics error", error);
+            throw error;
+        }
+    },
+
+    createTopic: async (topicAreaId: string, data: { name: string; description?: string; sort_order?: number }): Promise<TopicData> => {
+        try {
+            const response = await api.post(`/subjects/topic-areas/${topicAreaId}/topics`, data);
+            return response.data?.data;
+        } catch (error) {
+            console.error("Create topic error", error);
+            throw error;
+        }
+    },
+
+    updateTopic: async (id: string, data: { name?: string; description?: string; sort_order?: number }): Promise<TopicData> => {
+        try {
+            const response = await api.put(`/subjects/topics/${id}`, data);
+            return response.data?.data;
+        } catch (error) {
+            console.error("Update topic error", error);
+            throw error;
+        }
+    },
+
+    deleteTopic: async (id: string): Promise<void> => {
+        try {
+            await api.delete(`/subjects/topics/${id}`);
+        } catch (error) {
+            console.error("Delete topic error", error);
+            throw error;
+        }
     }
 };
+
+export interface TopicAreaData {
+    id: string;
+    institution_id: string;
+    subject_id: string;
+    name: string;
+    description?: string;
+    sort_order?: number;
+    created_at?: string;
+    topics?: TopicData[];
+}
+
+export interface TopicData {
+    id: string;
+    institution_id: string;
+    topic_area_id: string;
+    name: string;
+    description?: string;
+    sort_order?: number;
+    created_at?: string;
+}

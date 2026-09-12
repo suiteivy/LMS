@@ -113,6 +113,10 @@ export default function UserDetailsScreen() {
     const [studentGrades, setStudentGrades] = useState<any[]>([]);
     const [studentReports, setStudentReports] = useState<any[]>([]);
     const [loadingAcademics, setLoadingAcademics] = useState(false);
+    const [hasSeniorSecondary, setHasSeniorSecondary] = useState(false);
+    const [studentTrack, setStudentTrack] = useState<any>(null);
+    const [nationalCheckpoints, setNationalCheckpoints] = useState<any[]>([]);
+    const [allowedCheckpoints, setAllowedCheckpoints] = useState<any[]>([]);
 
     // Multi-role state (for admins who also teach / act as class teachers)
     const [isTeacherRoleEnabled, setIsTeacherRoleEnabled] = useState(false);
@@ -444,6 +448,60 @@ export default function UserDetailsScreen() {
                 .order('created_at', { ascending: false });
 
             setStudentReports(reportsData || []);
+
+            // Check Senior Secondary coverage (Grade 10–12)
+            const instId = profile?.institution_id || '';
+            const { data: seniorClasses } = await (supabase.from as any)('classes')
+                .select('id')
+                .eq('institution_id', instId)
+                .or('education_level.eq.senior_secondary,cbc_band.eq.senior_secondary,grade_level.gte.10')
+                .limit(1);
+
+            const hasSenior = Boolean(seniorClasses && seniorClasses.length > 0);
+            setHasSeniorSecondary(hasSenior);
+
+            if (hasSenior) {
+                const { data: trackData } = await (supabase.from as any)('student_track_enrollments')
+                    .select(`
+                        id,
+                        track_id,
+                        elective_subject_ids,
+                        institution_tracks (id, name, code, description)
+                    `)
+                    .eq('student_id', studentRecordId)
+                    .maybeSingle();
+
+                setStudentTrack(trackData);
+            } else {
+                setStudentTrack(null);
+            }
+
+            // Check National Assessment Checkpoints coverage
+            const { data: instClasses } = await (supabase.from as any)('classes')
+                .select('grade_level, education_level, cbc_band')
+                .eq('institution_id', instId);
+
+            const gradeLevels = new Set(instClasses?.map((c: any) => c.grade_level) || []);
+            const schoolLevels = new Set(instClasses?.map((c: any) => c.education_level || c.cbc_band) || []);
+
+            const allowedNames: string[] = [];
+            if (gradeLevels.has(6) || schoolLevels.has('primary')) allowedNames.push('KPSEA');
+            if (gradeLevels.has(9) || schoolLevels.has('junior_secondary')) allowedNames.push('KJSEA');
+            if (gradeLevels.has(12) || schoolLevels.has('senior_secondary')) allowedNames.push('Senior Secondary Exit Checkpoint');
+
+            setAllowedCheckpoints(allowedNames);
+
+            if (allowedNames.length > 0) {
+                const { data: records } = await (supabase.from as any)('national_assessment_records')
+                    .select('*')
+                    .eq('student_id', studentRecordId)
+                    .in('checkpoint_name', allowedNames)
+                    .order('assessment_year', { ascending: false });
+
+                setNationalCheckpoints(records || []);
+            } else {
+                setNationalCheckpoints([]);
+            }
         } catch (error) {
             console.error('[GRADES] Error fetching student grades/reports:', error);
         } finally {
@@ -861,6 +919,90 @@ export default function UserDetailsScreen() {
                                 </View>
                             );
                         })}
+                    </View>
+                )}
+
+                {/* Senior Secondary Specialization Track - Only visible if Grade 10-12 covered */}
+                {user.role === 'student' && roleData && hasSeniorSecondary && (
+                    <View style={{ marginHorizontal: 24, marginTop: 16, backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#0ea5e9', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+                            🎓 Senior Secondary Specialization Track
+                        </Text>
+                        {studentTrack?.institution_tracks ? (
+                            <View style={{ backgroundColor: isDark ? '#161B22' : '#F0F9FF', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#BAE6FD' }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Text style={{ fontSize: 16, fontWeight: '800', color: isDark ? '#38BDF8' : '#0369A1' }}>
+                                        {studentTrack.institution_tracks.name}
+                                    </Text>
+                                    <View style={{ backgroundColor: '#0284C720', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#0284C7' }}>
+                                            {studentTrack.institution_tracks.code}
+                                        </Text>
+                                    </View>
+                                </View>
+                                {studentTrack.institution_tracks.description ? (
+                                    <Text style={{ fontSize: 12, color: textSecondary, marginTop: 4 }}>
+                                        {studentTrack.institution_tracks.description}
+                                    </Text>
+                                ) : null}
+                            </View>
+                        ) : (
+                            <View style={{ paddingVertical: 12, alignItems: 'center' }}>
+                                <Text style={{ color: textSecondary, fontSize: 12, fontStyle: 'italic' }}>
+                                    No specialization track currently assigned
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                )}
+
+                {/* External National Assessment Checkpoints (KPSEA, KJSEA) - Scoped to relevant school levels */}
+                {user.role === 'student' && roleData && allowedCheckpoints.length > 0 && (
+                    <View style={{ marginHorizontal: 24, marginTop: 16, backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#6366f1', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+                            🎖️ National Assessment Checkpoints
+                        </Text>
+                        {nationalCheckpoints.length > 0 ? (
+                            nationalCheckpoints.map((cp: any, idx: number) => {
+                                const DESCRIPTOR_LABELS: Record<string, { label: string; color: string }> = {
+                                    exceeding_expectation: { label: 'Exceeding Expectation', color: '#10b981' },
+                                    meeting_expectation: { label: 'Meeting Expectation', color: '#3b82f6' },
+                                    approaching_expectation: { label: 'Approaching Expectation', color: '#f59e0b' },
+                                    below_expectation: { label: 'Below Expectation', color: '#ef4444' },
+                                };
+                                const descInfo = DESCRIPTOR_LABELS[cp.overall_descriptor] || { label: cp.overall_descriptor, color: textPrimary };
+                                return (
+                                    <View key={cp.id || idx} style={{ paddingVertical: 10, borderBottomWidth: idx < nationalCheckpoints.length - 1 ? 1 : 0, borderBottomColor: border }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <View>
+                                                <Text style={{ fontSize: 14, fontWeight: '700', color: textPrimary }}>
+                                                    {cp.checkpoint_name}
+                                                </Text>
+                                                <Text style={{ fontSize: 11, color: textSecondary, marginTop: 2 }}>
+                                                    Assessment Year: {cp.assessment_year}
+                                                </Text>
+                                            </View>
+                                            <View style={{ backgroundColor: `${descInfo.color}15`, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: `${descInfo.color}40` }}>
+                                                <Text style={{ fontSize: 11, fontWeight: '700', color: descInfo.color }}>
+                                                    {descInfo.label}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        {cp.placement_notes ? (
+                                            <Text style={{ fontSize: 11, color: textSecondary, fontStyle: 'italic', marginTop: 4 }}>
+                                                {cp.placement_notes}
+                                            </Text>
+                                        ) : null}
+                                    </View>
+                                );
+                            })
+                        ) : (
+                            <View style={{ paddingVertical: 12, alignItems: 'center' }}>
+                                <Text style={{ color: textSecondary, fontSize: 12, fontStyle: 'italic' }}>
+                                    No national assessment checkpoint records filed
+                                </Text>
+                            </View>
+                        )}
                     </View>
                 )}
 

@@ -13,6 +13,7 @@ const {
   updateProgress,
   deleteSubject,
 } = require("../controllers/subject.controller.js");
+const curriculumController = require("../controllers/curriculumContent.controller.js");
 
 const { authorizeRoles } = require("../middleware/authRole.js");
 
@@ -29,6 +30,18 @@ router.get("/filtered", authorizeRoles(["admin", "teacher", "student", "parent"]
 
 // Get subjects by class ID
 router.get("/class/:classId", authorizeRoles(["admin", "teacher", "student", "parent"]), getSubjectsByClass);
+
+// Two-Level Subject Content: Topic Areas (Plain Label)
+router.get("/:subjectId/topic-areas", authorizeRoles(["admin", "teacher", "student", "parent"]), curriculumController.getTopicAreas);
+router.post("/:subjectId/topic-areas", authorizeRoles(["admin", "master_admin", "teacher"]), curriculumController.createTopicArea);
+router.put("/topic-areas/:id", authorizeRoles(["admin", "master_admin", "teacher"]), curriculumController.updateTopicArea);
+router.delete("/topic-areas/:id", authorizeRoles(["admin", "master_admin"]), curriculumController.deleteTopicArea);
+
+// Two-Level Subject Content: Topics (Plain Label)
+router.get("/topic-areas/:topicAreaId/topics", authorizeRoles(["admin", "teacher", "student", "parent"]), curriculumController.getTopics);
+router.post("/topic-areas/:topicAreaId/topics", authorizeRoles(["admin", "master_admin", "teacher"]), curriculumController.createTopic);
+router.put("/topics/:id", authorizeRoles(["admin", "master_admin", "teacher"]), curriculumController.updateTopic);
+router.delete("/topics/:id", authorizeRoles(["admin", "master_admin"]), curriculumController.deleteTopic);
 
 // Get subject by ID
 router.get("/:id", authorizeRoles(["admin", "teacher", "student", "parent"]), getSubjectById);

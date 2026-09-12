@@ -30,6 +30,10 @@ interface JoinedAssignment {
     title: string;
     total_points: number;
     grades_released: boolean;
+    grading_style?: string;
+    topic_area_id?: string;
+    topic_id?: string;
+    institution_id?: string;
     subject: {
         title: string;
         id: string;
@@ -47,6 +51,13 @@ interface JoinedEnrollment {
     } | null;
 }
 
+const CBC_DESCRIPTORS = [
+    { id: 'exceeding_expectation', label: 'Exceeding Expectation', level: 4, color: '#10B981', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-500', text: 'text-emerald-700 dark:text-emerald-400' },
+    { id: 'meeting_expectation', label: 'Meeting Expectation', level: 3, color: '#3B82F6', bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-500', text: 'text-blue-700 dark:text-blue-400' },
+    { id: 'approaching_expectation', label: 'Approaching Expectation', level: 2, color: '#F59E0B', bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-500', text: 'text-amber-700 dark:text-amber-400' },
+    { id: 'below_expectation', label: 'Below Expectation', level: 1, color: '#EF4444', bg: 'bg-rose-50 dark:bg-rose-950/30', border: 'border-rose-500', text: 'text-rose-700 dark:text-rose-400' },
+];
+
 export default function SubmissionsPage() {
     const { assignmentId } = useLocalSearchParams<{ assignmentId: string }>();
     const { isDark } = useTheme();
@@ -58,6 +69,7 @@ export default function SubmissionsPage() {
     const [currentEntry, setCurrentEntry] = useState<SubmissionEntry | null>(null);
     const [gradeInput, setGradeInput] = useState("");
     const [feedbackInput, setFeedbackInput] = useState("");
+    const [selectedDescriptor, setSelectedDescriptor] = useState<string | null>(null);
     const [canGrade, setCanGrade] = useState(false);
 
     useEffect(() => {
@@ -217,7 +229,28 @@ export default function SubmissionsPage() {
         setCurrentEntry(entry);
         setGradeInput(entry.score?.toString() || "");
         setFeedbackInput(entry.feedback || "");
+        if (assignment?.grading_style === 'rubric') {
+            if (entry.score !== null && entry.score !== undefined) {
+                const ratio = entry.score / (assignment.total_points || 4);
+                if (ratio >= 0.85) setSelectedDescriptor('exceeding_expectation');
+                else if (ratio >= 0.6) setSelectedDescriptor('meeting_expectation');
+                else if (ratio >= 0.35) setSelectedDescriptor('approaching_expectation');
+                else setSelectedDescriptor('below_expectation');
+            } else {
+                setSelectedDescriptor(null);
+            }
+        } else {
+            setSelectedDescriptor(null);
+        }
         setGradingModalVisible(true);
+    };
+
+    const handleSelectDescriptor = (desc: typeof CBC_DESCRIPTORS[number]) => {
+        if (!canGrade) return;
+        setSelectedDescriptor(desc.id);
+        const maxPts = assignment?.total_points || 4;
+        const calculated = Math.round((desc.level / 4) * maxPts * 10) / 10;
+        setGradeInput(calculated.toString());
     };
 
     const submitGrade = async () => {
@@ -257,6 +290,27 @@ export default function SubmissionsPage() {
                 .eq('id', currentEntry.id);
 
             if (error) throw error;
+
+            // If this assignment is linked to a topic area and evaluated with a rubric descriptor, record evidence entry
+            if (assignment?.topic_area_id && selectedDescriptor) {
+                try {
+                    await (supabase as any)
+                        .from('content_evidence_entries')
+                        .insert({
+                            institution_id: assignment.institution_id,
+                            student_id: currentEntry.student_id,
+                            subject_id: assignment.subject_id,
+                            topic_area_id: assignment.topic_area_id,
+                            topic_id: assignment.topic_id || null,
+                            assignment_id: assignment.id,
+                            evidence_type: 'task',
+                            descriptor: selectedDescriptor,
+                            teacher_notes: feedbackInput || null
+                        });
+                } catch (evErr) {
+                    console.error("Error creating content evidence entry:", evErr);
+                }
+            }
 
             setSubmissions(prev => prev.map(s =>
                 s.id === currentEntry.id
@@ -406,18 +460,60 @@ export default function SubmissionsPage() {
                                 <Text className={`${isDark ? 'text-gray-300' : 'text-gray-400'} text-[10px] font-bold uppercase tracking-wider mb-1`}>Student</Text>
                                 <Text className={`${isDark ? 'text-white' : 'text-gray-900'} font-bold text-lg`}>{currentEntry?.student_name}</Text>
                             </View>
-                            <View>
-                                <Text className={`${isDark ? 'text-gray-200' : 'text-gray-500'} text-sm font-bold mb-2 ml-2`}>Grade (Max: {assignment?.total_points})</Text>
-                                <TextInput
-                                    className={`rounded-2xl px-6 py-4 ${isDark ? 'text-white border-white/10' : 'text-gray-900 border-gray-100'} font-bold text-lg border ${canGrade ? (isDark ? 'bg-white/10' : 'bg-gray-50') : 'bg-gray-100'}`}
-                                    placeholder="0.0"
-                                    placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
-                                    keyboardType="numeric"
-                                    value={gradeInput}
-                                    onChangeText={canGrade ? setGradeInput : undefined}
-                                    editable={canGrade}
-                                />
-                            </View>
+
+                            {assignment?.grading_style === 'rubric' ? (
+                                <View className="mb-4">
+                                    <Text className={`${isDark ? 'text-gray-200' : 'text-gray-700'} text-xs font-bold uppercase tracking-wider mb-2.5`}>
+                                        Competency Descriptor Level *
+                                    </Text>
+                                    <View className="gap-2 mb-3">
+                                        {CBC_DESCRIPTORS.map(desc => {
+                                            const isSelected = selectedDescriptor === desc.id;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={desc.id}
+                                                    disabled={!canGrade}
+                                                    onPress={() => handleSelectDescriptor(desc)}
+                                                    activeOpacity={0.7}
+                                                    className={`p-3.5 rounded-2xl border flex-row items-center justify-between ${
+                                                        isSelected
+                                                            ? `${desc.bg} ${desc.border} border-2`
+                                                            : (isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200')
+                                                    }`}
+                                                >
+                                                    <View className="flex-row items-center flex-1 pr-2">
+                                                        <View className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: desc.color }} />
+                                                        <Text className={`font-bold text-xs ${isSelected ? desc.text : (isDark ? 'text-white' : 'text-gray-900')}`}>
+                                                            {desc.label}
+                                                        </Text>
+                                                    </View>
+                                                    {isSelected && <Check size={16} color={desc.color} />}
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                    <View className="flex-row justify-between items-center px-1">
+                                        <Text className="text-gray-400 text-xs font-semibold">Calculated Score:</Text>
+                                        <Text className={`font-bold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                            {gradeInput || '0'} / {assignment?.total_points}
+                                        </Text>
+                                    </View>
+                                </View>
+                            ) : (
+                                <View>
+                                    <Text className={`${isDark ? 'text-gray-200' : 'text-gray-500'} text-sm font-bold mb-2 ml-2`}>Grade (Max: {assignment?.total_points})</Text>
+                                    <TextInput
+                                        className={`rounded-2xl px-6 py-4 ${isDark ? 'text-white border-white/10' : 'text-gray-900 border-gray-100'} font-bold text-lg border ${canGrade ? (isDark ? 'bg-white/10' : 'bg-gray-50') : 'bg-gray-100'}`}
+                                        placeholder="0.0"
+                                        placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
+                                        keyboardType="numeric"
+                                        value={gradeInput}
+                                        onChangeText={canGrade ? setGradeInput : undefined}
+                                        editable={canGrade}
+                                    />
+                                </View>
+                            )}
+
                             {!canGrade && (
                                 <Text className="text-gray-400 text-xs mt-1 ml-2">Read-only — only the subject teacher can grade</Text>
                             )}

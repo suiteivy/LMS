@@ -152,8 +152,7 @@ export default function CreateClassScreen() {
                 category_id: categoryId || undefined,
                 level_id: levelId || undefined,
                 stream_id: structure === 'single' ? undefined : (streamId || undefined),
-                grade_level: (instLevelLabel === 'Grade' || instLevelLabel === 'KG') ? numLevel : undefined,
-                form_level: instLevelLabel === 'Form' ? numLevel : undefined,
+                grade_level: numLevel,
                 capacity: capacity ? parseInt(capacity) : undefined,
                 teacher_id: teacherId || undefined,
             });
