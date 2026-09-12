@@ -52,6 +52,9 @@ const GlassInput = ({
   label,
   error,
   suffix,
+  onSubmitEditing,
+  returnKeyType,
+  ...rest
 }: any) => {
   const [focused, setFocused] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -205,6 +208,26 @@ const GlassInput = ({
             secureTextEntry={secureTextEntry}
             keyboardType={keyboardType}
             autoCapitalize={autoCapitalize}
+            returnKeyType={returnKeyType || 'go'}
+            onSubmitEditing={onSubmitEditing}
+            onKeyPress={(e: any) => {
+              if (Platform.OS === 'web' && (e?.key === 'Enter' || e?.nativeEvent?.key === 'Enter')) {
+                if (onSubmitEditing) {
+                  onSubmitEditing();
+                }
+              }
+            }}
+            {...(Platform.OS === 'web' ? {
+              onKeyDown: (e: any) => {
+                if (e?.key === 'Enter') {
+                  e?.preventDefault?.();
+                  if (onSubmitEditing) {
+                    onSubmitEditing();
+                  }
+                }
+              },
+            } : {})}
+            {...rest}
           />
           {suffix && <View style={{ zIndex: 3 }}>{suffix}</View>}
         </Pressable>
@@ -461,6 +484,7 @@ export default function VerifySecurityQuestionsScreen() {
   const [emailTouched, setEmailTouched]             = useState(false);
   const [selectedPrompt, setSelectedPrompt]         = useState<string | null>(null);
   const [answer, setAnswer]                         = useState('');
+  const [useRecoveryCode, setUseRecoveryCode]       = useState(false);
   const [attemptsRemaining, setAttemptsRemaining]   = useState<number | null>(null);
   const [newPassword, setNewPassword]               = useState('');
   const [confirmPassword, setConfirmPassword]       = useState('');
@@ -596,18 +620,26 @@ export default function VerifySecurityQuestionsScreen() {
 
   const handleNextFromQuestion = async () => {
     if (!answer.trim()) {
-      showError('Answer Required', 'Enter your security question answer.');
+      showError(
+        useRecoveryCode ? 'Recovery Code Required' : 'Answer Required',
+        useRecoveryCode ? 'Enter your 16-character recovery code.' : 'Enter your security question answer.'
+      );
       shakeCard();
       return;
     }
 
     try {
       setLoading(true);
-      const result = await SettingsService.verifySecurityQuestions(normalizedEmail, answer.trim());
+      const result = await SettingsService.verifySecurityQuestions(
+        normalizedEmail,
+        answer.trim(),
+        undefined,
+        useRecoveryCode ? answer.trim() : undefined
+      );
 
       if (!result.verified) {
         setAttemptsRemaining(typeof result.attempts_remaining === 'number' ? result.attempts_remaining : attemptsRemaining);
-        showError('Verification Failed', result.message || 'Invalid answer.');
+        showError('Verification Failed', result.message || (useRecoveryCode ? 'Invalid recovery code.' : 'Invalid answer.'));
         shakeCard();
         return;
       }
@@ -651,7 +683,12 @@ export default function VerifySecurityQuestionsScreen() {
 
     try {
       setLoading(true);
-      const result = await SettingsService.verifySecurityQuestions(normalizedEmail, answer.trim(), newPassword);
+      const result = await SettingsService.verifySecurityQuestions(
+        normalizedEmail,
+        answer.trim(),
+        newPassword,
+        useRecoveryCode ? answer.trim() : undefined
+      );
       if (!result.verified) {
         showError('Reset Failed', result.message || 'Unable to reset password.');
         shakeCard();
@@ -836,6 +873,8 @@ export default function VerifySecurityQuestionsScreen() {
                         autoCapitalize="none"
                         error={emailTouched && emailExists === false}
                         suffix={emailCheckLoading ? <ActivityIndicator size="small" color="rgba(255,255,255,0.6)" /> : null}
+                        returnKeyType="go"
+                        onSubmitEditing={handleNextFromEmail}
                       />
 
                       {!!emailTouched && !!emailCheckMessage && (
@@ -870,10 +909,10 @@ export default function VerifySecurityQuestionsScreen() {
                     </Animated.View>
                   )}
 
-                  {/* ── STEP 2: QUESTION ──────────────────────────────── */}
+                  {/* ── STEP 2: QUESTION OR RECOVERY CODE ───────────── */}
                   {step === 'question' && (
                     <Animated.View style={fieldStyle(field2)}>
-                      {/* Security question prompt card */}
+                      {/* Security question prompt / recovery notice card */}
                       <View style={{ marginBottom: 18 }}>
                         <Text style={{
                           color: 'rgba(255,255,255,0.45)',
@@ -883,37 +922,68 @@ export default function VerifySecurityQuestionsScreen() {
                           marginBottom: 8,
                           marginLeft: 4,
                         }}>
-                          Security Question
+                          {useRecoveryCode ? 'Account Recovery Code' : 'Security Question'}
                         </Text>
                         <View style={{
-                          backgroundColor: 'rgba(255,107,0,0.06)',
-                          borderColor: 'rgba(255,107,0,0.25)',
+                          backgroundColor: useRecoveryCode ? 'rgba(59,130,246,0.08)' : 'rgba(255,107,0,0.06)',
+                          borderColor: useRecoveryCode ? 'rgba(59,130,246,0.3)' : 'rgba(255,107,0,0.25)',
                           borderWidth: 1,
                           borderRadius: 20,
                           paddingHorizontal: 18,
                           paddingVertical: 14,
                         }}>
                           <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 15, lineHeight: 22 }}>
-                            {selectedPrompt}
+                            {useRecoveryCode
+                              ? 'Enter the 16-character recovery code generated during your security setup.'
+                              : selectedPrompt}
                           </Text>
                         </View>
                       </View>
 
                       <GlassInput
-                        label="Your Answer"
-                        placeholder="Enter your security answer"
+                        label={useRecoveryCode ? 'Recovery Code' : 'Your Answer'}
+                        placeholder={useRecoveryCode ? 'XXXX-XXXX-XXXX-XXXX' : 'Enter your security answer'}
                         value={answer}
                         onChangeText={(value: string) => {
                           setAnswer(value);
                         }}
-                        autoCapitalize="none"
+                        autoCapitalize={useRecoveryCode ? 'characters' : 'none'}
+                        returnKeyType="go"
+                        onSubmitEditing={handleNextFromQuestion}
                       />
+
+                      {/* Toggle button between Security Question and Recovery Code */}
+                      <TouchableOpacity
+                        onPress={() => {
+                          setUseRecoveryCode(!useRecoveryCode);
+                          setAnswer('');
+                        }}
+                        style={{
+                          alignSelf: 'flex-start',
+                          marginTop: -8,
+                          marginBottom: 16,
+                          marginLeft: 4,
+                          paddingVertical: 4,
+                        }}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={{
+                          color: FLAME,
+                          fontSize: 12.5,
+                          fontWeight: '600',
+                          textDecorationLine: 'underline',
+                        }}>
+                          {useRecoveryCode
+                            ? '← Use security question instead'
+                            : "Don't remember your answer? Use recovery code"}
+                        </Text>
+                      </TouchableOpacity>
 
                       {typeof attemptsRemaining === 'number' && (
                         <View style={{
                           flexDirection: 'row',
                           alignItems: 'center',
-                          marginTop: -10,
+                          marginTop: -4,
                           marginBottom: 16,
                           marginLeft: 4,
                           gap: 6,
@@ -927,7 +997,7 @@ export default function VerifySecurityQuestionsScreen() {
 
                       <View style={{ marginTop: 8 }}>
                         <PrimaryButton
-                          title="Verify Answer"
+                          title={useRecoveryCode ? 'Verify Recovery Code' : 'Verify Answer'}
                           onPress={handleNextFromQuestion}
                           loading={loading}
                           disabled={!answer.trim()}
@@ -992,6 +1062,8 @@ export default function VerifySecurityQuestionsScreen() {
                         }}
                         secureTextEntry={!showConfirmPassword}
                         autoCapitalize="none"
+                        returnKeyType="go"
+                        onSubmitEditing={handleResetPassword}
                         suffix={
                           <TouchableOpacity
                             onPress={() => setShowConfirmPassword(!showConfirmPassword)}

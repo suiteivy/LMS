@@ -512,6 +512,160 @@ test('verifySecurityQuestions updates password and clears first-login flags', as
   assert.equal(calls.auditInsert, 1);
 });
 
+test('verifySecurityQuestions allows password reset using unique recovery code', async () => {
+  const calls = {
+    updateUserById: 0,
+    usersUpdate: 0,
+    auditInsert: 0,
+  };
+
+  const recoveryCode = 'ABCD-EFGH-JKLM-PQRS';
+  const normRecoveryCode = 'ABCDEFGHJKLMPQRS';
+  const salt3 = 'salt-rec';
+  const hashRec = crypto
+    .createHash('sha256')
+    .update(`${salt3}:${normRecoveryCode}`)
+    .digest('hex');
+
+  const mockSupabase = {
+    auth: {
+      admin: {
+        async updateUserById(userId, payload) {
+          calls.updateUserById += 1;
+          assert.equal(userId, 'user-1');
+          assert.equal(payload.password, 'NewPass1234');
+          return { error: null };
+        },
+      },
+    },
+    from(table) {
+      if (table === 'users') {
+        return {
+          select() {
+            return {
+              ilike() {
+                return {
+                  async maybeSingle() {
+                    return {
+                      data: { id: 'user-1', email: 'student@example.com' },
+                      error: null,
+                    };
+                  },
+                };
+              },
+            };
+          },
+          update(payload) {
+            calls.usersUpdate += 1;
+            return {
+              async eq() {
+                return { error: null };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === 'user_security_answers') {
+        return {
+          select() {
+            return this;
+          },
+          eq() {
+            return {
+              async maybeSingle() {
+                return {
+                  data: {
+                    question1_salt: 'salt1',
+                    question1_hash: 'wrong_or_forgotten_hash',
+                    question2_salt: 'enc:q_childhood_nickname',
+                    question2_hash: 'unused',
+                    question3_salt: salt3,
+                    question3_hash: hashRec,
+                  },
+                  error: null,
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === 'password_audit_logs') {
+        return {
+          select() {
+            return this;
+          },
+          eq() {
+            return this;
+          },
+          gt() {
+            return this;
+          },
+          async then(resolve) {
+            return resolve({ count: 0, error: null });
+          },
+          async insert() {
+            calls.auditInsert += 1;
+            return { error: null };
+          },
+        };
+      }
+
+      if (table === 'user_sessions') {
+        return {
+          update() {
+            return {
+              eq() {
+                return {
+                  async eq() {
+                    return { error: null };
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  const authController = loadWithSupabaseMock('../controllers/auth.controller.js', mockSupabase);
+
+  const req = {
+    body: {
+      email: 'student@example.com',
+      selected_question_answer: recoveryCode, // Entered recovery code instead of security answer
+      new_password: 'NewPass1234',
+    },
+    headers: { 'user-agent': 'test-agent' },
+    socket: { remoteAddress: '127.0.0.1' },
+  };
+
+  let statusCode = 200;
+  let payload = null;
+  const res = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(body) {
+      payload = body;
+      return this;
+    },
+  };
+
+  await authController.verifySecurityQuestions(req, res);
+
+  assert.equal(statusCode, 200);
+  assert.equal(payload.verified, true);
+  assert.equal(calls.updateUserById, 1);
+  assert.equal(calls.usersUpdate, 1);
+  assert.equal(calls.auditInsert, 1);
+});
+
 test('getCredentialDeliveryByToken returns valid credentials without consuming token', async () => {
   const calls = { tokenUpdate: 0 };
 

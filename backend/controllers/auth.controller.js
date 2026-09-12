@@ -150,10 +150,22 @@ const normalizeSecurityAnswer = (value) => {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
 };
 
+const normalizeRecoveryCode = (value) => {
+  if (typeof value !== 'string') return '';
+  return value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+};
+
 const hashSecurityAnswer = (answer, salt) => {
   return crypto
     .createHash('sha256')
     .update(`${salt}:${normalizeSecurityAnswer(answer)}`)
+    .digest('hex');
+};
+
+const hashRecoveryCode = (code, salt) => {
+  return crypto
+    .createHash('sha256')
+    .update(`${salt}:${normalizeRecoveryCode(code)}`)
     .digest('hex');
 };
 
@@ -2528,7 +2540,7 @@ exports.resetPassword = async (req, res) => {
 exports.setupSecurityQuestions = async (req, res) => {
   try {
     const userId = req.userId;
-    const { selected_question_key, selected_question_answer } = req.body || {};
+    const { selected_question_key, selected_question_answer, recovery_code } = req.body || {};
 
     if (!isValidSecurityQuestionKey(selected_question_key)) {
       return res.status(400).json({ error: 'A valid security question selection is required' });
@@ -2542,6 +2554,11 @@ exports.setupSecurityQuestions = async (req, res) => {
 
     const s1 = crypto.randomBytes(16).toString('hex');
     const unusedSalt = crypto.randomBytes(16).toString('hex');
+    const normalizedRecCode = normalizeRecoveryCode(recovery_code);
+    const s3 = normalizedRecCode ? crypto.randomBytes(16).toString('hex') : unusedSalt;
+    const h3 = normalizedRecCode
+      ? hashRecoveryCode(normalizedRecCode, s3)
+      : hashSecurityAnswer(`unused:${unusedSalt}:2`, unusedSalt);
 
     const payload = {
       user_id: userId,
@@ -2549,8 +2566,8 @@ exports.setupSecurityQuestions = async (req, res) => {
       question1_hash: hashSecurityAnswer(normalizedAnswer, s1),
       question2_salt: encodeSecurityQuestionKey(selected_question_key),
       question2_hash: hashSecurityAnswer(`unused:${unusedSalt}`, unusedSalt),
-      question3_salt: unusedSalt,
-      question3_hash: hashSecurityAnswer(`unused:${unusedSalt}:2`, unusedSalt),
+      question3_salt: s3,
+      question3_hash: h3,
       updated_at: new Date().toISOString(),
     };
 
@@ -2596,6 +2613,7 @@ exports.completeCredentialSetup = async (req, res) => {
       selected_question_key,
       selected_question_answer,
       new_password,
+      recovery_code,
     } = req.body || {};
     const { ip_address: ipAddress, user_agent: userAgent } = getRequestContext(req);
 
@@ -2654,17 +2672,23 @@ exports.completeCredentialSetup = async (req, res) => {
     }
 
     if (requiresSecurityQuestionsSetup) {
-      // Step 2: Persist selected security question answer hash.
+      // Step 2: Persist selected security question answer hash and recovery code.
       const s1 = crypto.randomBytes(16).toString('hex');
       const unusedSalt = crypto.randomBytes(16).toString('hex');
+      const normalizedRecCode = normalizeRecoveryCode(recovery_code);
+      const s3 = normalizedRecCode ? crypto.randomBytes(16).toString('hex') : unusedSalt;
+      const h3 = normalizedRecCode
+        ? hashRecoveryCode(normalizedRecCode, s3)
+        : hashSecurityAnswer(`unused:${unusedSalt}:2`, unusedSalt);
+
       const payload = {
         user_id: userId,
         question1_salt: s1,
         question1_hash: hashSecurityAnswer(normalizedAnswer, s1),
         question2_salt: encodeSecurityQuestionKey(selected_question_key),
         question2_hash: hashSecurityAnswer(`unused:${unusedSalt}`, unusedSalt),
-        question3_salt: unusedSalt,
-        question3_hash: hashSecurityAnswer(`unused:${unusedSalt}:2`, unusedSalt),
+        question3_salt: s3,
+        question3_hash: h3,
         updated_at: new Date().toISOString(),
       };
 
@@ -2810,7 +2834,16 @@ exports.verifySecurityQuestions = async (req, res) => {
       });
     }
 
-    const isValid = hashSecurityAnswer(selected_question_answer, answers.question1_salt) === answers.question1_hash;
+    const normalizedAns = normalizeSecurityAnswer(selected_question_answer);
+    const normalizedRecCode = normalizeRecoveryCode(req.body?.recovery_code || selected_question_answer);
+
+    const isAnswerMatch = !!normalizedAns &&
+      hashSecurityAnswer(normalizedAns, answers.question1_salt) === answers.question1_hash;
+
+    const isRecoveryMatch = !!normalizedRecCode && !!answers.question3_salt && !!answers.question3_hash &&
+      hashRecoveryCode(normalizedRecCode, answers.question3_salt) === answers.question3_hash;
+
+    const isValid = isAnswerMatch || isRecoveryMatch;
 
     if (!isValid) {
       await writePasswordAuditLog({
@@ -2832,7 +2865,7 @@ exports.verifySecurityQuestions = async (req, res) => {
         selected_question_prompt: selectedQuestionPrompt,
         attempts_remaining: attemptsRemaining,
         message: attemptsRemaining > 0
-          ? `Incorrect answer. ${attemptsRemaining} attempt(s) remaining this hour.`
+          ? `Incorrect answer or recovery code. ${attemptsRemaining} attempt(s) remaining this hour.`
           : 'Maximum attempts reached. Try again in one hour.',
       });
     }

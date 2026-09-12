@@ -132,10 +132,12 @@ export const SettingsService = {
     setupSecurityQuestions: async (
         selected_question_key: string,
         selected_question_answer: string,
+        recovery_code?: string,
     ): Promise<{ message: string; selected_question_key: string; selected_question_prompt: string }> => {
         const response = await api.post('/auth/security-questions/setup', {
             selected_question_key,
             selected_question_answer,
+            recovery_code,
         });
         return response.data;
     },
@@ -143,12 +145,14 @@ export const SettingsService = {
     completeCredentialSetup: async (
         selected_question_key: string,
         selected_question_answer: string,
-        new_password: string,
+        new_password?: string,
+        recovery_code?: string,
     ): Promise<{ message: string; selected_question_key?: string | null; selected_question_prompt?: string | null }> => {
         const response = await api.post('/auth/complete-credential-setup', {
             selected_question_key,
             selected_question_answer,
             new_password,
+            recovery_code,
         });
         return response.data;
     },
@@ -157,6 +161,7 @@ export const SettingsService = {
         email: string,
         selected_question_answer?: string,
         new_password?: string,
+        recovery_code?: string,
     ): Promise<{
         verified: boolean;
         message: string;
@@ -169,6 +174,7 @@ export const SettingsService = {
             email,
             selected_question_answer,
             new_password,
+            recovery_code,
         });
         return response.data;
     },

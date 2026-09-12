@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Clipboard,
   Dimensions,
   Easing as EasingRN,
   KeyboardAvoidingView,
@@ -16,6 +17,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -47,6 +49,27 @@ const securityPrompts = [
   { key: 'q_birth_city', prompt: 'What city were you born in?' },
 ];
 
+const generateUniqueRecoveryCode = (): string => {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const segments: string[] = [];
+  for (let s = 0; s < 4; s++) {
+    let segment = '';
+    for (let i = 0; i < 4; i++) {
+      let randIndex: number;
+      if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+        const array = new Uint8Array(1);
+        crypto.getRandomValues(array);
+        randIndex = array[0] % chars.length;
+      } else {
+        randIndex = Math.floor(Math.random() * chars.length);
+      }
+      segment += chars[randIndex];
+    }
+    segments.push(segment);
+  }
+  return segments.join('-');
+};
+
 // ─── GlassInput Component ───────────────────────────────────────────────────
 const GlassInput = ({
   placeholder,
@@ -54,7 +77,9 @@ const GlassInput = ({
   onChangeText,
   secureTextEntry,
   keyboardType,
-  autoCapitalize,
+  autoCapitalize = 'none',
+  autoComplete = 'off',
+  textContentType = 'none',
   label,
   error,
   suffix,
@@ -203,6 +228,15 @@ const GlassInput = ({
             secureTextEntry={secureTextEntry}
             keyboardType={keyboardType}
             autoCapitalize={autoCapitalize}
+            autoCorrect={false}
+            spellCheck={false}
+            autoComplete={autoComplete}
+            textContentType={textContentType}
+            {...(Platform.OS === 'web' ? {
+              'data-lpignore': 'true',
+              'data-1p-ignore': 'true',
+              'data-form-type': 'other',
+            } : {})}
           />
           {suffix && <View style={{ zIndex: 3 }}>{suffix}</View>}
         </Pressable>
@@ -451,14 +485,55 @@ const LogoLockup = ({ entranceAnim }: { entranceAnim: Animated.Value }) => {
 // ─── Main SecurityQuestionsSetup Screen ────────────────────────────────────
 export default function SecurityQuestionsSetup() {
   const { profile, isProfileLoading, refreshProfile, getRoleRedirect, isPlatformAdmin } = useAuth();
+  const { width: windowWidth } = useWindowDimensions();
+  const isWide = windowWidth >= 960;
+
   const mustChangePassword = !!profile?.must_change_password;
   const [selectedQuestionKey, setSelectedQuestionKey] = useState(securityPrompts[0].key);
   const [selectedAnswer, setSelectedAnswer]           = useState('');
+  const [recoveryCode, setRecoveryCode]               = useState(() => generateUniqueRecoveryCode());
+  const [copiedCode, setCopiedCode]                   = useState(false);
   const [newPassword, setNewPassword]                 = useState('');
   const [confirmPassword, setConfirmPassword]         = useState('');
   const [showPassword, setShowPassword]               = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading]                         = useState(false);
+
+  const handleCopyCode = async () => {
+    try {
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(recoveryCode);
+      } else {
+        Clipboard.setString(recoveryCode);
+      }
+      setCopiedCode(true);
+      Toast.show({
+        type: 'success',
+        text1: 'Recovery Code Copied',
+        text2: 'Store this code safely. It can be used if you forget your answer.',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      setTimeout(() => setCopiedCode(false), 2500);
+    } catch {
+      Clipboard.setString(recoveryCode);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2500);
+    }
+  };
+
+  const handleRegenerateCode = () => {
+    const freshCode = generateUniqueRecoveryCode();
+    setRecoveryCode(freshCode);
+    setCopiedCode(false);
+    Toast.show({
+      type: 'info',
+      text1: 'New Recovery Code Generated',
+      text2: 'Make sure to copy and store your new code.',
+      position: 'top',
+      visibilityTime: 3000,
+    });
+  };
 
   // Entrance animations
   const cardFade     = useRef(new Animated.Value(0)).current;
@@ -519,9 +594,14 @@ export default function SecurityQuestionsSetup() {
           selectedQuestionKey,
           selectedAnswer.trim(),
           newPassword,
+          recoveryCode,
         );
       } else {
-        await SettingsService.setupSecurityQuestions(selectedQuestionKey, selectedAnswer.trim());
+        await SettingsService.setupSecurityQuestions(
+          selectedQuestionKey,
+          selectedAnswer.trim(),
+          recoveryCode,
+        );
       }
 
       // Explicitly sign out to invalidate current session and prevent stale session errors
@@ -541,8 +621,8 @@ export default function SecurityQuestionsSetup() {
         type: 'success',
         text1: 'Setup Complete',
         text2: isPasswordSetupRequired
-          ? 'Your password and security question have been updated. Please sign in with your new password.'
-          : 'Security question saved. Please sign in to continue.',
+          ? 'Your password, security question, and recovery code have been saved. Please sign in with your new password.'
+          : 'Security question and recovery code saved. Please sign in to continue.',
         position: 'top',
         visibilityTime: 6000,
       });
@@ -575,7 +655,7 @@ export default function SecurityQuestionsSetup() {
       <LivingBackground />
 
       <View style={{ flex: 1, backgroundColor: 'transparent' }}>
-        <SafeAreaView style={{ flex: 1, width: '100%', maxWidth: 540, alignSelf: 'center' }}>
+        <SafeAreaView style={{ flex: 1, width: '100%', maxWidth: isWide ? 1080 : 540, alignSelf: 'center' }}>
           <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -586,7 +666,7 @@ export default function SecurityQuestionsSetup() {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              {/* ── LIQUID GLASS CARD ─────────────────────────────────── */}
+              {/* ── RESPONSIVE LIQUID GLASS WRAPPER ────────────────── */}
               <Animated.View
                 style={{
                   opacity: cardFade,
@@ -594,233 +674,451 @@ export default function SecurityQuestionsSetup() {
                   width: '100%',
                 }}
               >
-                <GlassCard
-                  variant="modal"
-                  accentColor={FLAME}
-                  glowColor="rgba(255, 107, 0, 0.25)"
-                  borderRadius={28}
-                  style={{ width: '100%' }}
-                  contentStyle={{ padding: 36 }}
-                >
-                  {/* ── TOP ROW: Logo right ──────── */}
-                  <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    marginBottom: 28,
-                  }}>
-                    <LogoLockup entranceAnim={logoEntrance} />
-                  </View>
-
-                  {/* ── HEADING BLOCK — left-aligned, accent underline ── */}
-                  <View style={{ marginBottom: 30 }}>
-                    <Text style={{
-                      fontSize: 32,
-                      color: '#ffffff',
-                      fontWeight: '800',
-                      letterSpacing: -0.5,
-                      marginBottom: 6,
-                    }}>
-                      Security Setup
-                    </Text>
-
-                    {/* Accent underline bar */}
-                    <View style={{
-                      width: 44,
-                      height: 2.5,
-                      backgroundColor: FLAME,
-                      borderRadius: 2,
-                      marginBottom: 12,
-                      ...(Platform.OS === 'web' ? {
-                        boxShadow: `0 0 10px ${FLAME_GLOW}, 0 0 4px rgba(255,107,0,0.5)`,
-                      } : {}),
-                    } as any} />
-
-                    <Text style={{
-                      fontSize: 13,
-                      color: 'rgba(255,255,255,0.38)',
-                      lineHeight: 20,
-                    }}>
-                      Save your recovery question and set a new password to continue
-                    </Text>
-                  </View>
-
-                  {/* ── PICKER: SECURITY QUESTION ── */}
-                  <View style={{ marginBottom: 18 }}>
-                    <Text style={{
-                      color: 'rgba(255,255,255,0.45)',
-                      fontSize: 13,
-                      fontWeight: '600',
-                      letterSpacing: 0.4,
-                      marginBottom: 8,
-                      marginLeft: 4,
-                    }}>
-                      Security Question
-                    </Text>
-
-                    <View style={{
-                      height: 56,
-                      backgroundColor: INPUT_BG,
-                      borderWidth: 1,
-                      borderColor: GLASS_BORDER,
-                      borderRadius: 24,
-                      overflow: 'hidden',
-                      justifyContent: 'center',
-                      paddingHorizontal: 16,
-                      ...(Platform.OS === 'web' ? { outline: 'none' } : {}),
-                    }}>
-                      <Picker
-                        selectedValue={selectedQuestionKey}
-                        onValueChange={(v) => setSelectedQuestionKey(String(v))}
-                        style={{
-                          color: '#ffffff',
-                          backgroundColor: 'transparent',
-                          border: 'none',
-                          outline: 'none',
-                          fontSize: 14,
-                          fontWeight: '500',
-                        } as any}
-                        dropdownIconColor="rgba(255,255,255,0.6)"
-                      >
-                        {securityPrompts.map((question) => (
-                          <Picker.Item
-                            key={question.key}
-                            label={question.prompt}
-                            value={question.key}
-                            color={Platform.OS === 'web' ? '#000000' : '#ffffff'}
-                          />
-                        ))}
-                      </Picker>
-                    </View>
-                  </View>
-
-                  {/* ── ANSWER INPUT ── */}
-                  <GlassInput
-                    label="Answer"
-                    placeholder="Enter your security answer"
-                    value={selectedAnswer}
-                    onChangeText={setSelectedAnswer}
-                    autoCapitalize="none"
-                  />
-
-                  {/* ── PASSWORD SETUP FIELDS (IF REQUIRED) ── */}
-                  {isPasswordSetupRequired && (
-                    <>
-                      <GlassInput
-                        label="New Password"
-                        placeholder="At least 8 characters"
-                        value={newPassword}
-                        onChangeText={setNewPassword}
-                        secureTextEntry={!showPassword}
-                        autoCapitalize="none"
-                        suffix={
-                          <TouchableOpacity
-                            onPress={() => setShowPassword(!showPassword)}
-                            style={{ padding: 4 }}
-                            activeOpacity={0.7}
-                          >
-                            <IconIonicons
-                              name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                              size={20}
-                              color="rgba(255,255,255,0.35)"
-                            />
-                          </TouchableOpacity>
-                        }
-                      />
-
-                      {/* Live Password Requirements Checklist */}
-                      <View style={{ marginTop: -8, marginBottom: 18, paddingHorizontal: 4 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.4)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
-                          Password Requirements:
-                        </Text>
-                        {passwordStatuses.map((req) => (
-                          <View key={req.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 }}>
-                            <IconIonicons
-                              name={req.met ? "checkmark-circle" : "ellipse-outline"}
-                              size={14}
-                              color={req.met ? "#4ade80" : "rgba(255,255,255,0.3)"}
-                            />
-                            <Text style={{ fontSize: 12, color: req.met ? "#4ade80" : "rgba(255,255,255,0.5)", fontWeight: req.met ? '600' : '400' }}>
-                              {req.label}
-                            </Text>
-                          </View>
-                        ))}
+                <View style={{ flexDirection: isWide ? 'row' : 'column', gap: 24, alignItems: isWide ? 'flex-start' : 'stretch', width: '100%' }}>
+                  {/* ── LEFT COLUMN: SECURITY SETUP FORM CARD ── */}
+                  <View style={{ flex: isWide ? 1.2 : undefined, width: isWide ? undefined : '100%' }}>
+                    <GlassCard
+                      variant="modal"
+                      accentColor={FLAME}
+                      glowColor="rgba(255, 107, 0, 0.25)"
+                      borderRadius={28}
+                      style={{ width: '100%' }}
+                      contentStyle={{ padding: 36 }}
+                    >
+                      {/* ── TOP ROW: Logo right ──────── */}
+                      <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'flex-end',
+                        marginBottom: 28,
+                      }}>
+                        <LogoLockup entranceAnim={logoEntrance} />
                       </View>
 
-                      <GlassInput
-                        label="Confirm Password"
-                        placeholder="Re-enter your new password"
-                        value={confirmPassword}
-                        onChangeText={setConfirmPassword}
-                        secureTextEntry={!showConfirmPassword}
-                        autoCapitalize="none"
-                        suffix={
-                          <TouchableOpacity
-                            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                            style={{ padding: 4 }}
-                            activeOpacity={0.7}
+                      {/* ── HEADING BLOCK — left-aligned, accent underline ── */}
+                      <View style={{ marginBottom: 30 }}>
+                        <Text style={{
+                          fontSize: 32,
+                          color: '#ffffff',
+                          fontWeight: '800',
+                          letterSpacing: -0.5,
+                          marginBottom: 6,
+                        }}>
+                          Security Setup
+                        </Text>
+
+                        {/* Accent underline bar */}
+                        <View style={{
+                          width: 44,
+                          height: 2.5,
+                          backgroundColor: FLAME,
+                          borderRadius: 2,
+                          marginBottom: 12,
+                          ...(Platform.OS === 'web' ? {
+                            boxShadow: `0 0 10px ${FLAME_GLOW}, 0 0 4px rgba(255,107,0,0.5)`,
+                          } : {}),
+                        } as any} />
+
+                        <Text style={{
+                          fontSize: 13,
+                          color: 'rgba(255,255,255,0.38)',
+                          lineHeight: 20,
+                        }}>
+                          Save your recovery question and set a new password to continue
+                        </Text>
+                      </View>
+
+                      {/* ── PICKER: SECURITY QUESTION ── */}
+                      <View style={{ marginBottom: 18 }}>
+                        <Text style={{
+                          color: 'rgba(255,255,255,0.45)',
+                          fontSize: 13,
+                          fontWeight: '600',
+                          letterSpacing: 0.4,
+                          marginBottom: 8,
+                          marginLeft: 4,
+                        }}>
+                          Security Question
+                        </Text>
+
+                        <View style={{
+                          height: 56,
+                          backgroundColor: INPUT_BG,
+                          borderWidth: 1,
+                          borderColor: GLASS_BORDER,
+                          borderRadius: 24,
+                          overflow: 'hidden',
+                          justifyContent: 'center',
+                          paddingHorizontal: 16,
+                          ...(Platform.OS === 'web' ? { outline: 'none' } : {}),
+                        }}>
+                          <Picker
+                            selectedValue={selectedQuestionKey}
+                            onValueChange={(v) => setSelectedQuestionKey(String(v))}
+                            style={{
+                              color: '#ffffff',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              outline: 'none',
+                              fontSize: 14,
+                              fontWeight: '500',
+                            } as any}
+                            dropdownIconColor="rgba(255,255,255,0.6)"
                           >
-                            <IconIonicons
-                              name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
-                              size={20}
-                              color="rgba(255,255,255,0.35)"
-                            />
-                          </TouchableOpacity>
-                        }
+                            {securityPrompts.map((question) => (
+                              <Picker.Item
+                                key={question.key}
+                                label={question.prompt}
+                                value={question.key}
+                                color={Platform.OS === 'web' ? '#000000' : '#ffffff'}
+                              />
+                            ))}
+                          </Picker>
+                        </View>
+                      </View>
+
+                      {/* ── ANSWER INPUT ── */}
+                      <GlassInput
+                        label="Answer"
+                        placeholder="Enter your security answer"
+                        value={selectedAnswer}
+                        onChangeText={setSelectedAnswer}
+                        autoCapitalize="none"
+                        autoComplete="off"
+                        textContentType="none"
                       />
 
-                      {/* Live Password Match Indicator */}
-                      {confirmPassword.length > 0 && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -10, marginBottom: 18, marginLeft: 4, gap: 6 }}>
-                          <IconIonicons
-                            name={passwordsMatch ? "checkmark-circle" : "close-circle"}
-                            size={14}
-                            color={passwordsMatch ? "#4ade80" : "#f87171"}
+                      {/* ── UNIQUE RECOVERY CODE BLOCK ── */}
+                      <View style={{
+                        marginBottom: 20,
+                        padding: 18,
+                        borderRadius: 20,
+                        backgroundColor: 'rgba(255, 107, 0, 0.05)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(255, 107, 0, 0.22)',
+                      }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                            <IconIonicons name="key-outline" size={16} color={FLAME} />
+                            <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '700', letterSpacing: 0.3 }}>
+                              Emergency Recovery Code
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={handleRegenerateCode}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 2, paddingHorizontal: 6 }}
+                            activeOpacity={0.7}
+                          >
+                            <IconIonicons name="refresh" size={12} color="rgba(255,255,255,0.5)" />
+                            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '600' }}>
+                              Regenerate
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, lineHeight: 17, marginBottom: 12 }}>
+                          Unique emergency code. You can use this to recover your account if you forget your security question answer.
+                        </Text>
+
+                        {/* Code Display + Copy Button */}
+                        <View style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          backgroundColor: 'rgba(0,0,0,0.35)',
+                          borderRadius: 16,
+                          borderWidth: 1,
+                          borderColor: copiedCode ? 'rgba(74, 222, 128, 0.4)' : 'rgba(255,255,255,0.08)',
+                          paddingLeft: 16,
+                          paddingRight: 6,
+                          paddingVertical: 6,
+                          gap: 8,
+                        }}>
+                          <Text
+                            selectable
+                            style={{
+                              color: copiedCode ? '#4ade80' : '#ffffff',
+                              fontSize: 15,
+                              fontWeight: '700',
+                              letterSpacing: 2,
+                              fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
+                              flex: 1,
+                            }}
+                          >
+                            {recoveryCode}
+                          </Text>
+
+                          <TouchableOpacity
+                            onPress={handleCopyCode}
+                            activeOpacity={0.8}
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 6,
+                              paddingHorizontal: 14,
+                              paddingVertical: 10,
+                              borderRadius: 12,
+                              backgroundColor: copiedCode ? 'rgba(74, 222, 128, 0.15)' : 'rgba(255,107,0,0.18)',
+                              borderWidth: 1,
+                              borderColor: copiedCode ? 'rgba(74, 222, 128, 0.4)' : 'rgba(255,107,0,0.35)',
+                            }}
+                          >
+                            <IconIonicons
+                              name={copiedCode ? 'checkmark-circle' : 'copy-outline'}
+                              size={15}
+                              color={copiedCode ? '#4ade80' : FLAME}
+                            />
+                            <Text style={{
+                              color: copiedCode ? '#4ade80' : '#ffffff',
+                              fontSize: 12,
+                              fontWeight: '700',
+                            }}>
+                              {copiedCode ? 'Copied!' : 'Copy Code'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      {/* ── PASSWORD SETUP FIELDS (IF REQUIRED) ── */}
+                      {isPasswordSetupRequired && (
+                        <>
+                          <GlassInput
+                            label="New Password"
+                            placeholder="At least 8 characters"
+                            value={newPassword}
+                            onChangeText={setNewPassword}
+                            secureTextEntry={!showPassword}
+                            autoCapitalize="none"
+                            autoComplete="new-password"
+                            textContentType="none"
+                            suffix={
+                              <TouchableOpacity
+                                onPress={() => setShowPassword(!showPassword)}
+                                style={{ padding: 4 }}
+                                activeOpacity={0.7}
+                              >
+                                <IconIonicons
+                                  name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                                  size={20}
+                                  color="rgba(255,255,255,0.35)"
+                                />
+                              </TouchableOpacity>
+                            }
                           />
-                          <Text style={{ fontSize: 12, fontWeight: '600', color: passwordsMatch ? "#4ade80" : "#f87171" }}>
-                            {passwordsMatch ? "Passwords match" : "Passwords do not match"}
+
+                          {/* Live Password Requirements Checklist */}
+                          <View style={{ marginTop: -8, marginBottom: 18, paddingHorizontal: 4 }}>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.4)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
+                              Password Requirements:
+                            </Text>
+                            {passwordStatuses.map((req) => (
+                              <View key={req.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 6 }}>
+                                <IconIonicons
+                                  name={req.met ? "checkmark-circle" : "ellipse-outline"}
+                                  size={14}
+                                  color={req.met ? "#4ade80" : "rgba(255,255,255,0.3)"}
+                                />
+                                <Text style={{ fontSize: 12, color: req.met ? "#4ade80" : "rgba(255,255,255,0.5)", fontWeight: req.met ? '600' : '400' }}>
+                                  {req.label}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+
+                          <GlassInput
+                            label="Confirm Password"
+                            placeholder="Re-enter your new password"
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            secureTextEntry={!showConfirmPassword}
+                            autoCapitalize="none"
+                            autoComplete="new-password"
+                            textContentType="none"
+                            suffix={
+                              <TouchableOpacity
+                                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                style={{ padding: 4 }}
+                                activeOpacity={0.7}
+                              >
+                                <IconIonicons
+                                  name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
+                                  size={20}
+                                  color="rgba(255,255,255,0.35)"
+                                />
+                              </TouchableOpacity>
+                            }
+                          />
+
+                          {/* Live Password Match Indicator */}
+                          {confirmPassword.length > 0 && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: -10, marginBottom: 18, marginLeft: 4, gap: 6 }}>
+                              <IconIonicons
+                                name={passwordsMatch ? "checkmark-circle" : "close-circle"}
+                                size={14}
+                                color={passwordsMatch ? "#4ade80" : "#f87171"}
+                              />
+                              <Text style={{ fontSize: 12, fontWeight: '600', color: passwordsMatch ? "#4ade80" : "#f87171" }}>
+                                {passwordsMatch ? "Passwords match" : "Passwords do not match"}
+                              </Text>
+                            </View>
+                          )}
+                        </>
+                      )}
+
+                      {/* Specific Inline Error for whichever condition is failing */}
+                      {inlineValidationError && (selectedAnswer.length > 0 || newPassword.length > 0 || confirmPassword.length > 0) && (
+                        <View style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          marginBottom: 14,
+                          paddingHorizontal: 12,
+                          paddingVertical: 10,
+                          borderRadius: 14,
+                          backgroundColor: 'rgba(239,68,68,0.12)',
+                          borderWidth: 1,
+                          borderColor: 'rgba(239,68,68,0.25)',
+                          gap: 8,
+                        }}>
+                          <IconIonicons name="alert-circle" size={16} color="#fca5a5" />
+                          <Text style={{ color: '#fca5a5', fontSize: 12, fontWeight: '600', flex: 1 }}>
+                            {inlineValidationError}
                           </Text>
                         </View>
                       )}
-                    </>
-                  )}
 
-                  {/* Specific Inline Error for whichever condition is failing */}
-                  {inlineValidationError && (selectedAnswer.length > 0 || newPassword.length > 0 || confirmPassword.length > 0) && (
-                    <View style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      marginBottom: 14,
-                      paddingHorizontal: 12,
-                      paddingVertical: 10,
-                      borderRadius: 14,
-                      backgroundColor: 'rgba(239,68,68,0.12)',
-                      borderWidth: 1,
-                      borderColor: 'rgba(239,68,68,0.25)',
-                      gap: 8,
-                    }}>
-                      <IconIonicons name="alert-circle" size={16} color="#fca5a5" />
-                      <Text style={{ color: '#fca5a5', fontSize: 12, fontWeight: '600', flex: 1 }}>
-                        {inlineValidationError}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* ── SUBMIT BUTTON ── */}
-                  <View style={{ marginTop: 6 }}>
-                    <PrimaryButton
-                      title={
-                        isPasswordSetupRequired
-                          ? 'Save & Update Password'
-                          : 'Save Security Question'
-                      }
-                      onPress={submit}
-                      loading={loading}
-                      disabled={!isFormValid || loading || isProfileLoading}
-                      scale={btnScale}
-                    />
+                      {/* ── SUBMIT BUTTON ── */}
+                      <View style={{ marginTop: 6 }}>
+                        <PrimaryButton
+                          title={
+                            isPasswordSetupRequired
+                              ? 'Save & Update Password'
+                              : 'Save Security Question'
+                          }
+                          onPress={submit}
+                          loading={loading}
+                          disabled={!isFormValid || loading || isProfileLoading}
+                          scale={btnScale}
+                        />
+                      </View>
+                    </GlassCard>
                   </View>
-                </GlassCard>
+
+                  {/* ── RIGHT COLUMN: SIDE INFORMATION PANEL ── */}
+                  <View style={{ flex: isWide ? 0.95 : undefined, width: isWide ? undefined : '100%' }}>
+                    <GlassCard
+                      variant="modal"
+                      accentColor={FLAME}
+                      glowColor="rgba(255, 107, 0, 0.2)"
+                      borderRadius={28}
+                      style={{ width: '100%' }}
+                      contentStyle={{ padding: 28 }}
+                    >
+                      {/* Header with Icon */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+                        <View style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: 15,
+                          backgroundColor: 'rgba(255,107,0,0.15)',
+                          borderWidth: 1,
+                          borderColor: 'rgba(255,107,0,0.35)',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                          <IconIonicons name="shield-checkmark" size={24} color={FLAME} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: '#ffffff', fontSize: 18, fontWeight: '800', letterSpacing: -0.2 }}>
+                            Important Security Notice
+                          </Text>
+                          <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>
+                            Save your credentials before leaving
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Prominent reminder alert callout */}
+                      <View style={{
+                        backgroundColor: 'rgba(255, 107, 0, 0.08)',
+                        borderLeftWidth: 3,
+                        borderLeftColor: FLAME,
+                        borderRadius: 12,
+                        padding: 14,
+                        marginBottom: 20,
+                      }}>
+                        <Text style={{ color: '#ffffff', fontSize: 13, lineHeight: 19, fontWeight: '700' }}>
+                          Remember your security question answer and store both your answer and recovery code safely.
+                        </Text>
+                        <Text style={{ color: 'rgba(255,255,255,0.68)', fontSize: 12, lineHeight: 18, marginTop: 6 }}>
+                          These credentials will be strictly required to verify your identity and restore access if you ever forget your password.
+                        </Text>
+                      </View>
+
+                      {/* Step-by-step guidance list */}
+                      <View style={{ gap: 16 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                          <View style={{ marginTop: 2, width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' }}>
+                            <IconIonicons name="help-circle-outline" size={14} color={FLAME} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '700', marginBottom: 2 }}>
+                              1. Remember Your Answer
+                            </Text>
+                            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, lineHeight: 17 }}>
+                              Your security answer is case-insensitive, but spelling must match. Record or memorize it accurately.
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                          <View style={{ marginTop: 2, width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' }}>
+                            <IconIonicons name="copy-outline" size={14} color={FLAME} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '700', marginBottom: 2 }}>
+                              2. Store Your Recovery Code
+                            </Text>
+                            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, lineHeight: 17 }}>
+                              Copy and save your unique recovery code into a password manager, encrypted note, or secure physical location.
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                          <View style={{ marginTop: 2, width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' }}>
+                            <IconIonicons name="refresh-circle-outline" size={14} color={FLAME} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '700', marginBottom: 2 }}>
+                              3. Emergency Password Reset
+                            </Text>
+                            <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, lineHeight: 17 }}>
+                              If you ever forget your password, you can reset it with your security answer. If you also forget the answer, this recovery code is your emergency bypass.
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Hashing privacy notice */}
+                      <View style={{
+                        marginTop: 22,
+                        padding: 12,
+                        borderRadius: 14,
+                        backgroundColor: 'rgba(255,255,255,0.03)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(255,255,255,0.08)',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 10,
+                      }}>
+                        <IconIonicons name="lock-closed-outline" size={16} color="rgba(255,255,255,0.4)" />
+                        <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, flex: 1, lineHeight: 16 }}>
+                          Answers and recovery codes are salted and cryptographically hashed before being stored in Cloudora.
+                        </Text>
+                      </View>
+                    </GlassCard>
+                  </View>
+                </View>
               </Animated.View>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -840,6 +1138,17 @@ export default function SecurityQuestionsSetup() {
             outline: none !important;
             box-shadow: none !important;
             padding: 0 !important;
+          }
+          /* Autofill kill */
+          input:-webkit-autofill,
+          input:-webkit-autofill:hover,
+          input:-webkit-autofill:focus,
+          input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0px 1000px #08051c inset !important;
+            box-shadow: 0 0 0px 1000px #08051c inset !important;
+            -webkit-text-fill-color: rgba(255,255,255,0.95) !important;
+            caret-color: white !important;
+            transition: background-color 9999s ease-in-out 0s;
           }
           select {
             background-color: transparent !important;

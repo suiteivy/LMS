@@ -56,6 +56,9 @@ const GlassInput = ({
   label,
   error,
   suffix,
+  onSubmitEditing,
+  returnKeyType,
+  ...rest
 }: any) => {
   const [focused, setFocused] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -212,6 +215,26 @@ const GlassInput = ({
             secureTextEntry={secureTextEntry}
             keyboardType={keyboardType}
             autoCapitalize={autoCapitalize}
+            returnKeyType={returnKeyType || "go"}
+            onSubmitEditing={onSubmitEditing}
+            onKeyPress={(e: any) => {
+              if (Platform.OS === "web" && (e?.key === "Enter" || e?.nativeEvent?.key === "Enter")) {
+                if (onSubmitEditing) {
+                  onSubmitEditing();
+                }
+              }
+            }}
+            {...(Platform.OS === "web" ? {
+              onKeyDown: (e: any) => {
+                if (e?.key === "Enter") {
+                  e?.preventDefault?.();
+                  if (onSubmitEditing) {
+                    onSubmitEditing();
+                  }
+                }
+              },
+            } : {})}
+            {...rest}
           />
           {suffix && <View style={{ zIndex: 3 }}>{suffix}</View>}
         </Pressable>
@@ -804,6 +827,8 @@ export default function SignIn() {
                       keyboardType="email-address"
                       autoCapitalize="none"
                       error={errors.email}
+                      returnKeyType="go"
+                      onSubmitEditing={onSubmit}
                     />
                   </Animated.View>
 
@@ -816,6 +841,8 @@ export default function SignIn() {
                       onChangeText={(v: string) => handleInputChange("password", v)}
                       secureTextEntry={!showPassword}
                       error={errors.password}
+                      returnKeyType="go"
+                      onSubmitEditing={onSubmit}
                       suffix={
                         <TouchableOpacity
                           onPress={() => setShowPassword(!showPassword)}
