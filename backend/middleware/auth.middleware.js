@@ -192,13 +192,15 @@ async function authMiddleware(req, res, next) {
           const cleanIp = ipAddress;
           if (cleanIp !== '::1' && cleanIp !== '127.0.0.1' && !cleanIp.startsWith('192.168.') && !cleanIp.startsWith('10.')) {
             try {
-              const resLoc = await fetch(`http://ip-api.com/json/${cleanIp}?fields=status,message,country,city`);
+              const resLoc = await fetch(`http://ip-api.com/json/${cleanIp}?fields=status,message,country,city`, {
+                signal: AbortSignal.timeout ? AbortSignal.timeout(1500) : undefined,
+              });
               const dataLoc = await resLoc.json();
               if (dataLoc?.status === 'success') {
                 location = `${dataLoc.city}, ${dataLoc.country}`;
               }
             } catch (e) {
-              console.warn("Location lookup failed", e.message);
+              // Non-blocking fallback on network or DNS timeout
             }
           } else {
             location = 'Local Network';
@@ -366,7 +368,7 @@ async function authMiddleware(req, res, next) {
           return res.status(503).json({ error: 'Authentication service unavailable', code: 'AUTH_SERVICE_UNAVAILABLE' });
         }
         console.error(`[AuthMiddleware] Profile fetch error for ${user.id}:`, msg);
-        return res.status(403).json({ error: "Unauthorized" });
+        return res.status(401).json({ error: "Invalid session or user profile not found", code: "SESSION_INVALID" });
       }
 
       // Check account data retention period expiration

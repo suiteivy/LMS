@@ -17,15 +17,19 @@ function getClient() {
         }
 
         if (!supabaseUrl || !supabaseKey) {
-            console.error("ERROR: Supabase URL or Key missing during initialization.");
+            console.warn("WARNING: Supabase URL or Key missing during initialization. Using placeholder fallback.");
         }
-        supabaseInstance = createClient(supabaseUrl, supabaseKey, {
-            auth: {
-                persistSession: false,
-                autoRefreshToken: false,
-                detectSessionInUrl: false
+        supabaseInstance = createClient(
+            supabaseUrl || 'https://placeholder-domain-for-testing.supabase.co',
+            supabaseKey || 'placeholder-anon-key-for-testing',
+            {
+                auth: {
+                    persistSession: false,
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false
+                }
             }
-        });
+        );
     }
     return supabaseInstance;
 }

@@ -248,13 +248,17 @@ const getReportCard = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Report card not found' });
     }
 
-    const { data: rankings, error: rankError } = await supabase
-      .from('class_rankings')
-      .select('*')
-      .eq('report_card_id', id)
-      .maybeSingle();
-
-    if (rankError) console.error('Rankings fetch error:', rankError);
+    let rankings = null;
+    try {
+      const { data: rankData } = await supabase
+        .from('class_rankings')
+        .select('*')
+        .eq('report_card_id', id)
+        .maybeSingle();
+      rankings = rankData || null;
+    } catch {
+      rankings = null;
+    }
 
     if (req.user?.role === 'student' && data.status !== 'released') {
       return res.status(403).json({ success: false, error: 'Report card is not yet released' });
@@ -970,7 +974,7 @@ const exportReportCardPDF = async (req, res) => {
             subject_id,
             topic_area_id,
             descriptor,
-            subject_topic_areas (title)
+            subject_topic_areas (name)
           `)
           .eq('student_id', reportCard.student_id)
           .eq('institution_id', institution_id);
@@ -985,7 +989,7 @@ const exportReportCardPDF = async (req, res) => {
             if (!grouped[e.subject_id]) grouped[e.subject_id] = {};
             if (!grouped[e.subject_id][e.topic_area_id]) {
               grouped[e.subject_id][e.topic_area_id] = {
-                title: e.subject_topic_areas?.title || 'Topic Area',
+                title: e.subject_topic_areas?.name || 'Topic Area',
                 scores: []
               };
             }

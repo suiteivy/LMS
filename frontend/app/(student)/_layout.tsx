@@ -26,7 +26,6 @@ const NAV_ITEMS: NavItem[] = [
   { name: "grades", title: "Performance", icon: Star, route: "/(student)/grades" },
   { name: "library", title: "Library", icon: Glasses, route: "/(student)/library" },
   { name: "assignments", title: "Assignments", icon: PenBox, route: "/(student)/assignments" },
-  { name: "finance", title: "Finances", icon: CreditCard, route: "/(student)/finance" },
   { name: "diary", title: "Diary", icon: BookOpen, route: "/(student)/diary" },
   { name: "vault", title: "Academic Vault", icon: BookOpen, route: "/(student)/vault" },
   { name: "notifications", title: "Updates", icon: MessageSquare, route: "/(student)/notifications" },

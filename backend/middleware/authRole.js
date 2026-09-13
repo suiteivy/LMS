@@ -10,7 +10,7 @@ function normalizeRoleName(role) {
   const value = String(role || '').trim().toLowerCase();
   if (!value) return null;
 
-  if (value === 'bursar') return 'bursary';
+  if (value === 'bursar' || value === 'bursary' || value === 'finance_admin' || value === 'finance_administrator') return 'finance_administrator';
   if (value === 'school_admin') return 'admin';
   if (value === 'platform_admin') return 'master_admin';
 
@@ -25,7 +25,11 @@ function expandRoleAliases(role) {
 
   if (normalized === 'admin') expanded.add('school_admin');
   if (normalized === 'master_admin') expanded.add('platform_admin');
-  if (normalized === 'bursary') expanded.add('bursar');
+  if (normalized === 'finance_administrator') {
+    expanded.add('bursary');
+    expanded.add('bursar');
+    expanded.add('finance_admin');
+  }
 
   return Array.from(expanded);
 }
@@ -188,5 +192,49 @@ function authorizeMainAdmin() {
   };
 }
 
-module.exports = { authorizeRoles, authorizePermissions, authorizeLibrarian, authorizeMainAdmin };
+/**
+ * Middleware to check if user has the Finance Administrator designation
+ * or is Main Admin / Master Admin.
+ */
+function authorizeFinanceAdmin() {
+  return (req, res, next) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
 
+      if (user.role === 'master_admin' || user.is_platform_admin) {
+        return next();
+      }
+
+      if (user.role === 'admin' && user.is_main) {
+        return next();
+      }
+
+      if (user.is_finance_admin || req.isFinanceAdmin) {
+        return next();
+      }
+
+      const availableRoles = new Set((user.available_roles || []).map(r => String(r).toLowerCase()));
+      if (
+        availableRoles.has('finance_administrator') ||
+        availableRoles.has('finance_admin') ||
+        availableRoles.has('bursary') ||
+        availableRoles.has('bursar')
+      ) {
+        return next();
+      }
+
+      return res.status(403).json({
+        error: "Access denied: Finance Administrator designation required.",
+        code: "FINANCE_ADMIN_REQUIRED"
+      });
+    } catch (err) {
+      console.error("authorizeFinanceAdmin error:", err);
+      res.status(500).json({ error: "Authorization error" });
+    }
+  };
+}
+
+module.exports = { authorizeRoles, authorizePermissions, authorizeLibrarian, authorizeMainAdmin, authorizeFinanceAdmin };

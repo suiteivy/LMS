@@ -249,6 +249,67 @@ export interface FeeStructure {
   bursary_percentage?: number;
   effective_date?: string;
   is_active: boolean;
+  scope_type?: 'institution' | 'level' | 'class' | 'student';
+  class_id?: string | null;
+  student_id?: string | null;
+  level_type?: string | null;
+  is_override?: boolean;
+  components?: FeeComponent[];
+}
+
+export interface FeeComponent {
+  id?: string;
+  institution_id?: string;
+  fee_structure_id?: string;
+  name: string;
+  code?: string | null;
+  amount: number;
+  is_mandatory?: boolean;
+  is_optional?: boolean;
+  category?: 'core' | 'optional' | 'levy' | 'activity' | 'boarding' | 'other' | string;
+  frequency?: 'term' | 'annual' | 'one_time';
+  description?: string | null;
+  is_active?: boolean;
+}
+
+export interface FeeDiscountOrWaiver {
+  id: string;
+  institution_id?: string;
+  student_id: string;
+  academic_year_id?: string | null;
+  term_id?: string | null;
+  fee_component_id?: string | null;
+  fee_components?: { id: string; name: string; amount: number };
+  type: 'discount' | 'waiver' | 'scholarship' | 'sibling_discount' | 'hardship' | 'staff_benefit' | 'other';
+  discount_type: 'fixed' | 'percentage';
+  value: number;
+  reason: string;
+  approved_by?: string | null;
+  status: 'active' | 'revoked' | 'expired';
+  calculated_discount_amount?: number;
+  created_at?: string;
+}
+
+export interface StudentFeeInvoice {
+  id: string;
+  institution_id: string;
+  student_id: string;
+  academic_year_id?: string | null;
+  term_id?: string | null;
+  fee_structure_id?: string | null;
+  invoice_number: string;
+  issue_date: string;
+  due_date?: string | null;
+  gross_amount: number;
+  discount_amount: number;
+  net_amount: number;
+  paid_amount: number;
+  balance_due: number;
+  status: 'unpaid' | 'partial' | 'paid' | 'overdue' | 'cancelled';
+  itemized_breakdown: FeeComponent[];
+  notes?: string | null;
+  fee_structures?: { id: string; title: string; due_date: string };
+  created_at?: string;
 }
 
 export interface AdminDashboardProps extends BaseComponentProps {

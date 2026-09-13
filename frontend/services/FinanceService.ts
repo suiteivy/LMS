@@ -269,4 +269,69 @@ export class FinanceService {
         const response = await api.post('/finance/individual-records/adjust', payload);
         return response.data;
     }
+
+    /**
+     * Discrete Fee Components
+     */
+    static async getFeeComponents(feeStructureId: string) {
+        const response = await api.get(`/finance/components/${feeStructureId}`);
+        return response.data;
+    }
+
+    static async createFeeComponent(payload: any) {
+        const response = await api.post('/finance/components', payload);
+        return response.data;
+    }
+
+    static async updateFeeComponent(id: string, payload: any) {
+        const response = await api.put(`/finance/components/${id}`, payload);
+        return response.data;
+    }
+
+    static async deleteFeeComponent(id: string) {
+        const response = await api.delete(`/finance/components/${id}`);
+        return response.data;
+    }
+
+    /**
+     * Fee Discounts, Scholarships, and Waivers
+     */
+    static async getStudentDiscounts(studentId: string) {
+        const response = await api.get(`/finance/discounts/${encodeURIComponent(studentId)}`);
+        return response.data;
+    }
+
+    static async createDiscountOrWaiver(payload: any) {
+        const response = await api.post('/finance/discounts', payload);
+        return response.data;
+    }
+
+    static async revokeDiscountOrWaiver(id: string) {
+        const response = await api.post(`/finance/discounts/${id}/revoke`);
+        return response.data;
+    }
+
+    /**
+     * Billing Statements & Invoices
+     */
+    static async generateStudentInvoice(studentIdOrPayload: string | any, options?: any) {
+        const payload = typeof studentIdOrPayload === 'string'
+            ? { student_id: studentIdOrPayload, ...options }
+            : studentIdOrPayload;
+        const response = await api.post('/finance/invoices/generate', payload);
+        return response.data;
+    }
+
+    static async getStudentInvoices(studentId: string) {
+        const response = await api.get(`/finance/invoices/${encodeURIComponent(studentId)}`);
+        return response.data;
+    }
+
+    /**
+     * Overdue Reminders Sweep
+     */
+    static async sendOverdueReminders() {
+        const response = await api.post('/finance/reminders/overdue');
+        return response.data;
+    }
 }

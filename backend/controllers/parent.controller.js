@@ -2,6 +2,7 @@ const supabase = require("../utils/supabaseClient.js");
 const { buildClassLabel } = require('../utils/classLabel');
 const { resolveActiveTerm } = require('../utils/resolveActiveTerm');
 const { getStudentCurrentClassEnrollment } = require('../utils/studentClassEnrollment');
+const { computeStudentFinancialAssessment } = require('../utils/feePrecedenceEngine.js');
 
 const normalizeText = (value) => {
     if (typeof value !== 'string') return '';
@@ -255,7 +256,7 @@ exports.getStudentFinance = async (req, res) => {
                 : classLevel?.form_level,
         };
 
-        // 3. Get fee structures and resolve active/applicable rows using the same active-term strategy as admin finance
+        // 3. Get fee structures and resolve active/applicable rows using the precedence engine
         const activeTerm = await resolveActiveTerm(student.institution_id);
 
         const { data: feeStructureRows } = await supabase
@@ -264,17 +265,6 @@ exports.getStudentFinance = async (req, res) => {
             .eq('institution_id', student.institution_id)
             .order('created_at', { ascending: false });
 
-        const feeStructures = (feeStructureRows || [])
-            .filter((row) => !!row.is_active)
-            .filter((row) => isFeeStructureActiveForTerm(row, activeTerm))
-            .filter((row) => isFeeStructureApplicableToStudent(row, effectiveStudent))
-            .map((row) => ({ ...row, is_active: true }));
-
-        const hasActiveReleasedStructures = feeStructures.length > 0;
-        const totalFees = hasActiveReleasedStructures
-            ? (feeStructures || []).reduce((sum, fee) => sum + Number(fee.amount || 0), 0)
-            : 0;
-
         // 4. Get payment history from payments table
         const { data: paymentRows } = await supabase
             .from('payments')
@@ -282,17 +272,33 @@ exports.getStudentFinance = async (req, res) => {
             .eq('student_id', studentId)
             .order('payment_date', { ascending: false });
 
-        const paidAmount = hasActiveReleasedStructures
-            ? (paymentRows || [])
-                .filter((p) => p.status === 'completed')
-                .reduce((sum, p) => sum + Number(p.amount || 0), 0)
-            : 0;
+        // 5. Get active discounts/scholarships/waivers
+        let discounts = [];
+        try {
+            const { data: waiverData } = await supabase
+                .from('fee_discounts_waivers')
+                .select('*, fee_components(id, name, amount)')
+                .eq('institution_id', student.institution_id)
+                .eq('student_id', studentId)
+                .eq('status', 'active');
+            discounts = waiverData || [];
+        } catch (wErr) {
+            discounts = [];
+        }
 
-        const pendingAmount = Math.max(totalFees - paidAmount, 0);
+        const assessment = await computeStudentFinancialAssessment({
+            institution_id: student.institution_id,
+            student: effectiveStudent,
+            activeTerm,
+            feeStructures: feeStructureRows || [],
+            payments: paymentRows || [],
+            discounts,
+        });
 
-        // Prefer derived balance from active fee structures; fallback to stored student fee balance when no structures exist
-        const derivedBalance = Math.max(totalFees - paidAmount, 0);
-        const balance = hasActiveReleasedStructures ? derivedBalance : 0;
+        const totalFees = assessment.netAssessed;
+        const paidAmount = assessment.totalPaid;
+        const pendingAmount = Math.max(assessment.netBalance, 0);
+        const balance = assessment.netBalance;
 
         const enrichedTransactions = (paymentRows || []).map((p) => ({
             id: p.id,
@@ -320,10 +326,15 @@ exports.getStudentFinance = async (req, res) => {
         res.json({
             balance,
             total_fees: totalFees,
+            gross_fees: assessment.grossAmount,
+            total_discount: assessment.totalDiscount,
             paid_amount: paidAmount,
             pending_amount: pendingAmount,
             paid_percentage: paidPercentage,
-            fee_structures: feeStructures || [],
+            matched_tier: assessment.matchedTier,
+            fee_structures: assessment.feeStructure ? [assessment.feeStructure] : [],
+            components: assessment.components || [],
+            discounts: assessment.appliedDiscounts || [],
             transactions: enrichedTransactions,
         });
     } catch (err) {

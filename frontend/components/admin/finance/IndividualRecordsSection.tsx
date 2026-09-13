@@ -64,6 +64,19 @@ export const IndividualRecordsSection: React.FC = () => {
   const [adjustReason, setAdjustReason] = useState('');
   const [adjusting, setAdjusting] = useState(false);
 
+  // Discount & Waiver modal
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [discountName, setDiscountName] = useState('');
+  const [discountType, setDiscountType] = useState<string>('scholarship');
+  const [discountValueType, setDiscountValueType] = useState<'fixed' | 'percentage'>('fixed');
+  const [discountValue, setDiscountValue] = useState('');
+  const [discountScope, setDiscountScope] = useState<'whole_fee' | 'component'>('whole_fee');
+  const [discountTargetCategory, setDiscountTargetCategory] = useState<string>('tuition');
+  const [grantingDiscount, setGrantingDiscount] = useState(false);
+
+  // Invoicing state
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
+
   // Search debounce
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -171,6 +184,64 @@ export const IndividualRecordsSection: React.FC = () => {
     }
   };
 
+  const handleGrantDiscount = async () => {
+    if (!selectedPerson) return;
+    const numVal = parseFloat(discountValue);
+    if (isNaN(numVal) || numVal <= 0) {
+      showError('Invalid Value', 'Please enter a valid positive discount/waiver value.');
+      return;
+    }
+    if (!discountName.trim()) {
+      showError('Name Required', 'Please enter a title/name for this discount or waiver.');
+      return;
+    }
+
+    try {
+      setGrantingDiscount(true);
+      await FinanceService.createDiscountOrWaiver({
+        student_id: selectedPerson.id,
+        name: discountName.trim(),
+        discount_type: discountType,
+        value_type: discountValueType,
+        value: numVal,
+        target_scope: discountScope,
+        target_component_category: discountScope === 'component' ? discountTargetCategory : undefined,
+        academic_year_id: recordData?.academic_year_id,
+        term_id: recordData?.term_id,
+        reason: discountName.trim(),
+      });
+      showSuccess('Discount Granted', `Successfully granted ${discountName} to ${selectedPerson.name}.`);
+      setShowDiscountModal(false);
+      setDiscountName('');
+      setDiscountValue('');
+      await loadFinancialRecord(selectedPerson);
+    } catch (err: any) {
+      showError('Grant Failed', err?.message || 'Could not record discount/waiver');
+    } finally {
+      setGrantingDiscount(false);
+    }
+  };
+
+  const handleGenerateInvoice = async () => {
+    if (!selectedPerson || !recordData) return;
+    try {
+      setGeneratingInvoice(true);
+      const invoice = await FinanceService.generateStudentInvoice(selectedPerson.id, {
+        academic_year_id: recordData.academic_year_id,
+        term_id: recordData.term_id,
+      });
+      showSuccess(
+        'Invoice Generated',
+        `Invoice ${invoice.invoice_number || 'created'}. Balance: ${formatMoney(invoice.balance_due ?? 0)}`
+      );
+      await loadFinancialRecord(selectedPerson);
+    } catch (err: any) {
+      showError('Invoice Failed', err?.message || 'Could not generate student invoice');
+    } finally {
+      setGeneratingInvoice(false);
+    }
+  };
+
   const handlePrintStatement = async () => {
     if (!selectedPerson || !recordData) return;
 
@@ -194,6 +265,26 @@ export const IndividualRecordsSection: React.FC = () => {
           <tr>
             <td style="padding: 8px; border-bottom: 1px solid #ddd;">${f.name || f.academic_year || 'Tuition'}</td>
             <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right; font-weight: bold;">${formatMoney(f.amount || f.base_fee)}</td>
+          </tr>`
+        )
+        .join('');
+
+      const componentsRows = (recordData.components || [])
+        .map(
+          (c: any) => `
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">${c.name} (${c.category || 'core'})</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right; font-weight: bold;">${formatMoney(c.amount)}</td>
+          </tr>`
+        )
+        .join('');
+
+      const discountRows = (recordData.discounts || [])
+        .map(
+          (d: any) => `
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">${d.name || d.discount_type} (${d.value_type === 'percentage' ? d.value + '%' : formatMoney(d.value)})</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right; color: #10B981; font-weight: bold;">-${formatMoney(d.computed_amount || d.value)}</td>
           </tr>`
         )
         .join('');
@@ -262,6 +353,34 @@ export const IndividualRecordsSection: React.FC = () => {
                 ${feeRows || '<tr><td colspan="2" style="padding: 8px;">No specific fee structures recorded.</td></tr>'}
               </tbody>
             </table>
+
+            ${componentsRows ? `
+            <h3>Itemized Fee Components</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Component Name & Category</th>
+                  <th style="text-align: right;">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${componentsRows}
+              </tbody>
+            </table>` : ''}
+
+            ${discountRows ? `
+            <h3>Discounts, Scholarships & Waivers</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Deduction / Scheme</th>
+                  <th style="text-align: right;">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${discountRows}
+              </tbody>
+            </table>` : ''}
 
             <h3>Payment History</h3>
             <table>
@@ -535,9 +654,47 @@ export const IndividualRecordsSection: React.FC = () => {
                   {selectedPerson.display_id ? `ID: ${selectedPerson.display_id} • ` : ''}
                   {selectedPerson.email}
                 </Text>
+
+                {recordData.matched_tier && (
+                  <View
+                    style={{
+                      marginTop: 6,
+                      alignSelf: 'flex-start',
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 6,
+                      backgroundColor:
+                        recordData.matched_tier === 'student_override'
+                          ? 'rgba(245, 158, 11, 0.15)'
+                          : recordData.matched_tier === 'class_override'
+                          ? 'rgba(16, 185, 129, 0.15)'
+                          : recordData.matched_tier === 'level_override'
+                          ? 'rgba(168, 85, 247, 0.15)'
+                          : 'rgba(59, 130, 246, 0.15)',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontWeight: '700',
+                        color:
+                          recordData.matched_tier === 'student_override'
+                            ? '#F59E0B'
+                            : recordData.matched_tier === 'class_override'
+                            ? '#10B981'
+                            : recordData.matched_tier === 'level_override'
+                            ? '#A855F7'
+                            : '#3B82F6',
+                        textTransform: 'capitalize',
+                      }}
+                    >
+                      Precedence Tier: {recordData.matched_tier.replace(/_/g, ' ')}
+                    </Text>
+                  </View>
+                )}
               </View>
 
-              <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
                 <TouchableOpacity
                   onPress={handlePrintStatement}
                   style={{
@@ -545,7 +702,7 @@ export const IndividualRecordsSection: React.FC = () => {
                     alignItems: 'center',
                     gap: 6,
                     paddingVertical: 8,
-                    paddingHorizontal: 14,
+                    paddingHorizontal: 12,
                     borderRadius: 10,
                     backgroundColor: isDark ? '#21262D' : '#F0F2F5',
                   }}
@@ -557,33 +714,73 @@ export const IndividualRecordsSection: React.FC = () => {
                 </TouchableOpacity>
 
                 {personType === 'student' && (
-                  <TouchableOpacity
-                    onPress={() => setShowAdjustModal(true)}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 6,
-                      paddingVertical: 8,
-                      paddingHorizontal: 14,
-                      borderRadius: 10,
-                      backgroundColor: '#FF6900',
-                    }}
-                  >
-                    <PlusCircle size={15} color="#FFF" />
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF' }}>
-                      Adjust Balance
-                    </Text>
-                  </TouchableOpacity>
+                  <>
+                    <TouchableOpacity
+                      onPress={handleGenerateInvoice}
+                      disabled={generatingInvoice}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                        paddingVertical: 8,
+                        paddingHorizontal: 12,
+                        borderRadius: 10,
+                        backgroundColor: isDark ? '#21262D' : '#F0F2F5',
+                      }}
+                    >
+                      <FileText size={15} color={isDark ? '#FFF' : '#111'} />
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#FFF' : '#111' }}>
+                        {generatingInvoice ? 'Generating...' : 'Issue Invoice'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => setShowDiscountModal(true)}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                        paddingVertical: 8,
+                        paddingHorizontal: 12,
+                        borderRadius: 10,
+                        backgroundColor: '#8B5CF6',
+                      }}
+                    >
+                      <PlusCircle size={15} color="#FFF" />
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF' }}>
+                        Grant Discount
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => setShowAdjustModal(true)}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                        paddingVertical: 8,
+                        paddingHorizontal: 12,
+                        borderRadius: 10,
+                        backgroundColor: '#FF6900',
+                      }}
+                    >
+                      <PlusCircle size={15} color="#FFF" />
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF' }}>
+                        Adjust Balance
+                      </Text>
+                    </TouchableOpacity>
+                  </>
                 )}
               </View>
             </View>
 
             {/* KPI Metric Summary Cards */}
             {personType === 'student' ? (
-              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
                 <View
                   style={{
                     flex: 1,
+                    minWidth: 140,
                     backgroundColor: cardBg,
                     borderWidth: 1,
                     borderColor: borderCol,
@@ -592,16 +789,36 @@ export const IndividualRecordsSection: React.FC = () => {
                   }}
                 >
                   <Text style={{ fontSize: 11, fontWeight: '700', color: textMuted, textTransform: 'uppercase' }}>
-                    Total Assessed
+                    Gross Assessed
                   </Text>
                   <Text style={{ fontSize: 18, fontWeight: '800', color: isDark ? '#FFF' : '#111', marginTop: 4 }}>
-                    {formatMoney(recordData.total_assessed || 0)}
+                    {formatMoney(recordData.gross_assessed ?? recordData.total_assessed ?? 0)}
                   </Text>
                 </View>
 
                 <View
                   style={{
                     flex: 1,
+                    minWidth: 140,
+                    backgroundColor: cardBg,
+                    borderWidth: 1,
+                    borderColor: borderCol,
+                    borderRadius: 14,
+                    padding: 14,
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: textMuted, textTransform: 'uppercase' }}>
+                    Total Discounts
+                  </Text>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#8B5CF6', marginTop: 4 }}>
+                    -{formatMoney(recordData.total_discounts_and_waivers ?? 0)}
+                  </Text>
+                </View>
+
+                <View
+                  style={{
+                    flex: 1,
+                    minWidth: 140,
                     backgroundColor: cardBg,
                     borderWidth: 1,
                     borderColor: borderCol,
@@ -620,6 +837,7 @@ export const IndividualRecordsSection: React.FC = () => {
                 <View
                   style={{
                     flex: 1,
+                    minWidth: 140,
                     backgroundColor: cardBg,
                     borderWidth: 1,
                     borderColor: borderCol,
@@ -730,6 +948,111 @@ export const IndividualRecordsSection: React.FC = () => {
                   )}
                 </View>
 
+                {/* Itemized Components Breakdown */}
+                <View
+                  style={{
+                    backgroundColor: cardBg,
+                    borderWidth: 1,
+                    borderColor: borderCol,
+                    borderRadius: 14,
+                    padding: 16,
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#FFF' : '#111', marginBottom: 12 }}>
+                    Itemized Components Breakdown
+                  </Text>
+                  {(!recordData.components || recordData.components.length === 0) ? (
+                    <Text style={{ color: textMuted, fontSize: 13 }}>
+                      No discrete component breakdown defined for this structure (lump-sum single fee applies).
+                    </Text>
+                  ) : (
+                    recordData.components.map((c: any, idx: number) => (
+                      <View
+                        key={c.id || idx}
+                        style={{
+                          flexDirection: 'row',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          paddingVertical: 8,
+                          borderBottomWidth: idx < recordData.components.length - 1 ? 1 : 0,
+                          borderBottomColor: borderCol,
+                        }}
+                      >
+                        <View>
+                          <Text style={{ fontWeight: '600', color: isDark ? '#FFF' : '#111', fontSize: 13 }}>
+                            {c.name}
+                          </Text>
+                          <Text style={{ color: textMuted, fontSize: 11, textTransform: 'capitalize' }}>
+                            Category: {c.category || 'core'} • {c.is_optional ? 'Optional' : 'Mandatory'}
+                          </Text>
+                        </View>
+                        <Text style={{ fontWeight: '700', color: isDark ? '#FFF' : '#111', fontSize: 13 }}>
+                          {formatMoney(c.amount || 0)}
+                        </Text>
+                      </View>
+                    ))
+                  )}
+                </View>
+
+                {/* Discounts, Scholarships & Waivers */}
+                <View
+                  style={{
+                    backgroundColor: cardBg,
+                    borderWidth: 1,
+                    borderColor: borderCol,
+                    borderRadius: 14,
+                    padding: 16,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#FFF' : '#111' }}>
+                      Discounts, Scholarships & Waivers
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setShowDiscountModal(true)}
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 4,
+                        borderRadius: 8,
+                        backgroundColor: '#8B5CF6',
+                      }}
+                    >
+                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '700' }}>+ Grant</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {(!recordData.discounts || recordData.discounts.length === 0) ? (
+                    <Text style={{ color: textMuted, fontSize: 13 }}>No active discounts or waivers granted.</Text>
+                  ) : (
+                    recordData.discounts.map((d: any, idx: number) => (
+                      <View
+                        key={d.id || idx}
+                        style={{
+                          flexDirection: 'row',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          paddingVertical: 8,
+                          borderBottomWidth: idx < recordData.discounts.length - 1 ? 1 : 0,
+                          borderBottomColor: borderCol,
+                        }}
+                      >
+                        <View>
+                          <Text style={{ fontWeight: '600', color: isDark ? '#FFF' : '#111', fontSize: 13 }}>
+                            {d.name || d.discount_type}
+                          </Text>
+                          <Text style={{ color: textMuted, fontSize: 11 }}>
+                            Type: {d.discount_type} • Scope: {d.target_scope || 'whole_fee'}
+                            {d.value_type === 'percentage' ? ` (${d.value}%)` : ` (${formatMoney(d.value)})`}
+                          </Text>
+                        </View>
+                        <Text style={{ fontWeight: '700', color: '#8B5CF6', fontSize: 13 }}>
+                          -{formatMoney(d.computed_amount || d.value || 0)}
+                        </Text>
+                      </View>
+                    ))
+                  )}
+                </View>
+
                 {/* Payments Table */}
                 <View
                   style={{
@@ -829,6 +1152,53 @@ export const IndividualRecordsSection: React.FC = () => {
                         <Text style={{ fontWeight: '700', color: '#10B981', fontSize: 13 }}>
                           {formatMoney(b.awarded_amount || b.amount || 0)}
                         </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Billing Statements & Invoices */}
+                {recordData.invoices && recordData.invoices.length > 0 && (
+                  <View
+                    style={{
+                      backgroundColor: cardBg,
+                      borderWidth: 1,
+                      borderColor: borderCol,
+                      borderRadius: 14,
+                      padding: 16,
+                    }}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#FFF' : '#111', marginBottom: 12 }}>
+                      Billing Statements & Invoices
+                    </Text>
+                    {recordData.invoices.map((inv: any, idx: number) => (
+                      <View
+                        key={inv.id || idx}
+                        style={{
+                          flexDirection: 'row',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          paddingVertical: 8,
+                          borderBottomWidth: idx < recordData.invoices.length - 1 ? 1 : 0,
+                          borderBottomColor: borderCol,
+                        }}
+                      >
+                        <View>
+                          <Text style={{ fontWeight: '600', color: isDark ? '#FFF' : '#111', fontSize: 13 }}>
+                            {inv.invoice_number}
+                          </Text>
+                          <Text style={{ color: textMuted, fontSize: 11 }}>
+                            Due: {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : 'Immediate'} • Status: {inv.status}
+                          </Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={{ fontWeight: '700', color: isDark ? '#FFF' : '#111', fontSize: 13 }}>
+                            Total: {formatMoney(inv.total_amount)}
+                          </Text>
+                          <Text style={{ fontWeight: '700', color: inv.balance_due > 0 ? '#EF4444' : '#10B981', fontSize: 11 }}>
+                            Due: {formatMoney(inv.balance_due)}
+                          </Text>
+                        </View>
                       </View>
                     ))}
                   </View>
@@ -1042,6 +1412,218 @@ export const IndividualRecordsSection: React.FC = () => {
                   <ActivityIndicator size="small" color="#FFF" />
                 ) : (
                   <Text style={{ fontWeight: '700', color: '#FFF', fontSize: 13 }}>Confirm</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Grant Discount / Scholarship Modal */}
+      <Modal
+        visible={showDiscountModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDiscountModal(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.65)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: isDark ? '#161B22' : '#FFFFFF',
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: borderCol,
+              maxWidth: 500,
+              width: '100%',
+              padding: 22,
+            }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: '800', color: isDark ? '#FFF' : '#111', marginBottom: 4 }}>
+              Grant Discount or Scholarship
+            </Text>
+            <Text style={{ fontSize: 13, color: textMuted, marginBottom: 16 }}>
+              Award a percentage deduction, fixed subsidy, or component-specific fee relief to {selectedPerson?.name}.
+            </Text>
+
+            {/* Discount Type */}
+            <Text style={{ fontWeight: '700', fontSize: 12, color: isDark ? '#FFF' : '#111', marginBottom: 6 }}>
+              Discount / Relief Type *
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+              {['scholarship', 'bursary', 'sibling_discount', 'staff_child', 'hardship_waiver', 'early_payment_discount'].map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  onPress={() => setDiscountType(t)}
+                  style={{
+                    paddingVertical: 6,
+                    paddingHorizontal: 10,
+                    borderRadius: 8,
+                    backgroundColor: discountType === t ? '#8B5CF6' : isDark ? '#21262D' : '#F0F2F5',
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: discountType === t ? '#FFF' : textMuted, textTransform: 'capitalize' }}>
+                    {t.replace(/_/g, ' ')}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Name / Title */}
+            <Text style={{ fontWeight: '700', fontSize: 12, color: isDark ? '#FFF' : '#111', marginBottom: 6 }}>
+              Title / Reference Note *
+            </Text>
+            <TextInput
+              value={discountName}
+              onChangeText={setDiscountName}
+              placeholder="e.g. Academic Merit 50% Scholarship"
+              placeholderTextColor={textMuted}
+              style={{
+                borderWidth: 1,
+                borderColor: borderCol,
+                borderRadius: 10,
+                padding: 10,
+                color: isDark ? '#FFF' : '#111',
+                backgroundColor: isDark ? '#0D1117' : '#F6F8FA',
+                fontSize: 14,
+                marginBottom: 14,
+              }}
+            />
+
+            {/* Value Type & Value */}
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontWeight: '700', fontSize: 12, color: isDark ? '#FFF' : '#111', marginBottom: 6 }}>
+                  Calculation Type
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <TouchableOpacity
+                    onPress={() => setDiscountValueType('fixed')}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 10,
+                      alignItems: 'center',
+                      borderRadius: 10,
+                      backgroundColor: discountValueType === 'fixed' ? '#8B5CF6' : isDark ? '#21262D' : '#F0F2F5',
+                    }}
+                  >
+                    <Text style={{ fontWeight: '700', fontSize: 12, color: discountValueType === 'fixed' ? '#FFF' : textMuted }}>
+                      Fixed Amount
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setDiscountValueType('percentage')}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 10,
+                      alignItems: 'center',
+                      borderRadius: 10,
+                      backgroundColor: discountValueType === 'percentage' ? '#8B5CF6' : isDark ? '#21262D' : '#F0F2F5',
+                    }}
+                  >
+                    <Text style={{ fontWeight: '700', fontSize: 12, color: discountValueType === 'percentage' ? '#FFF' : textMuted }}>
+                      Percentage (%)
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontWeight: '700', fontSize: 12, color: isDark ? '#FFF' : '#111', marginBottom: 6 }}>
+                  {discountValueType === 'percentage' ? 'Percentage (1-100) *' : 'Amount *'}
+                </Text>
+                <TextInput
+                  value={discountValue}
+                  onChangeText={setDiscountValue}
+                  placeholder={discountValueType === 'percentage' ? '50' : '0.00'}
+                  placeholderTextColor={textMuted}
+                  keyboardType="numeric"
+                  style={{
+                    borderWidth: 1,
+                    borderColor: borderCol,
+                    borderRadius: 10,
+                    padding: 10,
+                    color: isDark ? '#FFF' : '#111',
+                    backgroundColor: isDark ? '#0D1117' : '#F6F8FA',
+                    fontSize: 14,
+                  }}
+                />
+              </View>
+            </View>
+
+            {/* Scope */}
+            <Text style={{ fontWeight: '700', fontSize: 12, color: isDark ? '#FFF' : '#111', marginBottom: 6 }}>
+              Deduction Scope
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18 }}>
+              <TouchableOpacity
+                onPress={() => setDiscountScope('whole_fee')}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  alignItems: 'center',
+                  borderRadius: 10,
+                  backgroundColor: discountScope === 'whole_fee' ? '#8B5CF6' : isDark ? '#21262D' : '#F0F2F5',
+                }}
+              >
+                <Text style={{ fontWeight: '700', fontSize: 12, color: discountScope === 'whole_fee' ? '#FFF' : textMuted }}>
+                  Whole Fee
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setDiscountScope('component')}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  alignItems: 'center',
+                  borderRadius: 10,
+                  backgroundColor: discountScope === 'component' ? '#8B5CF6' : isDark ? '#21262D' : '#F0F2F5',
+                }}
+              >
+                <Text style={{ fontWeight: '700', fontSize: 12, color: discountScope === 'component' ? '#FFF' : textMuted }}>
+                  Specific Component
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setShowDiscountModal(false)}
+                disabled={grantingDiscount}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                  borderRadius: 10,
+                  backgroundColor: isDark ? '#21262D' : '#EAECEF',
+                }}
+              >
+                <Text style={{ fontWeight: '600', color: isDark ? '#FFF' : '#111', fontSize: 13 }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleGrantDiscount}
+                disabled={grantingDiscount}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 18,
+                  borderRadius: 10,
+                  backgroundColor: '#8B5CF6',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: 120,
+                }}
+              >
+                {grantingDiscount ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={{ fontWeight: '700', color: '#FFF', fontSize: 13 }}>Grant Award</Text>
                 )}
               </TouchableOpacity>
             </View>

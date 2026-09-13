@@ -335,7 +335,7 @@ const getTargetClassesForLevel = async (req, res) => {
     let tracks = [];
     if (isSeniorSecondary) {
       const { data: trackData } = await supabase
-        .from('academic_tracks')
+        .from('institution_tracks')
         .select('*')
         .eq('institution_id', institution_id);
       tracks = trackData || [];

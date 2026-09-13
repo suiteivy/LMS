@@ -106,11 +106,11 @@ async function getGradeEntries(req, res) {
     // Role-based filtering
     if (user_role === 'student') {
       const { data: profile } = await supabase
-        .from('student_profiles')
+        .from('students')
         .select('id')
         .eq('user_id', user_id)
         .eq('institution_id', institution_id)
-        .single();
+        .maybeSingle();
 
       if (!profile) return sendError(res, 404, 'Student profile not found');
       query = query.eq('student_id', profile.id);

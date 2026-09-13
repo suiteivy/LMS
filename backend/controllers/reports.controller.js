@@ -167,11 +167,11 @@ exports.createReport = async (req, res) => {
 
             // Check teacher is assigned to at least one subject in that class
             const { data: teacherSubjects } = await supabase
-                .from('teacher_subjects')
-                .select('id')
+                .from('subject_teachers')
+                .select('subject_id')
                 .eq('teacher_id', teacher.id);
 
-            const teacherSubjectIds = (teacherSubjects || []).map(ts => ts.id);
+            const teacherSubjectIds = (teacherSubjects || []).map(ts => ts.subject_id).filter(Boolean);
             if (teacherSubjectIds.length === 0) {
                 return res.status(403).json({ success: false, message: 'No subject assignments found' });
             }
@@ -254,11 +254,11 @@ exports.updateReport = async (req, res) => {
 
             // Check teacher is assigned to at least one subject in that class
             const { data: teacherSubjects } = await supabase
-                .from('teacher_subjects')
-                .select('id')
+                .from('subject_teachers')
+                .select('subject_id')
                 .eq('teacher_id', teacher.id);
 
-            const teacherSubjectIds = (teacherSubjects || []).map(ts => ts.id);
+            const teacherSubjectIds = (teacherSubjects || []).map(ts => ts.subject_id).filter(Boolean);
             if (teacherSubjectIds.length === 0) {
                 return res.status(403).json({ success: false, message: 'No subject assignments found' });
             }
@@ -333,11 +333,11 @@ exports.deleteReport = async (req, res) => {
             }
 
             const { data: teacherSubjects } = await supabase
-                .from('teacher_subjects')
-                .select('id')
+                .from('subject_teachers')
+                .select('subject_id')
                 .eq('teacher_id', teacher.id);
 
-            const teacherSubjectIds = (teacherSubjects || []).map(ts => ts.id);
+            const teacherSubjectIds = (teacherSubjects || []).map(ts => ts.subject_id).filter(Boolean);
             if (teacherSubjectIds.length === 0) {
                 return res.status(403).json({ success: false, message: 'No subject assignments found' });
             }

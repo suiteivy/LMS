@@ -31,6 +31,16 @@ const {
     getFinanceAdminAuditLogs,
     getIndividualFinancialRecord,
     adjustIndividualBalance,
+    getFeeComponents,
+    createFeeComponent,
+    updateFeeComponent,
+    deleteFeeComponent,
+    getStudentDiscountsAndWaivers,
+    createFeeDiscountOrWaiver,
+    revokeFeeDiscountOrWaiver,
+    generateStudentInvoice,
+    getStudentInvoices,
+    sendOverdueFeeReminders,
 } = require("../controllers/finance.controller.js");
 
 const FINANCE_DASHBOARD_ROLES = ['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin', 'finance_administrator', 'finance_admin'];
@@ -69,6 +79,25 @@ router.put("/fee-structures/:id", authMiddleware, authorizeRoles(FINANCE_DASHBOA
 router.put("/fee-structures/:id/release", authMiddleware, authorizeRoles(FINANCE_DASHBOARD_ROLES), releaseFeeStructure);
 router.put("/fee-structures/:id/revert-release", authMiddleware, authorizeRoles(FINANCE_DASHBOARD_ROLES), revertReleaseFeeStructure);
 router.delete("/fee-structures/:id", authMiddleware, authorizeRoles(FINANCE_DASHBOARD_ROLES), deleteFeeStructure);
+
+// Fee Components
+router.get("/components/:feeStructureId", authMiddleware, getFeeComponents);
+router.post("/components", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLES), createFeeComponent);
+router.put("/components/:id", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLES), updateFeeComponent);
+router.delete("/components/:id", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLES), deleteFeeComponent);
+
+// Fee Discounts, Scholarships, and Hardship Waivers
+router.get("/discounts/:studentId", authMiddleware, authorizeRoles(FINANCE_DASHBOARD_ROLES), getStudentDiscountsAndWaivers);
+router.post("/discounts", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLES), createFeeDiscountOrWaiver);
+router.delete("/discounts/:id", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLES), revokeFeeDiscountOrWaiver);
+router.post("/discounts/:id/revoke", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLES), revokeFeeDiscountOrWaiver);
+
+// Billing Statements & Invoices
+router.post("/invoices/generate", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLES), generateStudentInvoice);
+router.get("/invoices/:studentId", authMiddleware, authorizeRoles(FINANCE_DASHBOARD_ROLES), getStudentInvoices);
+
+// Overdue Reminders Sweep
+router.post("/reminders/overdue", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLES), sendOverdueFeeReminders);
 
 // Helper for Fees
 router.post("/fees/pay", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLES), recordFeePayment);

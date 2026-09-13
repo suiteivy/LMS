@@ -37,9 +37,21 @@ interface FeeStructureSectionProps {
 }
 
 type LevelScope = 'all' | 'grade' | 'form' | 'range';
+type ScopeType = 'institution' | 'level' | 'class' | 'student';
 
 const ANNUAL_TERM_ID = '__annual';
 const ANNUAL_TERM_NAME = 'Annual';
+
+const COMPONENT_CATEGORIES = [
+  'tuition',
+  'transport',
+  'meals',
+  'activities',
+  'examination',
+  'boarding',
+  'facility',
+  'other',
+];
 
 const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
   feeStructures,
@@ -58,6 +70,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
 
   const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
   const [terms, setTerms] = useState<TermOption[]>([]);
+  const [classesList, setClassesList] = useState<any[]>([]);
   const [gradeLevels, setGradeLevels] = useState<number[]>([]);
   const [formLevels, setFormLevels] = useState<number[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
@@ -76,10 +89,14 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     academic_year_id: '',
     term: ANNUAL_TERM_NAME,
     term_id: ANNUAL_TERM_ID,
+    scope_type: 'institution' as ScopeType,
+    class_id: '',
+    student_id: '',
     level_scope: 'all' as LevelScope,
     level_value: '',
     level_from: '',
     level_to: '',
+    components: [] as Array<{ id?: string; name: string; amount: string; category: string; is_optional?: boolean }>,
   });
 
   useEffect(() => {
@@ -117,6 +134,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
 
         setAcademicYears(normalizedYears);
         setTerms(normalizedTerms);
+        setClassesList(classesData || []);
         setGradeLevels(Array.from(extractedGradeLevels).sort((a, b) => a - b));
         setFormLevels(Array.from(extractedFormLevels).sort((a, b) => a - b));
 
@@ -182,10 +200,14 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
       academic_year_id: year?.id || '',
       term: ANNUAL_TERM_NAME,
       term_id: ANNUAL_TERM_ID,
+      scope_type: 'institution',
+      class_id: '',
+      student_id: '',
       level_scope: 'all',
       level_value: '',
       level_from: '',
       level_to: '',
+      components: [],
     });
     setEditingStructure(null);
   };
@@ -197,6 +219,17 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
 
   const openEditForm = (structure: FeeStructure) => {
     setEditingStructure(structure);
+    const structComps = (structure as any).components || [];
+    const inferredScope: ScopeType =
+      ((structure as any).scope_type as ScopeType) ||
+      ((structure as any).student_id
+        ? 'student'
+        : (structure as any).class_id
+        ? 'class'
+        : (structure as any).level_scope && (structure as any).level_scope !== 'all'
+        ? 'level'
+        : 'institution');
+
     setFormData({
       title: (structure as any).title || (structure as any).Subject_name || '',
       amount: String((structure as any).amount ?? (structure as any).base_fee ?? ''),
@@ -205,6 +238,9 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
       academic_year_id: (structure as any).academic_year_id || defaultYear?.id || '',
       term: (structure as any).term || ANNUAL_TERM_NAME,
       term_id: (structure as any).term_id || ANNUAL_TERM_ID,
+      scope_type: inferredScope,
+      class_id: (structure as any).class_id || '',
+      student_id: (structure as any).student_id || '',
       level_scope: ((structure as any).level_scope as LevelScope) || 'all',
       level_value: (structure as any).level_value !== null && (structure as any).level_value !== undefined
         ? String((structure as any).level_value)
@@ -215,8 +251,50 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
       level_to: (structure as any).level_to !== null && (structure as any).level_to !== undefined
         ? String((structure as any).level_to)
         : '',
+      components: structComps.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        amount: String(c.amount ?? 0),
+        category: c.category || 'tuition',
+        is_optional: !!c.is_optional,
+      })),
     });
     setShowForm(true);
+  };
+
+  const addComponentRow = () => {
+    setFormData((prev) => ({
+      ...prev,
+      components: [
+        ...prev.components,
+        { name: '', amount: '', category: 'tuition', is_optional: false },
+      ],
+    }));
+  };
+
+  const removeComponentRow = (index: number) => {
+    setFormData((prev) => {
+      const updated = prev.components.filter((_, i) => i !== index);
+      const totalFromComponents = updated.reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
+      return {
+        ...prev,
+        components: updated,
+        amount: updated.length > 0 ? String(totalFromComponents) : prev.amount,
+      };
+    });
+  };
+
+  const updateComponentField = (index: number, field: string, value: any) => {
+    setFormData((prev) => {
+      const updated = [...prev.components];
+      updated[index] = { ...updated[index], [field]: value };
+      const totalFromComponents = updated.reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
+      return {
+        ...prev,
+        components: updated,
+        amount: updated.length > 0 ? String(totalFromComponents) : prev.amount,
+      };
+    });
   };
 
   const parseAmount = () => {
@@ -258,7 +336,17 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
       return;
     }
 
-    if (!validateLevel()) {
+    if (formData.scope_type === 'class' && !formData.class_id) {
+      Alert.alert('Validation', 'Please select a class for class override.');
+      return;
+    }
+
+    if (formData.scope_type === 'student' && !formData.student_id.trim()) {
+      Alert.alert('Validation', 'Please enter a student ID for student override.');
+      return;
+    }
+
+    if (formData.scope_type === 'level' && !validateLevel()) {
       Alert.alert('Validation', 'Select a valid level target for this fee structure.');
       return;
     }
@@ -271,10 +359,22 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
       academic_year_id: formData.academic_year_id,
       term: formData.term,
       term_id: formData.term_id === ANNUAL_TERM_ID ? undefined : formData.term_id,
-      level_scope: formData.level_scope,
-      level_value: formData.level_scope === 'grade' || formData.level_scope === 'form' ? Number(formData.level_value) : undefined,
-      level_from: formData.level_scope === 'range' ? Number(formData.level_from) : undefined,
-      level_to: formData.level_scope === 'range' ? Number(formData.level_to) : undefined,
+      scope_type: formData.scope_type,
+      is_override: formData.scope_type !== 'institution',
+      class_id: formData.scope_type === 'class' ? formData.class_id : undefined,
+      student_id: formData.scope_type === 'student' ? formData.student_id.trim() : undefined,
+      level_scope: formData.scope_type === 'level' ? formData.level_scope : 'all',
+      level_value: formData.scope_type === 'level' && (formData.level_scope === 'grade' || formData.level_scope === 'form') ? Number(formData.level_value) : undefined,
+      level_from: formData.scope_type === 'level' && formData.level_scope === 'range' ? Number(formData.level_from) : undefined,
+      level_to: formData.scope_type === 'level' && formData.level_scope === 'range' ? Number(formData.level_to) : undefined,
+      components: formData.components.length > 0
+        ? formData.components.map((c) => ({
+            name: c.name.trim(),
+            amount: Number(c.amount) || 0,
+            category: c.category,
+            is_optional: !!c.is_optional,
+          }))
+        : undefined,
     };
 
     try {
@@ -289,6 +389,54 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const renderScopeBadge = (item: FeeStructure) => {
+    const scope =
+      (item as any).scope_type ||
+      ((item as any).student_id
+        ? 'student'
+        : (item as any).class_id
+        ? 'class'
+        : (item as any).level_scope && (item as any).level_scope !== 'all'
+        ? 'level'
+        : 'institution');
+
+    if (scope === 'student') {
+      return (
+        <View className="bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-full">
+          <Text className="text-amber-500 dark:text-amber-400 text-xs font-bold">
+            Student Override: {(item as any).student_id}
+          </Text>
+        </View>
+      );
+    }
+    if (scope === 'class') {
+      const cls = classesList.find((c) => c.id === (item as any).class_id);
+      return (
+        <View className="bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full">
+          <Text className="text-emerald-500 dark:text-emerald-400 text-xs font-bold">
+            Class Override: {cls?.name || (item as any).class_id}
+          </Text>
+        </View>
+      );
+    }
+    if (scope === 'level') {
+      return (
+        <View className="bg-purple-500/10 border border-purple-500/30 px-3 py-1 rounded-full">
+          <Text className="text-purple-500 dark:text-purple-400 text-xs font-bold">
+            Level Override
+          </Text>
+        </View>
+      );
+    }
+    return (
+      <View className="bg-blue-500/10 border border-blue-500/30 px-3 py-1 rounded-full">
+        <Text className="text-blue-500 dark:text-blue-400 text-xs font-bold">
+          Institution Default
+        </Text>
+      </View>
+    );
   };
 
   const renderLevelBadge = (item: FeeStructure) => {
@@ -321,6 +469,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     const lifecycleStatus = (item as any).lifecycle_status || (item.is_active ? 'Released' : 'Draft');
     const isCompleted = !!(item as any).is_completed || lifecycleStatus === 'Completed';
     const isReleased = item.is_active || lifecycleStatus === 'Released';
+    const components = (item as any).components || [];
 
     const openConfirmModal = (
       title: string,
@@ -458,18 +607,40 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
             <Text className="text-white text-2xl font-black">{formatAmount(amount)}</Text>
           </View>
 
-          <View className="flex-row gap-3 mt-4 pt-4 border-t border-slate-800 flex-wrap">
+          <View className="flex-row gap-3 mt-4 pt-4 border-t border-slate-800 flex-wrap items-center">
             <View className="bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/20">
               <Text className="text-orange-400 text-xs font-bold">{termLabel}</Text>
             </View>
             <View className="bg-slate-700/50 px-3 py-1 rounded-full">
               <Text className="text-slate-300 text-xs font-semibold">{yearLabel}</Text>
             </View>
+            {renderScopeBadge(item)}
             {renderLevelBadge(item)}
             <View className="bg-slate-700/50 px-3 py-1 rounded-full">
               <Text className="text-slate-300 text-xs font-semibold">Due: {dueDateLabel}</Text>
             </View>
           </View>
+
+          {components.length > 0 ? (
+            <View className="mt-4 pt-4 border-t border-slate-800/80">
+              <Text className="text-slate-400 text-xs font-semibold mb-2 uppercase tracking-wider">
+                Itemized Components ({components.length})
+              </Text>
+              <View className="flex-row flex-wrap gap-2">
+                {components.map((c: any, idx: number) => (
+                  <View
+                    key={c.id || idx}
+                    className="bg-slate-800/90 px-3 py-1.5 rounded-xl flex-row items-center gap-2 border border-slate-700/50"
+                  >
+                    <Text className="text-slate-200 text-xs font-medium">{c.name}</Text>
+                    <Text className="text-emerald-400 text-xs font-bold">
+                      {formatAmount(Number(c.amount) || 0)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
         </View>
       </View>
     );
@@ -675,59 +846,176 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                 ))}
               </View>
 
-              <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Level Target</Text>
+              <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Scope Precedence Tier *</Text>
               <View className="flex-row flex-wrap gap-2 mb-4">
-                {availableLevelScopes.map((scope) => (
+                {[
+                  { key: 'institution', label: '1. Institution Default' },
+                  { key: 'level', label: '2. Level Override' },
+                  { key: 'class', label: '3. Class Override' },
+                  { key: 'student', label: '4. Student Override' },
+                ].map((s) => (
                   <TouchableOpacity
-                    key={scope}
-                    onPress={() => setFormData((p) => ({ ...p, level_scope: scope }))}
-                    className={`px-4 py-2 rounded-xl border ${formData.level_scope === scope ? 'bg-gray-900 border-gray-900' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
+                    key={s.key}
+                    onPress={() => setFormData((p) => ({ ...p, scope_type: s.key as ScopeType }))}
+                    className={`px-3 py-2 rounded-xl border ${formData.scope_type === s.key ? 'bg-gray-900 border-gray-900' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
                   >
-                    <Text className={`text-xs font-bold ${formData.level_scope === scope ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
-                      {scope === 'all' ? 'All' : scope === 'grade' ? 'Grade' : scope === 'form' ? 'Form' : 'Range'}
+                    <Text className={`text-xs font-bold ${formData.scope_type === s.key ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                      {s.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              {(formData.level_scope === 'grade' || formData.level_scope === 'form') ? (
-                <View className="flex-row flex-wrap gap-2 mb-5">
-                  {(formData.level_scope === 'grade' ? gradeLevels : formLevels).map((lvl) => (
-                    <TouchableOpacity
-                      key={`lvl-${lvl}`}
-                      onPress={() => setFormData((p) => ({ ...p, level_value: String(lvl) }))}
-                      className={`px-4 py-2 rounded-xl border ${formData.level_value === String(lvl) ? 'bg-gray-900 border-gray-900' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
-                    >
-                      <Text className={`text-xs font-bold ${formData.level_value === String(lvl) ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
-                        {formData.level_scope === 'grade' ? `Grade ${lvl}` : `Form ${lvl}`}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+              {formData.scope_type === 'class' ? (
+                <View className="mb-4">
+                  <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Target Class *</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2 py-1">
+                    {classesList.map((cls) => (
+                      <TouchableOpacity
+                        key={cls.id}
+                        onPress={() => setFormData((p) => ({ ...p, class_id: cls.id }))}
+                        className={`px-3 py-2 rounded-xl border mr-2 ${formData.class_id === cls.id ? 'bg-emerald-700 border-emerald-700' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
+                      >
+                        <Text className={`text-xs font-bold ${formData.class_id === cls.id ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                          {cls.name || cls.class_name || cls.id}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
               ) : null}
 
-              {formData.level_scope === 'range' ? (
-                <View className="mb-5">
-                  <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Range From</Text>
+              {formData.scope_type === 'student' ? (
+                <View className="mb-4">
+                  <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Student ID / Admission Number *</Text>
                   <TextInput
-                    value={formData.level_from}
-                    onChangeText={(v) => setFormData((p) => ({ ...p, level_from: v }))}
-                    keyboardType="numeric"
-                    placeholder="e.g. 1"
-                    placeholderTextColor="#9CA3AF"
-                    className="bg-[#F6F8FA] dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-3 text-gray-900 dark:text-white font-semibold mb-3"
-                  />
-                  <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Range To</Text>
-                  <TextInput
-                    value={formData.level_to}
-                    onChangeText={(v) => setFormData((p) => ({ ...p, level_to: v }))}
-                    keyboardType="numeric"
-                    placeholder="e.g. 8"
+                    value={formData.student_id}
+                    onChangeText={(v) => setFormData((p) => ({ ...p, student_id: v }))}
+                    placeholder="Enter student ID or admission number"
                     placeholderTextColor="#9CA3AF"
                     className="bg-[#F6F8FA] dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-3 text-gray-900 dark:text-white font-semibold"
                   />
                 </View>
               ) : null}
+
+              {formData.scope_type === 'level' ? (
+                <>
+                  <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Level Target *</Text>
+                  <View className="flex-row flex-wrap gap-2 mb-4">
+                    {availableLevelScopes.map((scope) => (
+                      <TouchableOpacity
+                        key={scope}
+                        onPress={() => setFormData((p) => ({ ...p, level_scope: scope }))}
+                        className={`px-4 py-2 rounded-xl border ${formData.level_scope === scope ? 'bg-gray-900 border-gray-900' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
+                      >
+                        <Text className={`text-xs font-bold ${formData.level_scope === scope ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                          {scope === 'all' ? 'All' : scope === 'grade' ? 'Grade' : scope === 'form' ? 'Form' : 'Range'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {(formData.level_scope === 'grade' || formData.level_scope === 'form') ? (
+                    <View className="flex-row flex-wrap gap-2 mb-5">
+                      {(formData.level_scope === 'grade' ? gradeLevels : formLevels).map((lvl) => (
+                        <TouchableOpacity
+                          key={`lvl-${lvl}`}
+                          onPress={() => setFormData((p) => ({ ...p, level_value: String(lvl) }))}
+                          className={`px-4 py-2 rounded-xl border ${formData.level_value === String(lvl) ? 'bg-gray-900 border-gray-900' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}
+                        >
+                          <Text className={`text-xs font-bold ${formData.level_value === String(lvl) ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                            {formData.level_scope === 'grade' ? `Grade ${lvl}` : `Form ${lvl}`}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  ) : null}
+
+                  {formData.level_scope === 'range' ? (
+                    <View className="mb-5">
+                      <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Range From</Text>
+                      <TextInput
+                        value={formData.level_from}
+                        onChangeText={(v) => setFormData((p) => ({ ...p, level_from: v }))}
+                        keyboardType="numeric"
+                        placeholder="e.g. 1"
+                        placeholderTextColor="#9CA3AF"
+                        className="bg-[#F6F8FA] dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-3 text-gray-900 dark:text-white font-semibold mb-3"
+                      />
+                      <Text className="text-gray-700 dark:text-gray-300 font-bold mb-2 uppercase text-[10px] tracking-widest">Range To</Text>
+                      <TextInput
+                        value={formData.level_to}
+                        onChangeText={(v) => setFormData((p) => ({ ...p, level_to: v }))}
+                        keyboardType="numeric"
+                        placeholder="e.g. 8"
+                        placeholderTextColor="#9CA3AF"
+                        className="bg-[#F6F8FA] dark:bg-[#0F141C] border-2 border-gray-300 dark:border-gray-600 rounded-2xl px-4 py-3 text-gray-900 dark:text-white font-semibold"
+                      />
+                    </View>
+                  ) : null}
+                </>
+              ) : null}
+
+              {/* Component Itemizer */}
+              <View className="mb-5 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <View className="flex-row justify-between items-center mb-3">
+                  <View>
+                    <Text className="text-gray-900 dark:text-white font-bold text-sm">Itemized Fee Components</Text>
+                    <Text className="text-gray-500 text-xs">Breakdown by tuition, transport, meals, exam fees, etc.</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={addComponentRow}
+                    className="bg-indigo-600 px-3 py-1.5 rounded-xl flex-row items-center"
+                  >
+                    <Text className="text-white text-xs font-bold">+ Add Item</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {formData.components.map((c, idx) => (
+                  <View
+                    key={idx}
+                    className="bg-gray-100 dark:bg-gray-800/80 p-3 rounded-2xl mb-3 border border-gray-200 dark:border-gray-700"
+                  >
+                    <View className="flex-row items-center justify-between mb-2">
+                      <TextInput
+                        value={c.name}
+                        onChangeText={(v) => updateComponentField(idx, 'name', v)}
+                        placeholder="Component name (e.g. Tuition)"
+                        placeholderTextColor="#9CA3AF"
+                        className="flex-1 bg-white dark:bg-[#0F141C] border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 text-xs text-gray-900 dark:text-white font-semibold mr-2"
+                      />
+                      <TextInput
+                        value={c.amount}
+                        onChangeText={(v) => updateComponentField(idx, 'amount', v)}
+                        placeholder="0.00"
+                        keyboardType="numeric"
+                        placeholderTextColor="#9CA3AF"
+                        className="w-28 bg-white dark:bg-[#0F141C] border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 text-xs text-gray-900 dark:text-white font-semibold mr-2"
+                      />
+                      <TouchableOpacity
+                        onPress={() => removeComponentRow(idx)}
+                        className="bg-red-500/20 px-2.5 py-2 rounded-xl"
+                      >
+                        <Text className="text-red-500 font-black text-xs">X</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-1">
+                      {COMPONENT_CATEGORIES.map((cat) => (
+                        <TouchableOpacity
+                          key={cat}
+                          onPress={() => updateComponentField(idx, 'category', cat)}
+                          className={`px-2.5 py-1 rounded-lg mr-1.5 ${c.category === cat ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'}`}
+                        >
+                          <Text className={`text-[10px] font-bold capitalize ${c.category === cat ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`}>
+                            {cat}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                ))}
+              </View>
             </ScrollView>
 
             <View className="px-5 py-4 border-t border-gray-200 dark:border-gray-800 flex-row" style={{ gap: 10 }}>
