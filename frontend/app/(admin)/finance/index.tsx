@@ -2,6 +2,8 @@ import { BursariesList } from '@/components/admin/finance/BursariesList';
 import FeeStructureSection from '@/components/admin/finance/FeeStructureSection';
 import { PaymentManagementSection } from '@/components/admin/finance/PaymentManagementSection';
 import RevenueSection from '@/components/admin/finance/RevenueSection';
+import { IndividualRecordsSection } from '@/components/admin/finance/IndividualRecordsSection';
+import { FinanceDesignationSection } from '@/components/admin/finance/FinanceDesignationSection';
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -21,6 +23,8 @@ const TABS = [
     { key: 'payments', label: 'Payments' },
     { key: 'bursaries', label: 'Bursaries' },
     { key: 'fees', label: 'Fee Structure' },
+    { key: 'records', label: 'Individual Records' },
+    { key: 'administrators', label: 'Finance Admins' },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
@@ -261,6 +265,8 @@ export default function FinanceDashboard() {
                             onRefresh={onRefresh}
                         />
                     )}
+                    {activeTab === 'records' && <IndividualRecordsSection />}
+                    {activeTab === 'administrators' && <FinanceDesignationSection />}
                 </ScrollView>
 
                 {/* FAB for Bursaries */}
@@ -283,7 +289,7 @@ export default function FinanceDashboard() {
                                     blurRadius: 8,
                                     color: `rgba(0, 0, 0, ${isDark ? 0.4 : 0.1})`,
                                 }],
-                                }}
+                            }}
                             onPress={() => router.push('/(admin)/finance/bursaries/reports')}
                         >
                             <Ionicons name="stats-chart" size={22} color="#FF6B00" />
@@ -303,7 +309,7 @@ export default function FinanceDashboard() {
                                     blurRadius: 8,
                                     color: 'rgba(255, 107, 0, 0.4)',
                                 }],
-                                }}
+                            }}
                             onPress={() => router.push('/(admin)/finance/bursaries/create')}
                         >
                             <Ionicons name="add" size={30} color="white" />

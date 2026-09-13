@@ -19,8 +19,8 @@ router.get("/", authorizeRoles(["admin", "teacher", "student", "parent"]), getEx
 
 // Exam Results
 router.post("/results", authorizeRoles(["admin", "teacher"]), recordExamResult);
-router.get("/results", authorizeRoles(["admin", "teacher"]), getExamResults);
+router.get("/results", authorizeRoles(["admin", "teacher", "student", "parent"]), getExamResults);
 router.get("/:examId/roster", authorizeRoles(["admin", "teacher"]), getExamRoster);
-router.get("/:examId", authorizeRoles(["admin", "teacher"]), getExamById);
+router.get("/:examId", authorizeRoles(["admin", "teacher", "student", "parent"]), getExamById);
 
 module.exports = router;

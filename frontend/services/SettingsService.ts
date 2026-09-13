@@ -223,4 +223,17 @@ export const SettingsService = {
         );
         return response.data;
     },
+
+    markUserAsLeaver: async (
+        userId: string,
+        data: { status?: string; exit_date?: string; exit_reason?: string; retention_years?: number }
+    ): Promise<{ message: string; is_active: boolean; retention_until: string }> => {
+        const response = await api.patch(`/auth/users/${encodeURIComponent(userId)}/mark-leaver`, data);
+        return response.data;
+    },
+
+    reactivateUser: async (userId: string): Promise<{ message: string; is_active: boolean }> => {
+        const response = await api.patch(`/auth/users/${encodeURIComponent(userId)}/reactivate`, {});
+        return response.data;
+    },
 };

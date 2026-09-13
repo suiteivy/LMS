@@ -13,7 +13,8 @@ import {
     Award,
     Trophy,
     Layers,
-    FileText
+    FileText,
+    DollarSign
 } from 'lucide-react-native';
 import { ScrollView, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -65,7 +66,7 @@ export default function ManagementIndex() {
     const tier = useSubscriptionTier();
     const { hasDiary, hasAnalytics } = tier;
     const { teacherId, isDemo } = useAuth();
-    const { mode, setMode, canToggle, isSubjectTeacher, isClassTeacher, isLibrarian } = useTeacherRoleMode();
+    const { mode, setMode, canToggle, isSubjectTeacher, isClassTeacher, isLibrarian, isFinanceAdmin } = useTeacherRoleMode();
     const [pendingCount, setPendingCount] = useState<number | null>(null);
     const [submittedCount, setSubmittedCount] = useState<number | null>(null);
     const [classAttendanceCount, setClassAttendanceCount] = useState<number | null>(null);
@@ -316,6 +317,16 @@ export default function ManagementIndex() {
             route: "/(teacher)/management/library",
             badge: "Librarian",
             tooltipId: 'teacher.manage.library'
+        }] : []),
+        ...(isFinanceAdmin ? [{
+            icon: DollarSign,
+            title: "Finance Operations",
+            description: "Manage fee collection, student balances & records",
+            color: "#10b981",
+            bgColor: "#ecfdf5",
+            route: "/(admin)/finance",
+            badge: "Finance Admin",
+            tooltipId: 'teacher.manage.finance'
         }] : [])
     ];
 
@@ -352,10 +363,18 @@ export default function ManagementIndex() {
         '/(teacher)/management/announcements',
     ];
 
+    const financeModeRoutes = [
+        '/(admin)/finance',
+        '/(teacher)/management/messages',
+        '/(teacher)/management/announcements',
+    ];
+
     const isRouteVisibleForMode = (route: string, roleMode: TeacherRoleMode) => {
         if (roleMode === 'subject') return subjectModeRoutes.includes(route);
         if (roleMode === 'class') return classModeRoutes.includes(route);
-        return librarianModeRoutes.includes(route);
+        if (roleMode === 'librarian') return librarianModeRoutes.includes(route);
+        if (roleMode === 'finance') return financeModeRoutes.includes(route);
+        return false;
     };
 
     const visibleFeatures = features.filter((feature) => {
@@ -415,6 +434,16 @@ export default function ManagementIndex() {
                                 >
                                     <Text numberOfLines={1} className={`font-bold text-[11px] uppercase tracking-wider ${mode === 'librarian' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
                                         Librarian Desk
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                            {isFinanceAdmin && (
+                                <TouchableOpacity 
+                                    onPress={() => setMode('finance')}
+                                    className={`flex-1 py-2.5 px-2 rounded-xl items-center justify-center ${mode === 'finance' ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
+                                >
+                                    <Text numberOfLines={1} className={`font-bold text-[11px] uppercase tracking-wider ${mode === 'finance' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                        Finance Desk
                                     </Text>
                                 </TouchableOpacity>
                             )}

@@ -30,6 +30,7 @@ interface AuthContextType {
   isMain: boolean
   isPlatformAdmin: boolean
   isLibrarian: boolean
+  isFinanceAdmin: boolean
   canonicalRole: string | null
   availableRoles: string[]
   activeRole: string | null
@@ -62,7 +63,7 @@ interface AuthContextType {
   addonAttendance: boolean
   addonDiary: boolean
   customStudentLimit: number | null
-  getRoleRedirect: (profile: UserProfile | null, isPlatformAdmin: boolean, targetRole?: string | null) => string | null
+  getRoleRedirect: (userProfile: UserProfile | null, platformAdmin: boolean, targetRole?: string | null) => string | null
   maintenanceModeEnabled: boolean
   maintenanceModeMessage: string
   refreshMaintenanceStatus: () => Promise<{ enabled: boolean; message: string }>
@@ -87,6 +88,7 @@ const fallbackAuthContext: AuthContextType = {
   isMain: false,
   isPlatformAdmin: false,
   isLibrarian: false,
+  isFinanceAdmin: false,
   canonicalRole: null,
   availableRoles: [],
   activeRole: null,
@@ -186,6 +188,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isMain, setIsMain] = useState(false)
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false)
   const [isLibrarian, setIsLibrarian] = useState(false)
+  const [isFinanceAdmin, setIsFinanceAdmin] = useState(false)
   const canonicalRole = (profile as any)?.role_alias || profile?.role || null;
   const [addonFlags, setAddonFlags] = useState({
     messaging: false,
@@ -583,7 +586,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     );
   };
 
-  const applyProfileData = (userData: any, userId: string, isLibrarianParam?: boolean): UserProfile => {
+  const applyProfileData = (userData: any, userId: string, isLibrarianParam?: boolean, isFinanceAdminParam?: boolean): UserProfile => {
     if (userData?.institutions) {
       const categoryIdsFromLinks = Array.isArray(userData.institutions.institution_categories)
         ? userData.institutions.institution_categories
@@ -601,6 +604,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const isMainFlag = userData.admins?.[0]?.is_main || false;
     const isLibrarianActive = isLibrarianParam !== undefined ? isLibrarianParam : (userData.is_librarian ?? isLibrarian);
     setIsLibrarian(isLibrarianActive);
+    const isFinanceAdminActive = isFinanceAdminParam !== undefined ? isFinanceAdminParam : (userData.is_finance_admin ?? isFinanceAdmin);
+    setIsFinanceAdmin(isFinanceAdminActive);
 
     let newSubscriptionStatus = null;
     let newSubscriptionPlan = null;
@@ -650,6 +655,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (parentId) rolesSet.add('parent');
       if (studentId) rolesSet.add('student');
       if (isLibrarianActive) rolesSet.add('librarian');
+      if (isFinanceAdminActive) rolesSet.add('finance_administrator');
     }
     const newAvailableRoles = Array.from(rolesSet);
     setAvailableRoles(newAvailableRoles);
@@ -779,12 +785,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLibrarian(isLibrarianFlag);
       userData.is_librarian = isLibrarianFlag;
 
+      let isFinanceAdminFlag = false;
+      try {
+        const { data: finData } = await (supabase.from as any)('finance_admin_designations')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .maybeSingle();
+        isFinanceAdminFlag = !!finData;
+      } catch {
+        isFinanceAdminFlag = false;
+      }
+      setIsFinanceAdmin(isFinanceAdminFlag);
+      userData.is_finance_admin = isFinanceAdminFlag;
+
       // Cache profile locally for offline resilience
       try {
         await AsyncStorage.setItem(`lms_cached_profile_${userId}`, JSON.stringify(userData));
       } catch {}
 
-      return applyProfileData(userData, userId, isLibrarianFlag);
+      return applyProfileData(userData, userId, isLibrarianFlag, isFinanceAdminFlag);
     } catch (err: any) {
       if (isNetworkLikeError(err)) {
         console.warn('[AuthContext] Network exception in loadUserProfile, attempting cache recovery:', err?.message || err);
@@ -793,7 +813,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (cachedRaw) {
             const cachedData = JSON.parse(cachedRaw);
             if (cachedData && cachedData.id === userId) {
-              return applyProfileData(cachedData, userId, cachedData.is_librarian);
+              return applyProfileData(cachedData, userId, cachedData.is_librarian, cachedData.is_finance_admin);
             }
           }
         } catch {}
@@ -827,6 +847,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       case "student": return "/(student)";
       case "parent": return "/(parent)";
       case "librarian": return "/(teacher)/management/library";
+      case "finance_administrator":
+      case "finance_admin": return "/(admin)/finance";
       default: return "/(auth)/signIn";
     }
   }, [activeRole]);
@@ -1170,6 +1192,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isMain,
     isPlatformAdmin,
     isLibrarian,
+    isFinanceAdmin,
     canonicalRole,
     addonMessaging: addonFlags.messaging,
     addonLibrary: addonFlags.library,
@@ -1186,7 +1209,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     maintenanceModeEnabled,
     maintenanceModeMessage,
     refreshMaintenanceStatus,
-  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, institutionLogo, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, isDemoExiting, exitDemoSession, wasDemo, clearWasDemo, isMain, isPlatformAdmin, isLibrarian, canonicalRole, addonFlags, customStudentLimit, getRoleRedirect, availableRoles, activeRole, switchActiveRole, maintenanceModeEnabled, maintenanceModeMessage, refreshMaintenanceStatus]);
+  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, institutionLogo, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, isDemoExiting, exitDemoSession, wasDemo, clearWasDemo, isMain, isPlatformAdmin, isLibrarian, isFinanceAdmin, canonicalRole, addonFlags, customStudentLimit, getRoleRedirect, availableRoles, activeRole, switchActiveRole, maintenanceModeEnabled, maintenanceModeMessage, refreshMaintenanceStatus]);
 
   return (
     <AuthContext.Provider value={value}>

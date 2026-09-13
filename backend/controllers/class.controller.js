@@ -1491,6 +1491,7 @@ exports.getClassStudents = async (req, res) => {
           id,
           grade_level,
           form_level,
+          enrollment_status,
           user_id,
             users:user_id (
               first_name,
@@ -1515,7 +1516,12 @@ exports.getClassStudents = async (req, res) => {
             grade_level: enrollment.students?.grade_level || "",
             form_level: enrollment.students?.form_level || "",
             level: enrollment.students?.grade_level || enrollment.students?.form_level || "",
+            enrollment_status: enrollment.students?.enrollment_status || "active",
         }));
+
+        if (req.query.include_leavers !== 'true') {
+            students = students.filter(s => !s.enrollment_status || s.enrollment_status === 'active');
+        }
 
         // Filter roster for subject-teacher scoped visibility
         if (userRole === 'teacher' && !isClassTeacher) {

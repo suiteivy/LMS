@@ -388,6 +388,9 @@ exports.listStudents = async (req, res) => {
                 id,
                 grade_level,
                 form_level,
+                enrollment_status,
+                exit_date,
+                exit_reason,
                 users (
                     first_name,
                     last_name,
@@ -396,6 +399,10 @@ exports.listStudents = async (req, res) => {
                 )
             `)
             .eq('institution_id', institution_id);
+
+        if (req.query.include_leavers !== 'true') {
+            query = query.or('enrollment_status.is.null,enrollment_status.eq.active');
+        }
 
         if (userRole === 'teacher') {
             if (allowedStudentIds && allowedStudentIds.length > 0) {
@@ -434,6 +441,7 @@ exports.listStudents = async (req, res) => {
 
         const enriched = students.map((student) => ({
             ...student,
+            enrollment_status: student.enrollment_status || 'active',
             class_id: classMap.get(student.id)?.class_id || null,
             class_name: classMap.get(student.id)?.class_name || 'Unassigned',
         }));

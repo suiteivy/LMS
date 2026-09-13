@@ -656,3 +656,96 @@ exports.getStudentAssignments = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+/**
+ * Get Exams for linked student
+ */
+exports.getStudentExams = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        const userId = req.userId || req.user?.id;
+        const institution_id = req.institution_id || req.user?.institution_id;
+
+        const auth = await verifyParentStudentLink(userId, studentId);
+        if (!auth.authorized) return res.status(auth.status).json({ error: auth.error, code: 'PARENT_CHILD_ACCESS_DENIED' });
+
+        // 1. Get student's enrolled subject IDs (direct + class)
+        const { data: directEnrollments } = await supabase
+            .from('enrollments')
+            .select('subject_id')
+            .eq('student_id', studentId)
+            .eq('status', 'enrolled');
+
+        const { data: classEnrollments } = await supabase
+            .from('class_enrollments')
+            .select('class_id')
+            .eq('student_id', studentId);
+
+        const classIds = (classEnrollments || []).map(c => c.class_id).filter(Boolean);
+        let classSubjectIds = [];
+        if (classIds.length > 0) {
+            const { data: classSubs } = await supabase
+                .from('subjects')
+                .select('id')
+                .in('class_id', classIds)
+                .eq('institution_id', institution_id);
+            classSubjectIds = (classSubs || []).map(s => s.id);
+        }
+
+        const subjectIds = [...new Set([...(directEnrollments || []).map(e => e.subject_id), ...classSubjectIds])];
+        if (subjectIds.length === 0) return res.json([]);
+
+        const { data: exams, error } = await supabase
+            .from('exams')
+            .select(`
+                id, title, description, date, max_score, weight, term, is_published, submission_deadline,
+                subjects (id, title, teachers(users(full_name)))
+            `)
+            .in('subject_id', subjectIds)
+            .eq('institution_id', institution_id)
+            .eq('is_published', true)
+            .order('date', { ascending: true });
+
+        if (error) throw error;
+        res.json({ success: true, data: exams || [] });
+    } catch (err) {
+        console.error("getStudentExams error:", err);
+        res.status(500).json({ error: "Failed to fetch student exams" });
+    }
+};
+
+/**
+ * Get Exam Results for linked student
+ */
+exports.getStudentExamResults = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        const userId = req.userId || req.user?.id;
+        const institution_id = req.institution_id || req.user?.institution_id;
+
+        const auth = await verifyParentStudentLink(userId, studentId);
+        if (!auth.authorized) return res.status(auth.status).json({ error: auth.error, code: 'PARENT_CHILD_ACCESS_DENIED' });
+
+        const { data: results, error } = await supabase
+            .from('exam_results')
+            .select(`
+                id, exam_id, score, competency_band, feedback, created_at,
+                exams (
+                    id, title, date, max_score, weight, term, is_published,
+                    subjects (id, title, teachers(users(full_name)))
+                )
+            `)
+            .eq('student_id', studentId)
+            .eq('institution_id', institution_id)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Filter for published exams only so unreleased grades aren't visible to parents
+        const publishedResults = (results || []).filter(r => r.exams?.is_published !== false);
+        res.json(publishedResults);
+    } catch (err) {
+        console.error("getStudentExamResults error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};

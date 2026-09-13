@@ -202,4 +202,71 @@ export class FinanceService {
 
         return this.getPaymentReceiptHtml(id);
     }
+
+    /**
+     * Finance Administrator Designations (Main Admin only)
+     */
+    static async getFinanceAdmins(): Promise<{ designations: any[]; eligibleUsers: any[] }> {
+        const response = await api.get('/finance/administrators');
+        return response.data;
+    }
+
+    static async toggleFinanceAdmin(userId: string, isActive: boolean, notes?: string) {
+        const response = await api.post('/finance/administrators/toggle', {
+            userId,
+            isActive,
+            notes,
+        });
+        return response.data;
+    }
+
+    static async getFinanceAdminAuditLogs(limit?: number): Promise<{ logs: any[] }> {
+        const response = await api.get('/finance/administrators/audit', { params: limit ? { limit } : undefined });
+        return response.data;
+    }
+
+    /**
+     * Individual Financial Records (Selectable-Person View)
+     */
+    static async getIndividualFinancialRecord(personType: 'student' | 'staff', personId: string) {
+        const response = await api.get(`/finance/individual-records/${personType}/${encodeURIComponent(personId)}`);
+        return response.data;
+    }
+
+    static async adjustIndividualBalance(
+        payloadOrStudentId: string | {
+            studentId?: string;
+            personId?: string;
+            amount: number;
+            adjustmentType: 'credit' | 'debit';
+            reason: string;
+            term?: string;
+            academicYear?: string;
+        },
+        amount?: number,
+        adjustmentType?: 'credit' | 'debit',
+        reason?: string,
+        term?: string,
+        academicYear?: string
+    ) {
+        let payload: any;
+        if (typeof payloadOrStudentId === 'object') {
+            payload = {
+                ...payloadOrStudentId,
+                personId: payloadOrStudentId.personId || payloadOrStudentId.studentId,
+            };
+        } else {
+            payload = {
+                personId: payloadOrStudentId,
+                studentId: payloadOrStudentId,
+                amount,
+                adjustmentType,
+                reason,
+                term,
+                academicYear,
+            };
+        }
+        const response = await api.post('/finance/individual-records/adjust', payload);
+        return response.data;
+    }
 }

@@ -170,13 +170,15 @@ exports.getStudentAttendance = async (req, res) => {
             // Homeroom / class-only attendance flow
             const { data: classEnrollments, error: ceError } = await supabase
                 .from('class_enrollments')
-                .select('student_id, students(id, users!inner(first_name, last_name, full_name, avatar_url))')
+                .select('student_id, students(id, enrollment_status, users!inner(first_name, last_name, full_name, avatar_url))')
                 .eq('class_id', _class_id)
                 .eq('institution_id', institution_id);
 
             if (ceError) throw ceError;
 
-            const allStudents = (classEnrollments || []).map(e => e.students).filter(Boolean);
+            const allStudents = (classEnrollments || [])
+                .map(e => e.students)
+                .filter(s => s && (!s.enrollment_status || s.enrollment_status === 'active'));
 
             const { data: attendance, error: aError } = await supabase
                 .from("attendance")
@@ -279,12 +281,12 @@ exports.getStudentAttendance = async (req, res) => {
         if (mergedStudentIds.length > 0) {
             const { data: studentRows, error: studentError } = await supabase
                 .from('students')
-                .select('id, users!inner(first_name, last_name, full_name, avatar_url)')
+                .select('id, enrollment_status, users!inner(first_name, last_name, full_name, avatar_url)')
                 .eq('institution_id', institution_id)
                 .in('id', mergedStudentIds);
 
             if (studentError) throw studentError;
-            allStudents = studentRows || [];
+            allStudents = (studentRows || []).filter(s => !s.enrollment_status || s.enrollment_status === 'active');
         }
 
         // 2. Get attendance records for date and subject

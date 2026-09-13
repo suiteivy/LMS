@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ParentChildSelector } from "@/components/parent/ParentChildSelector";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -75,6 +76,13 @@ export default function StudentAnnouncementsPage() {
         role="Parent/Guardian"
         onBack={() => router.back()}
         showNotification={false}
+      />
+
+      <ParentChildSelector
+        selectedStudentId={studentId}
+        onSelectChild={(child) => {
+          router.setParams({ studentId: child.id, studentName: child.full_name, classId: child.class_id });
+        }}
       />
 
       <ScrollView

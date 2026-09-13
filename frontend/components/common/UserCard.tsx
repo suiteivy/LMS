@@ -14,6 +14,8 @@ interface UserCardProps extends BaseComponentProps {
  onEditPress?: (user: User) => void;
  onResetCredentialsPress?: (user: User) => void;
  onDeletePress?: (user: User) => void;
+ onMarkLeaverPress?: (user: User) => void;
+ onReactivatePress?: (user: User) => void;
  showBackButton?: boolean;
  onBackPress?: () => void;
 }
@@ -26,6 +28,8 @@ export const UserCard: React.FC<UserCardProps> = ({
  onEditPress,
  onResetCredentialsPress,
  onDeletePress,
+ onMarkLeaverPress,
+ onReactivatePress,
  showBackButton = false,
  onBackPress,
  className ="",
@@ -84,6 +88,16 @@ export const UserCard: React.FC<UserCardProps> = ({
  const handleDeletePress = (e: any) => {
  e.stopPropagation();
  onDeletePress?.(user);
+ };
+
+ const handleMarkLeaverPress = (e: any) => {
+ e.stopPropagation();
+ onMarkLeaverPress?.(user);
+ };
+
+ const handleReactivatePress = (e: any) => {
+ e.stopPropagation();
+ onReactivatePress?.(user);
  };
 
  const renderAvatar = (size: number = 12) => {
@@ -184,10 +198,19 @@ export const UserCard: React.FC<UserCardProps> = ({
  {/* Right: Role + Date + Actions */}
  <View className="flex-row items-center gap-4">
  <View className="items-end gap-1.5">
+ <View className="flex-row items-center gap-1.5">
+ {user.is_active === false && (
+ <View className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30">
+ <Text className="text-[9px] font-bold text-amber-500 uppercase">
+ {user.status || 'Leaver'}
+ </Text>
+ </View>
+ )}
  <View className={`px-2.5 py-1 rounded-lg border ${roleColors.bg} dark:bg-orange-950/20 ${roleColors.border} dark:border-orange-500/20`}>
  <Text className={`text-[9px] font-bold uppercase tracking-widest ${roleColors.text}`}>
  {user.role}
  </Text>
+ </View>
  </View>
  <Text className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
  {user.joinDate
@@ -206,6 +229,27 @@ export const UserCard: React.FC<UserCardProps> = ({
  >
  <MaterialCommunityIcons name="lock-reset" size={16} color="#FF6900" />
  </TouchableOpacity>
+ )}
+ {user.is_active === false ? (
+ onReactivatePress && (
+ <TouchableOpacity
+ onPress={handleReactivatePress}
+ className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-500/20 items-center justify-center"
+ activeOpacity={0.7}
+ >
+ <Ionicons name="refresh" size={16} color="#10B981" />
+ </TouchableOpacity>
+ )
+ ) : (
+ onMarkLeaverPress && (
+ <TouchableOpacity
+ onPress={handleMarkLeaverPress}
+ className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-500/20 items-center justify-center"
+ activeOpacity={0.7}
+ >
+ <Ionicons name="exit-outline" size={16} color="#F59E0B" />
+ </TouchableOpacity>
+ )
  )}
  <TouchableOpacity
  onPress={handleEditPress}

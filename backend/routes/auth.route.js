@@ -5,6 +5,8 @@ const {
   enrollUser,
   adminUpdateUser,
   deleteUser,
+  markUserAsLeaver,
+  reactivateUser,
   searchUsers,
   logout,
   changePassword,
@@ -74,6 +76,22 @@ router.delete(
   requireAdmin,
   validate(schemas.idParam),
   deleteUser,
+);
+router.patch(
+  "/users/:id/mark-leaver",
+  authMiddleware,
+  checkSubscription,
+  requireAdmin,
+  validate(schemas.idParam),
+  markUserAsLeaver,
+);
+router.patch(
+  "/users/:id/reactivate",
+  authMiddleware,
+  checkSubscription,
+  requireAdmin,
+  validate(schemas.idParam),
+  reactivateUser,
 );
 
 // Generic auth routes

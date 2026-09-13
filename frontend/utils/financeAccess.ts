@@ -4,12 +4,15 @@ const FINANCE_DASHBOARD_ROLES = [
   'platform_admin',
   'bursary',
   'master_admin',
+  'finance_administrator',
+  'finance_admin',
 ] as const;
 
 const normalizeRole = (value: unknown): string | null => {
   const role = String(value || '').trim().toLowerCase();
   if (!role) return null;
   if (role === 'bursar') return 'bursary';
+  if (role === 'finance_admin') return 'finance_administrator';
   return role;
 };
 
@@ -24,6 +27,9 @@ const expandRoleAliases = (value: unknown): string[] => {
 
   if (normalized === 'master_admin') expanded.add('platform_admin');
   if (normalized === 'platform_admin') expanded.add('master_admin');
+
+  if (normalized === 'finance_administrator') expanded.add('finance_admin');
+  if (normalized === 'finance_admin') expanded.add('finance_administrator');
 
   return Array.from(expanded);
 };

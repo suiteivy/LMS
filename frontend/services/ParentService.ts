@@ -57,6 +57,18 @@ export class ParentService {
         const response = await api.put(`/parent/student/${studentId}/profile`, data);
         return response.data;
     }
+
+    /** Get exams for a linked student */
+    static async getStudentExams(studentId: string) {
+        const response = await api.get(`/parent/student/${studentId}/exams`);
+        return response.data;
+    }
+
+    /** Get exam results for a linked student */
+    static async getStudentExamResults(studentId: string) {
+        const response = await api.get(`/parent/student/${studentId}/exam-results`);
+        return response.data;
+    }
 }
 
 export const ParentAPI = ParentService;

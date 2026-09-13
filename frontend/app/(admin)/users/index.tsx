@@ -122,6 +122,52 @@ export default function UsersManagementScreen() {
 
     useEffect(() => { fetchUsers(); }, [activeFilter, profile?.institution_id]);
 
+    const handleMarkLeaver = (targetUser: User) => {
+        if (profile?.id && targetUser.id === profile.id) {
+            Alert.alert('Action Restricted', 'Administrators cannot change their own active status.');
+            return;
+        }
+        Alert.alert(
+            'Confirm Leaver Status',
+            `Mark ${targetUser.name} (${targetUser.role}) as a leaver? Their historical records, grades, and logs will remain permanently preserved under institutional data retention policy.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Mark as Leaver',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const status = targetUser.role === 'student' ? 'withdrawn' : 'resigned';
+                            await SettingsService.markUserAsLeaver(targetUser.id, { status });
+                            Toast.show({
+                                type: 'success',
+                                text1: 'Status Updated',
+                                text2: `${targetUser.name} marked as leaver. Records preserved.`,
+                            });
+                            fetchUsers();
+                        } catch (err: any) {
+                            Alert.alert('Error', err?.response?.data?.error || err.message);
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleReactivate = async (targetUser: User) => {
+        try {
+            await SettingsService.reactivateUser(targetUser.id);
+            Toast.show({
+                type: 'success',
+                text1: 'User Reactivated',
+                text2: `${targetUser.name} is now active.`,
+            });
+            fetchUsers();
+        } catch (err: any) {
+            Alert.alert('Error', err?.response?.data?.error || err.message);
+        }
+    };
+
     const fetchUsers = async () => {
         try {
             setLoading(true);
@@ -134,7 +180,7 @@ export default function UsersManagementScreen() {
 
             let query = supabase
                 .from('users')
-                .select(`id, full_name, first_name, last_name, email, role, created_at, students(id), teachers(id), admins(id), parents(id)`)
+                .select(`id, full_name, first_name, last_name, email, role, is_active, created_at, students(id, enrollment_status), teachers(id, employment_status), admins(id), parents(id)`)
                 .eq('institution_id', profile.institution_id)
                 .order('created_at', { ascending: false });
 
@@ -155,8 +201,29 @@ export default function UsersManagementScreen() {
                         else if (u.role === 'teacher') displayId = getRoleId(u.teachers);
                         else if (u.role === 'admin') displayId = getRoleId(u.admins);
                         else if (u.role === 'parent') displayId = getRoleId(u.parents);
+
+                        const studentObj = Array.isArray(u.students) ? u.students[0] : u.students;
+                        const teacherObj = Array.isArray(u.teachers) ? u.teachers[0] : u.teachers;
+                        let status: string | undefined = undefined;
+                        if (u.role === 'student' && studentObj?.enrollment_status && studentObj.enrollment_status !== 'active') {
+                            status = studentObj.enrollment_status;
+                        } else if (u.role === 'teacher' && teacherObj?.employment_status && teacherObj.employment_status !== 'active') {
+                            status = teacherObj.employment_status;
+                        } else if (u.is_active === false) {
+                            status = 'inactive';
+                        }
+
                         const fallbackName = `${u.first_name || ''} ${u.last_name || ''}`.trim();
-                        return { id: u.id, displayId, name: u.full_name || fallbackName || 'Unknown User', email: u.email || 'No Email', role: u.role || 'user', joinDate: u.created_at || new Date().toISOString() } as User;
+                        return {
+                            id: u.id,
+                            displayId,
+                            name: u.full_name || fallbackName || 'Unknown User',
+                            email: u.email || 'No Email',
+                            role: u.role || 'user',
+                            is_active: u.is_active !== false && !status,
+                            status,
+                            joinDate: u.created_at || new Date().toISOString()
+                        } as User;
                     } catch { return null; }
                 }).filter((u): u is User => u !== null);
                 setUsers(formattedUsers);
@@ -269,6 +336,8 @@ export default function UsersManagementScreen() {
                                 user={item}
                                 showActions={true}
                                 onResetCredentialsPress={item.id === profile?.id ? undefined : openCredentialReset}
+                                onMarkLeaverPress={item.id === profile?.id ? undefined : handleMarkLeaver}
+                                onReactivatePress={item.id === profile?.id ? undefined : handleReactivate}
                                 onPress={u => router.push(`/(admin)/users/${u.id}` as Href)}
                             />
                         </View>

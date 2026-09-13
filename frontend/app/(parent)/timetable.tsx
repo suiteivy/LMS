@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ParentChildSelector } from "@/components/parent/ParentChildSelector";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { TimetableAPI } from "@/services/TimetableService";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,6 +18,7 @@ import { showError, showSuccess } from "@/utils/toast";
 export default function ParentStudentTimetablePage() {
     const params = useLocalSearchParams<{ studentId?: string; studentName?: string; classId?: string }>();
     const {
+        studentId: resolvedStudentId,
         studentName: resolvedName,
         classId: resolvedClassId,
         ready,
@@ -41,7 +43,7 @@ export default function ParentStudentTimetablePage() {
             setTimetable(data || []);
             setCancelledDates(cancelled || []);
 
-            const matchedStudent = (students || []).find((s: any) => s.id === params.studentId);
+            const matchedStudent = (students || []).find((s: any) => s.id === resolvedStudentId);
             const resolvedClass = matchedStudent?.class_name || formatClassLabel({
                 grade_level: matchedStudent?.grade_level,
                 form_level: matchedStudent?.form_level,
@@ -53,7 +55,7 @@ export default function ParentStudentTimetablePage() {
         } finally {
             setLoading(false);
         }
-    }, [resolvedClassId, params.studentId]);
+    }, [resolvedClassId, resolvedStudentId]);
 
     useEffect(() => {
         if (!ready) return;
@@ -119,6 +121,13 @@ export default function ParentStudentTimetablePage() {
                         </TouchableOpacity>
                     )
                 }
+            />
+
+            <ParentChildSelector
+                selectedStudentId={resolvedStudentId}
+                onSelectChild={(child) => {
+                    router.setParams({ studentId: child.id, studentName: child.full_name, classId: child.class_id });
+                }}
             />
 
             <View className="px-4 md:px-8 pt-4">

@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ParentChildSelector } from "@/components/parent/ParentChildSelector";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
@@ -74,8 +75,15 @@ export default function StudentAttendancePage() {
   const [classLabel, setClassLabel] = useState<string>("");
 
   const loadAttendance = async () => {
-    if (isDemo || !resolvedStudentId) {
+    if (isDemo) {
       setRecords(DEMO_ATTENDANCE);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    if (!resolvedStudentId) {
+      setRecords([]);
       setLoading(false);
       setRefreshing(false);
       return;
@@ -123,6 +131,13 @@ export default function StudentAttendancePage() {
         role="Parent/Guardian"
         onBack={() => router.back()}
         showNotification={false}
+      />
+
+      <ParentChildSelector
+        selectedStudentId={resolvedStudentId}
+        onSelectChild={(child) => {
+          router.setParams({ studentId: child.id, studentName: child.full_name });
+        }}
       />
 
       <ScrollView

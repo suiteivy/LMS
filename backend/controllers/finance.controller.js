@@ -3,6 +3,7 @@ const supabase = require("../utils/supabaseClient.js");
 const { parsePagination, paginatedResponse } = require("../utils/pagination.js");
 const { resolveActiveTerm } = require('../utils/resolveActiveTerm');
 const { buildReceiptHtml } = require('../utils/receiptTemplate.js');
+const { logRecordChange } = require('../utils/auditLogger.js');
 
 const FEE_STRUCTURE_STATUS = {
     DRAFT: 'Draft',
@@ -16,7 +17,7 @@ const PAYMENT_MIN_RETENTION_DAYS = 365;
 const PAYMENT_MIN_RETENTION_MS = PAYMENT_MIN_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 const DEFAULT_RECORDED_BY_LABEL = 'Unknown';
 const ANNUAL_TERM_NAME = 'Annual';
-const FINANCE_ADMIN_ROLES = ['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'];
+const FINANCE_ADMIN_ROLES = ['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin', 'finance_administrator', 'finance_admin'];
 
 const getDefaultCurrencyMeta = async () => {
     const { data } = await supabase
@@ -1694,3 +1695,381 @@ exports.getTransactionReceipt = async (req, res) => {
     }
 };
 
+/**
+ * List designated Finance Administrators and eligible candidates
+ */
+exports.getFinanceAdminsList = async (req, res) => {
+    try {
+        const institution_id = req.institution_id || req.user?.institution_id;
+        if (!institution_id) {
+            return res.status(400).json({ error: "Institution ID required" });
+        }
+
+        const { data: designations, error: desErr } = await supabase
+            .from('finance_admin_designations')
+            .select('id, user_id, assigned_by, assigned_at, is_active, notes')
+            .eq('institution_id', institution_id)
+            .eq('is_active', true);
+
+        if (desErr) throw desErr;
+
+        const userIds = (designations || []).map(d => d.user_id);
+        let usersMap = {};
+        if (userIds.length > 0) {
+            const { data: users } = await supabase
+                .from('users')
+                .select('id, first_name, last_name, full_name, email, role, avatar_url')
+                .in('id', userIds);
+            (users || []).forEach(u => { usersMap[u.id] = u; });
+        }
+
+        const results = (designations || []).map(d => ({
+            ...d,
+            user: usersMap[d.user_id] || { id: d.user_id, full_name: 'Unknown User' },
+        }));
+
+        return res.status(200).json({ data: results });
+    } catch (err) {
+        console.error('getFinanceAdminsList error:', err);
+        return res.status(500).json({ error: err.message || 'Failed to list finance administrators' });
+    }
+};
+
+/**
+ * Grant or revoke Finance Administrator designation
+ */
+exports.toggleFinanceAdminDesignation = async (req, res) => {
+    try {
+        const institution_id = req.institution_id || req.user?.institution_id;
+        const adminUserId = req.userId || req.user?.id;
+        const { userId, designate, reason } = req.body || {};
+
+        if (!userId) {
+            return res.status(400).json({ error: "userId is required" });
+        }
+
+        // Verify target user belongs to institution and has teacher or admin role
+        const { data: targetUser, error: uErr } = await supabase
+            .from('users')
+            .select('id, role, full_name, institution_id')
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (uErr || !targetUser) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        if (institution_id && targetUser.institution_id && targetUser.institution_id !== institution_id) {
+            return res.status(403).json({ error: "User does not belong to this institution" });
+        }
+
+        let designationRecord = null;
+        if (designate) {
+            const { data: existing } = await supabase
+                .from('finance_admin_designations')
+                .select('*')
+                .eq('user_id', userId)
+                .maybeSingle();
+
+            if (existing) {
+                const { data: updated } = await supabase
+                    .from('finance_admin_designations')
+                    .update({ is_active: true, notes: reason || null })
+                    .eq('id', existing.id);
+                designationRecord = updated || existing;
+            } else {
+                const { data: inserted } = await supabase
+                    .from('finance_admin_designations')
+                    .insert({
+                        institution_id: institution_id || targetUser.institution_id,
+                        user_id: userId,
+                        assigned_by: adminUserId,
+                        assigned_at: new Date().toISOString(),
+                        is_active: true,
+                        notes: reason || null,
+                    });
+                designationRecord = inserted;
+            }
+        } else {
+            await supabase
+                .from('finance_admin_designations')
+                .delete()
+                .eq('user_id', userId);
+        }
+
+        // Audit log
+        await supabase
+            .from('finance_admin_audit_logs')
+            .insert({
+                institution_id: institution_id || targetUser.institution_id,
+                actor_id: adminUserId,
+                target_user_id: userId,
+                action: designate ? 'assigned' : 'revoked',
+                reason: reason || null,
+                meta: { designate, target_role: targetUser.role },
+                created_at: new Date().toISOString(),
+            });
+
+        try {
+            const { clearUserCache } = require("../middleware/auth.middleware.js");
+            clearUserCache(userId);
+        } catch (cErr) {
+            // cache clear fallback
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: designate ? "Finance Administrator role designated successfully" : "Finance Administrator role revoked successfully",
+            is_designated: !!designate,
+            designation: designationRecord,
+        });
+    } catch (err) {
+        console.error('toggleFinanceAdminDesignation error:', err);
+        return res.status(500).json({ error: err.message || 'Failed to toggle finance administrator designation' });
+    }
+};
+
+/**
+ * Get audit logs for finance administrator role assignments
+ */
+exports.getFinanceAdminAuditLogs = async (req, res) => {
+    try {
+        const institution_id = req.institution_id || req.user?.institution_id;
+        if (!institution_id) {
+            return res.status(400).json({ error: "Institution ID required" });
+        }
+
+        const { data: logs, error } = await supabase
+            .from('finance_admin_audit_logs')
+            .select('*')
+            .eq('institution_id', institution_id)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return res.status(200).json({ data: logs || [] });
+    } catch (err) {
+        console.error('getFinanceAdminAuditLogs error:', err);
+        return res.status(500).json({ error: err.message || 'Failed to get audit logs' });
+    }
+};
+
+/**
+ * Get Individual Financial Record (Student ledger or Staff payout history)
+ */
+exports.getIndividualFinancialRecord = async (req, res) => {
+    try {
+        const institution_id = req.institution_id || req.user?.institution_id;
+        const { personType, personId } = req.params;
+
+        if (!personType || !personId) {
+            return res.status(400).json({ error: "personType and personId are required" });
+        }
+
+        const normalizedType = String(personType).toLowerCase();
+        const currency = await getInstitutionCurrency(institution_id);
+
+        if (normalizedType === 'student') {
+            const { data: student, error: stuErr } = await supabase
+                .from('students')
+                .select('id, user_id, admission_number, enrollment_status, grade_level, class_id, users(id, first_name, last_name, full_name, email, is_active)')
+                .or(`id.eq.${personId},user_id.eq.${personId}`)
+                .eq('institution_id', institution_id)
+                .maybeSingle();
+
+            if (stuErr || !student) {
+                return res.status(404).json({ error: "Student record not found in this institution" });
+            }
+
+            const studentId = student.id;
+
+            const { data: payments, error: payErr } = await supabase
+                .from('payments')
+                .select('*')
+                .eq('institution_id', institution_id)
+                .eq('student_id', studentId)
+                .order('payment_date', { ascending: false });
+
+            if (payErr) throw payErr;
+
+            const { data: fees } = await supabase
+                .from('fee_structures')
+                .select('*')
+                .eq('institution_id', institution_id)
+                .order('created_at', { ascending: false });
+
+            const feeStructures = fees || [];
+
+            const totalPaid = (payments || [])
+                .filter(p => p.status === 'completed' || p.status === 'success')
+                .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+            const totalAssessed = feeStructures
+                .filter(f => f.is_active || f.status === 'Released')
+                .reduce((sum, f) => sum + Number(f.total_amount || f.amount || 0), 0);
+
+            const netBalance = totalAssessed - totalPaid;
+
+            return res.status(200).json({
+                personType: 'student',
+                person: student,
+                currency,
+                metrics: {
+                    totalAssessed,
+                    totalPaid,
+                    netBalance,
+                },
+                feeStructures,
+                payments: payments || [],
+            });
+        } else if (['staff', 'teacher', 'employee'].includes(normalizedType)) {
+            const { data: teacher, error: teachErr } = await supabase
+                .from('teachers')
+                .select('id, user_id, employment_status, employee_id, users(id, first_name, last_name, full_name, email, role, is_active)')
+                .or(`id.eq.${personId},user_id.eq.${personId}`)
+                .eq('institution_id', institution_id)
+                .maybeSingle();
+
+            const userTargetId = teacher?.user_id || personId;
+
+            let payouts = [];
+            try {
+                const { data: payoutRows } = await supabase
+                    .from('teacher_payouts')
+                    .select('*')
+                    .or(`teacher_id.eq.${personId},user_id.eq.${userTargetId}`)
+                    .order('created_at', { ascending: false });
+                payouts = payoutRows || [];
+            } catch (pErr) {
+                payouts = [];
+            }
+
+            let transactions = [];
+            try {
+                const { data: txRows } = await supabase
+                    .from('financial_transactions')
+                    .select('*')
+                    .eq('institution_id', institution_id)
+                    .or(`target_id.eq.${userTargetId},origin_id.eq.${userTargetId},user_id.eq.${userTargetId}`)
+                    .order('date', { ascending: false });
+                transactions = txRows || [];
+            } catch (tErr) {
+                transactions = [];
+            }
+
+            const totalPaidOut = payouts
+                .filter(p => p.status === 'completed' || p.status === 'paid')
+                .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+            return res.status(200).json({
+                personType: 'staff',
+                person: teacher || { id: personId, user_id: userTargetId },
+                currency,
+                metrics: {
+                    totalPaidOut,
+                    payoutCount: payouts.length,
+                    transactionCount: transactions.length,
+                },
+                payouts,
+                transactions,
+            });
+        } else {
+            return res.status(400).json({ error: `Unsupported personType: ${personType}` });
+        }
+    } catch (err) {
+        console.error('getIndividualFinancialRecord error:', err);
+        return res.status(500).json({ error: err.message || 'Failed to get financial record' });
+    }
+};
+
+/**
+ * Adjust individual balance with mandatory reason and forensic logging
+ */
+exports.adjustIndividualBalance = async (req, res) => {
+    try {
+        const institution_id = req.institution_id || req.user?.institution_id;
+        const actor_id = req.userId || req.user?.id;
+        const { personType, personId, amount, adjustmentType, reason, term_id, academic_year_id } = req.body || {};
+
+        if (!personId || amount === undefined || amount === null) {
+            return res.status(400).json({ error: "personId and amount are required" });
+        }
+
+        if (!reason || !String(reason).trim()) {
+            return res.status(400).json({ error: "A descriptive reason is required for balance adjustments" });
+        }
+
+        const numericAmount = Number(amount);
+        if (isNaN(numericAmount) || numericAmount <= 0) {
+            return res.status(400).json({ error: "Adjustment amount must be a positive number" });
+        }
+
+        const refId = `ADJ-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+        const { data: newPayment, error: payErr } = await supabase
+            .from('payments')
+            .insert({
+                institution_id,
+                student_id: personId,
+                amount: adjustmentType === 'debit' ? -numericAmount : numericAmount,
+                payment_method: 'adjustment',
+                reference_id: refId,
+                payment_date: new Date().toISOString().split('T')[0],
+                status: 'completed',
+                term_id: term_id || null,
+                academic_year_id: academic_year_id || null,
+                meta: {
+                    is_adjustment: true,
+                    adjustment_type: adjustmentType || 'credit',
+                    reason: reason.trim(),
+                    adjusted_by: actor_id,
+                },
+            })
+            .select()
+            .maybeSingle();
+
+        if (payErr) {
+            console.warn("Payment table insert warning on adjustIndividualBalance:", payErr.message);
+        }
+
+        await logRecordChange({
+            institution_id,
+            table_name: 'payments',
+            record_id: newPayment?.id || refId,
+            changed_by: actor_id,
+            change_type: 'BALANCE_ADJUSTMENT',
+            action: 'balance_adjustment',
+            actor_id,
+            new_values: {
+                personType,
+                personId,
+                adjustmentType,
+                amount: numericAmount,
+                referenceId: refId,
+            },
+            reason: reason.trim(),
+        });
+
+        try {
+            await supabase.from('finance_admin_audit_logs').insert({
+                institution_id,
+                actor_id,
+                target_user_id: personId,
+                action: 'balance_adjustment',
+                reason: reason.trim(),
+                meta: { personType, adjustmentType, amount: numericAmount, referenceId: refId },
+                created_at: new Date().toISOString(),
+            });
+        } catch (aErr) {
+            // non-fatal
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Individual balance adjustment recorded successfully",
+            payment: newPayment || { reference_id: refId, amount: numericAmount },
+        });
+    } catch (err) {
+        console.error('adjustIndividualBalance error:', err);
+        return res.status(500).json({ error: err.message || 'Failed to adjust balance' });
+    }
+};

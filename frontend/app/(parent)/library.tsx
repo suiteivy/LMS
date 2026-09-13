@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ParentChildSelector } from "@/components/parent/ParentChildSelector";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { AddonRequestButton, SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { LibraryAPI } from "@/services/LibraryService";
@@ -19,13 +20,19 @@ export default function StudentLibraryPage() {
   const [borrowings, setBorrowings] = useState<FrontendBorrowedBook[]>([]);
 
   const fetchBorrowings = async () => {
-    if (!studentId) return;
+    if (!studentId) {
+      setBorrowings([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     try {
       const data = await LibraryAPI.getParentStudentBorrowingHistory(studentId);
       const transformed = data.map(LibraryAPI.transformBorrowedBookData);
       setBorrowings(transformed as any);
     } catch (error) {
       console.error("Error fetching library data:", error);
+      setBorrowings([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -41,52 +48,6 @@ export default function StudentLibraryPage() {
     setRefreshing(true);
     fetchBorrowings();
   };
-
-  if (ready && !studentId) {
-    return (
-      <SubscriptionGate
-        feature="library"
-        fallback={
-          <View className="flex-1 items-center justify-center p-8 bg-[#F6F8FA] dark:bg-[#161B22]">
-            <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-8 rounded-2xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed max-w-sm">
-              <Text className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">Library Locked</Text>
-              <Text className="text-gray-500 dark:text-gray-400 text-center text-xs mb-6 leading-5">
-                Library access is not enabled for this institution subscription.
-              </Text>
-              <AddonRequestButton onPress={() => {}} />
-            </View>
-          </View>
-        }
-      >
-      <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
-        <UnifiedHeader
-          title="Library"
-          subtitle="Resource Access"
-          role="Parent/Guardian"
-          onBack={() => router.back()}
-          showNotification={false}
-        />
-        <View className="flex-1 items-center justify-center p-8">
-             <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-10 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] items-center w-full">
-            <BookOpen size={40} color="#FF6900" style={{ opacity: 0.6 }} />
-            <Text className="text-gray-900 dark:text-white font-bold text-lg text-center mt-6">Select a Child First</Text>
-            <TouchableOpacity onPress={() => router.replace("/(parent)" as any)} className="mt-8 bg-[#FF6900] px-8 py-4 rounded-xl">
-              <Text className="text-white font-bold">Go to Home</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-      </SubscriptionGate>
-    );
-  }
-
-  if (loading && !refreshing) {
-    return (
-      <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-4 md:p-8">
-        <ListItemSkeleton loading={loading} count={4} label="Loading library activity..." />
-      </View>
-    );
-  }
 
   const activeLoans = borrowings.filter(b => b.status !== 'returned');
   const pastLoans = borrowings.filter(b => b.status === 'returned');
@@ -106,111 +67,122 @@ export default function StudentLibraryPage() {
         </View>
       }
     >
-    <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
-      <UnifiedHeader
-        title={studentName ? `${studentName}'s Library` : "Library"}
-        subtitle="Borrowed Books"
-        role="Parent/Guardian"
-        onBack={() => router.back()}
-        showNotification={false}
-      />
+      <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
+        <UnifiedHeader
+          title={studentName ? `${studentName}'s Library` : "Library"}
+          subtitle="Borrowed Books"
+          role="Parent/Guardian"
+          onBack={() => router.back()}
+          showNotification={false}
+        />
 
-      <ScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} tintColor="#FF6900" />
-        }
-      >
-        <View className="p-4 md:p-8">
-          
-          {/* Active Loans Section */}
-          <View className="px-2 mb-6">
-            <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Active Borrowings</Text>
-            <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Currently in possession</Text>
+        <ParentChildSelector
+          selectedStudentId={studentId}
+          onSelectChild={(child) => {
+            router.setParams({ studentId: child.id, studentName: child.full_name, classId: child.class_id });
+          }}
+        />
+
+        {loading && !refreshing ? (
+          <View className="flex-1 p-4 md:p-8">
+            <ListItemSkeleton loading={loading} count={4} label="Loading library activity..." />
           </View>
-
-          {activeLoans.length === 0 ? (
-            <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-12 rounded-xl border border-dashed border-[#D0D7DE] dark:border-[#21262D] items-center mb-10">
-              <BookMarked size={40} color="#E5E7EB" />
-              <Text className="text-gray-400 text-sm font-bold mt-4">No active loans</Text>
-            </View>
-          ) : (
-            activeLoans.map((loan) => (
-              <View 
-                key={loan.id}
-                className="bg-[#FFFFFF] dark:bg-[#161B22] p-6 rounded-xl mb-6 border border-[#D0D7DE] dark:border-[#21262D] shadow-sm"
-              >
-                <View className="flex-row justify-between items-start mb-6">
-                    <View className="flex-1 pr-4">
-                        <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tight leading-tight" numberOfLines={2}>
-                            {loan.bookTitle}
-                        </Text>
-                        <Text className="text-[#FF6900] text-[10px] font-black uppercase tracking-widest mt-1">
-                            {loan.author}
-                        </Text>
-                    </View>
-                    <View className={`px-3 py-1 rounded-full ${loan.status === 'overdue' ? 'bg-red-50 dark:bg-red-950/30 border-red-100' : 'bg-orange-50 dark:bg-orange-950/30 border-orange-100'} border`}>
-                        <Text className={`text-[9px] font-black uppercase tracking-widest ${loan.status === 'overdue' ? 'text-red-600' : 'text-[#FF6900]'}`}>
-                            {loan.status.replace('_', ' ')}
-                        </Text>
-                    </View>
-                </View>
-
-                <View className="flex-row gap-4 mb-6">
-                    <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D]">
-                        <Clock size={16} color="#9CA3AF" />
-                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-2">Due Date</Text>
-                        <Text className={`font-bold mt-0.5 ${loan.status === 'overdue' ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
-                            {new Date(loan.dueDate).toLocaleDateString()}
-                        </Text>
-                    </View>
-                    <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D]">
-                        <BookOpen size={16} color="#9CA3AF" />
-                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-2">Borrowed</Text>
-                        <Text className="text-gray-900 dark:text-white font-bold mt-0.5">
-                            {new Date(loan.borrowDate).toLocaleDateString()}
-                        </Text>
-                    </View>
-                </View>
-
-                {loan.notes && (
-                    <View className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-xl flex-row items-start border border-blue-100 dark:border-blue-900">
-                        <MessageSquare size={16} color="#3B82F6" style={{ marginTop: 2 }} />
-                        <View className="flex-1 ml-3">
-                            <Text className="text-blue-800 dark:text-blue-400 text-[8px] font-black uppercase tracking-widest mb-1">Teacher Remarks</Text>
-                            <Text className="text-blue-700 dark:text-blue-300 text-xs leading-5 font-medium">{loan.notes}</Text>
-                        </View>
-                    </View>
-                )}
+        ) : (
+          <ScrollView
+            className="flex-1"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 100 }}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} tintColor="#FF6900" />
+            }
+          >
+            <View className="p-4 md:p-8">
+              {/* Active Loans Section */}
+              <View className="px-2 mb-6">
+                <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Active Borrowings</Text>
+                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Currently in possession</Text>
               </View>
-            ))
-          )}
 
-          {/* Past History */}
-          {pastLoans.length > 0 && (
-            <View className="mt-10">
-                <View className="px-2 mb-6">
-                    <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Return History</Text>
+              {activeLoans.length === 0 ? (
+                <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-12 rounded-xl border border-dashed border-[#D0D7DE] dark:border-[#21262D] items-center mb-10">
+                  <BookMarked size={40} color="#E5E7EB" />
+                  <Text className="text-gray-400 text-sm font-bold mt-4">No active loans</Text>
                 </View>
-                {pastLoans.map((loan) => (
-                    <View key={loan.id} className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-[28px] mb-4 flex-row items-center border border-[#D0D7DE] dark:border-[#21262D] opacity-70">
-                        <View className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-[#161B22] items-center justify-center mr-4">
-                            <BookMarked size={18} color="#9CA3AF" />
+              ) : (
+                activeLoans.map((loan) => (
+                  <View 
+                    key={loan.id}
+                    className="bg-[#FFFFFF] dark:bg-[#161B22] p-6 rounded-xl mb-6 border border-[#D0D7DE] dark:border-[#21262D] shadow-sm"
+                  >
+                    <View className="flex-row justify-between items-start mb-6">
+                        <View className="flex-1 pr-4">
+                            <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tight leading-tight" numberOfLines={2}>
+                                {loan.bookTitle}
+                            </Text>
+                            <Text className="text-[#FF6900] text-[10px] font-black uppercase tracking-widest mt-1">
+                                {loan.author}
+                            </Text>
                         </View>
-                        <View className="flex-1">
-                            <Text className="text-gray-900 dark:text-white font-bold text-sm" numberOfLines={1}>{loan.bookTitle}</Text>
-                            <Text className="text-gray-400 text-[9px] font-bold uppercase tracking-widest mt-1">Returned {new Date(loan.returnDate!).toLocaleDateString()}</Text>
+                        <View className={`px-3 py-1 rounded-full ${loan.status === 'overdue' ? 'bg-red-50 dark:bg-red-950/30 border-red-100' : 'bg-orange-50 dark:bg-orange-950/30 border-orange-100'} border`}>
+                            <Text className={`text-[9px] font-black uppercase tracking-widest ${loan.status === 'overdue' ? 'text-red-600' : 'text-[#FF6900]'}`}>
+                                {loan.status.replace('_', ' ')}
+                            </Text>
                         </View>
                     </View>
-                ))}
-            </View>
-          )}
 
-        </View>
-      </ScrollView>
-    </View>
+                    <View className="flex-row gap-4 mb-6">
+                        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D]">
+                            <Clock size={16} color="#9CA3AF" />
+                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-2">Due Date</Text>
+                            <Text className={`font-bold mt-0.5 ${loan.status === 'overdue' ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
+                                {new Date(loan.dueDate).toLocaleDateString()}
+                            </Text>
+                        </View>
+                        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D]">
+                            <BookOpen size={16} color="#9CA3AF" />
+                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-2">Borrowed</Text>
+                            <Text className="text-gray-900 dark:text-white font-bold mt-0.5">
+                                {new Date(loan.borrowDate).toLocaleDateString()}
+                            </Text>
+                        </View>
+                    </View>
+
+                    {loan.notes && (
+                        <View className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-xl flex-row items-start border border-blue-100 dark:border-blue-900">
+                            <MessageSquare size={16} color="#3B82F6" style={{ marginTop: 2 }} />
+                            <View className="flex-1 ml-3">
+                                <Text className="text-blue-800 dark:text-blue-400 text-[8px] font-black uppercase tracking-widest mb-1">Teacher Remarks</Text>
+                                <Text className="text-blue-700 dark:text-blue-300 text-xs leading-5 font-medium">{loan.notes}</Text>
+                            </View>
+                        </View>
+                    )}
+                  </View>
+                ))
+              )}
+
+              {/* Past History */}
+              {pastLoans.length > 0 && (
+                <View className="mt-10">
+                    <View className="px-2 mb-6">
+                        <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Return History</Text>
+                    </View>
+                    {pastLoans.map((loan) => (
+                        <View key={loan.id} className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-[28px] mb-4 flex-row items-center border border-[#D0D7DE] dark:border-[#21262D] opacity-70">
+                            <View className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-[#161B22] items-center justify-center mr-4">
+                                <BookMarked size={18} color="#9CA3AF" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-gray-900 dark:text-white font-bold text-sm" numberOfLines={1}>{loan.bookTitle}</Text>
+                                <Text className="text-gray-400 text-[9px] font-bold uppercase tracking-widest mt-1">Returned {new Date(loan.returnDate!).toLocaleDateString()}</Text>
+                            </View>
+                        </View>
+                    ))}
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        )}
+      </View>
     </SubscriptionGate>
   );
 }

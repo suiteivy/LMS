@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { TeacherAPI } from '@/services/TeacherService';
 import { CacheService } from '@/services/CacheService';
 
-export type TeacherRoleMode = 'subject' | 'class' | 'librarian';
+export type TeacherRoleMode = 'subject' | 'class' | 'librarian' | 'finance';
 
 export const TEACHER_ROLE_MODE_KEY = 'teacher_active_mode';
 
@@ -18,21 +18,25 @@ export function getActiveTeacherRoleMode(): TeacherRoleMode {
   return currentMode;
 }
 
-function getFallbackMode(roles: string[], isLibrarianAuth: boolean): TeacherRoleMode {
+function getFallbackMode(roles: string[], isLibrarianAuth: boolean, isFinanceAdminAuth: boolean = false): TeacherRoleMode {
   const hasSubject = roles.includes('Subject Teacher');
   const hasClass = roles.includes('Class Teacher');
   const hasLibrarian = isLibrarianAuth || roles.includes('Librarian');
+  const hasFinance = isFinanceAdminAuth || roles.includes('Finance Administrator') || roles.includes('Finance Admin');
 
   if (hasSubject) return 'subject';
   if (hasClass) return 'class';
   if (hasLibrarian) return 'librarian';
+  if (hasFinance) return 'finance';
   return 'subject';
 }
 
-function isModeAllowed(mode: TeacherRoleMode, roles: string[], isLibrarianAuth: boolean): boolean {
+function isModeAllowed(mode: TeacherRoleMode, roles: string[], isLibrarianAuth: boolean, isFinanceAdminAuth: boolean = false): boolean {
   if (mode === 'subject') return roles.includes('Subject Teacher');
   if (mode === 'class') return roles.includes('Class Teacher');
-  return isLibrarianAuth || roles.includes('Librarian');
+  if (mode === 'librarian') return isLibrarianAuth || roles.includes('Librarian');
+  if (mode === 'finance') return isFinanceAdminAuth || roles.includes('Finance Administrator') || roles.includes('Finance Admin');
+  return false;
 }
 
 function notifyListeners() {
@@ -40,7 +44,7 @@ function notifyListeners() {
 }
 
 export function useTeacherRoleMode() {
-  const { teacherId, session, isDemo, isLibrarian: isLibrarianAuth } = useAuth();
+  const { teacherId, session, isDemo, isLibrarian: isLibrarianAuth, isFinanceAdmin: isFinanceAdminAuth } = useAuth();
   const [mode, setLocalMode] = useState<TeacherRoleMode>(currentMode);
   const [roles, setLocalRoles] = useState<string[]>(currentRoles);
   const [loading, setLoading] = useState<boolean>(!isInitialized);
@@ -67,8 +71,8 @@ export function useTeacherRoleMode() {
       try {
         // 1. Load saved mode from AsyncStorage
         const savedMode = await AsyncStorage.getItem(TEACHER_ROLE_MODE_KEY);
-        if (savedMode === 'subject' || savedMode === 'class' || savedMode === 'librarian') {
-          currentMode = savedMode;
+        if (savedMode === 'subject' || savedMode === 'class' || savedMode === 'librarian' || savedMode === 'finance') {
+          currentMode = savedMode as TeacherRoleMode;
         }
 
         // 2. Demo mode mock roles
@@ -90,8 +94,8 @@ export function useTeacherRoleMode() {
           const cached = await CacheService.get<any>(cacheKey, { allowStale: true });
           if (cached?.data?.roles) {
             currentRoles = cached.data.roles;
-            const fallback = getFallbackMode(currentRoles, isLibrarianAuth);
-            if (!isModeAllowed(currentMode, currentRoles, isLibrarianAuth)) {
+            const fallback = getFallbackMode(currentRoles, isLibrarianAuth, isFinanceAdminAuth);
+            if (!isModeAllowed(currentMode, currentRoles, isLibrarianAuth, isFinanceAdminAuth)) {
               currentMode = fallback;
             }
             isInitialized = true;
@@ -110,8 +114,8 @@ export function useTeacherRoleMode() {
           const fetchedRoles = data?.roles || [];
           currentRoles = fetchedRoles;
 
-          const fallback = getFallbackMode(fetchedRoles, isLibrarianAuth);
-          if (!isModeAllowed(currentMode, fetchedRoles, isLibrarianAuth)) {
+          const fallback = getFallbackMode(fetchedRoles, isLibrarianAuth, isFinanceAdminAuth);
+          if (!isModeAllowed(currentMode, fetchedRoles, isLibrarianAuth, isFinanceAdminAuth)) {
             currentMode = fallback;
           }
           isInitialized = true;
@@ -136,13 +140,13 @@ export function useTeacherRoleMode() {
     return () => {
       isMounted = false;
     };
-  }, [teacherId, session, isDemo, isLibrarianAuth]);
+  }, [teacherId, session, isDemo, isLibrarianAuth, isFinanceAdminAuth]);
 
   // Set mode, persist to AsyncStorage, and notify all hook consumers
   const setMode = useCallback((newMode: TeacherRoleMode) => {
-    const nextMode = isModeAllowed(newMode, currentRoles, isLibrarianAuth)
+    const nextMode = isModeAllowed(newMode, currentRoles, isLibrarianAuth, isFinanceAdminAuth)
       ? newMode
-      : getFallbackMode(currentRoles, isLibrarianAuth);
+      : getFallbackMode(currentRoles, isLibrarianAuth, isFinanceAdminAuth);
 
     currentMode = nextMode;
     setLocalMode(nextMode);
@@ -150,14 +154,14 @@ export function useTeacherRoleMode() {
       console.warn('[useTeacherRoleMode] Failed to persist role mode:', err);
     });
     notifyListeners();
-  }, [isLibrarianAuth]);
+  }, [isLibrarianAuth, isFinanceAdminAuth]);
 
   // Update roles in memory and sync listeners
   const syncRoles = useCallback((newRoles: string[]) => {
     currentRoles = newRoles;
     setLocalRoles(newRoles);
-    if (!isModeAllowed(currentMode, newRoles, isLibrarianAuth)) {
-      currentMode = getFallbackMode(newRoles, isLibrarianAuth);
+    if (!isModeAllowed(currentMode, newRoles, isLibrarianAuth, isFinanceAdminAuth)) {
+      currentMode = getFallbackMode(newRoles, isLibrarianAuth, isFinanceAdminAuth);
       setLocalMode(currentMode);
       AsyncStorage.setItem(TEACHER_ROLE_MODE_KEY, currentMode).catch((err) => {
         console.warn('[useTeacherRoleMode] Failed to persist role mode:', err);
@@ -165,14 +169,15 @@ export function useTeacherRoleMode() {
     }
     isInitialized = true;
     notifyListeners();
-  }, [isLibrarianAuth]);
+  }, [isLibrarianAuth, isFinanceAdminAuth]);
 
   const isClassTeacher = roles.includes('Class Teacher');
   const isSubjectTeacher = roles.includes('Subject Teacher');
   const isLibrarian = isLibrarianAuth || roles.includes('Librarian');
+  const isFinanceAdmin = isFinanceAdminAuth || roles.includes('Finance Administrator') || roles.includes('Finance Admin');
 
-  const fallbackMode = getFallbackMode(roles, isLibrarianAuth);
-  const modeAllowed = isModeAllowed(mode, roles, isLibrarianAuth);
+  const fallbackMode = getFallbackMode(roles, isLibrarianAuth, isFinanceAdminAuth);
+  const modeAllowed = isModeAllowed(mode, roles, isLibrarianAuth, isFinanceAdminAuth);
   const effectiveMode: TeacherRoleMode = modeAllowed ? mode : fallbackMode;
 
   useEffect(() => {
@@ -187,7 +192,7 @@ export function useTeacherRoleMode() {
   }, [loading, modeAllowed, effectiveMode]);
   
   // At least 2 roles available to toggle modes
-  const activeRoleCount = (isClassTeacher ? 1 : 0) + (isSubjectTeacher ? 1 : 0) + (isLibrarian ? 1 : 0);
+  const activeRoleCount = (isClassTeacher ? 1 : 0) + (isSubjectTeacher ? 1 : 0) + (isLibrarian ? 1 : 0) + (isFinanceAdmin ? 1 : 0);
   const canToggle = activeRoleCount >= 2;
 
   return {
@@ -198,6 +203,7 @@ export function useTeacherRoleMode() {
     isClassTeacher,
     isSubjectTeacher,
     isLibrarian,
+    isFinanceAdmin,
     canToggle,
     loading,
   };

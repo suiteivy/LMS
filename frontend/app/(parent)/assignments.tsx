@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react-native";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ParentChildSelector } from "@/components/parent/ParentChildSelector";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { ParentService } from "@/services/ParentService";
 import { useParentStudentContext } from "@/hooks/useParentStudentContext";
@@ -140,6 +141,13 @@ export default function ParentAssignmentsPage() {
         subtitle="Curriculum"
         role="Parent/Guardian"
         onBack={() => router.back()}
+      />
+
+      <ParentChildSelector
+        selectedStudentId={studentId}
+        onSelectChild={(child) => {
+          router.setParams({ studentId: child.id, studentName: child.full_name, classId: child.class_id });
+        }}
       />
 
       {/* Filter Tabs */}

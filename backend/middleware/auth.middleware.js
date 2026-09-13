@@ -341,12 +341,12 @@ async function authMiddleware(req, res, next) {
       ({ data: profileData, error: profileError } = await withSupabaseRetry(() =>
         supabase
           .from('users')
-          .select('*, admins(id, is_main, can_manage_users), teachers(id), parents(id), students(id), platform_admins(id)')
+          .select('*, admins(id, is_main, can_manage_users), teachers(id, employment_status), parents(id), students(id, enrollment_status), platform_admins(id)')
           .eq('id', user.id)
           .maybeSingle()
       ));
 
-      if (profileError?.message && /can_manage_users does not exist/i.test(profileError.message)) {
+      if (profileError?.message && /can_manage_users does not exist|employment_status does not exist|enrollment_status does not exist/i.test(profileError.message)) {
         ({ data: profileData, error: profileError } = await withSupabaseRetry(() =>
           supabase
             .from('users')
@@ -368,6 +368,26 @@ async function authMiddleware(req, res, next) {
         console.error(`[AuthMiddleware] Profile fetch error for ${user.id}:`, msg);
         return res.status(403).json({ error: "Unauthorized" });
       }
+
+      // Check account data retention period expiration
+      if (profileData.retention_until) {
+        const retentionTime = new Date(profileData.retention_until).getTime();
+        if (!isNaN(retentionTime) && Date.now() > retentionTime) {
+          if (isLogoutPath) return res.status(200).json({ message: "Already logged out" });
+          return res.status(403).json({
+            error: "Account data retention period has expired. Access is revoked.",
+            code: "ACCOUNT_RETENTION_EXPIRED"
+          });
+        }
+      }
+
+      // Detect leaver status (graduated/withdrawn/transferred/resigned/terminated/inactive)
+      const teacherRec = Array.isArray(profileData.teachers) ? profileData.teachers[0] : (profileData.teachers || null);
+      const studentRec = Array.isArray(profileData.students) ? profileData.students[0] : (profileData.students || null);
+      const isTeacherLeaver = teacherRec?.employment_status && ['resigned', 'contract_ended', 'terminated'].includes(teacherRec.employment_status);
+      const isStudentLeaver = studentRec?.enrollment_status && ['graduated', 'withdrawn', 'transferred'].includes(studentRec.enrollment_status);
+      const isUserInactive = profileData.is_active === false;
+      const isLeaver = !!(isTeacherLeaver || isStudentLeaver || isUserInactive);
 
       // Determine if platform admin
       let isPlatformAdmin = profileData.role === 'master_admin';
@@ -502,6 +522,20 @@ async function authMiddleware(req, res, next) {
         console.error("[AuthMiddleware] Error fetching librarian designation:", err.message);
       }
 
+      // Query active finance administrator designation
+      let isFinanceAdmin = false;
+      try {
+        const { data: financeAdminRow } = await supabase
+          .from('finance_admin_designations')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .maybeSingle();
+        isFinanceAdmin = !!financeAdminRow;
+      } catch (err) {
+        console.error("[AuthMiddleware] Error fetching finance admin designation:", err.message);
+      }
+
       const availableRolesSet = new Set();
       if (profileData.role) availableRolesSet.add(String(profileData.role).toLowerCase());
       if (isPlatformAdmin) availableRolesSet.add('master_admin');
@@ -517,6 +551,8 @@ async function authMiddleware(req, res, next) {
       if (profileData.students && (Array.isArray(profileData.students) ? profileData.students.length > 0 : !!profileData.students.id)) {
         availableRolesSet.add('student');
       }
+      if (isLibrarian) availableRolesSet.add('librarian');
+      if (isFinanceAdmin) availableRolesSet.add('finance_administrator');
       customRoles.forEach((r) => availableRolesSet.add(String(r).toLowerCase()));
       const availableRoles = Array.from(availableRolesSet);
 
@@ -533,6 +569,8 @@ async function authMiddleware(req, res, next) {
         can_manage_users: canManageUsers,
         isPlatformAdmin: isPlatformAdmin,
         is_librarian: isLibrarian,
+        is_finance_admin: isFinanceAdmin,
+        is_leaver: isLeaver,
         customRoles,
         permissions
       };
@@ -570,7 +608,9 @@ async function authMiddleware(req, res, next) {
       is_main: profile.is_main || false,
       can_manage_users: profile.can_manage_users || false,
       is_platform_admin: profile.isPlatformAdmin || false,
-      is_librarian: profile.is_librarian || false
+      is_librarian: profile.is_librarian || false,
+      is_finance_admin: profile.is_finance_admin || false,
+      is_leaver: profile.is_leaver || false
     };
 
     // Convenience shorthands (ensure always set)
@@ -584,6 +624,8 @@ async function authMiddleware(req, res, next) {
     req.isMain = req.user.is_main;
     req.isPlatformAdmin = req.user.is_platform_admin;
     req.isLibrarian = req.user.is_librarian;
+    req.isFinanceAdmin = req.user.is_finance_admin;
+    req.isLeaver = req.user.is_leaver;
 
     // First-login enforcement gate: force password update and security setup
     // before allowing access to broader application endpoints.
@@ -640,6 +682,23 @@ async function authMiddleware(req, res, next) {
       return res.status(403).json({ error: "User role not found in profile" });
     }
 
+    // Leaver read-only historical record access enforcement:
+    // Staff/student leavers have read-only access to their own past records (transcripts, payouts, past grades).
+    // Operational mutation requests (POST/PUT/PATCH/DELETE) on active school operations are strictly blocked.
+    if (req.user.is_leaver) {
+      const method = (req.method || 'GET').toUpperCase();
+      const isOperationalMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+      const reqPath = String(req.originalUrl || req.path || '').split('?')[0];
+      const isExempt = /logout|ping|change-password/i.test(reqPath);
+
+      if (isOperationalMutation && !isExempt) {
+        return res.status(403).json({
+          error: "Leaver account is restricted to read-only historical records.",
+          code: "LEAVER_READ_ONLY"
+        });
+      }
+    }
+
     req.isDemo = !!(user.user_metadata?.id_demo)
     if(req.isDemo) {
       req.institution_id = process.env.TEMPLATE_INSTITUTION_ID
@@ -667,4 +726,4 @@ function clearUserCache(userId) {
   profileCache.delete(userId);
 }
 
-module.exports = { authMiddleware, clearUserCache };
+module.exports = { authMiddleware, authenticate: authMiddleware, clearUserCache };

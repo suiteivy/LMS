@@ -117,7 +117,14 @@ const getReportCards = async (req, res) => {
       if (childIds.length === 0) {
         return res.json({ success: true, data: [] });
       }
-      query = query.in('student_id', childIds);
+      if (student_id) {
+        if (!childIds.includes(student_id)) {
+          return res.status(403).json({ success: false, error: 'Access denied: Student is not your linked child' });
+        }
+        query = query.eq('student_id', student_id);
+      } else {
+        query = query.in('student_id', childIds);
+      }
       // Parents only see records intentionally released to guardians
       query = query.eq('status', 'released');
     } else if (role === 'teacher') {

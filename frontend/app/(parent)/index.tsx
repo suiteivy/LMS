@@ -17,6 +17,8 @@ import {
   Clock,
   CreditCard,
   FileText,
+  GraduationCap,
+  LifeBuoy,
   LogOut,
   MessageSquare,
   TrendingUp,
@@ -226,11 +228,25 @@ function ParentDashboard({ user, logout }: any) {
       show: true,
     },
     {
+      icon: GraduationCap,
+      label: "Exams",
+      color: "#f59e0b",
+      onPress: () => goTo("/(parent)/exams"),
+      show: true,
+    },
+    {
       icon: BookOpen,
       label: "Class Diary",
       color: "#f59e0b",
       onPress: () => goTo("/(parent)/diary"),
       show: tier.hasDiary,
+    },
+    {
+      icon: LifeBuoy,
+      label: "Support",
+      color: "#6366f1",
+      onPress: () => goTo("/(parent)/support"),
+      show: true,
     },
   ].filter((action) => action.show);
 

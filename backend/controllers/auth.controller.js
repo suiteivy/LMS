@@ -6,6 +6,7 @@ const { sendBulkInAppNotificationsWithHistory } = require('../services/notificat
 const { canonicalRoleFrom, withRoleAliases } = require("../utils/roleAlias.js");
 const { assignStudentToSingleClass, resolveAutoAssignClass } = require('../utils/studentClassEnrollment');
 const { clearUserCache } = require("../middleware/auth.middleware.js");
+const { logRecordChange } = require("../utils/auditLogger.js");
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const ADMIN_DELEGATED_USER_EDIT_PERMISSIONS = new Set([
@@ -1649,6 +1650,161 @@ exports.deleteUser = async (req, res) => {
   } catch (err) {
     console.error('deleteUser error:', err);
     res.status(500).json({ error: "Server error during deletion" });
+  }
+};
+
+/**
+ * Mark User as Leaver (Graduated, Withdrawn, Transferred, Resigned, Terminated)
+ * Preserves all historical records while blocking operational actions and gating active rosters.
+ */
+exports.markUserAsLeaver = async (req, res) => {
+  const id = req.params?.id || req.params?.userId;
+  const { status, exit_date, exit_reason, retention_years, lifecycle_status } = req.body || {};
+  const effectiveStatus = status || lifecycle_status;
+  const institution_id = req.institution_id || req.user?.institution_id;
+  const adminUserId = req.userId || req.user?.id;
+
+  if (!id) {
+    return res.status(400).json({ error: "User ID is required" });
+  }
+
+  try {
+    // 1. Fetch user to verify institution and role
+    const { data: userRow, error: fetchErr } = await supabase
+      .from('users')
+      .select('id, institution_id, role, first_name, last_name, full_name, is_active')
+      .eq('id', id)
+      .single();
+
+    if (fetchErr || !userRow) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (req.userRole !== 'master_admin' && institution_id && userRow.institution_id && userRow.institution_id !== institution_id) {
+      return res.status(403).json({ error: "Access denied: cross-institution modification" });
+    }
+
+    const effectiveDate = exit_date || new Date().toISOString().split('T')[0];
+    const years = Number(retention_years) || 7;
+    const retentionUntil = new Date();
+    retentionUntil.setFullYear(retentionUntil.getFullYear() + years);
+
+    // 2. Update users table
+    const { error: userUpdateErr } = await supabase
+      .from('users')
+      .update({
+        is_active: false,
+        retention_until: retentionUntil.toISOString(),
+      })
+      .eq('id', id);
+
+    if (userUpdateErr) throw userUpdateErr;
+
+    // 3. Update role-specific table
+    const userRole = String(userRow.role).toLowerCase();
+    if (userRole === 'student') {
+      const studentStatus = effectiveStatus && ['graduated', 'withdrawn', 'transferred'].includes(effectiveStatus)
+        ? effectiveStatus
+        : 'withdrawn';
+      await supabase
+        .from('students')
+        .update({
+          enrollment_status: studentStatus,
+          exit_date: effectiveDate,
+          exit_reason: exit_reason || null,
+        })
+        .eq('user_id', id);
+    } else if (userRole === 'teacher') {
+      const teacherStatus = effectiveStatus && ['resigned', 'contract_ended', 'terminated'].includes(effectiveStatus)
+        ? effectiveStatus
+        : 'resigned';
+      await supabase
+        .from('teachers')
+        .update({
+          employment_status: teacherStatus,
+          exit_date: effectiveDate,
+          exit_reason: exit_reason || null,
+        })
+        .eq('user_id', id);
+    }
+
+    // 4. Audit change
+    await logRecordChange({
+      institution_id: userRow.institution_id,
+      table_name: 'users',
+      record_id: id,
+      changed_by: adminUserId,
+      change_type: 'MARK_LEAVER',
+      action: 'mark_leaver',
+      actor_id: adminUserId,
+      old_values: { is_active: userRow.is_active },
+      new_values: { is_active: false, status: effectiveStatus, exit_date: effectiveDate, retention_until: retentionUntil.toISOString() },
+      reason: exit_reason || `Marked as leaver (${effectiveStatus || 'withdrawn/resigned'})`,
+    });
+
+    clearUserCache(id);
+
+    res.json({
+      success: true,
+      message: "User marked as leaver successfully. Historical records preserved.",
+      is_active: false,
+      retention_until: retentionUntil.toISOString(),
+    });
+  } catch (err) {
+    console.error("markUserAsLeaver error:", err);
+    res.status(500).json({ error: err.message || "Failed to mark user as leaver" });
+  }
+};
+
+/**
+ * Reactivate a leaver user
+ */
+exports.reactivateUser = async (req, res) => {
+  const { id } = req.params;
+  const institution_id = req.institution_id;
+  const adminUserId = req.userId;
+
+  try {
+    const { data: userRow, error: fetchErr } = await supabase
+      .from('users')
+      .select('id, institution_id, role, is_active')
+      .eq('id', id)
+      .single();
+
+    if (fetchErr || !userRow) return res.status(404).json({ error: "User not found" });
+
+    if (req.userRole !== 'master_admin' && userRow.institution_id !== institution_id) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    await supabase
+      .from('users')
+      .update({ is_active: true, retention_until: null })
+      .eq('id', id);
+
+    const userRole = String(userRow.role).toLowerCase();
+    if (userRole === 'student') {
+      await supabase.from('students').update({ enrollment_status: 'active', exit_date: null, exit_reason: null }).eq('user_id', id);
+    } else if (userRole === 'teacher') {
+      await supabase.from('teachers').update({ employment_status: 'active', exit_date: null, exit_reason: null }).eq('user_id', id);
+    }
+
+    await logRecordChange({
+      institution_id: userRow.institution_id,
+      table_name: 'users',
+      record_id: id,
+      changed_by: adminUserId,
+      change_type: 'REACTIVATE_USER',
+      old_values: { is_active: false },
+      new_values: { is_active: true },
+      reason: 'Reactivated by admin',
+    });
+
+    clearUserCache(id);
+    res.json({ message: "User reactivated successfully", is_active: true });
+  } catch (err) {
+    console.error("reactivateUser error:", err);
+    res.status(500).json({ error: err.message || "Failed to reactivate user" });
   }
 };
 

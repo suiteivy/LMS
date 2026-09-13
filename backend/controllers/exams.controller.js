@@ -158,20 +158,56 @@ exports.createExam = async (req, res) => {
 
 exports.getExams = async (req, res) => {
     try {
-        const { subject_id } = req.query;
+        const { subject_id, student_id } = req.query;
         const { institution_id, userRole, userId } = req;
-        let query = supabase.from("exams").select("*").eq("institution_id", institution_id);
+        let query = supabase.from("exams").select("*, subjects(id, title, class_id)").eq("institution_id", institution_id);
         if (subject_id) query = query.eq("subject_id", subject_id);
 
         if (userRole === 'teacher') {
             const allowedSubjectIds = await getTeacherSubjectIds(userId, institution_id);
             if (allowedSubjectIds.length === 0) return res.json([]);
             query = query.in('subject_id', allowedSubjectIds);
+        } else if (userRole === 'student') {
+            const { data: student } = await supabase.from('students').select('id').eq('user_id', userId).single();
+            if (!student) return res.json([]);
+
+            const { data: enrollments } = await supabase.from('enrollments').select('subject_id').eq('student_id', student.id).eq('status', 'enrolled');
+            const { data: classEnrollments } = await supabase.from('class_enrollments').select('class_id').eq('student_id', student.id);
+            const classIds = (classEnrollments || []).map(c => c.class_id).filter(Boolean);
+            let classSubjectIds = [];
+            if (classIds.length > 0) {
+                const { data: classSubs } = await supabase.from('subjects').select('id').in('class_id', classIds).eq('institution_id', institution_id);
+                classSubjectIds = (classSubs || []).map(s => s.id);
+            }
+            const studentSubjectIds = [...new Set([...(enrollments || []).map(e => e.subject_id), ...classSubjectIds])];
+            if (studentSubjectIds.length === 0) return res.json([]);
+            query = query.in('subject_id', studentSubjectIds).eq('is_published', true);
+        } else if (userRole === 'parent') {
+            const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).single();
+            if (!parent) return res.json([]);
+
+            const { data: parentStudents } = await supabase.from('parent_students').select('student_id').eq('parent_id', parent.id);
+            const childIds = (parentStudents || []).map(ps => ps.student_id);
+            const targetChildId = student_id && childIds.includes(student_id) ? student_id : null;
+            const relevantChildIds = targetChildId ? [targetChildId] : childIds;
+            if (relevantChildIds.length === 0) return res.json([]);
+
+            const { data: enrollments } = await supabase.from('enrollments').select('subject_id').in('student_id', relevantChildIds).eq('status', 'enrolled');
+            const { data: classEnrollments } = await supabase.from('class_enrollments').select('class_id').in('student_id', relevantChildIds);
+            const classIds = (classEnrollments || []).map(c => c.class_id).filter(Boolean);
+            let classSubjectIds = [];
+            if (classIds.length > 0) {
+                const { data: classSubs } = await supabase.from('subjects').select('id').in('class_id', classIds).eq('institution_id', institution_id);
+                classSubjectIds = (classSubs || []).map(s => s.id);
+            }
+            const parentSubjectIds = [...new Set([...(enrollments || []).map(e => e.subject_id), ...classSubjectIds])];
+            if (parentSubjectIds.length === 0) return res.json([]);
+            query = query.in('subject_id', parentSubjectIds).eq('is_published', true);
         }
 
-        const { data, error } = await query;
+        const { data, error } = await query.order('date', { ascending: false });
         if (error) throw error;
-        res.json(data);
+        res.json(data || []);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -334,11 +370,38 @@ exports.getExamResults = async (req, res) => {
             if (allowedExamIds.length === 0) return res.json([]);
 
             query = query.in('exam_id', allowedExamIds);
+        } else if (userRole === 'student') {
+            const { data: student } = await supabase.from('students').select('id').eq('user_id', userId).single();
+            if (!student) return res.json([]);
+            query = query.eq('student_id', student.id);
+        } else if (userRole === 'parent') {
+            const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).single();
+            if (!parent) return res.json([]);
+
+            const { data: parentStudents } = await supabase.from('parent_students').select('student_id').eq('parent_id', parent.id);
+            const childIds = (parentStudents || []).map(ps => ps.student_id);
+            if (childIds.length === 0) return res.json([]);
+
+            const targetChildId = req.query.student_id;
+            if (targetChildId) {
+                if (!childIds.includes(targetChildId)) {
+                    return res.status(403).json({ error: "Access denied: student is not your linked child" });
+                }
+                query = query.eq('student_id', targetChildId);
+            } else {
+                query = query.in('student_id', childIds);
+            }
         }
 
         const { data, error } = await query;
         if (error) throw error;
-        res.json(data);
+
+        // If student or parent, only return results whose exams are published
+        let results = data || [];
+        if (userRole === 'student' || userRole === 'parent') {
+            results = results.filter(r => r.exams?.is_published !== false);
+        }
+        res.json(results);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -363,6 +426,10 @@ exports.getExamById = async (req, res) => {
         if (userRole === 'teacher') {
             const result = await authorizeTeacherForSubject(userId, exam.subject_id, res);
             if (!result) return;
+        } else if (userRole === 'student' || userRole === 'parent') {
+            if (!exam.is_published) {
+                return res.status(403).json({ error: 'Exam is not published' });
+            }
         } else if (userRole !== 'admin') {
             return res.status(403).json({ error: 'Unauthorized' });
         }

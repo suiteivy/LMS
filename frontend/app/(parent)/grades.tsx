@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ParentChildSelector } from "@/components/parent/ParentChildSelector";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { ParentService } from "@/services/ParentService";
@@ -227,6 +228,13 @@ export default function StudentGradesPage() {
         role="Parent/Guardian"
         onBack={() => router.back()}
         showNotification={false}
+      />
+
+      <ParentChildSelector
+        selectedStudentId={resolvedStudentId}
+        onSelectChild={(child) => {
+          router.setParams({ studentId: child.id, studentName: child.full_name });
+        }}
       />
 
       <ScrollView
