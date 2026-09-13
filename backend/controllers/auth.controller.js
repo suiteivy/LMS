@@ -4,7 +4,7 @@ const supabase = require("../utils/supabaseClient.js");
 const { sendEmail } = require("../utils/emailService.js");
 const { sendBulkInAppNotificationsWithHistory } = require('../services/notificationDelivery.service.js');
 const { canonicalRoleFrom, withRoleAliases } = require("../utils/roleAlias.js");
-const { assignStudentToSingleClass } = require('../utils/studentClassEnrollment');
+const { assignStudentToSingleClass, resolveAutoAssignClass } = require('../utils/studentClassEnrollment');
 const { clearUserCache } = require("../middleware/auth.middleware.js");
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
@@ -301,7 +301,7 @@ const buildCredentialDeliveryUrl = (token) => {
 const formatHumanReadableExpiry = (isoOrDate) => {
   try {
     const d = new Date(isoOrDate);
-    if (isNaN(d.getTime())) return String(isoOrDate || '24 hours');
+    if (isNaN(d.getTime())) return String(isoOrDate || '7 days');
     const formatted = d.toLocaleString('en-US', {
       timeZone: 'UTC',
       weekday: 'long',
@@ -312,9 +312,9 @@ const formatHumanReadableExpiry = (isoOrDate) => {
       minute: '2-digit',
       hour12: true,
     });
-    return `${formatted} UTC (Valid for 24 hours)`;
+    return `${formatted} UTC (Valid for 7 days)`;
   } catch {
-    return String(isoOrDate || '24 hours');
+    return String(isoOrDate || '7 days');
   }
 };
 
@@ -326,7 +326,7 @@ const createCredentialDeliveryToken = async ({
   metadata = {},
 }) => {
   const token = crypto.randomBytes(24).toString('hex');
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const expiresAtFormatted = formatHumanReadableExpiry(expiresAt);
 
   const { error } = await supabase.from('credential_delivery_tokens').insert({
@@ -877,12 +877,26 @@ exports.enrollUser = async (req, res) => {
       customId = studentData?.id;
 
       // Class enrollment (single active class per student)
-      if (class_ids && class_ids.length > 0 && customId) {
+      let resolvedClassId = (class_ids && class_ids.length > 0) ? class_ids[0] : null;
+      if (req.body.auto_assign_class === true || resolvedClassId === 'auto') {
+        const autoCls = await resolveAutoAssignClass({
+          institutionId: targetInstitutionId,
+          gradeLevel: grade_level,
+          formLevel: req.body.form_level,
+        });
+        if (autoCls) {
+          resolvedClassId = autoCls.id;
+        }
+      }
+
+      if (resolvedClassId && resolvedClassId !== 'auto' && customId) {
         await assignStudentToSingleClass({
           studentId: customId,
-          classId: class_ids[0],
+          classId: resolvedClassId,
           institutionId: targetInstitutionId,
           syncStudentLevel: true,
+          trackId: req.body.track_id || req.body.trackId,
+          electiveSubjectIds: req.body.elective_subject_ids || req.body.electiveSubjectIds,
         });
       }
 
@@ -1368,18 +1382,34 @@ exports.adminUpdateUser = async (req, res) => {
       }
 
       // Update class enrollment (single active class per student)
-      if (class_id !== undefined) {
+      if (class_id !== undefined || req.body.auto_assign_class === true) {
         // Resolve custom student ID
-        const { data: studentData } = await supabase.from('students').select('id').eq('user_id', id).single();
+        const { data: studentData } = await supabase.from('students').select('id, grade_level, form_level').eq('user_id', id).single();
         const customStudentId = studentData?.id;
 
         if (customStudentId) {
-          await assignStudentToSingleClass({
-            studentId: customStudentId,
-            classId: class_id,
-            institutionId: req.institution_id,
-            syncStudentLevel: true,
-          });
+          let targetClassId = class_id;
+          if (req.body.auto_assign_class === true || targetClassId === 'auto') {
+            const autoCls = await resolveAutoAssignClass({
+              institutionId: req.institution_id,
+              gradeLevel: grade_level !== undefined ? grade_level : studentData.grade_level,
+              formLevel: req.body.form_level !== undefined ? req.body.form_level : studentData.form_level,
+            });
+            if (autoCls) {
+              targetClassId = autoCls.id;
+            }
+          }
+
+          if (targetClassId && targetClassId !== 'auto') {
+            await assignStudentToSingleClass({
+              studentId: customStudentId,
+              classId: targetClassId,
+              institutionId: req.institution_id,
+              syncStudentLevel: true,
+              trackId: req.body.track_id || req.body.trackId,
+              electiveSubjectIds: req.body.elective_subject_ids || req.body.electiveSubjectIds,
+            });
+          }
         }
       }
 

@@ -479,7 +479,7 @@ const buildCredentialDeliveryUrl = (token) => {
 const formatHumanReadableExpiry = (isoOrDate) => {
     try {
         const d = new Date(isoOrDate);
-        if (isNaN(d.getTime())) return String(isoOrDate || '24 hours');
+        if (isNaN(d.getTime())) return String(isoOrDate || '7 days');
         const formatted = d.toLocaleString('en-US', {
             timeZone: 'UTC',
             weekday: 'long',
@@ -490,9 +490,9 @@ const formatHumanReadableExpiry = (isoOrDate) => {
             minute: '2-digit',
             hour12: true,
         });
-        return `${formatted} UTC (Valid for 24 hours)`;
+        return `${formatted} UTC (Valid for 7 days)`;
     } catch {
-        return String(isoOrDate || '24 hours');
+        return String(isoOrDate || '7 days');
     }
 };
 
@@ -505,7 +505,7 @@ const createCredentialDeliveryToken = async ({
     metadata = {},
 }) => {
     const token = crypto.randomBytes(24).toString('hex');
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
     const expiresAtFormatted = formatHumanReadableExpiry(expiresAt);
 
     const { error } = await adminClient.from('credential_delivery_tokens').insert({

@@ -324,8 +324,7 @@ exports.listStudents = async (req, res) => {
                 const { data: ctEnrollments } = await supabase
                     .from('class_enrollments')
                     .select('student_id')
-                    .in('class_id', scope.classTeacherClassIds)
-                    .eq('status', 'enrolled');
+                    .in('class_id', scope.classTeacherClassIds);
                 allowedStudentIds = (ctEnrollments || []).map(e => e.student_id);
             } else if (scope && scope.activeMode === 'subject') {
                 // Subject Teacher mode: Strictly students taught by this teacher
@@ -352,8 +351,7 @@ exports.listStudents = async (req, res) => {
                     const { data: ctEnrollments } = await supabase
                         .from('class_enrollments')
                         .select('student_id')
-                        .in('class_id', ctClassIds)
-                        .eq('status', 'enrolled');
+                        .in('class_id', ctClassIds);
                     ctStudentIds = (ctEnrollments || []).map(e => e.student_id);
                 }
 

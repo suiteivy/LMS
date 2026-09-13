@@ -1738,12 +1738,14 @@ exports.autoAssignStudents = async (req, res) => {
             return res.json({ assigned: 0, message: "All classes are at capacity" });
         }
 
-        // 5. Bulk insert
-        const { error: insertErr } = await supabase
-            .from("class_enrollments")
-            .insert(assignments);
-
-        if (insertErr) throw insertErr;
+        // 5. Assign students with full property inheritance
+        for (const a of assignments) {
+            await assignStudentToSingleClass(supabase, {
+                studentId: a.student_id,
+                classId: a.class_id,
+                institutionId: institution_id,
+            });
+        }
 
         // Build summary
         const summary = classData.map((cls) => ({

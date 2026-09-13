@@ -128,8 +128,7 @@ exports.getDashboardStats = async (req, res) => {
             const { data: ctEnrollments } = await supabase
                 .from('class_enrollments')
                 .select('student_id')
-                .in('class_id', ctClassIds)
-                .eq('status', 'enrolled');
+                .in('class_id', ctClassIds);
             const ctStudentIds = new Set((ctEnrollments || []).map(e => e.student_id));
             studentsCount = ctStudentIds.size;
 
@@ -631,7 +630,6 @@ exports.getStudentDetails = async (req, res) => {
             .from('class_enrollments')
             .select('class_id, classes!inner(teacher_id)')
             .eq('student_id', studentId)
-            .eq('status', 'enrolled')
             .maybeSingle();
 
         const isDesignatedClassTeacher = !!(classEnrollment && classEnrollment.classes?.teacher_id === teacherId);

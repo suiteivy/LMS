@@ -172,8 +172,7 @@ exports.getStudentAttendance = async (req, res) => {
                 .from('class_enrollments')
                 .select('student_id, students(id, users!inner(first_name, last_name, full_name, avatar_url))')
                 .eq('class_id', _class_id)
-                .eq('institution_id', institution_id)
-                .eq('status', 'enrolled');
+                .eq('institution_id', institution_id);
 
             if (ceError) throw ceError;
 

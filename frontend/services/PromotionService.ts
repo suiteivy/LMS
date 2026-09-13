@@ -59,4 +59,52 @@ export const PromotionAPI = {
     const res = await api.post(`/promotions/cycles/${cycleId}/execute`);
     return res.data?.data;
   },
+
+  getTargetClasses: async (params: {
+    grade_level?: number;
+    form_level?: number;
+    source_class_id?: string;
+  }): Promise<{
+    classes: Array<{
+      id: string;
+      grade_level?: number;
+      form_level?: number;
+      stream?: string;
+      display_name?: string;
+      name: string;
+      capacity?: number;
+      current_enrollment: number;
+    }>;
+    has_multiple_classes: boolean;
+    is_senior_secondary: boolean;
+    tracks: any[];
+  }> => {
+    const res = await api.get('/promotions/target-classes', { params });
+    return res.data?.data;
+  },
+
+  promoteIndividual: async (payload: {
+    student_id: string;
+    to_class_id: string;
+    track_id?: string;
+    elective_subject_ids?: string[];
+    cycle_id?: string;
+    reason?: string;
+  }) => {
+    const res = await api.post('/promotions/individual', payload);
+    return res.data;
+  },
+
+  promoteClass: async (payload: {
+    from_class_id: string;
+    to_class_id?: string;
+    reshuffle?: boolean;
+    student_ids?: string[];
+    track_id?: string;
+    elective_subject_ids?: string[];
+    student_tracks?: Record<string, { track_id?: string; elective_subject_ids?: string[] }>;
+  }) => {
+    const res = await api.post('/promotions/promote-class', payload);
+    return res.data;
+  },
 };

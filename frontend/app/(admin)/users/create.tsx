@@ -41,6 +41,7 @@ interface FormData {
     emergency_contact_phone: string;
     class_id: string;
     class_ids: string[];
+    auto_assign_class?: boolean;
     class_category_id: string;
     class_level_id: string;
     class_stream_id: string;
@@ -118,6 +119,7 @@ const initialFormData: FormData = {
     parent_contact: '', emergency_contact_name: '', emergency_contact_phone: '',
     class_id: '',
     class_ids: [],
+    auto_assign_class: false,
     class_category_id: '',
     class_level_id: '',
     class_stream_id: '',
@@ -356,7 +358,7 @@ export default function CreateUserScreen() {
     };
 
     const selectStudentClass = (id: string) => {
-        setForm(prev => ({ ...prev, class_id: id, class_ids: id ? [id] : [] }));
+        setForm(prev => ({ ...prev, class_id: id, class_ids: id ? [id] : [], auto_assign_class: false }));
     };
 
     // Filtered classes logic
@@ -482,12 +484,14 @@ export default function CreateUserScreen() {
             const levelStr = form.grade_level || form.form_level;
             const numLevel = levelStr ? parseInt(levelStr.replace(/[^0-9]/g, ''), 10) : null;
             
+            const isAutoAssign = !!(form.auto_assign_class || form.class_id === 'auto');
             const payload: any = {
                 ...form,
                 institution_id: profile?.institution_id || form.institution_id,
                 grade_level: !isSecondary ? numLevel : null,
                 form_level: isSecondary ? numLevel : null,
-                class_ids: form.class_id ? [form.class_id] : [],
+                class_ids: (form.class_id && form.class_id !== 'auto') ? [form.class_id] : [],
+                auto_assign_class: isAutoAssign,
                 parent_info: form.create_parent ? form.parent_info : undefined 
             };
 
@@ -914,6 +918,38 @@ export default function CreateUserScreen() {
                     </View>
                 ) : (
                     <View style={{ gap: 8 }}>
+                        {/* Auto-assign Option */}
+                        <TouchableOpacity 
+                            onPress={() => setForm(prev => ({ ...prev, class_id: 'auto', class_ids: [], auto_assign_class: true }))}
+                            activeOpacity={0.7}
+                            style={{ 
+                                flexDirection: 'row', 
+                                alignItems: 'center', 
+                                padding: 16, 
+                                borderRadius: 12, 
+                                borderWidth: 1.5, 
+                                backgroundColor: (form.auto_assign_class || form.class_id === 'auto') ? (isDark ? '#1e3a8a' : '#eff6ff') : card,
+                                borderColor: (form.auto_assign_class || form.class_id === 'auto') ? '#3b82f6' : border
+                            }}
+                        >
+                            <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: (form.auto_assign_class || form.class_id === 'auto') ? '#3b82f6' : border, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                {(form.auto_assign_class || form.class_id === 'auto') && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#3b82f6' }} />}
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 15 }}>Auto-assign to balanced class</Text>
+                                    <View style={{ backgroundColor: '#10b98120', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                                        <Text style={{ color: '#10b981', fontSize: 10, fontWeight: '700' }}>RECOMMENDED</Text>
+                                    </View>
+                                </View>
+                                <Text style={{ color: textSecondary, fontSize: 12, marginTop: 2 }}>
+                                    Automatically places student in the class with lowest headcount and available capacity
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: textSecondary, marginTop: 4, marginBottom: 2 }}>Or select a specific class manually:</Text>
+
                         {getFilteredClasses().map(c => (
                             <TouchableOpacity 
                                 key={c.id} 
@@ -1162,7 +1198,7 @@ export default function CreateUserScreen() {
                     {renderReviewRow('Parent Relationship', form.parent_relationship)}
                     {renderReviewRow('Emergency Contact', form.emergency_contact_name)}
                     {renderReviewRow('Emergency Phone', form.emergency_contact_phone)}
-                    {renderReviewRow('Class', form.class_id ? (classes.find(c => c.id === form.class_id)?.name || form.class_id) : undefined)}
+                    {renderReviewRow('Class', (form.auto_assign_class || form.class_id === 'auto') ? 'Auto-assign to balanced class' : (form.class_id ? (classes.find(c => c.id === form.class_id)?.name || form.class_id) : undefined))}
                     {renderReviewRow('Linked Existing Parent', form.existing_parent_id ? (() => {
                         const p = parents.find((item: any) => item.id === form.existing_parent_id);
                         const u = p?.users as any;
