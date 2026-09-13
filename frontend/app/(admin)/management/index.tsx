@@ -6,6 +6,7 @@ import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { router } from "expo-router";
 import {
     BarChart3,
+    ArrowLeftRight,
     BookOpen,
     Calendar,
     CalendarCheck,
@@ -131,6 +132,16 @@ export default function AdminManagement() {
             tooltipId: 'admin.manage.classes'
         },
         {
+            icon: ArrowLeftRight,
+            title: "Class Transfers",
+            description: "Review and approve student class transfers",
+            color: "#6366f1",
+            bgColor: "#e0e7ff",
+            darkBgColor: "#1e1b4b",
+            route: "/(admin)/classes/transfers",
+            tooltipId: 'admin.manage.transfers'
+        },
+        {
             icon: Calendar,
             title: "Timetable Builder",
             description: "Create schedules and check for conflicts",
@@ -142,8 +153,8 @@ export default function AdminManagement() {
         },
         {
             icon: FileCheck2,
-            title: "Resource Approvals",
-            description: "Review and approve teacher-uploaded resources",
+            title: "Learning Resources",
+            description: "View and manage uploaded resources and digital materials",
             color: "#0ea5e9",
             bgColor: "#e0f2fe",
             darkBgColor: "#0c2340",

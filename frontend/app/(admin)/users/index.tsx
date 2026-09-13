@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SettingsService } from '@/services/SettingsService';
+import { AdminPasswordResetModal, VerificationDetails } from '@/components/auth/AdminPasswordResetModal';
 import Toast from 'react-native-toast-message';
 
 export default function UsersManagementScreen() {
@@ -69,7 +70,7 @@ export default function UsersManagementScreen() {
         });
     };
 
-    const confirmCredentialReset = async () => {
+    const confirmCredentialReset = async (verification: VerificationDetails) => {
         if (!resettingUser || resettingLoading) return;
         if (profile?.id && resettingUser.id === profile.id) {
             Alert.alert(
@@ -80,7 +81,7 @@ export default function UsersManagementScreen() {
         }
         setResettingLoading(true);
         try {
-            const res = await SettingsService.adminResetPassword(resettingUser.id);
+            const res = await SettingsService.adminResetPassword(resettingUser.id, undefined, verification);
             setResetResult({
                 ...res,
                 user: resettingUser,
@@ -286,120 +287,14 @@ export default function UsersManagementScreen() {
                 />
             )}
 
-            {/* Credential Reset Confirmation Modal */}
-            <Modal
+            {/* Identity Verification & Credential Reset Modal */}
+            <AdminPasswordResetModal
                 visible={showResetModal}
-                transparent
-                animationType="fade"
-                onRequestClose={() => {
-                    if (!resettingLoading) setShowResetModal(false);
-                }}
-            >
-                <View style={{
-                    flex: 1,
-                    backgroundColor: 'rgba(0,0,0,0.6)',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    padding: 16,
-                }}>
-                    <View style={{
-                        backgroundColor: card,
-                        borderColor: border,
-                        borderWidth: 1,
-                        borderRadius: 16,
-                        padding: 20,
-                        width: '100%',
-                        maxWidth: 440,
-                        maxHeight: '90%',
-                    }}>
-                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                                <View style={{ backgroundColor: isDark ? 'rgba(239,68,68,0.2)' : '#FEE2E2', padding: 8, borderRadius: 10, marginRight: 10 }}>
-                                    <MaterialCommunityIcons name="lock-reset" size={24} color="#DC2626" />
-                                </View>
-                                <Text style={{ color: textPrimary, fontWeight: '800', fontSize: 18, flex: 1 }}>
-                                    Confirm Credential Reset
-                                </Text>
-                            </View>
-
-                            {!!resettingUser && (
-                                <View style={{
-                                    backgroundColor: inputBg,
-                                    borderColor: border,
-                                    borderWidth: 1,
-                                    borderRadius: 10,
-                                    padding: 12,
-                                    marginBottom: 14,
-                                }}>
-                                    <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 14 }}>
-                                        {resettingUser.name || 'User'}
-                                    </Text>
-                                    <Text style={{ color: textSecondary, fontSize: 12, marginTop: 2 }}>
-                                        Email: {resettingUser.email || 'N/A'}
-                                    </Text>
-                                    <Text style={{ color: textSecondary, fontSize: 12, marginTop: 2, textTransform: 'capitalize' }}>
-                                        Role: {resettingUser.role || 'User'}
-                                    </Text>
-                                </View>
-                            )}
-
-                            <View style={{
-                                backgroundColor: isDark ? 'rgba(239,68,68,0.12)' : '#FEF2F2',
-                                borderColor: isDark ? '#7f1d1d' : '#FCA5A5',
-                                borderWidth: 1,
-                                borderRadius: 10,
-                                padding: 12,
-                                marginBottom: 16,
-                            }}>
-                                <Text style={{ color: '#B91C1C', fontWeight: '700', fontSize: 13, marginBottom: 4 }}>
-                                    Security Action Notice
-                                </Text>
-                                <Text style={{ color: isDark ? '#FCA5A5' : '#991B1B', fontSize: 12, lineHeight: 18 }}>
-                                    Reset credentials for <Text style={{ fontWeight: '800' }}>{resettingUser?.name || resettingUser?.email || 'this user'}</Text>? This will generate a new temporary credential, force logout all active sessions, and require password + security question setup at next login.
-                                </Text>
-                            </View>
-
-                            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 'auto', paddingTop: 8 }}>
-                                <TouchableOpacity
-                                    onPress={() => setShowResetModal(false)}
-                                    disabled={resettingLoading}
-                                    style={{
-                                        borderWidth: 1,
-                                        borderColor: border,
-                                        borderRadius: 10,
-                                        paddingHorizontal: 14,
-                                        paddingVertical: 10,
-                                        backgroundColor: inputBg,
-                                    }}
-                                >
-                                    <Text style={{ color: textSecondary, fontWeight: '700' }}>Cancel</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    onPress={confirmCredentialReset}
-                                    disabled={resettingLoading}
-                                    style={{
-                                        borderWidth: 1,
-                                        borderColor: '#DC2626',
-                                        borderRadius: 10,
-                                        paddingHorizontal: 16,
-                                        paddingVertical: 10,
-                                        backgroundColor: '#DC2626',
-                                        minWidth: 110,
-                                        alignItems: 'center',
-                                    }}
-                                >
-                                    {resettingLoading ? (
-                                        <ActivityIndicator size="small" color="#FFF" />
-                                    ) : (
-                                        <Text style={{ color: '#FFF', fontWeight: '800' }}>Confirm Reset</Text>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
+                onClose={() => setShowResetModal(false)}
+                onConfirm={confirmCredentialReset}
+                loading={resettingLoading}
+                targetUser={resettingUser}
+            />
 
             {/* Temporary Credential Result Modal */}
             <Modal

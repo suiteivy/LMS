@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput, Modal, FlatList } from "react-native";
 import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
-import { ChevronLeft, Plus, DollarSign, PieChart, Wallet } from "lucide-react-native";
+import { ChevronLeft, Plus, PieChart, Wallet } from "lucide-react-native";
 import { FundsAPI, Fund, Allocation } from "@/services/FundsService";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useCurrency } from "@/contexts/CurrencyContext";

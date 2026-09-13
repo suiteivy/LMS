@@ -1743,6 +1743,7 @@ exports.createRecordOfWork = async (req, res) => {
                 week_number: parseInt(week_number),
                 lesson_number: lesson_number ? parseInt(lesson_number) : 1,
                 date: date || new Date().toISOString().split('T')[0],
+                duration_minutes: req.body.duration_minutes ? parseInt(req.body.duration_minutes) : 40,
                 topic: topic.trim(),
                 sub_topic: sub_topic?.trim() || null,
                 learning_objectives: learning_objectives?.trim() || null,
@@ -1803,7 +1804,7 @@ exports.updateRecordOfWork = async (req, res) => {
 
         const allowedFields = [
             'class_id', 'coverage_plan_id', 'week_number', 'lesson_number',
-            'date', 'topic', 'sub_topic', 'learning_objectives',
+            'date', 'duration_minutes', 'topic', 'sub_topic', 'learning_objectives',
             'activities_references', 'status', 'is_completed', 'remarks', 'admin_notes'
         ];
 

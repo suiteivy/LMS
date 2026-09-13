@@ -13,6 +13,7 @@ import {
   Dimensions,
   Easing as EasingRN,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -491,6 +492,12 @@ export default function VerifySecurityQuestionsScreen() {
   const [showPassword, setShowPassword]             = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading]                       = useState(false);
+  const [showEscalationModal, setShowEscalationModal] = useState(false);
+  const [escalationReason, setEscalationReason]       = useState('');
+  const [escalationPhone, setEscalationPhone]         = useState('');
+  const [escalationLoading, setEscalationLoading]     = useState(false);
+  const [escalationSuccessModal, setEscalationSuccessModal] = useState(false);
+  const [escalationSuccessMsg, setEscalationSuccessMsg]     = useState('');
 
   // Entrance animations
   const cardFade     = useRef(new Animated.Value(0)).current;
@@ -656,6 +663,32 @@ export default function VerifySecurityQuestionsScreen() {
       shakeCard();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRequestEscalation = async () => {
+    if (!normalizedEmail) {
+      showError('Email Required', 'Please provide your account email.');
+      shakeCard();
+      return;
+    }
+
+    setEscalationLoading(true);
+    try {
+      const res = await SettingsService.requestPasswordResetEscalation({
+        email: normalizedEmail,
+        reason: escalationReason.trim() || undefined,
+        contact_phone: escalationPhone.trim() || undefined,
+      });
+      setShowEscalationModal(false);
+      setEscalationSuccessMsg(res.message || 'Reset escalation request logged. Please contact your school administrator.');
+      setEscalationSuccessModal(true);
+      showSuccess('Escalation Logged', 'Your request has been logged for school administrator verification.');
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.error || err.message || 'Failed to log escalation request.';
+      showError('Escalation Failed', errorMsg);
+    } finally {
+      setEscalationLoading(false);
     }
   };
 
@@ -961,7 +994,7 @@ export default function VerifySecurityQuestionsScreen() {
                         style={{
                           alignSelf: 'flex-start',
                           marginTop: -8,
-                          marginBottom: 16,
+                          marginBottom: 10,
                           marginLeft: 4,
                           paddingVertical: 4,
                         }}
@@ -976,6 +1009,27 @@ export default function VerifySecurityQuestionsScreen() {
                           {useRecoveryCode
                             ? '← Use security question instead'
                             : "Don't remember your answer? Use recovery code"}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Request Alternative Admin Identity Verification */}
+                      <TouchableOpacity
+                        onPress={() => setShowEscalationModal(true)}
+                        style={{
+                          alignSelf: 'flex-start',
+                          marginBottom: 16,
+                          marginLeft: 4,
+                          paddingVertical: 4,
+                        }}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={{
+                          color: 'rgba(255,255,255,0.6)',
+                          fontSize: 12.5,
+                          fontWeight: '600',
+                          textDecorationLine: 'underline',
+                        }}>
+                          Can't access recovery code? <Text style={{ color: '#F97316', fontWeight: '700' }}>Request Admin Identity Verification</Text>
                         </Text>
                       </TouchableOpacity>
 
@@ -1140,6 +1194,200 @@ export default function VerifySecurityQuestionsScreen() {
           </KeyboardAvoidingView>
         </SafeAreaView>
       </View>
+
+      {/* ── ESCALATION REQUEST MODAL ── */}
+      <Modal visible={showEscalationModal} animationType="fade" transparent onRequestClose={() => !escalationLoading && setShowEscalationModal(false)}>
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 20,
+        }}>
+          <GlassCard
+            variant="modal"
+            accentColor={FLAME}
+            glowColor={FLAME_GLOW}
+            borderRadius={24}
+            style={{ width: '100%', maxWidth: 440 }}
+            contentStyle={{ padding: 26 }}
+          >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  backgroundColor: 'rgba(255,107,0,0.15)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Shield size={20} color={FLAME} />
+                </View>
+                <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>Admin Verification</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowEscalationModal(false)} disabled={escalationLoading}>
+                <IconIonicons name="close" size={22} color="rgba(255,255,255,0.6)" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, lineHeight: 19, marginBottom: 16 }}>
+              If you cannot access your security question answers or recovery code, you can request an escalated reset verified in person, via phone call, or official ID with your school administration.
+            </Text>
+
+            <View style={{ marginBottom: 14 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginBottom: 6 }}>Account Email</Text>
+              <View style={{
+                backgroundColor: 'rgba(255,255,255,0.06)',
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                borderWidth: 1,
+                borderColor: GLASS_BORDER,
+              }}>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{normalizedEmail || 'No email specified'}</Text>
+              </View>
+            </View>
+
+            <View style={{ marginBottom: 14 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginBottom: 6 }}>Contact Phone Number (Optional)</Text>
+              <TextInput
+                value={escalationPhone}
+                onChangeText={setEscalationPhone}
+                placeholder="e.g., +254 712 345 678"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                keyboardType="phone-pad"
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  borderWidth: 1,
+                  borderColor: GLASS_BORDER,
+                  color: '#fff',
+                  fontSize: 13.5,
+                }}
+              />
+            </View>
+
+            <View style={{ marginBottom: 20 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginBottom: 6 }}>Reason / Additional Info (Optional)</Text>
+              <TextInput
+                value={escalationReason}
+                onChangeText={setEscalationReason}
+                placeholder="e.g., Lost phone and recovery sheet"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                multiline
+                numberOfLines={2}
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  borderWidth: 1,
+                  borderColor: GLASS_BORDER,
+                  color: '#fff',
+                  fontSize: 13.5,
+                  minHeight: 60,
+                }}
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setShowEscalationModal(false)}
+                disabled={escalationLoading}
+                style={{
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderWidth: 1,
+                  borderColor: GLASS_BORDER,
+                  backgroundColor: 'rgba(255,255,255,0.05)',
+                }}
+              >
+                <Text style={{ color: 'rgba(255,255,255,0.7)', fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleRequestEscalation}
+                disabled={escalationLoading || !normalizedEmail}
+                style={{
+                  borderRadius: 12,
+                  paddingHorizontal: 20,
+                  paddingVertical: 12,
+                  backgroundColor: FLAME,
+                  minWidth: 140,
+                  alignItems: 'center',
+                }}
+              >
+                {escalationLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={{ color: '#fff', fontWeight: '800' }}>Submit Request</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
+        </View>
+      </Modal>
+
+      {/* ── ESCALATION SUCCESS MODAL ── */}
+      <Modal visible={escalationSuccessModal} animationType="fade" transparent>
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 24,
+        }}>
+          <GlassCard
+            variant="modal"
+            accentColor="#22C55E"
+            glowColor="rgba(34, 197, 94, 0.35)"
+            borderRadius={24}
+            style={{ width: '100%', maxWidth: 420 }}
+            contentStyle={{ padding: 28 }}
+          >
+            <View style={{
+              width: 44,
+              height: 44,
+              borderRadius: 14,
+              backgroundColor: 'rgba(34,197,94,0.15)',
+              borderWidth: 1,
+              borderColor: 'rgba(34,197,94,0.3)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 16,
+            }}>
+              <IconIonicons name="checkmark-circle" size={24} color="#4ade80" />
+            </View>
+            <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 8 }}>
+              Escalation Logged
+            </Text>
+            <Text style={{ color: 'rgba(255,255,255,0.7)', lineHeight: 22, fontSize: 14 }}>
+              {escalationSuccessMsg}
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => {
+                setEscalationSuccessModal(false);
+                router.replace('/(auth)/signIn' as any);
+              }}
+              activeOpacity={0.8}
+              style={{
+                marginTop: 22,
+                backgroundColor: FLAME,
+                borderRadius: 16,
+                alignItems: 'center',
+                paddingVertical: 14,
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Back to Sign In</Text>
+            </TouchableOpacity>
+          </GlassCard>
+        </View>
+      </Modal>
 
       {/* Web styles */}
       {Platform.OS === 'web' && (

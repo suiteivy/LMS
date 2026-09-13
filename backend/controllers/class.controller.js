@@ -1261,6 +1261,18 @@ exports.getClasses = async (req, res) => {
     }
 };
 
+function formatLevelOptionLabel(value, customName, defaultClassType = 'Grade') {
+    if (customName && String(customName).trim()) {
+        return String(customName).trim();
+    }
+    const num = Number(value);
+    if (num === -2 || String(value).toLowerCase() === 'playgroup') return 'Playgroup';
+    if (num === -1 || String(value).toLowerCase() === 'pp1') return 'PP1';
+    if (num === 0 || String(value).toLowerCase() === 'pp2') return 'PP2';
+    if (Number.isFinite(num) && num > 0) return `${defaultClassType} ${num}`;
+    return `${defaultClassType} ${value}`;
+}
+
 exports.getClassOptions = async (req, res) => {
     try {
         const institution_id = req.institution_id;
@@ -1279,7 +1291,7 @@ exports.getClassOptions = async (req, res) => {
 
             let levelOptions = domain.levels.map((level) => ({
                 value: level.level_number,
-                label: level.name || `${level.category_types?.name || defaultClassType} ${level.level_number}`,
+                label: formatLevelOptionLabel(level.level_number, level.name, level.category_types?.name || defaultClassType),
                 level_id: level.id,
                 category_id: level.category_id,
                 class_type: level.category_types?.name || defaultClassType,
@@ -1308,11 +1320,25 @@ exports.getClassOptions = async (req, res) => {
                     if (v !== undefined) foundLegacyLevels.add(v);
                 }
                 const sortedLegacy = Array.from(foundLegacyLevels).sort((a, b) => a - b);
-                levelOptions = sortedLegacy.map((value) => ({
-                    value,
-                    label: `${defaultClassType} ${value}`,
-                    class_type: defaultClassType,
-                }));
+                if (sortedLegacy.length > 0) {
+                    levelOptions = sortedLegacy.map((value) => ({
+                        value,
+                        label: formatLevelOptionLabel(value, null, defaultClassType),
+                        class_type: defaultClassType,
+                    }));
+                } else {
+                    // Standard default CBC levels: Playgroup, PP1, PP2, Grade 1-12
+                    const standardLevels = [
+                        { value: -2, label: 'Playgroup' },
+                        { value: -1, label: 'PP1' },
+                        { value: 0,  label: 'PP2' },
+                        ...Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: `${defaultClassType} ${i + 1}` }))
+                    ];
+                    levelOptions = standardLevels.map(sl => ({
+                        ...sl,
+                        class_type: defaultClassType,
+                    }));
+                }
             }
 
             const streamOptions = domain.streams.map((streamRow) => ({
@@ -1384,9 +1410,9 @@ exports.getClassOptions = async (req, res) => {
             school_category_name: meta.school_category_name,
             class_type: defaultClassType,
             class_types: meta.class_types || [defaultClassType],
-            level_options: finalLevels.map((value) => ({
+            level_options: (finalLevels.length > 0 ? finalLevels : [-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]).map((value) => ({
                 value,
-                label: `${defaultClassType} ${value}`,
+                label: formatLevelOptionLabel(value, null, defaultClassType),
                 class_type: defaultClassType,
             })),
             stream_options: streams.map((code) => ({
@@ -1736,3 +1762,291 @@ exports.autoAssignStudents = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+/**
+ * Request or execute student class transfer
+ */
+exports.requestStudentTransfer = async (req, res) => {
+    try {
+        const { student_id, to_class_id, reason } = req.body;
+        const institution_id = req.institution_id;
+        const user = req.user;
+
+        if (!student_id || !to_class_id) {
+            return res.status(400).json({ error: "student_id and to_class_id are required" });
+        }
+
+        // 1. Check student exists and belongs to institution
+        const { data: student, error: studentErr } = await supabase
+            .from("students")
+            .select("id, class_id, institution_id")
+            .eq("id", student_id)
+            .eq("institution_id", institution_id)
+            .single();
+
+        if (studentErr || !student) {
+            return res.status(404).json({ error: "Student not found in this institution" });
+        }
+
+        const from_class_id = student.class_id;
+        if (from_class_id === to_class_id) {
+            return res.status(400).json({ error: "Student is already enrolled in the destination class" });
+        }
+
+        // 2. Check destination class exists in institution
+        const { data: destClass, error: destErr } = await supabase
+            .from("classes")
+            .select("id, capacity, institution_id")
+            .eq("id", to_class_id)
+            .eq("institution_id", institution_id)
+            .single();
+
+        if (destErr || !destClass) {
+            return res.status(404).json({ error: "Destination class not found" });
+        }
+
+        // 3. If user is Admin/Master Admin: Auto-approve and execute immediately
+        const isAdmin = user.role === "admin" || user.role === "master_admin";
+
+        if (isAdmin) {
+            // Check capacity
+            if (destClass.capacity) {
+                const { count } = await supabase
+                    .from("class_enrollments")
+                    .select("id", { count: "exact", head: true })
+                    .eq("class_id", to_class_id);
+
+                if (count >= destClass.capacity) {
+                    return res.status(400).json({ error: "Destination class has reached maximum capacity" });
+                }
+            }
+
+            // Create approved transfer record
+            const { data: transferRecord, error: insertErr } = await supabase
+                .from("student_class_transfers")
+                .insert({
+                    institution_id,
+                    student_id,
+                    from_class_id,
+                    to_class_id,
+                    requested_by: user.id,
+                    approved_by: user.id,
+                    status: "approved",
+                    reason: reason || null,
+                })
+                .select()
+                .single();
+
+            if (insertErr) throw insertErr;
+
+            // Execute transfer
+            await assignStudentToSingleClass({
+                studentId: student_id,
+                classId: to_class_id,
+                institutionId: institution_id,
+                syncStudentLevel: true,
+            });
+
+            return res.status(201).json({
+                message: "Student transferred successfully",
+                transfer: transferRecord,
+            });
+        }
+
+        // 4. If user is Teacher: create pending request for admin approval
+        const { data: transferRequest, error: reqErr } = await supabase
+            .from("student_class_transfers")
+            .insert({
+                institution_id,
+                student_id,
+                from_class_id,
+                to_class_id,
+                requested_by: user.id,
+                status: "pending",
+                reason: reason || null,
+            })
+            .select()
+            .single();
+
+        if (reqErr) throw reqErr;
+
+        return res.status(201).json({
+            message: "Student transfer request submitted for admin approval",
+            transfer: transferRequest,
+        });
+    } catch (err) {
+        console.error("requestStudentTransfer error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * List student class transfers for the institution
+ */
+exports.getStudentTransfers = async (req, res) => {
+    try {
+        const institution_id = req.institution_id;
+        const { status } = req.query;
+
+        let query = supabase
+            .from("student_class_transfers")
+            .select(`
+                id,
+                institution_id,
+                student_id,
+                from_class_id,
+                to_class_id,
+                requested_by,
+                approved_by,
+                status,
+                reason,
+                rejection_reason,
+                created_at,
+                updated_at,
+                student:students(id, admission_number, user:users(full_name, email, avatar_url)),
+                from_class:classes!student_class_transfers_from_class_id_fkey(id, display_name, name, grade_level),
+                to_class:classes!student_class_transfers_to_class_id_fkey(id, display_name, name, grade_level),
+                requester:users!student_class_transfers_requested_by_fkey(id, full_name, email, role),
+                approver:users!student_class_transfers_approved_by_fkey(id, full_name, email)
+            `)
+            .eq("institution_id", institution_id)
+            .order("created_at", { ascending: false });
+
+        if (status) {
+            query = query.eq("status", status);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        res.json(data || []);
+    } catch (err) {
+        console.error("getStudentTransfers error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Approve student class transfer (Admin only)
+ */
+exports.approveStudentTransfer = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const institution_id = req.institution_id;
+        const user = req.user;
+
+        // Fetch transfer record
+        const { data: transfer, error: fetchErr } = await supabase
+            .from("student_class_transfers")
+            .select("*")
+            .eq("id", id)
+            .eq("institution_id", institution_id)
+            .single();
+
+        if (fetchErr || !transfer) {
+            return res.status(404).json({ error: "Transfer request not found" });
+        }
+
+        if (transfer.status !== "pending") {
+            return res.status(400).json({ error: `Transfer request is already ${transfer.status}` });
+        }
+
+        // Check destination class capacity
+        const { data: destClass } = await supabase
+            .from("classes")
+            .select("id, capacity")
+            .eq("id", transfer.to_class_id)
+            .single();
+
+        if (destClass?.capacity) {
+            const { count } = await supabase
+                .from("class_enrollments")
+                .select("id", { count: "exact", head: true })
+                .eq("class_id", transfer.to_class_id);
+
+            if (count >= destClass.capacity) {
+                return res.status(400).json({ error: "Destination class has reached maximum capacity" });
+            }
+        }
+
+        // Update transfer status to approved
+        const { data: updated, error: updateErr } = await supabase
+            .from("student_class_transfers")
+            .update({
+                status: "approved",
+                approved_by: user.id,
+                updated_at: new Date().toISOString(),
+            })
+            .eq("id", id)
+            .select()
+            .single();
+
+        if (updateErr) throw updateErr;
+
+        // Execute student transfer
+        await assignStudentToSingleClass({
+            studentId: transfer.student_id,
+            classId: transfer.to_class_id,
+            institutionId: institution_id,
+            syncStudentLevel: true,
+        });
+
+        res.json({
+            message: "Student transfer approved and completed successfully",
+            transfer: updated,
+        });
+    } catch (err) {
+        console.error("approveStudentTransfer error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Reject student class transfer (Admin only)
+ */
+exports.rejectStudentTransfer = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body;
+        const institution_id = req.institution_id;
+        const user = req.user;
+
+        const { data: transfer, error: fetchErr } = await supabase
+            .from("student_class_transfers")
+            .select("id, status")
+            .eq("id", id)
+            .eq("institution_id", institution_id)
+            .single();
+
+        if (fetchErr || !transfer) {
+            return res.status(404).json({ error: "Transfer request not found" });
+        }
+
+        if (transfer.status !== "pending") {
+            return res.status(400).json({ error: `Transfer request is already ${transfer.status}` });
+        }
+
+        const { data: updated, error: updateErr } = await supabase
+            .from("student_class_transfers")
+            .update({
+                status: "rejected",
+                approved_by: user.id,
+                rejection_reason: reason || null,
+                updated_at: new Date().toISOString(),
+            })
+            .eq("id", id)
+            .select()
+            .single();
+
+        if (updateErr) throw updateErr;
+
+        res.json({
+            message: "Transfer request rejected",
+            transfer: updated,
+        });
+    } catch (err) {
+        console.error("rejectStudentTransfer error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+

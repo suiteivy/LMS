@@ -85,6 +85,7 @@ async function assignStudentToSingleClass({ studentId, classId, institutionId, s
 
   if (syncStudentLevel) {
     const studentUpdates = {
+      class_id: classId,
       grade_level: classRow.grade_level ?? null,
       form_level: classRow.form_level ?? null,
       updated_at: new Date().toISOString(),

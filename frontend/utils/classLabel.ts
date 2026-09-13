@@ -51,14 +51,15 @@ export function formatClassLabel(source?: ClassLabelSource | null): string {
     }
   }
 
-  // Handle Early Years
-  if (levelValue === 0 || String(levelValue).toLowerCase() === 'pp1') {
-    levelLabel = 'PP1';
-    levelValue = '';
-  } else if (levelValue === -1 || String(levelValue).toLowerCase() === 'playgroup') {
+  // Handle Early Years: Playgroup (-2), PP1 (-1), PP2 (0)
+  const strVal = String(levelValue).trim().toLowerCase();
+  if (levelValue === -2 || strVal === 'playgroup') {
     levelLabel = 'Playgroup';
     levelValue = '';
-  } else if (String(levelValue).toLowerCase() === 'pp2') {
+  } else if (levelValue === -1 || strVal === 'pp1') {
+    levelLabel = 'PP1';
+    levelValue = '';
+  } else if (levelValue === 0 || strVal === 'pp2') {
     levelLabel = 'PP2';
     levelValue = '';
   }

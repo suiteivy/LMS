@@ -73,15 +73,4 @@ export const ResourceAPI = {
             throw error;
         }
     },
-
-    // Approve a resource (Admin only)
-    approveResource: async (id: string): Promise<Resource> => {
-        try {
-            const response = await api.patch(`/resources/${id}/approve`);
-            return response.data;
-        } catch (error) {
-            console.error("Approve resource error", error);
-            throw error;
-        }
-    },
 };

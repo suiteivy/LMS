@@ -14,6 +14,7 @@ import {
     ClassStudent,
 } from '@/services/ClassService';
 import { formatClassLabel } from '@/utils/classLabel';
+import { StudentTransferModal } from '@/components/transfers/StudentTransferModal';
 import { showError, showSuccess } from '@/utils/toast';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -83,6 +84,7 @@ export default function AdminClassManagement() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [pendingDeleteClass, setPendingDeleteClass] = useState<ClassItem | null>(null);
     const [deletingClass, setDeletingClass] = useState(false);
+    const [transferStudent, setTransferStudent] = useState<{ id: string; full_name: string; class_id?: string; current_class_name?: string } | null>(null);
 
     // Domain management drawer
     const [showDomainDrawer, setShowDomainDrawer] = useState(false);
@@ -650,6 +652,14 @@ export default function AdminClassManagement() {
                             </TouchableOpacity>
 
                             <TouchableOpacity
+                                onPress={() => router.push('/(admin)/classes/transfers' as any)}
+                                style={{ backgroundColor: isDark ? '#21262D' : '#E5E7EB', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                            >
+                                <Ionicons name="swap-horizontal" size={15} color={textPrimary} />
+                                <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Transfers</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
                                 onPress={openCreateModal}
                                 style={{ backgroundColor: '#FF6B00', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
                             >
@@ -925,6 +935,18 @@ export default function AdminClassManagement() {
                                             <Text style={{ color: textPrimary, fontWeight: '600', fontSize: 14 }}>{s.full_name}</Text>
                                             <Text style={{ color: textMuted, fontSize: 11 }}>{safeLevelLabel} {s.grade_level || s.form_level} · {s.student_id}</Text>
                                         </View>
+                                        <TouchableOpacity
+                                            onPress={() => setTransferStudent({
+                                                id: s.student_id,
+                                                full_name: s.full_name || '',
+                                                class_id: selectedClass?.id,
+                                                current_class_name: selectedClass ? formatClassLabel(selectedClass) : undefined,
+                                            })}
+                                            style={{ padding: 8 }}
+                                            accessibilityLabel="Transfer student"
+                                        >
+                                            <Ionicons name="swap-horizontal-outline" size={20} color="#FF6B00" />
+                                        </TouchableOpacity>
                                         <TouchableOpacity onPress={() => handleRemoveStudent(s)} style={{ padding: 8 }}>
                                             <Ionicons name="remove-circle-outline" size={20} color="#EF4444" />
                                         </TouchableOpacity>
@@ -1680,7 +1702,17 @@ export default function AdminClassManagement() {
                     </View>
                 </View>
             </Modal>
-
+            <StudentTransferModal
+                visible={!!transferStudent}
+                student={transferStudent}
+                onClose={() => setTransferStudent(null)}
+                onSuccess={() => {
+                    if (selectedClass) {
+                        ClassService.getClassStudents(selectedClass.id).then(setStudents).catch(console.error);
+                    }
+                    loadClasses();
+                }}
+            />
         </View>
     );
 }

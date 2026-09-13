@@ -25,6 +25,7 @@ const {
   revokeAllOtherSessions,
   pingSession,
   getEnrollmentSlotCapacity,
+  requestPasswordResetEscalation,
 } = require("../controllers/auth.controller.js");
 const { authMiddleware } = require("../middleware/auth.middleware.js");
 const checkSubscription = require("../middleware/subscriptionCheck.js");
@@ -43,6 +44,7 @@ router.post(
   forgotPassword,
 );
 router.get("/forgot-password/check-email", rateLimiters.passwordResetCheckEmail, checkPasswordRecoveryEmail);
+router.post("/forgot-password/escalate", rateLimiters.passwordResetRequest, requestPasswordResetEscalation);
 router.post("/reset-password", rateLimiters.passwordResetRequest, resetPassword);
 router.post("/verify-security-questions", rateLimiters.passwordResetVerify, verifySecurityQuestions);
 router.get("/credential-delivery/:token", getCredentialDeliveryByToken);

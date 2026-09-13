@@ -3,6 +3,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { ClassService } from "@/services/ClassService";
+import { EDUCATION_LEVELS } from "@/constants/educationLevels";
 import { supabase } from "@/libs/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from 'expo-router';
@@ -96,7 +97,7 @@ export default function CreateClassScreen() {
             const options = await ClassService.getClassOptions();
             const optionMap = new Map((options.level_options || []).map((item) => [item.level_id, item]));
             const optionLabels = (options.level_options || []).map((item) => item.label).filter(Boolean);
-            setLevels(optionLabels);
+            setLevels(optionLabels.length > 0 ? optionLabels : EDUCATION_LEVELS.map((l) => l.label));
             setClassType(options.class_type || 'Grade');
             setClassTypes((options.class_types || [options.class_type || 'Grade']).filter(Boolean));
             setCategories((options.categories || []).map((item) => ({ id: item.id, name: item.name })));

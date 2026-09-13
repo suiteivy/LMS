@@ -440,7 +440,17 @@ exports.markStudentAttendance = async (req, res) => {
                 .maybeSingle();
 
             if (!classEnrollment) {
-                return res.status(403).json({ error: 'Student is not enrolled in this class' });
+                const { data: directStudent } = await supabase
+                    .from('students')
+                    .select('id')
+                    .eq('id', student_id)
+                    .eq('class_id', class_id)
+                    .eq('institution_id', institution_id)
+                    .maybeSingle();
+
+                if (!directStudent) {
+                    return res.status(403).json({ error: 'Student is not enrolled in this class' });
+                }
             }
         }
 

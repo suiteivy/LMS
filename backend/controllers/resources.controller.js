@@ -3,7 +3,7 @@ const { parsePagination, paginatedResponse } = require("../utils/pagination.js")
 const { resolveTeacherScope } = require("../middleware/teacherScope.js");
 
 /**
- * Create a resource (status defaults to 'approved' for admin, 'approved' or 'pending' for teacher)
+ * Create a resource (status is always 'approved' — no approval gate)
  * Academic Vault & Digital Resources with target_audience ('everyone' vs 'staff_only')
  */
 exports.createResource = async (req, res) => {
@@ -49,7 +49,7 @@ exports.createResource = async (req, res) => {
             size: size || null,
             institution_id: req.institution_id,
             target_audience,
-            status: userRole === 'admin' ? 'approved' : 'approved' // Teachers upload approved or pending
+            status: 'approved'
         };
 
         if (subject_id) insertPayload.subject_id = subject_id;
@@ -141,63 +141,7 @@ exports.getResources = async (req, res) => {
     }
 };
 
-/**
- * Get pending resources for admin approval
- */
-exports.getPendingResources = async (req, res) => {
-    try {
-        const { page, limit, from, to } = parsePagination(req.query, { defaultLimit: 25 });
-        const { data, error, count } = await supabase
-            .from("resources")
-            .select(`
-                *,
-                subject:subjects(title),
-                class:classes(display_name),
-                teacher:teachers(
-                    user:users(full_name, email)
-                )
-            `, { count: 'exact' })
-            .eq("institution_id", req.institution_id)
-            .eq("status", "pending")
-            .order('created_at', { ascending: false })
-            .range(from, to);
 
-        if (error) throw error;
-        res.json(paginatedResponse(data || [], count, page, limit));
-    } catch (err) {
-        console.error("getPendingResources error:", err);
-        res.status(500).json({ error: err.message });
-    }
-};
-
-/**
- * Approve or reject a resource (admin only)
- */
-exports.approveResource = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { status, feedback } = req.body;
-
-        if (!['approved', 'rejected'].includes(status)) {
-            return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
-        }
-
-        const updateData = { status };
-        if (feedback) updateData.feedback = feedback;
-
-        const { error } = await supabase
-            .from("resources")
-            .update(updateData)
-            .eq("id", id)
-            .eq("institution_id", req.institution_id);
-
-        if (error) throw error;
-        res.json({ message: `Resource ${status} successfully` });
-    } catch (err) {
-        console.error("approveResource error:", err);
-        res.status(500).json({ error: err.message });
-    }
-};
 
 /**
  * Delete resource

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, StatusBar } from "react-native";
-import { ArrowLeft, FileText, Download, Users, TrendingUp, DollarSign, Calendar } from "lucide-react-native";
+import { ArrowLeft, FileText, Download, Users, TrendingUp, Wallet, Calendar } from "lucide-react-native";
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -76,7 +76,7 @@ export default function ReportsPage() {
     };
 
     const statCards = [
-        { label: 'Total Disbursed', value: formatAmount(stats.totalDisbursed), icon: DollarSign, color: '#FF6B00', bg: isDark ? '#2d1a0a' : '#fff7ed', cardBorder: isDark ? '#7c3412' : '#fed7aa' },
+        { label: 'Total Disbursed', value: formatAmount(stats.totalDisbursed), icon: Wallet, color: '#FF6B00', bg: isDark ? '#2d1a0a' : '#fff7ed', cardBorder: isDark ? '#7c3412' : '#fed7aa' },
         { label: 'Applications', value: stats.totalApplications.toString(), icon: Users, color: '#3b82f6', bg: isDark ? '#0c1a2e' : '#eff6ff', cardBorder: isDark ? '#1e3a5f' : '#bfdbfe' },
         { label: 'Approval Rate', value: `${stats.approvalRate.toFixed(1)}%`, icon: TrendingUp, color: '#10b981', bg: isDark ? '#052e16' : '#f0fdf4', cardBorder: isDark ? '#14532d' : '#bbf7d0' },
         { label: 'Active Schemes', value: stats.totalBursaries.toString(), icon: FileText, color: '#8b5cf6', bg: isDark ? '#1e1040' : '#f5f3ff', cardBorder: isDark ? '#4c1d95' : '#ddd6fe' },

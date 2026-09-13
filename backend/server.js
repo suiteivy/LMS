@@ -250,6 +250,18 @@ cron.schedule('0 * * * *', async () => {
   }
 });
 
+// Institutional & Academic Data Retention Policy: run daily at 03:00 server time
+// Prunes attendance older than 2 years and archives academic records older than 7 years
+const { runDataRetentionCleanup } = require('./services/dataRetention.service.js');
+cron.schedule('0 3 * * *', async () => {
+  try {
+    const results = await runDataRetentionCleanup();
+    logger.info('Institutional data retention cycle completed', results);
+  } catch (error) {
+    logger.error('Institutional data retention cycle failed', { error: error?.message || String(error) });
+  }
+});
+
 // health check
 app.get("/", (_req, res) => {
   res.status(200).json({ message: "LMS API is running" });

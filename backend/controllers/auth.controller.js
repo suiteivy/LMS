@@ -1803,7 +1803,7 @@ exports.changePassword = async (req, res) => {
 
 exports.adminResetPassword = async (req, res) => {
   try {
-    const { targetUserId, newPassword } = req.body;
+    const { targetUserId, newPassword, verificationMethod = 'in_person', verificationNotes = null } = req.body;
     const adminId = req.userId;
     const adminRole = req.userRole;
     const adminInstId = req.institution_id;
@@ -2051,6 +2051,8 @@ exports.adminResetPassword = async (req, res) => {
         institution_id: targetUser.institution_id,
         action: 'admin_reset_password',
         generated_password: generatedPassword,
+        verification_method: verificationMethod,
+        verification_notes: verificationNotes,
       },
     });
 
@@ -2069,9 +2071,15 @@ exports.adminResetPassword = async (req, res) => {
       targetUserId,
       targetEmail: targetUser.email || null,
       outcome: 'success',
+      reason: `identity_verified:${verificationMethod}${verificationNotes ? ` (${verificationNotes})` : ''}`,
       ipAddress,
       userAgent,
-      metadata: { admin_role: adminRole, generated_password: generatedPassword },
+      metadata: {
+        admin_role: adminRole,
+        verification_method: verificationMethod,
+        verification_notes: verificationNotes,
+        generated_password: generatedPassword,
+      },
     });
     res.status(200).json({
       message: "User password has been reset successfully.",
@@ -3212,4 +3220,55 @@ exports.pingSession = async (req, res) => {
   // Middleware handles updating last_active_at automatically
   res.json({ success: true });
 };
+
+/**
+ * In-app escalation request for users unable to reset password via self-service
+ */
+exports.requestPasswordResetEscalation = async (req, res) => {
+  try {
+    const { email, reason, contact_phone } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+    const normalizedEmail = normalizeEmail(email);
+    const { data: user, error: userErr } = await supabase
+      .from('users')
+      .select('id, institution_id, role, full_name, email')
+      .eq('email', normalizedEmail)
+      .single();
+
+    if (userErr || !user) {
+      return res.status(404).json({ error: "No account found with this email" });
+    }
+
+    const { ip_address: ipAddress, user_agent: userAgent } = getRequestContext(req);
+
+    // Log the escalation request in password_audit_logs
+    await writePasswordAuditLog({
+      action: 'escalated_reset_requested',
+      actorUserId: user.id,
+      targetUserId: user.id,
+      targetEmail: user.email,
+      outcome: 'requested',
+      reason: reason || 'User cannot complete self-service recovery; requested admin intervention',
+      ipAddress,
+      userAgent,
+      metadata: {
+        escalation: true,
+        contact_phone: contact_phone || null,
+        user_role: user.role,
+        institution_id: user.institution_id,
+      },
+    });
+
+    return res.status(200).json({
+      message: "Reset escalation request logged. Please contact your school administrator for alternative identity verification (In-person, Phone, or Official ID).",
+      escalation_logged: true,
+    });
+  } catch (err) {
+    console.error("requestPasswordResetEscalation error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 

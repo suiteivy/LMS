@@ -6,7 +6,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { router } from "expo-router";
-import { BarChart3, BookOpen, DollarSign, GraduationCap, TrendingUp, Users, Zap } from "lucide-react-native";
+import { BarChart3, BookOpen, GraduationCap, TrendingUp, Users, Wallet, Zap } from "lucide-react-native";
 import React, { useState } from "react";
 import { ActivityIndicator, DimensionValue, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
@@ -54,7 +54,7 @@ export default function AnalyticsScreen() {
         "Total Students": GraduationCap,
         "Active Subjects": BookOpen,
         "Teachers": Users,
-        "Revenue": DollarSign,
+        "Revenue": Wallet,
     };
 
     const colorMap: any = {

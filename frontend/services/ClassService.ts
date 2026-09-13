@@ -198,7 +198,74 @@ export const ClassService = {
         const res = await api.get(`/subjects/class/${classId}`);
         return res.data;
     },
+
+    async requestTransfer(data: { student_id: string; to_class_id: string; reason?: string }): Promise<any> {
+        const res = await api.post('/classes/transfers', data);
+        return res.data;
+    },
+
+    async getTransfers(status?: string): Promise<ClassTransfer[]> {
+        const res = await api.get('/classes/transfers', { params: status ? { status } : undefined });
+        return res.data;
+    },
+
+    async approveTransfer(id: string): Promise<any> {
+        const res = await api.patch(`/classes/transfers/${id}/approve`);
+        return res.data;
+    },
+
+    async rejectTransfer(id: string, reason?: string): Promise<any> {
+        const res = await api.patch(`/classes/transfers/${id}/reject`, { reason });
+        return res.data;
+    },
 };
+
+export interface ClassTransfer {
+    id: string;
+    institution_id: string;
+    student_id: string;
+    from_class_id: string | null;
+    to_class_id: string;
+    requested_by: string;
+    approved_by?: string | null;
+    status: 'pending' | 'approved' | 'rejected';
+    reason?: string | null;
+    rejection_reason?: string | null;
+    created_at: string;
+    updated_at: string;
+    student?: {
+        id: string;
+        admission_number?: string;
+        user?: {
+            full_name: string;
+            email: string;
+            avatar_url?: string | null;
+        };
+    };
+    from_class?: {
+        id: string;
+        display_name?: string;
+        name?: string;
+        grade_level?: number;
+    } | null;
+    to_class?: {
+        id: string;
+        display_name?: string;
+        name?: string;
+        grade_level?: number;
+    };
+    requester?: {
+        id: string;
+        full_name: string;
+        email: string;
+        role: string;
+    };
+    approver?: {
+        id: string;
+        full_name: string;
+        email: string;
+    } | null;
+}
 
 // Keep backward-compatible export
 export const ClassAPI = ClassService;

@@ -6,6 +6,7 @@ import { api } from '@/services/api';
 import { formatClassLabel } from '@/utils/classLabel';
 import { formatCredentialExpiry } from '@/utils/formatExpiry';
 import { showSuccess } from '@/utils/toast';
+import { EDUCATION_LEVELS } from '@/constants/educationLevels';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -241,6 +242,8 @@ export default function CreateUserScreen() {
             })).filter((opt: ClassOptionLevel) => Number.isFinite(opt.value));
 
             setLevelOptions(mappedLevels.map((opt) => ({ value: String(opt.value), label: opt.label })));
+        } else {
+            setLevelOptions(EDUCATION_LEVELS.map((l) => ({ value: String(l.value), label: l.label })));
         }
 
         if (classOptionsData?.categories) {

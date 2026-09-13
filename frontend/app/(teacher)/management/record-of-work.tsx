@@ -16,6 +16,7 @@ import {
     GraduationCap,
     Link2,
     MessageSquare,
+    PenTool,
     Plus,
     Trash2,
     X
@@ -41,6 +42,7 @@ interface RecordOfWorkItem {
     class?: { id: string; name?: string; display_name?: string; grade_level?: number; stream?: string };
     week_number: number;
     lesson_number: number;
+    duration_minutes?: number;
     date: string;
     topic: string;
     sub_topic?: string;
@@ -71,6 +73,7 @@ export default function RecordOfWorkPage() {
     // Form
     const [formWeek, setFormWeek] = useState("1");
     const [formLesson, setFormLesson] = useState("1");
+    const [formDuration, setFormDuration] = useState("40");
     const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
     const [formTopic, setFormTopic] = useState("");
     const [formSubTopic, setFormSubTopic] = useState("");
@@ -209,6 +212,7 @@ export default function RecordOfWorkPage() {
                     class_id: selectedClassId || undefined,
                     week_number: parseInt(formWeek) || 1,
                     lesson_number: parseInt(formLesson) || 1,
+                    duration_minutes: parseInt(formDuration) || 40,
                     date: formDate,
                     topic: formTopic.trim(),
                     sub_topic: formSubTopic.trim() || undefined,
@@ -235,6 +239,7 @@ export default function RecordOfWorkPage() {
                 class_id: selectedClassId || null,
                 week_number: parseInt(formWeek) || 1,
                 lesson_number: parseInt(formLesson) || 1,
+                duration_minutes: parseInt(formDuration) || 40,
                 date: formDate,
                 topic: formTopic.trim(),
                 sub_topic: formSubTopic.trim() || null,
@@ -347,6 +352,7 @@ export default function RecordOfWorkPage() {
     const resetForm = () => {
         setFormWeek("1");
         setFormLesson("1");
+        setFormDuration("40");
         setFormDate(new Date().toISOString().split('T')[0]);
         setFormTopic("");
         setFormSubTopic("");
@@ -527,11 +533,26 @@ export default function RecordOfWorkPage() {
                                                 {item.date}
                                             </Text>
                                         </View>
-                                        {item.coverage_plan && (
+                                        {item.duration_minutes ? (
+                                            <View className="flex-row items-center bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-lg">
+                                                <Clock size={11} color="#D97706" />
+                                                <Text className="text-amber-700 dark:text-amber-400 text-[10px] font-bold ml-1">
+                                                    {item.duration_minutes}m
+                                                </Text>
+                                            </View>
+                                        ) : null}
+                                        {item.coverage_plan ? (
                                             <View className="flex-row items-center bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-lg">
                                                 <Link2 size={11} color="#2563EB" />
                                                 <Text className="text-blue-600 dark:text-blue-400 text-[10px] font-bold ml-1" numberOfLines={1}>
                                                     Plan: {item.coverage_plan.title}
+                                                </Text>
+                                            </View>
+                                        ) : (
+                                            <View className="flex-row items-center bg-purple-50 dark:bg-purple-950/40 px-2.5 py-1 rounded-lg">
+                                                <PenTool size={11} color="#7C3AED" />
+                                                <Text className="text-purple-700 dark:text-purple-400 text-[10px] font-bold ml-1">
+                                                    Teacher Lesson
                                                 </Text>
                                             </View>
                                         )}
@@ -716,11 +737,11 @@ export default function RecordOfWorkPage() {
                                 />
                             </View>
 
-                            {/* Week & Lesson Number */}
+                            {/* Week, Lesson Number & Duration */}
                             <View className="flex-row gap-3 mb-4">
                                 <View className="flex-1">
                                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 ml-1">
-                                        Week Number *
+                                        Week *
                                     </Text>
                                     <TextInput
                                         className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 text-sm"
@@ -733,7 +754,7 @@ export default function RecordOfWorkPage() {
                                 </View>
                                 <View className="flex-1">
                                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 ml-1">
-                                        Lesson Number
+                                        Lesson
                                     </Text>
                                     <TextInput
                                         className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 text-sm"
@@ -746,16 +767,31 @@ export default function RecordOfWorkPage() {
                                 </View>
                                 <View className="flex-1">
                                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 ml-1">
-                                        Date
+                                        Duration (Min)
                                     </Text>
                                     <TextInput
                                         className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 text-sm"
-                                        placeholder="YYYY-MM-DD"
+                                        placeholder="40"
                                         placeholderTextColor="#9CA3AF"
-                                        value={formDate}
-                                        onChangeText={setFormDate}
+                                        keyboardType="numeric"
+                                        value={formDuration}
+                                        onChangeText={setFormDuration}
                                     />
                                 </View>
+                            </View>
+
+                            {/* Date */}
+                            <View className="mb-4">
+                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 ml-1">
+                                    Lesson Date
+                                </Text>
+                                <TextInput
+                                    className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 text-sm"
+                                    placeholder="YYYY-MM-DD"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={formDate}
+                                    onChangeText={setFormDate}
+                                />
                             </View>
 
                             {/* Learning Objectives */}

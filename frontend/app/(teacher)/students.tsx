@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StatusBar, TextInput, Modal } from "react-native";
-import { ArrowLeft, Users, Search, Download, Calendar, GraduationCap, X, Phone, User, MapPin, AlertCircle, ShieldAlert, BookOpen, Award } from "lucide-react-native";
+import { ArrowLeft, Users, Search, Download, Calendar, GraduationCap, X, Phone, User, MapPin, AlertCircle, ShieldAlert, BookOpen, Award, ArrowLeftRight } from "lucide-react-native";
 import { router } from "expo-router";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,6 +9,7 @@ import { StudentService } from "@/services/StudentService";
 import { TeacherAPI } from "@/services/TeacherService";
 import { useTheme } from "@/contexts/ThemeContext";
 import { showFetchError } from "@/utils/toast";
+import { StudentTransferModal } from "@/components/transfers/StudentTransferModal";
 
 interface StudentListItem {
     id: string;
@@ -59,6 +60,7 @@ export default function StudentsPage() {
     const [detailsLoading, setDetailsLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [detailsTab, setDetailsTab] = useState<'info' | 'attendance' | 'performance'>('info');
+    const [showTransferModal, setShowTransferModal] = useState(false);
 
  useEffect(() => {
  if (teacherId) {
@@ -254,12 +256,23 @@ export default function StudentsPage() {
                                                 </Text>
                                             </View>
                                             {studentDetails.isClassTeacher && (
-                                                <View className="bg-green-500/10 px-2.5 py-1 rounded-lg flex-row items-center gap-1">
-                                                    <ShieldAlert size={10} color="#22C55E" />
-                                                    <Text className="text-green-600 text-[10px] font-bold uppercase tracking-wider">
-                                                        Class Teacher
-                                                    </Text>
-                                                </View>
+                                                <>
+                                                    <View className="bg-green-500/10 px-2.5 py-1 rounded-lg flex-row items-center gap-1">
+                                                        <ShieldAlert size={10} color="#22C55E" />
+                                                        <Text className="text-green-600 text-[10px] font-bold uppercase tracking-wider">
+                                                            Class Teacher
+                                                        </Text>
+                                                    </View>
+                                                    <TouchableOpacity
+                                                        onPress={() => setShowTransferModal(true)}
+                                                        className="bg-orange-500/15 px-2.5 py-1 rounded-lg flex-row items-center gap-1"
+                                                    >
+                                                        <ArrowLeftRight size={10} color="#FF6900" />
+                                                        <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-wider">
+                                                            Transfer Class
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                </>
                                             )}
                                         </View>
                                     </View>
@@ -459,6 +472,22 @@ export default function StudentsPage() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Student Transfer Modal */}
+            <StudentTransferModal
+                visible={showTransferModal}
+                student={selectedStudent ? {
+                    id: selectedStudent.id,
+                    full_name: studentDetails?.profile?.full_name || selectedStudent.users.full_name,
+                    class_id: studentDetails?.profile?.class_id,
+                    current_class_name: studentDetails?.profile?.class_name || selectedStudent.grade_level,
+                } : null}
+                onClose={() => setShowTransferModal(false)}
+                onSuccess={() => {
+                    fetchStudents();
+                    setModalVisible(false);
+                }}
+            />
         </View>
     );
 }

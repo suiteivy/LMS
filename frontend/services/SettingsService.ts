@@ -91,7 +91,11 @@ export const SettingsService = {
         return response.data;
     },
 
-    adminResetPassword: async (targetUserId: string, newPassword?: string): Promise<{
+    adminResetPassword: async (
+        targetUserId: string,
+        newPassword?: string,
+        verification?: { verificationMethod?: string; verificationNotes?: string }
+    ): Promise<{
         message: string;
         tempPassword?: string;
         credential_delivery?: {
@@ -105,9 +109,27 @@ export const SettingsService = {
         requires_security_questions_setup?: boolean;
         [key: string]: any;
     }> => {
-        const payload: { targetUserId: string; newPassword?: string } = { targetUserId };
+        const payload: {
+            targetUserId: string;
+            newPassword?: string;
+            verificationMethod?: string;
+            verificationNotes?: string | null;
+        } = {
+            targetUserId,
+            verificationMethod: verification?.verificationMethod || 'in_person',
+            verificationNotes: verification?.verificationNotes || null,
+        };
         if (newPassword) payload.newPassword = newPassword;
         const response = await api.post('/auth/admin-reset-password', payload);
+        return response.data;
+    },
+
+    requestPasswordResetEscalation: async (data: {
+        email: string;
+        reason?: string;
+        contact_phone?: string;
+    }): Promise<{ message: string; escalation_logged: boolean }> => {
+        const response = await api.post('/auth/forgot-password/escalate', data);
         return response.data;
     },
 
