@@ -25,8 +25,8 @@ router.get("/completeness", authorizeRoles(["admin", "teacher"]), checkCompleten
 router.get("/export/pdf", authorizeRoles(["admin", "teacher", "student", "parent"]), exportReportCardPDF);
 router.get("/:id", authorizeRoles(["admin", "teacher", "student", "parent"]), getReportCard);
 
-router.post("/generate", authorizeRoles(["admin"]), generateStudentReportCard);
-router.post("/generate-class", authorizeRoles(["admin"]), generateClassReportCards);
+router.post("/generate", authorizeRoles(["admin", "teacher"]), generateStudentReportCard);
+router.post("/generate-class", authorizeRoles(["admin", "teacher"]), generateClassReportCards);
 router.put("/:id/remarks", authorizeRoles(["admin", "teacher"]), updateReportCardRemarks);
 router.put("/:id/publish", authorizeRoles(["admin"]), publishReportCard);
 router.post("/bulk-publish", authorizeRoles(["admin"]), bulkPublishReportCards);

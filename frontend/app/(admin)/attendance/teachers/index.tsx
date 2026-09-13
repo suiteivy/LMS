@@ -1,10 +1,10 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeacherAttendance, AdminTeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
-import {DatePicker} from '@/components/common/DatePicker';
+import { DatePicker } from '@/components/common/DatePicker';
 import { useRouter } from "expo-router";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
-import { Calendar as CalendarIcon, Check, Clock, X } from "lucide-react-native";
+import { Check, Clock, X } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
@@ -52,7 +52,7 @@ export default function TeacherAttendancePage() {
 
     const handleMarkLocal = (teacherId: string, status: string) => {
         setPendingChanges(prev => ({ ...prev, [teacherId]: status }));
-        setAttendance(prev => prev.map(a => a.teacher_id === teacherId ? { ...a, status: status as any } : a));
+        setAttendance(prev => prev.map(a => a.teacher_id === teacherId ? { ...a, status: status as any, confirmation_status: 'confirmed' } : a));
     };
 
     const handleSave = async () => {
@@ -64,7 +64,7 @@ export default function TeacherAttendancePage() {
             const dateStr = getLocalDateString(date);
             await Promise.all(
                 changes.map(([teacherId, status]) => 
-                    AdminTeacherAttendanceAPI.markAttendance({ teacher_id: teacherId, date: dateStr, status, notes: "" })
+                    AdminTeacherAttendanceAPI.markAttendance({ teacher_id: teacherId, date: dateStr, status, notes: "", confirmation_status: "confirmed" })
                 )
             );
             Alert.alert("Success", "Attendance saved successfully");
@@ -81,7 +81,7 @@ export default function TeacherAttendancePage() {
         const updatedAttendance = attendance.map(a => {
             if (a.status !== 'present') {
                 newChanges[a.teacher_id] = 'present';
-                return { ...a, status: 'present' as any };
+                return { ...a, status: 'present' as any, confirmation_status: 'confirmed' as const };
             }
             return a;
         });
@@ -89,6 +89,23 @@ export default function TeacherAttendancePage() {
         if (Object.keys(newChanges).length > 0) {
             setPendingChanges(prev => ({ ...prev, ...newChanges }));
             setAttendance(updatedAttendance);
+        }
+    };
+
+    const unconfirmedCount = attendance.filter(a => a.status !== 'pending' && a.confirmation_status !== 'confirmed').length;
+
+    const confirmAllSelfReported = async () => {
+        const unconfirmedTeachers = attendance.filter(a => a.status !== 'pending' && a.confirmation_status !== 'confirmed');
+        if (unconfirmedTeachers.length === 0) return;
+        setLoading(true);
+        try {
+            const dateStr = getLocalDateString(date);
+            await AdminTeacherAttendanceAPI.confirmAttendance(unconfirmedTeachers.map(t => t.teacher_id), dateStr);
+            Alert.alert("Success", `Confirmed attendance for ${unconfirmedTeachers.length} teachers`);
+            loadAttendance();
+        } catch {
+            Alert.alert("Error", "Failed to confirm self-reported attendance");
+            setLoading(false);
         }
     };
 
@@ -113,8 +130,8 @@ export default function TeacherAttendancePage() {
 
             {/* DatePicker is always mounted to prevent unmounting/failing to select on load updates */}
             <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View style={{ flex: 1, marginRight: 16 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                    <View style={{ flex: 1, minWidth: 180, marginRight: 16 }}>
                         <DatePicker
                             label="Attendance Date"
                             value={getLocalDateString(date)}
@@ -129,7 +146,15 @@ export default function TeacherAttendancePage() {
                             isDark={isDark}
                         />
                     </View>
-                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+                        {unconfirmedCount > 0 && (
+                            <TouchableOpacity 
+                                onPress={confirmAllSelfReported}
+                                style={{ backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : '#fef3c7', borderWidth: 1, borderColor: '#f59e0b', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, justifyContent: 'center' }}
+                            >
+                                <Text style={{ color: '#d97706', fontSize: 13, fontWeight: '600' }}>Confirm Self-Reported ({unconfirmedCount})</Text>
+                            </TouchableOpacity>
+                        )}
                         <TouchableOpacity 
                             onPress={markAllPresent}
                             style={{ backgroundColor: surface, borderWidth: 1, borderColor: border, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, justifyContent: 'center' }}
@@ -181,9 +206,31 @@ export default function TeacherAttendancePage() {
                                                 : (item.teachers?.users?.full_name 
                                                     || (item.first_name ? `${item.first_name} ${item.last_name || ''}`.trim() : (item.name || "Unknown Teacher")))}
                                         </Text>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                                            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: config.dot, marginRight: 6 }} />
-                                            <Text style={{ fontSize: 11, color: textSecondary, textTransform: 'capitalize' }}>{item.status}</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, flexWrap: 'wrap', gap: 6 }}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: config.dot, marginRight: 6 }} />
+                                                <Text style={{ fontSize: 11, color: textSecondary, textTransform: 'capitalize' }}>{item.status}</Text>
+                                            </View>
+                                            {item.status !== 'pending' && (
+                                                <View style={{
+                                                    paddingHorizontal: 6,
+                                                    paddingVertical: 1.5,
+                                                    borderRadius: 4,
+                                                    backgroundColor: item.confirmation_status === 'confirmed' ? (isDark ? 'rgba(16,185,129,0.15)' : '#dcfce7') : (isDark ? 'rgba(245,158,11,0.15)' : '#fef3c7'),
+                                                    borderWidth: 1,
+                                                    borderColor: item.confirmation_status === 'confirmed' ? '#10b981' : '#f59e0b',
+                                                }}>
+                                                    <Text style={{
+                                                        fontSize: 9,
+                                                        fontWeight: '700',
+                                                        color: item.confirmation_status === 'confirmed' ? '#10b981' : '#d97706',
+                                                        textTransform: 'uppercase',
+                                                        letterSpacing: 0.5
+                                                    }}>
+                                                        {item.confirmation_status === 'confirmed' ? 'Confirmed' : 'Self-Reported'}
+                                                    </Text>
+                                                </View>
+                                            )}
                                         </View>
                                     </View>
                                 </View>

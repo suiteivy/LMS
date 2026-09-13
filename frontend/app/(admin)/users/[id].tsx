@@ -1309,14 +1309,20 @@ export default function UserDetailsScreen() {
                                 </View>
                             )}
 
-                            {!!resetResult?.credential_document && (
-                                <TouchableOpacity
-                                    onPress={() => copyToClipboard(resetResult.credential_document, 'Credentials Document')}
-                                    style={{ marginTop: 10, backgroundColor: isDark ? '#21262D' : '#E5E7EB', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, alignItems: 'center' }}
-                                >
-                                    <Text style={{ color: textPrimary, fontSize: 12, fontWeight: '700' }}>Copy Full Credentials Document</Text>
-                                </TouchableOpacity>
-                            )}
+                            {/* One-tap Full Credential Package (F3) */}
+                            <TouchableOpacity
+                                onPress={() => {
+                                    const email = resetResult?.user?.email || resetResult?.email || user?.email || 'N/A';
+                                    const pwd = resetResult?.tempPassword || 'N/A';
+                                    const link = resetResult?.credential_delivery?.url ? `\nOne-Time Link: ${resetResult.credential_delivery.url}` : '';
+                                    const doc = resetResult?.credential_document || `School Portal Login\nUser: ${user?.full_name || 'User'}\nRole: ${user?.role?.toUpperCase() || 'USER'}\nEmail: ${email}\nTemporary Password: ${pwd}${link}`;
+                                    copyToClipboard(doc, 'Full Credential Package');
+                                }}
+                                style={{ marginTop: 10, backgroundColor: '#FF6900', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+                            >
+                                <MaterialCommunityIcons name="content-copy" size={16} color="#fff" />
+                                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>Copy Full Credential Package</Text>
+                            </TouchableOpacity>
 
                             <Text style={{ color: textSecondary, fontSize: 12, marginTop: 8 }}>
                                 User will be forced to logout of all sessions and complete password and security question setup at next login.

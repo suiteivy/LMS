@@ -150,7 +150,7 @@ export default function TeacherSettings() {
                 )}
 
                 <Text className="text-xs font-bold text-gray-400 dark:text-white uppercase tracking-widest ml-1 mb-2">Appearance</Text>
-                <View className="bg-white dark:bg-[#161B22] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden p-3">
+                <View className="mb-6">
                     <ThemeSegmentedControl />
                 </View>
 

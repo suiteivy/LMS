@@ -41,13 +41,26 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visibl
         primary: "#FF6900",
     };
 
+    const hasMinLength = newPassword.length >= 8;
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+    const isPasswordValid = hasMinLength && hasNumber && hasSpecial;
+
     const handlePasswordChange = async () => {
         if (!currentPassword) {
             Toast.show({ type: 'error', text1: 'Error', text2: 'Please enter your current password' });
             return;
         }
-        if (newPassword.length < 6) {
-            Toast.show({ type: 'error', text1: 'Error', text2: 'New password must be at least 6 characters' });
+        if (!hasMinLength) {
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Password must be at least 8 characters' });
+            return;
+        }
+        if (!hasNumber) {
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Password must contain at least one number' });
+            return;
+        }
+        if (!hasSpecial) {
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Password must contain at least one special character' });
             return;
         }
         if (newPassword !== confirmPassword) {
@@ -88,26 +101,31 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visibl
     };
 
     return (
-        <Modal visible={visible} transparent animationType="slide">
+        <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
             >
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 16 }}>
                     <View style={{
                         backgroundColor: tokens.bg,
-                        borderTopLeftRadius: 32,
-                        borderTopRightRadius: 32,
+                        borderRadius: 24,
                         padding: 24,
-                        paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+                        width: '100%',
+                        maxWidth: 480,
                         borderWidth: 1,
-                        borderColor: tokens.border
+                        borderColor: tokens.border,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 10 },
+                        shadowOpacity: 0.35,
+                        shadowRadius: 20,
+                        elevation: 10,
                     }}>
                         {/* Header */}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                             <View>
-                                <Text style={{ fontSize: 24, fontWeight: '800', color: tokens.textPrimary, letterSpacing: -0.5 }}>Security</Text>
-                                <Text style={{ fontSize: 13, color: tokens.textSecondary, fontWeight: '500', marginTop: 2 }}>Update your account password</Text>
+                                <Text style={{ fontSize: 22, fontWeight: '900', color: tokens.textPrimary, letterSpacing: -0.5 }}>Change Password</Text>
+                                <Text style={{ fontSize: 12, color: tokens.textSecondary, fontWeight: '500', marginTop: 2 }}>Protect your account credentials</Text>
                             </View>
                             <TouchableOpacity onPress={handleClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
                                 <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: tokens.inputBg, alignItems: 'center', justifyContent: 'center' }}>
@@ -172,21 +190,21 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visibl
 
                         <ScrollView showsVerticalScrollIndicator={false}>
                             {/* Current Password */}
-                            <View style={{ marginBottom: 20 }}>
+                            <View style={{ marginBottom: 16 }}>
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                    <Text style={{ color: tokens.textPrimary, fontWeight: '700', fontSize: 14 }}>Current Password</Text>
+                                    <Text style={{ color: tokens.textPrimary, fontWeight: '700', fontSize: 13 }}>Current Password</Text>
                                     <TouchableOpacity onPress={handleForgotPassword}>
                                         <Text style={{ color: tokens.primary, fontSize: 12, fontWeight: '700' }}>Forgot?</Text>
                                     </TouchableOpacity>
                                 </View>
                                 <View style={{
                                     flexDirection: 'row', alignItems: 'center',
-                                    backgroundColor: tokens.inputBg, borderRadius: 16,
-                                    borderWidth: 1, borderColor: tokens.inputBorder, paddingHorizontal: 16
+                                    backgroundColor: tokens.inputBg, borderRadius: 14,
+                                    borderWidth: 1, borderColor: tokens.inputBorder, paddingHorizontal: 14
                                 }}>
-                                    <MaterialCommunityIcons name="lock-outline" size={20} color={tokens.textSecondary} />
+                                    <MaterialCommunityIcons name="lock-outline" size={18} color={tokens.textSecondary} />
                                     <TextInput
-                                        style={{ flex: 1, color: tokens.textPrimary, paddingVertical: 14, paddingHorizontal: 12, fontWeight: '500' }}
+                                        style={{ flex: 1, color: tokens.textPrimary, paddingVertical: 12, paddingHorizontal: 10, fontWeight: '500', fontSize: 14 }}
                                         secureTextEntry
                                         placeholder="Enter current password"
                                         placeholderTextColor={tokens.textSecondary}
@@ -197,18 +215,18 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visibl
                             </View>
 
                             {/* New Password */}
-                            <View style={{ marginBottom: 20 }}>
-                                <Text style={{ color: tokens.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 8 }}>New Password</Text>
+                            <View style={{ marginBottom: 12 }}>
+                                <Text style={{ color: tokens.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 8 }}>New Password</Text>
                                 <View style={{
                                     flexDirection: 'row', alignItems: 'center',
-                                    backgroundColor: tokens.inputBg, borderRadius: 16,
-                                    borderWidth: 1, borderColor: tokens.inputBorder, paddingHorizontal: 16
+                                    backgroundColor: tokens.inputBg, borderRadius: 14,
+                                    borderWidth: 1, borderColor: tokens.inputBorder, paddingHorizontal: 14
                                 }}>
-                                    <MaterialCommunityIcons name="lock-plus-outline" size={20} color={tokens.textSecondary} />
+                                    <MaterialCommunityIcons name="lock-plus-outline" size={18} color={tokens.textSecondary} />
                                     <TextInput
-                                        style={{ flex: 1, color: tokens.textPrimary, paddingVertical: 14, paddingHorizontal: 12, fontWeight: '500' }}
+                                        style={{ flex: 1, color: tokens.textPrimary, paddingVertical: 12, paddingHorizontal: 10, fontWeight: '500', fontSize: 14 }}
                                         secureTextEntry
-                                        placeholder="Min. 6 characters"
+                                        placeholder="Min. 8 chars, 1 number, 1 special"
                                         placeholderTextColor={tokens.textSecondary}
                                         value={newPassword}
                                         onChangeText={setNewPassword}
@@ -216,17 +234,53 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visibl
                                 </View>
                             </View>
 
+                            {/* Password Complexity Checklist */}
+                            {newPassword.length > 0 && (
+                                <View style={{ backgroundColor: isDark ? '#161B22' : '#F6F8FA', padding: 10, borderRadius: 10, marginBottom: 16, gap: 4 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <MaterialCommunityIcons
+                                            name={hasMinLength ? "check-circle" : "close-circle"}
+                                            size={14}
+                                            color={hasMinLength ? "#10B981" : "#EF4444"}
+                                        />
+                                        <Text style={{ fontSize: 11, fontWeight: '600', color: hasMinLength ? tokens.textPrimary : tokens.textSecondary }}>
+                                            At least 8 characters
+                                        </Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <MaterialCommunityIcons
+                                            name={hasNumber ? "check-circle" : "close-circle"}
+                                            size={14}
+                                            color={hasNumber ? "#10B981" : "#EF4444"}
+                                        />
+                                        <Text style={{ fontSize: 11, fontWeight: '600', color: hasNumber ? tokens.textPrimary : tokens.textSecondary }}>
+                                            Contains at least one number (0-9)
+                                        </Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <MaterialCommunityIcons
+                                            name={hasSpecial ? "check-circle" : "close-circle"}
+                                            size={14}
+                                            color={hasSpecial ? "#10B981" : "#EF4444"}
+                                        />
+                                        <Text style={{ fontSize: 11, fontWeight: '600', color: hasSpecial ? tokens.textPrimary : tokens.textSecondary }}>
+                                            Contains at least one special character (!@#$%...)
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
+
                             {/* Confirm Password */}
-                            <View style={{ marginBottom: 32 }}>
-                                <Text style={{ color: tokens.textPrimary, fontWeight: '700', fontSize: 14, marginBottom: 8 }}>Confirm New Password</Text>
+                            <View style={{ marginBottom: 24 }}>
+                                <Text style={{ color: tokens.textPrimary, fontWeight: '700', fontSize: 13, marginBottom: 8 }}>Confirm New Password</Text>
                                 <View style={{
                                     flexDirection: 'row', alignItems: 'center',
-                                    backgroundColor: tokens.inputBg, borderRadius: 16,
-                                    borderWidth: 1, borderColor: tokens.inputBorder, paddingHorizontal: 16
+                                    backgroundColor: tokens.inputBg, borderRadius: 14,
+                                    borderWidth: 1, borderColor: tokens.inputBorder, paddingHorizontal: 14
                                 }}>
-                                    <MaterialCommunityIcons name="check-decagram-outline" size={20} color={tokens.textSecondary} />
+                                    <MaterialCommunityIcons name="check-decagram-outline" size={18} color={tokens.textSecondary} />
                                     <TextInput
-                                        style={{ flex: 1, color: tokens.textPrimary, paddingVertical: 14, paddingHorizontal: 12, fontWeight: '500' }}
+                                        style={{ flex: 1, color: tokens.textPrimary, paddingVertical: 12, paddingHorizontal: 10, fontWeight: '500', fontSize: 14 }}
                                         secureTextEntry
                                         placeholder="Repeat new password"
                                         placeholderTextColor={tokens.textSecondary}
@@ -239,18 +293,18 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visibl
                             {/* Submit */}
                             <TouchableOpacity
                                 onPress={handlePasswordChange}
-                                disabled={loading}
+                                disabled={loading || (newPassword.length > 0 && !isPasswordValid)}
                                 accessibilityState={{ disabled: loading, busy: loading }}
                                 activeOpacity={0.8}
                                 style={{
-                                    backgroundColor: tokens.primary,
-                                    paddingVertical: 16, borderRadius: 18,
+                                    backgroundColor: (newPassword.length > 0 && !isPasswordValid) ? (isDark ? '#21262D' : '#E5E7EB') : tokens.primary,
+                                    paddingVertical: 14, borderRadius: 14,
                                     alignItems: 'center', flexDirection: 'row', justifyContent: 'center',
                                 }}
                             >
                                 {loading
                                     ? <ActivityIndicator color="#fff" />
-                                    : <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 }}>Confirm Change</Text>
+                                    : <Text style={{ color: (newPassword.length > 0 && !isPasswordValid) ? tokens.textSecondary : '#fff', fontSize: 15, fontWeight: '800', letterSpacing: 0.5 }}>Confirm Password Change</Text>
                                 }
                             </TouchableOpacity>
                         </ScrollView>

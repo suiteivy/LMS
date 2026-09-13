@@ -246,27 +246,41 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
               {/* Identity */}
               <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Identity</Text>
               <View className="gap-3 mb-6">
-                <View>
-                  <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">First Name</Text>
-                  <TextInput
-                    className="bg-[#F6F8FA] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
-                    placeholder="First Name"
-                    placeholderTextColor="#9ca3af"
-                    value={firstName}
-                    onChangeText={setFirstName}
-                  />
-                </View>
+                {profile?.role === 'teacher' ? (
+                  <View className="bg-orange-50 dark:bg-orange-950/20 border border-[#FF6900]/40 rounded-xl p-3 mb-1">
+                    <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Official Name (Locked)</Text>
+                    <Text className="text-sm font-bold text-gray-900 dark:text-white">
+                      {firstName} {lastName}
+                    </Text>
+                    <Text className="text-[11px] text-[#FF6900] font-semibold mt-1">
+                      Teacher names are tied to official credentials. Use "Request Name Change" in My Profile to submit changes for administrative approval.
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    <View>
+                      <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">First Name</Text>
+                      <TextInput
+                        className="bg-[#F6F8FA] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
+                        placeholder="First Name"
+                        placeholderTextColor="#9ca3af"
+                        value={firstName}
+                        onChangeText={setFirstName}
+                      />
+                    </View>
 
-                <View>
-                  <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Last Name</Text>
-                  <TextInput
-                    className="bg-[#F6F8FA] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
-                    placeholder="Last Name"
-                    placeholderTextColor="#9ca3af"
-                    value={lastName}
-                    onChangeText={setLastName}
-                  />
-                </View>
+                    <View>
+                      <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Last Name</Text>
+                      <TextInput
+                        className="bg-[#F6F8FA] dark:bg-navy border border-[#D0D7DE] dark:border-[#21262D] rounded-xl px-4 py-3 text-gray-900 dark:text-white"
+                        placeholder="Last Name"
+                        placeholderTextColor="#9ca3af"
+                        value={lastName}
+                        onChangeText={setLastName}
+                      />
+                    </View>
+                  </>
+                )}
 
                 <View>
                   <Text className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Mobile Number</Text>

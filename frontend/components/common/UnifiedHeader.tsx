@@ -36,7 +36,7 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
 }) => {
   const { backTo } = useLocalSearchParams<{ backTo?: string }>();
   const insets = useSafeAreaInsets();
-  const { isDark } = useTheme();
+  const { isDark, setTheme } = useTheme();
   const { institutionName, institutionLogo } = useAuth();
   const { width } = useWindowDimensions();
   const { unreadCount, setShowNotifications } = useNotifications();
@@ -236,6 +236,28 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
         {/* Right side Actions & Notifications (Desktop + Mobile) */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: isMobile ? 8 : 12, marginLeft: 8 }}>
           {rightActions}
+
+          {/* Theme Toggle Button (G3) */}
+          <TouchableOpacity
+            onPress={() => setTheme(isDark ? 'light' : 'dark')}
+            style={{
+              backgroundColor: surface,
+              padding: isMobile ? 6 : 8,
+              borderRadius: isMobile ? 10 : 12,
+              borderWidth: 1,
+              borderColor: surfaceBorder,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+          >
+            <Ionicons
+              name={isDark ? "sunny-outline" : "moon-outline"}
+              size={isMobile ? 16 : 18}
+              color={isDark ? "#FFA756" : "#4B5563"}
+            />
+          </TouchableOpacity>
 
           {/* Bell Icon for Notifications */}
           <TouchableOpacity

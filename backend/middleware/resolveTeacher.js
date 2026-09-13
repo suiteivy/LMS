@@ -119,6 +119,31 @@ async function authorizeTeacherForSubject(userId, subjectId, res) {
     return { teacherId: teacher.id, subject };
 }
 
+/**
+ * Authorization for Class Teacher actions on a class.
+ * Checks: 1) teacher exists, 2) teacher is designated class teacher for classId.
+ * Returns { teacherId, classData } on success, or sends error and returns null.
+ */
+async function authorizeClassTeacher(userId, classId, res) {
+    const teacher = await resolveTeacher(userId, res);
+    if (!teacher) return null;
+
+    const { data: classData, error } = await supabase
+        .from('classes')
+        .select('id, teacher_id, grade_level, form_level, stream, class_type')
+        .eq('id', classId)
+        .single();
+
+    if (error || !classData || classData.teacher_id !== teacher.id) {
+        if (res && !res.headersSent) {
+            res.status(403).json({ error: "Access denied: You are not the designated Class Teacher for this class" });
+        }
+        return null;
+    }
+
+    return { teacherId: teacher.id, classData };
+}
+
 module.exports = {
     resolveTeacher,
     isTeacherAssignedToSubject,
@@ -126,4 +151,6 @@ module.exports = {
     isStudentEnrolledInSubject,
     isStudentEnrolled,
     authorizeTeacherForSubject,
+    authorizeClassTeacher,
 };
+

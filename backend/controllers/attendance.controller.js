@@ -1,7 +1,7 @@
 // controllers/attendance.controller.js
 const supabase = require("../utils/supabaseClient.js");
 const { createNotificationInternal } = require("./notification.controller.js");
-const { authorizeTeacherForSubject } = require("../middleware/resolveTeacher.js");
+const { authorizeTeacherForSubject, authorizeClassTeacher } = require("../middleware/resolveTeacher.js");
 const { recomputeDailyHoursForInstitutionDate } = require('../services/dailyHours.service.js');
 const { parsePagination, paginatedResponse } = require("../utils/pagination.js");
 
@@ -63,7 +63,8 @@ const getSubjectLinkedClassIds = async (subjectId, institutionId) => {
 
     if (!linkErr) {
         linkRows = scopedLinkRows || [];
-    } else if (linkErr.code === '42P01') {
+    } else if (linkErr.code === '42P01' || linkErr.code === 'PGRST205') {
+        // Table does not exist (Postgres 42P01) or PostgREST can't find it (PGRST205)
         linkRows = [];
     } else if (linkErr.code === '42703') {
         const { data: fallbackLinkRows, error: fallbackLinkErr } = await supabase
@@ -71,7 +72,7 @@ const getSubjectLinkedClassIds = async (subjectId, institutionId) => {
             .select('class_id')
             .eq('subject_id', subjectId);
 
-        if (fallbackLinkErr && fallbackLinkErr.code !== '42P01') throw fallbackLinkErr;
+        if (fallbackLinkErr && fallbackLinkErr.code !== '42P01' && fallbackLinkErr.code !== 'PGRST205') throw fallbackLinkErr;
         linkRows = fallbackLinkRows || [];
     } else {
         throw linkErr;
@@ -146,14 +147,69 @@ exports.getStudentAttendance = async (req, res) => {
         const { date, subject_id, class_id: _class_id } = req.query;
         const { userId, userRole, institution_id } = req;
         
-        if (!date || !subject_id) return res.status(400).json({ error: "Date and Subject ID required" });
+        if (!date || (!subject_id && !_class_id)) {
+            return res.status(400).json({ error: "Date and Subject ID or Class ID required" });
+        }
 
-        // Authorization: If teacher, verify they teach this subject
+        // Authorization: If teacher, verify they teach this subject or manage this class
         if (userRole === 'teacher') {
-            const result = await authorizeTeacherForSubject(userId, subject_id, res);
-            if (!result) return;
+            if (subject_id) {
+                const result = await authorizeTeacherForSubject(userId, subject_id, res);
+                if (!result) return;
+            } else if (_class_id) {
+                const result = await authorizeClassTeacher(userId, _class_id, res);
+                if (!result) return;
+            }
         } else if (!['admin', 'bursary'].includes(userRole)) {
             return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        if (!_class_id || subject_id) {
+            // Standard subject flow continues below
+        } else {
+            // Homeroom / class-only attendance flow
+            const { data: classEnrollments, error: ceError } = await supabase
+                .from('class_enrollments')
+                .select('student_id, students(id, users!inner(first_name, last_name, full_name, avatar_url))')
+                .eq('class_id', _class_id)
+                .eq('institution_id', institution_id)
+                .eq('status', 'enrolled');
+
+            if (ceError) throw ceError;
+
+            const allStudents = (classEnrollments || []).map(e => e.students).filter(Boolean);
+
+            const { data: attendance, error: aError } = await supabase
+                .from("attendance")
+                .select("*")
+                .eq("date", date)
+                .eq("class_id", _class_id)
+                .is("subject_id", null)
+                .eq("institution_id", institution_id);
+
+            if (aError) throw aError;
+
+            const attendanceByStudentId = new Map((attendance || []).map((record) => [record.student_id, record]));
+            const result = allStudents.map(s => {
+                const record = attendanceByStudentId.get(s.id);
+                return {
+                    student_id: s.id,
+                    student_display_id: s.id,
+                    name: s.users.full_name,
+                    first_name: s.users.first_name,
+                    last_name: s.users.last_name,
+                    avatar_url: s.users.avatar_url,
+                    status: record ? record.status : "pending",
+                    actual_start_time: record?.actual_start_time || null,
+                    actual_end_time: record?.actual_end_time || null,
+                    id: record ? record.id : null,
+                    notes: record ? record.notes : ""
+                };
+            });
+
+            const { page, limit, from, to } = parsePagination(req.query, { defaultLimit: 50 });
+            const pagedResult = result.slice(from, to + 1);
+            return res.json(paginatedResponse(pagedResult, result.length, page, limit));
         }
 
         // 1. Get student IDs enrolled directly to this subject (via enrollments).
@@ -272,7 +328,10 @@ exports.getStudentAttendance = async (req, res) => {
             hint: err?.hint,
             stack: err?.stack,
         });
-        res.status(500).json({ error: err.message });
+        const userMessage = err?.code === 'PGRST205' || err?.code === '42P01'
+            ? 'Attendance configuration is being set up. Please try again shortly.'
+            : (err?.message || 'Failed to load attendance data');
+        res.status(500).json({ error: userMessage });
     }
 };
 
@@ -289,13 +348,20 @@ exports.markStudentAttendance = async (req, res) => {
         const { userId, userRole, institution_id } = req;
 
         if (userRole === 'teacher') {
-            const result = await authorizeTeacherForSubject(userId, subject_id, res);
-            if (!result) return;
+            if (subject_id) {
+                const result = await authorizeTeacherForSubject(userId, subject_id, res);
+                if (!result) return;
+            } else if (class_id) {
+                const result = await authorizeClassTeacher(userId, class_id, res);
+                if (!result) return;
+            } else {
+                return res.status(400).json({ error: "Subject ID or Class ID required" });
+            }
         } else if (!['admin', 'bursary'].includes(userRole)) {
             return res.status(403).json({ error: "Unauthorized" });
         }
 
-        if (!student_id || !subject_id || !status) {
+        if (!student_id || (!subject_id && !class_id) || !status) {
             return res.status(400).json({ error: "Missing required fields" });
         }
 
@@ -317,50 +383,65 @@ exports.markStudentAttendance = async (req, res) => {
             return res.status(400).json({ error: 'Invalid student for institution' });
         }
 
-        const { data: subjectRow, error: subjectErr } = await supabase
-            .from('subjects')
-            .select('id')
-            .eq('id', subject_id)
-            .eq('institution_id', institution_id)
-            .single();
-        if (subjectErr || !subjectRow) {
-            return res.status(400).json({ error: 'Invalid subject for institution' });
-        }
+        let targetClassId = class_id;
 
-        const linkedClassIds = await getSubjectLinkedClassIds(subject_id, institution_id);
-        const enrollmentChecks = [
-            supabase
-                .from('enrollments')
+        if (subject_id) {
+            const { data: subjectRow, error: subjectErr } = await supabase
+                .from('subjects')
                 .select('id')
-                .eq('student_id', student_id)
-                .eq('subject_id', subject_id)
+                .eq('id', subject_id)
                 .eq('institution_id', institution_id)
-                .eq('status', 'enrolled')
-                .maybeSingle(),
-        ];
+                .single();
+            if (subjectErr || !subjectRow) {
+                return res.status(400).json({ error: 'Invalid subject for institution' });
+            }
 
-        if (linkedClassIds.length > 0) {
-            enrollmentChecks.push(
+            const linkedClassIds = await getSubjectLinkedClassIds(subject_id, institution_id);
+            const enrollmentChecks = [
                 supabase
-                    .from('class_enrollments')
+                    .from('enrollments')
                     .select('id')
                     .eq('student_id', student_id)
+                    .eq('subject_id', subject_id)
                     .eq('institution_id', institution_id)
-                    .in('class_id', linkedClassIds)
-                    .maybeSingle()
-            );
-        }
+                    .eq('status', 'enrolled')
+                    .maybeSingle(),
+            ];
 
-        const enrollmentResults = await Promise.all(enrollmentChecks);
-        const hasValidEnrollment = enrollmentResults.some((result) => !!result.data);
-        if (!hasValidEnrollment) {
-            return res.status(403).json({ error: 'Student is not enrolled for this subject' });
-        }
+            if (linkedClassIds.length > 0) {
+                enrollmentChecks.push(
+                    supabase
+                        .from('class_enrollments')
+                        .select('id')
+                        .eq('student_id', student_id)
+                        .eq('institution_id', institution_id)
+                        .in('class_id', linkedClassIds)
+                        .maybeSingle()
+                );
+            }
 
-        let targetClassId = class_id;
-        if (!targetClassId) {
-            const linkedClassIds = await getSubjectLinkedClassIds(subject_id, institution_id);
-            targetClassId = linkedClassIds[0] || null;
+            const enrollmentResults = await Promise.all(enrollmentChecks);
+            const hasValidEnrollment = enrollmentResults.some((result) => !!result.data);
+            if (!hasValidEnrollment) {
+                return res.status(403).json({ error: 'Student is not enrolled for this subject' });
+            }
+
+            if (!targetClassId) {
+                targetClassId = linkedClassIds[0] || null;
+            }
+        } else {
+            // Class/homeroom attendance
+            const { data: classEnrollment } = await supabase
+                .from('class_enrollments')
+                .select('id')
+                .eq('student_id', student_id)
+                .eq('class_id', class_id)
+                .eq('institution_id', institution_id)
+                .maybeSingle();
+
+            if (!classEnrollment) {
+                return res.status(403).json({ error: 'Student is not enrolled in this class' });
+            }
         }
 
         // Upsert with actual class times
@@ -377,10 +458,42 @@ exports.markStudentAttendance = async (req, res) => {
         if (actual_start_time) upsertPayload.actual_start_time = actual_start_time;
         if (actual_end_time) upsertPayload.actual_end_time = actual_end_time;
 
-        const { data, error } = await supabase
-            .from("attendance")
-            .upsert(upsertPayload, { onConflict: "student_id, subject_id, date" })
-            .select();
+        let data, error;
+        if (subject_id) {
+            const res = await supabase
+                .from("attendance")
+                .upsert(upsertPayload, { onConflict: "student_id, subject_id, date" })
+                .select();
+            data = res.data;
+            error = res.error;
+        } else {
+            const { data: existingRec } = await supabase
+                .from("attendance")
+                .select("id")
+                .eq("student_id", student_id)
+                .eq("class_id", targetClassId)
+                .eq("date", markDate)
+                .is("subject_id", null)
+                .eq("institution_id", institution_id)
+                .maybeSingle();
+
+            if (existingRec?.id) {
+                const res = await supabase
+                    .from("attendance")
+                    .update(upsertPayload)
+                    .eq("id", existingRec.id)
+                    .select();
+                data = res.data;
+                error = res.error;
+            } else {
+                const res = await supabase
+                    .from("attendance")
+                    .insert([upsertPayload])
+                    .select();
+                data = res.data;
+                error = res.error;
+            }
+        }
 
         if (error) throw error;
 
@@ -538,6 +651,7 @@ exports.selfMarkTeacherPresence = async (req, res) => {
                 date: markDate,
                 status,
                 notes: notes || "Teacher presence self check-in",
+                confirmation_status: 'self_reported',
                 institution_id
             }, { onConflict: "teacher_id, date" })
             .select();
@@ -689,6 +803,7 @@ exports.getTeacherAttendance = async (req, res) => {
                 last_name: t.users.last_name,
                 avatar_url: t.users.avatar_url,
                 status: record ? record.status : "pending",
+                confirmation_status: record ? (record.confirmation_status || (record.status ? 'confirmed' : 'unconfirmed')) : 'unconfirmed',
                 id: record ? record.id : null,
                 notes: record ? record.notes : ""
             };
@@ -704,10 +819,10 @@ exports.getTeacherAttendance = async (req, res) => {
 
 exports.markTeacherAttendance = async (req, res) => {
     try {
-        const { teacher_id, date, status, notes } = req.body;
+        const { teacher_id, date, status, notes, confirmation_status } = req.body;
         const { institution_id, userRole } = req;
 
-        if (userRole !== 'admin') {
+        if (userRole !== 'admin' && userRole !== 'master_admin') {
             return res.status(403).json({ error: "Unauthorized" });
         }
 
@@ -724,10 +839,17 @@ exports.markTeacherAttendance = async (req, res) => {
 
         const markDate = date || new Date().toISOString().split('T')[0];
 
-        // Upsert
+        // Upsert with admin confirmation
         const { data, error } = await supabase
             .from("teacher_attendance")
-            .upsert({ teacher_id, date: markDate, status, notes, institution_id }, { onConflict: "teacher_id, date" })
+            .upsert({
+                teacher_id,
+                date: markDate,
+                status,
+                notes,
+                confirmation_status: confirmation_status || 'confirmed',
+                institution_id
+            }, { onConflict: "teacher_id, date" })
             .select();
 
         if (error) throw error;
@@ -744,6 +866,106 @@ exports.markTeacherAttendance = async (req, res) => {
 
         res.json(data[0]);
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Admin batch confirms self-reported teacher attendance
+ */
+exports.confirmTeacherAttendance = async (req, res) => {
+    try {
+        const { teacher_ids, date } = req.body;
+        const { institution_id, userRole } = req;
+
+        if (userRole !== 'admin' && userRole !== 'master_admin') {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        const markDate = date || new Date().toISOString().split('T')[0];
+
+        if (!teacher_ids || !Array.isArray(teacher_ids) || teacher_ids.length === 0) {
+            return res.status(400).json({ error: "teacher_ids array is required" });
+        }
+
+        const { data, error } = await supabase
+            .from("teacher_attendance")
+            .update({ confirmation_status: 'confirmed' })
+            .in("teacher_id", teacher_ids)
+            .eq("date", markDate)
+            .eq("institution_id", institution_id)
+            .select();
+
+        if (error) throw error;
+
+        res.json({ message: "Attendance confirmed successfully", confirmedCount: data?.length || 0 });
+    } catch (err) {
+        console.error("confirmTeacherAttendance error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Staff Presence Visibility (Part D2)
+ * Allows teachers and staff to see which teachers are checked in today,
+ * with real-time sync and self-reported vs confirmed tags.
+ */
+exports.getStaffPresence = async (req, res) => {
+    try {
+        const { date } = req.query;
+        const { userRole, institution_id } = req;
+
+        if (!['teacher', 'admin', 'master_admin'].includes(userRole)) {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        const targetDate = date || new Date().toISOString().split('T')[0];
+
+        // Fetch teachers for this institution with their user profiles
+        const { data: teachers, error: tErr } = await supabase
+            .from('teachers')
+            .select(`
+                id,
+                department,
+                position,
+                users:user_id!inner(first_name, last_name, full_name, avatar_url, institution_id)
+            `)
+            .eq('users.institution_id', institution_id);
+
+        if (tErr) throw tErr;
+
+        // Fetch attendance records for targetDate
+        const { data: attendance, error: aErr } = await supabase
+            .from('teacher_attendance')
+            .select('id, teacher_id, status, confirmation_status, check_in_time, notes, created_at')
+            .eq('date', targetDate)
+            .eq('institution_id', institution_id);
+
+        if (aErr) throw aErr;
+
+        const attendanceByTeacher = new Map();
+        (attendance || []).forEach(a => attendanceByTeacher.set(a.teacher_id, a));
+
+        const staffList = (teachers || []).map(t => {
+            const att = attendanceByTeacher.get(t.id);
+            return {
+                teacher_id: t.id,
+                name: t.users?.full_name || `${t.users?.first_name || ''} ${t.users?.last_name || ''}`.trim() || 'Teacher',
+                first_name: t.users?.first_name || '',
+                last_name: t.users?.last_name || '',
+                avatar_url: t.users?.avatar_url || null,
+                department: t.department || null,
+                position: t.position || 'Teacher',
+                status: att?.status || 'pending',
+                confirmation_status: att ? (att.confirmation_status || 'unconfirmed') : 'unconfirmed',
+                check_in_time: att?.check_in_time || att?.created_at || null,
+                notes: att?.notes || null
+            };
+        });
+
+        res.json(staffList);
+    } catch (err) {
+        console.error("getStaffPresence error:", err);
         res.status(500).json({ error: err.message });
     }
 };

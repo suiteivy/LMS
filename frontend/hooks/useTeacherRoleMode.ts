@@ -14,6 +14,10 @@ let currentRoles: string[] = [];
 let isInitialized = false;
 const listeners = new Set<() => void>();
 
+export function getActiveTeacherRoleMode(): TeacherRoleMode {
+  return currentMode;
+}
+
 function getFallbackMode(roles: string[], isLibrarianAuth: boolean): TeacherRoleMode {
   const hasSubject = roles.includes('Subject Teacher');
   const hasClass = roles.includes('Class Teacher');

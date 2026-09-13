@@ -1,191 +1,327 @@
-import { UnifiedHeader } from"@/components/common/UnifiedHeader";
+import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
-import { ExamService } from"@/services/ExamService";
 import { useAuth } from "@/contexts/AuthContext";
+import { ExamService } from "@/services/ExamService";
+import { showError, showSuccess } from "@/utils/toast";
+import { router, useLocalSearchParams } from "expo-router";
+import {
+    AlertCircle,
+    Award,
+    CheckCircle2,
+    Lock,
+    Save,
+    Search,
+    User
+} from "lucide-react-native";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from "react-native";
 import Toast from 'react-native-toast-message';
-import { showError, showSuccess } from"@/utils/toast";
-import { router, useLocalSearchParams } from"expo-router";
-import { Save, Search, User } from"lucide-react-native";
-import React, { useEffect, useState } from"react";
-import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from"react-native";
 
 interface StudentScore {
- student_id: string;
- student_name: string;
- score: string;
- feedback: string;
+    student_id: string;
+    student_name: string;
+    score: string;
+    feedback: string;
+    competency_band?: string;
 }
 
 export default function ExamResultsPage() {
- const { examId } = useLocalSearchParams();
- const { isDemo } = useAuth();
- const [loading, setLoading] = useState(true);
- const [saving, setSaving] = useState(false);
- const [exam, setExam] = useState<any>(null);
- const [studentScores, setStudentScores] = useState<StudentScore[]>([]);
- const [searchQuery, setSearchQuery] = useState("");
+    const { examId } = useLocalSearchParams();
+    const { isDemo, user } = useAuth();
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [exam, setExam] = useState<any>(null);
+    const [studentScores, setStudentScores] = useState<StudentScore[]>([]);
+    const [searchQuery, setSearchQuery] = useState("");
 
- useEffect(() => {
- if (examId) {
- fetchInitialData();
- }
- }, [examId]);
+    const isLocked = exam?.submission_deadline
+        ? new Date() > new Date(exam.submission_deadline) && user?.role !== 'admin'
+        : false;
 
- const fetchInitialData = async () => {
- try {
-  setLoading(true);
-  const currentExam = await ExamService.getExamById(examId as string);
-  setExam(currentExam);
+    useEffect(() => {
+        if (examId) {
+            fetchInitialData();
+        }
+    }, [examId]);
 
- if (!currentExam) {
- showError("Error","Exam not found");
- router.back();
- return;
- }
+    const fetchInitialData = async () => {
+        try {
+            setLoading(true);
+            const currentExam = await ExamService.getExamById(examId as string);
+            setExam(currentExam);
 
-  const studentList = await ExamService.getExamRoster(examId as string);
-  const existingResults = await ExamService.getExamResults(examId as string);
+            if (!currentExam) {
+                showError("Error", "Exam not found");
+                router.back();
+                return;
+            }
 
-  const initialScores = studentList.map((s: any) => {
-  const existing = existingResults.find((r: any) => r.student_id === s.student_id);
-  return {
-  student_id: s.student_id,
-  student_name: s.name || s.full_name || s.student_name || "Unknown Student",
-  score: existing ? existing.score.toString() :"",
-  feedback: existing ? existing.feedback ||"" :""
-  };
- });
+            const studentList = await ExamService.getExamRoster(examId as string);
+            const existingResults = await ExamService.getExamResults(examId as string);
 
- setStudentScores(initialScores);
- } catch (error) {
- console.error(error);
- showError("Error","Failed to load data");
- } finally {
- setLoading(false);
- }
- };
+            const initialScores = studentList.map((s: any) => {
+                const existing = existingResults.find((r: any) => r.student_id === s.student_id);
+                return {
+                    student_id: s.student_id,
+                    student_name: s.name || s.full_name || s.student_name || "Unknown Student",
+                    score: existing ? existing.score.toString() : "",
+                    feedback: existing ? existing.feedback || "" : "",
+                    competency_band: existing?.competency_band
+                };
+            });
 
- const handleUpdateScore = (studentId: string, field: 'score' | 'feedback', value: string) => {
- setStudentScores(prev => prev.map(s =>
- s.student_id === studentId ? { ...s, [field]: value } : s
- ));
- };
+            setStudentScores(initialScores);
+        } catch (error) {
+            console.error(error);
+            showError("Error", "Failed to load data");
+        } finally {
+            setLoading(false);
+        }
+    };
 
- const handleSaveResults = async () => {
- if (isDemo) {
- Toast.show({
- type: 'success',
- text1: 'Done',
- text2: 'Changes saved.'
- });
- return;
- }
- try {
- setSaving(true);
- const promises = studentScores
- .filter(s => s.score !=="")
- .map(s => ExamService.recordExamResult({
- exam_id: examId,
- student_id: s.student_id,
- score: parseFloat(s.score),
- feedback: s.feedback
- }));
+    const handleUpdateScore = (studentId: string, field: 'score' | 'feedback', value: string) => {
+        if (isLocked) return;
+        setStudentScores(prev => prev.map(s => {
+            if (s.student_id !== studentId) return s;
+            const updated = { ...s, [field]: value };
+            if (field === 'score') {
+                const numScore = parseFloat(value);
+                const max = Number(exam?.max_score) || 100;
+                if (!isNaN(numScore)) {
+                    const pct = (numScore / max) * 100;
+                    if (pct >= 80) updated.competency_band = 'EE';
+                    else if (pct >= 60) updated.competency_band = 'ME';
+                    else if (pct >= 40) updated.competency_band = 'AE';
+                    else updated.competency_band = 'BE';
+                } else {
+                    updated.competency_band = undefined;
+                }
+            }
+            return updated;
+        }));
+    };
 
- await Promise.all(promises);
- showSuccess("Success","Exam results saved successfully");
- } catch (error) {
- console.error(error);
- showError("Error","Failed to save results");
- } finally {
- setSaving(false);
- }
- };
+    const handleSaveResults = async () => {
+        if (isLocked) {
+            showError("Locked", "The submission deadline for this exam has passed.");
+            return;
+        }
 
- const filteredStudents = studentScores.filter(s =>
- s.student_name.toLowerCase().includes(searchQuery.toLowerCase())
- );
+        if (isDemo) {
+            Toast.show({
+                type: 'success',
+                text1: 'Done',
+                text2: 'Changes saved.'
+            });
+            return;
+        }
+        try {
+            setSaving(true);
+            const promises = studentScores
+                .filter(s => s.score !== "")
+                .map(s => ExamService.recordExamResult({
+                    exam_id: examId,
+                    student_id: s.student_id,
+                    score: parseFloat(s.score),
+                    feedback: s.feedback,
+                    competency_band: s.competency_band
+                }));
 
- return (
- <View className="flex-1 bg-[#F6F8FA]">
- <UnifiedHeader
- title={exam?.title ||"Exam Results"}
- subtitle={exam ? `Max: ${exam.max_score}` :"Grading"}
- role="Teacher"
- onBack={() => router.back()}
- />
+            await Promise.all(promises);
+            showSuccess("Success", "Exam results saved successfully");
+        } catch (error: any) {
+            console.error(error);
+            const msg = error?.response?.data?.error || "Failed to save results";
+            showError("Error", msg);
+        } finally {
+            setSaving(false);
+        }
+    };
 
- <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
- <View className="p-4 md:p-8">
- {/* Actions Row */}
- <View className="flex-row items-center gap-3 mb-6">
- <View className="flex-1 flex-row items-center bg-[#F6F8FA] px-5 py-3.5 rounded-lg border border-gray-100">
- <Search size={18} color="#9CA3AF" />
- <TextInput
- className="flex-1 ml-3 text-gray-900 font-bold text-xs uppercase tracking-widest"
- placeholder="Find student..."
- placeholderTextColor="#9CA3AF"
- value={searchQuery}
- onChangeText={setSearchQuery}
- />
- </View>
- <TouchableOpacity
- onPress={handleSaveResults}
- disabled={saving}
- className={`w-14 h-14 rounded-lg items-center justify-center shadow-lg ${saving ? 'bg-gray-100' : 'bg-[#FF6900]'}`}
- >
- {saving ? <ActivityIndicator size="small" color="#9CA3AF" /> : <Save size={24} color="white" />}
- </TouchableOpacity>
- </View>
+    const getCompetencyBadge = (scoreStr: string, band?: string) => {
+        if (!scoreStr) return null;
+        const numScore = parseFloat(scoreStr);
+        if (isNaN(numScore)) return null;
 
- {loading ? (
- <ListItemSkeleton loading={loading} count={4} label="Loading exam results..." />
- ) : (
- <>
- {filteredStudents.map((student) => (
- <View key={student.student_id} className="bg-white p-5 rounded-[32px] mb-4 border border-gray-50">
- <View className="flex-row items-center mb-5">
- <View className="bg-orange-50 p-2.5 rounded-lg mr-4 border border-orange-100">
- <User size={20} color="#FF6900" />
- </View>
- <Text className="text-gray-900 font-bold text-lg tracking-tight">{student.student_name}</Text>
- </View>
+        const max = Number(exam?.max_score) || 100;
+        const pct = (numScore / max) * 100;
 
- <View className="flex-row gap-4">
- <View className="w-24">
- <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-[2px] ml-1 mb-2">Points</Text>
- <TextInput
- className="bg-gray-50 p-4 rounded-lg font-bold text-gray-900 text-center border border-gray-100"
- placeholder="0"
- placeholderTextColor="#D1D5DB"
- keyboardType="numeric"
- value={student.score}
- onChangeText={(val) => handleUpdateScore(student.student_id, 'score', val)}
- />
- </View>
- <View className="flex-1">
- <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-[2px] ml-1 mb-2">Faculty Feedback</Text>
- <TextInput
- className="bg-gray-50 p-4 rounded-lg text-gray-900 font-medium border border-gray-100"
- placeholder="Excellent work..."
- placeholderTextColor="#D1D5DB"
- value={student.feedback}
- onChangeText={(val) => handleUpdateScore(student.student_id, 'feedback', val)}
- />
- </View>
- </View>
- </View>
- ))}
+        let b = band;
+        if (!b) {
+            if (pct >= 80) b = 'EE';
+            else if (pct >= 60) b = 'ME';
+            else if (pct >= 40) b = 'AE';
+            else b = 'BE';
+        }
 
- {filteredStudents.length === 0 && (
- <View className="bg-white p-12 rounded-[40px] items-center border border-gray-100 border-dashed mt-8">
- <User size={48} color="#E5E7EB" />
- <Text className="text-gray-400 font-bold text-center mt-6">No matches found</Text>
- </View>
- )}
- </>
- )}
- </View>
- </ScrollView>
- </View>
- );
+        switch (b) {
+            case 'EE':
+                return (
+                    <View className="bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/40 flex-row items-center">
+                        <Award size={10} color="#059669" />
+                        <Text className="text-emerald-700 dark:text-emerald-400 font-bold text-[9px] uppercase ml-1">EE • Exceeding</Text>
+                    </View>
+                );
+            case 'ME':
+                return (
+                    <View className="bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800/40 flex-row items-center">
+                        <CheckCircle2 size={10} color="#2563EB" />
+                        <Text className="text-blue-700 dark:text-blue-400 font-bold text-[9px] uppercase ml-1">ME • Meeting</Text>
+                    </View>
+                );
+            case 'AE':
+                return (
+                    <View className="bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/40 flex-row items-center">
+                        <Text className="text-amber-700 dark:text-amber-400 font-bold text-[9px] uppercase">AE • Approaching</Text>
+                    </View>
+                );
+            case 'BE':
+            default:
+                return (
+                    <View className="bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-md border border-rose-200 dark:border-rose-800/40 flex-row items-center">
+                        <Text className="text-rose-700 dark:text-rose-400 font-bold text-[9px] uppercase">BE • Below</Text>
+                    </View>
+                );
+        }
+    };
+
+    const filteredStudents = studentScores.filter(s =>
+        s.student_name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    return (
+        <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
+            <UnifiedHeader
+                title={exam?.title || "Exam Results"}
+                subtitle={exam ? `Max: ${exam.max_score} Pts` : "Grading"}
+                role="Teacher"
+                onBack={() => router.back()}
+            />
+
+            <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 200 }}>
+                <View className="p-4 md:p-8">
+                    {/* Submission Locked Warning Banner */}
+                    {isLocked && (
+                        <View className="bg-rose-50 dark:bg-rose-950/40 p-4 rounded-2xl border border-rose-200 dark:border-rose-900/40 mb-5 flex-row items-center">
+                            <Lock size={20} color="#E11D48" className="mr-3" />
+                            <View className="flex-1 ml-2">
+                                <Text className="text-rose-800 dark:text-rose-300 font-bold text-xs">
+                                    Submissions Closed
+                                </Text>
+                                <Text className="text-rose-600 dark:text-rose-400 text-[11px] font-medium mt-0.5">
+                                    The deadline for submitting grades ({new Date(exam.submission_deadline).toLocaleDateString()}) has passed. Contact Administration for changes.
+                                </Text>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* Actions Row */}
+                    <View className="flex-row items-center gap-3 mb-6">
+                        <View className="flex-1 flex-row items-center bg-white dark:bg-[#0D1117] px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-800">
+                            <Search size={16} color="#9CA3AF" />
+                            <TextInput
+                                className="flex-1 ml-2.5 text-gray-900 dark:text-white font-medium text-xs"
+                                placeholder="Find learner..."
+                                placeholderTextColor="#9CA3AF"
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={handleSaveResults}
+                            disabled={saving || isLocked}
+                            className={`px-5 py-3 rounded-2xl flex-row items-center shadow-sm ${isLocked ? 'bg-gray-300 dark:bg-gray-800' : 'bg-[#FF6900] active:bg-orange-600'}`}
+                        >
+                            {saving ? (
+                                <ActivityIndicator size="small" color="white" />
+                            ) : (
+                                <>
+                                    <Save size={16} color="white" />
+                                    <Text className="text-white font-bold text-xs uppercase tracking-wider ml-1.5">
+                                        {isLocked ? "Locked" : "Save"}
+                                    </Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+
+                    {loading ? (
+                        <ListItemSkeleton loading={loading} count={4} label="Loading exam results..." />
+                    ) : (
+                        <>
+                            {filteredStudents.map((student) => (
+                                <View
+                                    key={student.student_id}
+                                    className="bg-white dark:bg-[#161B22] p-5 rounded-[28px] mb-4 border border-gray-200 dark:border-gray-800 shadow-sm"
+                                >
+                                    <View className="flex-row items-center justify-between mb-4">
+                                        <View className="flex-row items-center flex-1 mr-2">
+                                            <View className="bg-orange-50 dark:bg-orange-950/40 p-2.5 rounded-xl mr-3 border border-orange-200 dark:border-orange-800/40">
+                                                <User size={18} color="#FF6900" />
+                                            </View>
+                                            <View className="flex-1">
+                                                <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight" numberOfLines={1}>
+                                                    {student.student_name}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Competency Band Badge */}
+                                        {getCompetencyBadge(student.score, student.competency_band)}
+                                    </View>
+
+                                    <View className="flex-row gap-3">
+                                        <View className="w-24">
+                                            <Text className="text-gray-400 dark:text-gray-500 text-[9px] font-bold uppercase tracking-wider mb-1.5 ml-1">
+                                                Score / {exam?.max_score || 100}
+                                            </Text>
+                                            <TextInput
+                                                editable={!isLocked}
+                                                className={`p-3 rounded-xl font-bold text-center border text-sm ${isLocked ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700' : 'bg-[#F6F8FA] dark:bg-[#0D1117] text-gray-900 dark:text-white border-gray-200 dark:border-gray-800'}`}
+                                                placeholder="0"
+                                                placeholderTextColor="#9CA3AF"
+                                                keyboardType="numeric"
+                                                value={student.score}
+                                                onChangeText={(val) => handleUpdateScore(student.student_id, 'score', val)}
+                                            />
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className="text-gray-400 dark:text-gray-500 text-[9px] font-bold uppercase tracking-wider mb-1.5 ml-1">
+                                                Teacher Feedback / Rubric Notes
+                                            </Text>
+                                            <TextInput
+                                                editable={!isLocked}
+                                                className={`p-3 rounded-xl font-medium border text-xs ${isLocked ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700' : 'bg-[#F6F8FA] dark:bg-[#0D1117] text-gray-900 dark:text-white border-gray-200 dark:border-gray-800'}`}
+                                                placeholder="Proficient in key concepts..."
+                                                placeholderTextColor="#9CA3AF"
+                                                value={student.feedback}
+                                                onChangeText={(val) => handleUpdateScore(student.student_id, 'feedback', val)}
+                                            />
+                                        </View>
+                                    </View>
+                                </View>
+                            ))}
+
+                            {filteredStudents.length === 0 && (
+                                <View className="bg-white dark:bg-[#161B22] p-12 rounded-[32px] items-center border border-dashed border-gray-200 dark:border-gray-800 mt-4">
+                                    <User size={40} color="#9CA3AF" style={{ opacity: 0.5 }} />
+                                    <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-3 text-sm">
+                                        No matching learners found
+                                    </Text>
+                                </View>
+                            )}
+                        </>
+                    )}
+                </View>
+            </ScrollView>
+        </View>
+    );
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, ScrollView, StatusBar } from 'react-native';
-import { TrendingUp, Users, BookOpen, Award, Zap } from 'lucide-react-native';
+import { TrendingUp, Users, BookOpen, Award, Zap, CheckCircle2 } from 'lucide-react-native';
 import { router } from "expo-router";
 import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,14 +19,26 @@ interface SubjectAnalytics {
     id: string;
     name: string;
     students: number;
-    avgProgress: number;
     avgGrade: number;
-    completionRate: number;
+    avgProgress?: number;
+    gradingRate?: number;
+    submissionRate?: number;
+    pendingGrading?: number;
+    totalSubmissions?: number;
+    completionRate?: number;
 }
 
-const StatBox = ({ icon: Icon, label, value, color, bgColor }: { icon: any; label: string; value: string; color: string; bgColor: string }) => (
+interface StatBoxProps {
+    icon: any;
+    label: string;
+    value: string;
+    color: string;
+    bgColor: string;
+}
+
+const StatBox = ({ icon: Icon, label, value, color, bgColor }: StatBoxProps) => (
     <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]">
-        <View style={{ backgroundColor: bgColor }} className="w-10 h-10 rounded-xl items-center justify-center mb-3">
+        <View style={{ backgroundColor: bgColor }} className="w-9 h-9 rounded-lg items-center justify-center mb-3">
             <Icon size={18} color={color} />
         </View>
         <Text className="text-gray-900 dark:text-white text-2xl font-black">{value}</Text>
@@ -35,6 +47,7 @@ const StatBox = ({ icon: Icon, label, value, color, bgColor }: { icon: any; labe
 );
 
 const SubjectAnalyticsCard = ({ Subject }: { Subject: SubjectAnalytics }) => {
+    const gradingProgress = Subject.gradingRate !== undefined ? Subject.gradingRate : (Subject.completionRate || 0);
     return (
         <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3">
             <View className="flex-row justify-between items-start mb-4">
@@ -42,18 +55,18 @@ const SubjectAnalyticsCard = ({ Subject }: { Subject: SubjectAnalytics }) => {
                     <Text className="text-gray-900 dark:text-white font-bold text-lg leading-tight">{Subject.name}</Text>
                     <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold mt-1 uppercase tracking-widest">{Subject.students} students</Text>
                 </View>
-                <View className="bg-orange-50 dark:bg-orange-950/20 px-2 py-1 rounded-md">
-                    <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-widest">{Subject.completionRate}% complete</Text>
+                <View className="bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-md">
+                    <Text className="text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-widest">{gradingProgress}% graded</Text>
                 </View>
             </View>
 
             <View className="flex-row gap-4 mt-2">
                 <View className="flex-1">
-                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-widest font-bold mb-2">Completion</Text>
+                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-widest font-bold mb-2">Grading Progress</Text>
                     <View className="h-1.5 bg-[#D0D7DE] dark:bg-[#161B22] rounded-full overflow-hidden">
-                        <View className="h-full bg-[#FF6900] rounded-full" style={{ width: `${Subject.completionRate}%` }} />
+                        <View className="h-full bg-emerald-500 rounded-full" style={{ width: `${gradingProgress}%` }} />
                     </View>
-                    <Text className="text-gray-900 dark:text-white text-xs font-bold mt-2">{Subject.completionRate}%</Text>
+                    <Text className="text-gray-900 dark:text-white text-xs font-bold mt-2">{gradingProgress}%</Text>
                 </View>
                 <View className="flex-1">
                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-widest font-bold mb-2">Avg Grade</Text>
@@ -69,8 +82,8 @@ const SubjectAnalyticsCard = ({ Subject }: { Subject: SubjectAnalytics }) => {
 
 export default function AnalyticsPage() {
     const { teacherId, isDemo } = useAuth();
-    const tier = useSubscriptionTier();
     const { isDark } = useTheme();
+    const tier = useSubscriptionTier();
     const [subjectAnalytics, setSubjectAnalytics] = useState<SubjectAnalytics[]>([]);
     const [loading, setLoading] = useState(true);
     const [topPerformers, setTopPerformers] = useState<any[]>([]);
@@ -191,8 +204,8 @@ export default function AnalyticsPage() {
     }, [teacherId, isDemo, fetchAnalytics]);
 
     const totalStudents = subjectAnalytics.reduce((acc, c) => acc + (c.students || 0), 0);
-    const avgCompletion = subjectAnalytics.length > 0
-        ? Math.round(subjectAnalytics.reduce((acc, c) => acc + (c.completionRate || 0), 0) / subjectAnalytics.length)
+    const avgGradingProgress = subjectAnalytics.length > 0
+        ? Math.round(subjectAnalytics.reduce((acc, c) => acc + (c.gradingRate !== undefined ? c.gradingRate : (c.completionRate || 0)), 0) / subjectAnalytics.length)
         : 0;
     const avgGradeOverall = subjectAnalytics.length > 0
         ? Math.round(subjectAnalytics.reduce((acc, c) => acc + (c.avgGrade || 0), 0) / subjectAnalytics.length)
@@ -242,7 +255,7 @@ export default function AnalyticsPage() {
                                 </View>
                                 <View className="flex-row gap-3 mb-3">
                                     <StatBox icon={Users} label="Total Students" value={totalStudents.toString()} color="#FF6900" bgColor={isDark ? "rgba(255, 105, 0, 0.1)" : "#fff7ed"} />
-                                    <StatBox icon={TrendingUp} label="Avg Completion" value={`${avgCompletion}%`} color="#FF6900" bgColor={isDark ? "rgba(255, 105, 0, 0.1)" : "#fff7ed"} />
+                                    <StatBox icon={CheckCircle2} label="Grading Progress" value={`${avgGradingProgress}%`} color="#10B981" bgColor={isDark ? "rgba(16, 185, 129, 0.1)" : "#ecfdf5"} />
                                 </View>
                                 <View className="flex-row gap-3 mb-6">
                                     <StatBox icon={BookOpen} label="Subjects" value={subjectAnalytics.length.toString()} color="#FF6900" bgColor={isDark ? "rgba(255, 105, 0, 0.1)" : "#fff7ed"} />

@@ -126,35 +126,6 @@ export default function StudentHelp() {
                         <Text style={{ color: tokens.textSecondary, marginTop: 4 }}>Search our help center or contact support.</Text>
                     </View>
 
-                    {/* Search */}
-                    <View style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: tokens.surface,
-                        borderWidth: 1,
-                        borderColor: tokens.border,
-                        borderRadius: 16,
-                        paddingHorizontal: 16,
-                        paddingVertical: 12,
-                        marginBottom: 32,
-                        boxShadow: [{ 
-                            offsetX: 0, 
-                            offsetY: 1, 
-                            blurRadius: 4, 
-                            color: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.04)' 
-                        }],
-                        shadowColor: '#000',
-                        shadowOpacity: isDark ? 0.5 : 0.04,
-                        elevation: isDark ? 0 : 1,
-                    }}>
-                        <Search size={20} color={tokens.textMuted} />
-                        <TextInput
-                            placeholder="Search for articles..."
-                            style={{ flex: 1, color: tokens.inputText, marginLeft: 10, height: 24 }}
-                            placeholderTextColor={tokens.textMuted}
-                        />
-                    </View>
-
                     {/* FAQ */}
                     <Text style={{ fontSize: 11, fontWeight: '700', color: tokens.textMuted, textTransform: 'uppercase', letterSpacing: 2, marginLeft: 4, marginBottom: 16 }}>
                         Frequently Asked Questions
@@ -190,7 +161,7 @@ export default function StudentHelp() {
                             }}
                         >
                             <Send size={24} color="#0d9488" />
-                            <Text style={{ marginTop: 8, fontWeight: '700', color: tokens.textPrimary }}>Submit Ticket</Text>
+                            <Text style={{ marginTop: 8, fontWeight: '700', color: tokens.textPrimary }}>Submit Issue</Text>
                             <Text style={{ fontSize: 12, color: tokens.textMuted, marginTop: 2 }}>In-App Support</Text>
                         </TouchableOpacity>
 
@@ -239,60 +210,87 @@ export default function StudentHelp() {
                         borderWidth: 1,
                         borderColor: tokens.border,
                     }}>
-                        {/* Modal Header */}
-                        <View style={{
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            padding: 24,
-                            borderBottomWidth: 1,
-                            borderBottomColor: tokens.border,
-                        }}>
-                            <Text style={{ fontSize: 20, fontWeight: '700', color: tokens.textPrimary }}>
-                                {selectedTab === 'ticket' ? 'Submit Support Ticket' : 'Email Support'}
+                        {/* Header */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderBottomColor: tokens.border }}>
+                            <Text style={{ fontSize: 18, fontWeight: '700', color: tokens.textPrimary }}>
+                                {selectedTab === 'ticket' ? 'Submit Support Issue' : 'Email Support'}
                             </Text>
                             <TouchableOpacity onPress={() => setSelectedTab(null)}>
-                                <X size={24} color={tokens.textMuted} />
+                                <X size={20} color={tokens.textMuted} />
                             </TouchableOpacity>
                         </View>
 
-                        {/* Modal Content */}
-                        <View style={{ padding: 40, alignItems: 'center' }}>
+                        {/* Content */}
+                        <View style={{ padding: 24 }}>
                             {selectedTab === 'ticket' ? (
-                                <View style={{ width: '100%', alignItems: 'flex-start' }}>
-                                    <Text style={{ color: tokens.textPrimary, fontWeight: '600', marginBottom: 8, fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 }}>Subject</Text>
+                                <>
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: tokens.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+                                        Subject
+                                    </Text>
                                     <TextInput
-                                        style={{ backgroundColor: tokens.inputBg, color: tokens.inputText, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: tokens.inputBorder, width: '100%' }}
-                                        placeholder="Brief summary of the issue"
-                                        placeholderTextColor={tokens.textMuted}
                                         value={ticketSubject}
                                         onChangeText={setTicketSubject}
+                                        placeholder="Brief summary of the issue"
+                                        placeholderTextColor={tokens.textMuted}
+                                        style={{
+                                            backgroundColor: tokens.inputBg,
+                                            borderWidth: 1,
+                                            borderColor: tokens.inputBorder,
+                                            borderRadius: 12,
+                                            padding: 12,
+                                            color: tokens.inputText,
+                                            marginBottom: 16,
+                                        }}
                                     />
 
-                                    <Text style={{ color: tokens.textPrimary, fontWeight: '600', marginBottom: 8, fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 }}>Description</Text>
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: tokens.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+                                        Description
+                                    </Text>
                                     <TextInput
-                                        style={{ backgroundColor: tokens.inputBg, color: tokens.inputText, borderRadius: 12, padding: 14, marginBottom: 24, borderWidth: 1, borderColor: tokens.inputBorder, width: '100%', minHeight: 120, textAlignVertical: 'top' }}
+                                        value={ticketDescription}
+                                        onChangeText={setTicketDescription}
                                         placeholder="Please describe your issue in detail..."
                                         placeholderTextColor={tokens.textMuted}
                                         multiline
-                                        numberOfLines={5}
-                                        value={ticketDescription}
-                                        onChangeText={setTicketDescription}
+                                        numberOfLines={4}
+                                        style={{
+                                            backgroundColor: tokens.inputBg,
+                                            borderWidth: 1,
+                                            borderColor: tokens.inputBorder,
+                                            borderRadius: 12,
+                                            padding: 12,
+                                            color: tokens.inputText,
+                                            minHeight: 100,
+                                            textAlignVertical: 'top',
+                                            marginBottom: 24,
+                                        }}
                                     />
 
                                     <TouchableOpacity
                                         onPress={handleSubmitTicket}
                                         disabled={submitting}
-                                        style={{ backgroundColor: '#0d9488', paddingVertical: 16, borderRadius: 20, alignItems: 'center', width: '100%', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+                                        style={{
+                                            backgroundColor: '#f97316',
+                                            paddingVertical: 14,
+                                            borderRadius: 12,
+                                            alignItems: 'center',
+                                            flexDirection: 'row',
+                                            justifyContent: 'center',
+                                            gap: 8,
+                                        }}
                                     >
-                                        {submitting ? <ActivityIndicator color="#fff" /> : (
+                                        {submitting ? (
+                                            <ActivityIndicator color="#fff" size="small" />
+                                        ) : (
                                             <>
-                                                <Send size={20} color="#fff" />
-                                                <Text style={{ color: '#ffffff', fontWeight: '800', letterSpacing: 0.5 }}>SUBMIT TICKET</Text>
+                                                <Send size={18} color="#fff" />
+                                                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                                    SUBMIT ISSUE
+                                                </Text>
                                             </>
                                         )}
                                     </TouchableOpacity>
-                                </View>
+                                </>
                             ) : (
                                 <View style={{ width: '100%' }}>
                                     <View style={{ alignItems: 'center', marginBottom: 24 }}>

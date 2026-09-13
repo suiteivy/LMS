@@ -1,6 +1,8 @@
 const supabase = require("../utils/supabaseClient.js");
 const { resolveTeacher } = require("../middleware/resolveTeacher.js");
 const { buildClassLabel } = require('../utils/classLabel');
+const { resolveTeacherScope, isTeacherAuthorizedForClass } = require("../middleware/teacherScope.js");
+const { logRecordChange } = require('../utils/auditLogger.js');
 
 
 exports.getDashboardStats = async (req, res) => {
@@ -101,10 +103,46 @@ exports.getDashboardStats = async (req, res) => {
             .eq('user_id', userId)
             .eq('is_read', false);
         if (notifError) throw notifError;
+        // Determine active role mode per Part B1/B6
+        const reqRoleMode = req.headers['x-teacher-role-mode'] || req.query.role_mode;
+        let activeMode = 'subject';
+        const hasSubjectRole = allSubjects.length > 0;
+        const hasClassRole = classTeacherOf && classTeacherOf.length > 0;
+        if (reqRoleMode === 'class' && hasClassRole) {
+            activeMode = 'class';
+        } else if (reqRoleMode === 'subject' && hasSubjectRole) {
+            activeMode = 'subject';
+        } else if (hasClassRole && !hasSubjectRole) {
+            activeMode = 'class';
+        } else {
+            activeMode = 'subject';
+        }
 
-        // Fetch timetable slots
         let timetable = [];
-        if (subjectIds.length > 0) {
+        let studentsCount = 0;
+        let displayedSubjects = allSubjects;
+
+        if (activeMode === 'class' && hasClassRole) {
+            const ctClassIds = classTeacherOf.map(c => c.id);
+            // In class mode, students count is strictly students in this class
+            const { data: ctEnrollments } = await supabase
+                .from('class_enrollments')
+                .select('student_id')
+                .in('class_id', ctClassIds)
+                .eq('status', 'enrolled');
+            const ctStudentIds = new Set((ctEnrollments || []).map(e => e.student_id));
+            studentsCount = ctStudentIds.size;
+
+            // Fetch subjects taught in this class
+            let ctSubjQuery = supabase
+                .from('subjects')
+                .select('*, classes(id, grade_level, form_level, stream, class_type)')
+                .in('class_id', ctClassIds);
+            if (institution_id) ctSubjQuery = ctSubjQuery.eq('institution_id', institution_id);
+            const { data: ctSubjects } = await ctSubjQuery;
+            displayedSubjects = ctSubjects || [];
+
+            // Timetable for the class
             let ttQuery = supabase
                 .from('timetables')
                 .select(`
@@ -112,32 +150,37 @@ exports.getDashboardStats = async (req, res) => {
                     classes(grade_level, form_level, stream, class_type),
                     subjects(title)
                 `)
-                .in('subject_id', subjectIds);
+                .in('class_id', ctClassIds);
             if (institution_id) ttQuery = ttQuery.eq('institution_id', institution_id);
             const { data: ttData, error: ttError } = await ttQuery;
             if (ttError) throw ttError;
             timetable = ttData || [];
-        }
+        } else {
+            // Subject mode: strictly taught subjects
+            if (subjectIds.length > 0) {
+                const { data: enrollments } = await supabase
+                    .from('enrollments')
+                    .select('student_id')
+                    .in('subject_id', subjectIds)
+                    .eq('status', 'enrolled');
+                const subStudentIds = new Set((enrollments || []).map(e => e.student_id));
+                studentsCount = subStudentIds.size;
 
-        // Calculate students count (union of taught subjects and Class Teacher students)
-        const uniqueStudentIds = new Set();
-        if (subjectIds.length > 0) {
-            const { data: enrollments } = await supabase
-                .from('enrollments')
-                .select('student_id')
-                .in('subject_id', subjectIds)
-                .eq('status', 'enrolled');
-            (enrollments || []).forEach(e => uniqueStudentIds.add(e.student_id));
+                let ttQuery = supabase
+                    .from('timetables')
+                    .select(`
+                        id, day_of_week, start_time, end_time, room_number, class_id, subject_id,
+                        classes(grade_level, form_level, stream, class_type),
+                        subjects(title)
+                    `)
+                    .in('subject_id', subjectIds);
+                if (institution_id) ttQuery = ttQuery.eq('institution_id', institution_id);
+                const { data: ttData, error: ttError } = await ttQuery;
+                if (ttError) throw ttError;
+                timetable = ttData || [];
+            }
+            displayedSubjects = allSubjects;
         }
-        if (classTeacherOf && classTeacherOf.length > 0) {
-            const { data: ctEnrollments } = await supabase
-                .from('class_enrollments')
-                .select('student_id')
-                .in('class_id', classTeacherOf.map(c => c.id))
-                .eq('status', 'enrolled');
-            (ctEnrollments || []).forEach(e => uniqueStudentIds.add(e.student_id));
-        }
-        const studentsCount = uniqueStudentIds.size;
 
         // Get today's schedule
         const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -146,14 +189,15 @@ exports.getDashboardStats = async (req, res) => {
             ...item,
             classes: {
                 ...item.classes,
-                    name: buildClassLabel(item.classes)
+                name: buildClassLabel(item.classes)
             }
         }));
 
         res.json({
+            activeMode,
             stats: {
                 studentsCount,
-                subjectsCount: allSubjects.length,
+                subjectsCount: displayedSubjects.length,
                 unreadNotifications: unreadNotifications || 0
             },
             profile: {
@@ -167,7 +211,7 @@ exports.getDashboardStats = async (req, res) => {
             },
             roles: rolesArray,
             classTeacherOf: classTeacherOf || [],
-            assignedSubjects: allSubjects.map(s => {
+            assignedSubjects: displayedSubjects.map(s => {
                 const subjectTimetables = timetable.filter(tt => tt.subject_id === s.id);
                 return {
                     id: s.id,
@@ -193,8 +237,21 @@ exports.getDashboardStats = async (req, res) => {
         });
 
     } catch (err) {
-        console.error("[TeacherDashboard] Error after", Date.now() - startTime, "ms:", err);
-        res.status(500).json({ error: err.message });
+        const elapsed = Date.now() - startTime;
+        console.error("[TeacherDashboard] Error after", elapsed, "ms:", {
+            message: err?.message,
+            code: err?.code,
+            details: err?.details,
+            hint: err?.hint,
+        });
+        const isTransient = err?.message?.includes('fetch failed')
+            || err?.message?.includes('timeout')
+            || err?.code === 'SUPABASE_CIRCUIT_OPEN';
+        if (isTransient) {
+            res.setHeader('Retry-After', '5');
+            return res.status(503).json({ error: 'Service temporarily unavailable. Please try again.' });
+        }
+        res.status(500).json({ error: 'Failed to load dashboard data' });
     }
 };
 
@@ -209,6 +266,9 @@ exports.getAnalytics = async (req, res) => {
             return res.status(404).json({ error: "Teacher profile not found" });
         }
         const teacherId = teacher.id;
+
+        const reqRoleMode = req.headers['x-teacher-role-mode'] || req.query.role_mode;
+        const scope = await resolveTeacherScope(userId, req.institution_id, reqRoleMode);
 
         // 1. Get subjects from both ownership models:
         //    - primary owner: subjects.teacher_id
@@ -234,7 +294,19 @@ exports.getAnalytics = async (req, res) => {
                 if (s?.id) subjectsMap.set(s.id, s);
             });
 
-        const subjects = Array.from(subjectsMap.values());
+        let subjects = [];
+        if (scope && scope.activeMode === 'class' && scope.classTeacherClassIds.length > 0) {
+            let classSubjQuery = supabase
+                .from('subjects')
+                .select('id, title, class_id')
+                .in('class_id', scope.classTeacherClassIds);
+            if (req.institution_id) classSubjQuery = classSubjQuery.eq('institution_id', req.institution_id);
+            const { data: ctSubjects, error: ctSubjErr } = await classSubjQuery;
+            if (ctSubjErr) throw ctSubjErr;
+            subjects = ctSubjects || [];
+        } else {
+            subjects = Array.from(subjectsMap.values());
+        }
         if (subjects.length === 0) return res.json([]);
 
         // 2. Batch-fetch analytics data for ALL subjects at once (N+1 → 3 queries)
@@ -292,20 +364,29 @@ exports.getAnalytics = async (req, res) => {
             const assignmentIds = assignmentsBySubject.get(subject.id) || [];
 
             let avgGrade = 0;
-            let completionRate = 0;
+            let submissionRate = 0;
+            let gradingRate = 0;
+            let totalSubsCount = 0;
+            let gradedSubsCount = 0;
 
             if (assignmentIds.length > 0) {
                 const submissions = assignmentIds.flatMap(aid => submissionsByAssignment.get(aid) || []);
+                totalSubsCount = submissions.length;
                 if (submissions.length > 0) {
                     const gradedSubs = submissions.filter(s => s.grade !== null);
+                    gradedSubsCount = gradedSubs.length;
                     if (gradedSubs.length > 0) {
                         const totalScore = gradedSubs.reduce((sum, s) => sum + (s.grade || 0), 0);
                         avgGrade = Math.round(totalScore / gradedSubs.length);
                     }
 
+                    // Grading rate: % of received submissions that have been marked
+                    gradingRate = Math.round((gradedSubs.length / submissions.length) * 100);
+
+                    // Submission rate: % of expected student assignments turned in
                     const expectedSubmissions = assignmentIds.length * studentCount;
                     if (expectedSubmissions > 0) {
-                        completionRate = Math.round((submissions.length / expectedSubmissions) * 100);
+                        submissionRate = Math.round((submissions.length / expectedSubmissions) * 100);
                     }
                 }
             }
@@ -315,14 +396,19 @@ exports.getAnalytics = async (req, res) => {
                 name: subject.title,
                 students: studentCount,
                 avgGrade,
-                completionRate
+                gradingRate,
+                submissionRate,
+                totalSubmissions: totalSubsCount,
+                gradedSubmissions: gradedSubsCount,
+                pendingGrading: totalSubsCount - gradedSubsCount,
+                completionRate: submissionRate // backward-compatibility alias
             };
         });
 
         res.json(analytics);
     } catch (err) {
-        console.error("[TeacherAnalytics] Error:", err);
-        res.status(500).json({ error: err.message });
+        console.error("[TeacherAnalytics] Error:", { message: err?.message, code: err?.code });
+        res.status(500).json({ error: 'Failed to load analytics data' });
     }
 };
 
@@ -342,24 +428,44 @@ exports.getStudentPerformance = async (req, res) => {
             console.error(`[TeacherStudentPerf] Teacher profile not found for userId=${userId}:`, tError);
             return res.status(404).json({ error: "Teacher profile not found" });
         }
-        // 2. Get subjects taught by this teacher (primary or assistant)
-        const { data: primarySubjects } = await supabase
-            .from('subjects')
-            .select('id, title, class_id, classes(grade_level, form_level, stream, class_type)')
-            .eq('teacher_id', teacher.id);
-            
-        const { data: assocSubjects } = await supabase
-            .from('subject_teachers')
-            .select('subject_id, subject:subjects!inner(id, title, class_id, classes(grade_level, form_level, stream, class_type))')
-            .eq('teacher_id', teacher.id);
 
-        const primaryList = primarySubjects || [];
-        const assocList = (assocSubjects || []).map(as => as.subject).filter(Boolean);
-        
-        // Deduplicate
-        const subjectsMap = new Map();
-        [...primaryList, ...assocList].forEach(s => subjectsMap.set(s.id, s));
-        const subjects = Array.from(subjectsMap.values());
+        const reqRoleMode = req.headers['x-teacher-role-mode'] || req.query.role_mode;
+        const scope = await resolveTeacherScope(userId, institution_id, reqRoleMode);
+
+        let subjects = [];
+        if (scope && scope.activeMode === 'class' && scope.classTeacherClassIds.length > 0) {
+            let classSubjQuery = supabase
+                .from('subjects')
+                .select('id, title, class_id, classes(grade_level, form_level, stream, class_type)')
+                .in('class_id', scope.classTeacherClassIds);
+            if (institution_id) classSubjQuery = classSubjQuery.eq('institution_id', institution_id);
+            const { data: ctSubjects, error: ctSubjErr } = await classSubjQuery;
+            if (ctSubjErr) throw ctSubjErr;
+            subjects = ctSubjects || [];
+        } else {
+            // 2. Get subjects taught by this teacher (primary or assistant)
+            let primaryQuery = supabase
+                .from('subjects')
+                .select('id, title, class_id, classes(grade_level, form_level, stream, class_type)')
+                .eq('teacher_id', teacher.id);
+            if (institution_id) primaryQuery = primaryQuery.eq('institution_id', institution_id);
+            const { data: primarySubjects } = await primaryQuery;
+
+            let assocQuery = supabase
+                .from('subject_teachers')
+                .select('subject_id, subject:subjects!inner(id, title, class_id, classes(grade_level, form_level, stream, class_type))')
+                .eq('teacher_id', teacher.id);
+            if (institution_id) assocQuery = assocQuery.eq('institution_id', institution_id);
+            const { data: assocSubjects } = await assocQuery;
+
+            const primaryList = primarySubjects || [];
+            const assocList = (assocSubjects || []).map(as => as.subject).filter(Boolean);
+
+            // Deduplicate
+            const subjectsMap = new Map();
+            [...primaryList, ...assocList].forEach(s => subjectsMap.set(s.id, s));
+            subjects = Array.from(subjectsMap.values());
+        }
 
         if (subjects.length === 0) {
             return res.json({ subjects: [], students: [] });
@@ -388,16 +494,30 @@ exports.getStudentPerformance = async (req, res) => {
                     students ( id, user_id, grade_level, users(first_name, last_name, full_name, email, avatar_url) )
                 `)
                 .in('class_id', classIds);
-            // Only include students not already in direct enrollments
-            const directStudentIds = new Set((enrollments || []).map(e => e.student_id));
-            classEnrolledStudents = (ceData || [])
-                .filter(ce => !directStudentIds.has(ce.student_id))
-                .map(ce => ({
-                    id: ce.student_id,
-                    student_id: ce.student_id,
-                    subject_id: null,
-                    students: ce.students
-                }));
+
+            // Map class enrollments to subjects in that class so they aren't lost
+            const directEnrollmentKeys = new Set((enrollments || []).map(e => `${e.student_id}:${e.subject_id}`));
+            const subjectsByClass = new Map();
+            subjects.forEach(s => {
+                if (s.class_id) {
+                    if (!subjectsByClass.has(s.class_id)) subjectsByClass.set(s.class_id, []);
+                    subjectsByClass.get(s.class_id).push(s.id);
+                }
+            });
+
+            (ceData || []).forEach(ce => {
+                const subIds = subjectsByClass.get(ce.class_id) || [];
+                subIds.forEach(subId => {
+                    if (!directEnrollmentKeys.has(`${ce.student_id}:${subId}`)) {
+                        classEnrolledStudents.push({
+                            id: `${ce.student_id}:${subId}`,
+                            student_id: ce.student_id,
+                            subject_id: subId,
+                            students: ce.students
+                        });
+                    }
+                });
+            });
         }
 
         const allEnrollments = [...(enrollments || []), ...classEnrolledStudents];
@@ -463,10 +583,9 @@ exports.getStudentPerformance = async (req, res) => {
 
         res.json(performance);
     } catch (err) {
-        console.error("[TeacherStudentPerformance] Error:", err);
-        res.status(500).json({ error: err.message });
+        console.error("[TeacherStudentPerformance] Error:", { message: err?.message, code: err?.code });
+        res.status(500).json({ error: 'Failed to load student performance data' });
     }
-    
 };
 
 /**
@@ -493,6 +612,9 @@ exports.getStudentDetails = async (req, res) => {
         }
         const teacherId = teacher.id;
 
+        const reqRoleMode = req.headers['x-teacher-role-mode'] || req.query.role_mode;
+        const scope = await resolveTeacherScope(userId, req.institution_id, reqRoleMode);
+
         // 2. Fetch Student details
         const { data: student, error: sError } = await supabase
             .from('students')
@@ -512,20 +634,10 @@ exports.getStudentDetails = async (req, res) => {
             .eq('status', 'enrolled')
             .maybeSingle();
 
-        const isClassTeacher = !!(classEnrollment && classEnrollment.classes?.teacher_id === teacherId);
+        const isDesignatedClassTeacher = !!(classEnrollment && classEnrollment.classes?.teacher_id === teacherId);
 
         // 4. Determine if teacher is Subject Teacher for this student
-        // Get all subject IDs taught by this teacher (parallel)
-        const [{ data: primarySubjects }, { data: assocSubjects }] = await Promise.all([
-            supabase.from('subjects').select('id').eq('teacher_id', teacherId),
-            supabase.from('subject_teachers').select('subject_id').eq('teacher_id', teacherId),
-        ]);
-        const primarySubjectIds = (primarySubjects || []).map(s => s.id);
-        const assocSubjectIds = (assocSubjects || []).map(s => s.subject_id);
-
-        const teacherSubjectIds = [...new Set([...primarySubjectIds, ...assocSubjectIds])];
-
-        let isSubjectTeacher = false;
+        const teacherSubjectIds = scope ? scope.taughtSubjectIds : [];
         let studentSubjectIds = [];
         if (teacherSubjectIds.length > 0) {
             const { data: enrollData } = await supabase
@@ -534,14 +646,26 @@ exports.getStudentDetails = async (req, res) => {
                 .eq('student_id', studentId)
                 .in('subject_id', teacherSubjectIds)
                 .eq('status', 'enrolled');
-            
-            studentSubjectIds = (enrollData || []).map(e => e.subject_id);
-            isSubjectTeacher = studentSubjectIds.length > 0;
-        }
 
-        // 5. Gate Access
-        if (!isClassTeacher && !isSubjectTeacher) {
-            return res.status(403).json({ error: "Access denied: You do not teach or manage this student" });
+            studentSubjectIds = (enrollData || []).map(e => e.subject_id);
+        }
+        const teachesStudent = studentSubjectIds.length > 0;
+
+        // 5. Gate Access based on active role mode
+        let isClassTeacher = false;
+        let isSubjectTeacher = false;
+
+        if (scope && scope.activeMode === 'class') {
+            if (!isDesignatedClassTeacher) {
+                return res.status(403).json({ error: "Access denied: You are not the designated class teacher for this student" });
+            }
+            isClassTeacher = true;
+        } else {
+            // Subject mode
+            if (!teachesStudent) {
+                return res.status(403).json({ error: "Access denied: You do not teach this student" });
+            }
+            isSubjectTeacher = true;
         }
 
         // 6. Fetch Scoped Data
@@ -552,7 +676,6 @@ exports.getStudentDetails = async (req, res) => {
 
         if (isClassTeacher) {
             // Class Teacher gets full access
-            // Fetch guardians
             const { data: parentStudents } = await supabase
                 .from('parent_students')
                 .select('relationship, parent:parents(occupation, address, user:users(full_name, email, phone, avatar_url))')
@@ -582,7 +705,6 @@ exports.getStudentDetails = async (req, res) => {
             examResults = exams || [];
         } else {
             // Subject Teacher gets subject-restricted access
-            // Fetch subject-specific attendance
             const { data: att } = await supabase
                 .from('attendance')
                 .select('date, status, notes, subject:subjects(title)')
@@ -641,8 +763,8 @@ exports.getStudentDetails = async (req, res) => {
         });
 
     } catch (err) {
-        console.error("[TeacherStudentDetails] Error:", err);
-        res.status(500).json({ error: err.message });
+        console.error("[TeacherStudentDetails] Error:", { message: err?.message, code: err?.code });
+        res.status(500).json({ error: 'Failed to load student details' });
     }
 };
 
@@ -659,37 +781,62 @@ exports.getSubjectClasses = async (req, res) => {
             .single();
         if (tErr || !teacher) return res.status(404).json({ error: "Teacher profile not found" });
 
+        const reqRoleMode = req.headers['x-teacher-role-mode'] || req.query.role_mode;
+        const scope = await resolveTeacherScope(userId, institution_id, reqRoleMode);
+
         let query = supabase
             .from("subjects")
-            .select("id, title, class_id, classes(id, grade_level, form_level, stream, class_type)")
-            .eq("teacher_id", teacher.id);
+            .select("id, title, class_id, classes(id, name, display_name, grade_level, form_level, stream, class_type)");
+
         if (institution_id) query = query.eq("institution_id", institution_id);
         if (subject_id) query = query.eq("id", subject_id);
 
-        const { data: primary, error: pErr } = await query;
-        if (pErr) throw pErr;
+        if (scope && scope.activeMode === 'class' && scope.classTeacherClassIds.length > 0) {
+            query = query.in("class_id", scope.classTeacherClassIds);
+            const { data: classSubjects, error: csErr } = await query;
+            if (csErr) throw csErr;
 
-        // Also include subjects via subject_teachers
-        const { data: assoc } = await supabase
-            .from("subject_teachers")
-            .select("subject_id, subject:subjects(id, title, class_id, classes(id, grade_level, form_level, stream, class_type))")
-            .eq("teacher_id", teacher.id);
+            const results = (classSubjects || [])
+                .filter((s) => s && s.class_id && s.classes)
+                .map((s) => ({
+                    subject_id: s.id,
+                    subject_title: s.title || 'Untitled Subject',
+                    class_id: s.class_id,
+                    class_name: buildClassLabel(s.classes) || s.classes?.name || s.classes?.display_name || 'Class',
+                    grade_level: s.classes?.grade_level,
+                    form_level: s.classes?.form_level,
+                    stream: s.classes?.stream,
+                }));
+            return res.json({ success: true, data: results });
+        } else {
+            // Subject mode: primary + assigned subjects
+            query = query.eq("teacher_id", teacher.id);
+            const { data: primary, error: pErr } = await query;
+            if (pErr) throw pErr;
 
-        const map = new Map();
-        (primary || []).forEach((s) => map.set(s.id, s));
-        (assoc || []).map((a) => a.subject).filter(Boolean).forEach((s) => map.set(s.id, s));
+            const { data: assoc } = await supabase
+                .from("subject_teachers")
+                .select("subject_id, subject:subjects(id, title, class_id, classes(id, name, display_name, grade_level, form_level, stream, class_type))")
+                .eq("teacher_id", teacher.id);
 
-        const results = Array.from(map.values()).map((s) => ({
-            subject_id: s.id,
-            subject_title: s.title,
-            class_id: s.class_id,
-            class_name: buildClassLabel(s.classes),
-            grade_level: s.classes?.grade_level,
-            form_level: s.classes?.form_level,
-            stream: s.classes?.stream,
-        }));
+            const map = new Map();
+            (primary || []).forEach((s) => map.set(s.id, s));
+            (assoc || []).map((a) => a.subject).filter(Boolean).forEach((s) => map.set(s.id, s));
 
-        return res.json({ success: true, data: results });
+            const results = Array.from(map.values())
+                .filter((s) => s && s.class_id && s.classes)
+                .map((s) => ({
+                    subject_id: s.id,
+                    subject_title: s.title || 'Untitled Subject',
+                    class_id: s.class_id,
+                    class_name: buildClassLabel(s.classes) || s.classes?.name || s.classes?.display_name || 'Class',
+                    grade_level: s.classes?.grade_level,
+                    form_level: s.classes?.form_level,
+                    stream: s.classes?.stream,
+                }));
+
+            return res.json({ success: true, data: results });
+        }
     } catch (err) {
         console.error("getSubjectClasses error:", err);
         res.status(500).json({ error: "Server error" });
@@ -700,9 +847,23 @@ exports.getSubjectClasses = async (req, res) => {
 exports.listClassStudents = async (req, res) => {
     try {
         const { class_id } = req.query;
-        const { institution_id } = req;
+        const { userId, userRole, institution_id } = req;
 
         if (!class_id) return res.status(400).json({ error: "class_id is required" });
+
+        if (userRole === 'teacher') {
+            const { data: teacher } = await supabase
+                .from('teachers')
+                .select('id')
+                .eq('user_id', userId)
+                .single();
+            if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
+
+            const authorized = await isTeacherAuthorizedForClass(teacher.id, class_id, institution_id);
+            if (!authorized) {
+                return res.status(403).json({ error: "Access denied: You are not authorized for this class" });
+            }
+        }
 
         const { data: enrollments, error: eErr } = await supabase
             .from("class_enrollments")
@@ -736,3 +897,994 @@ exports.listClassStudents = async (req, res) => {
         res.status(500).json({ error: "Server error" });
     }
 };
+
+// GET teacher profile (personal, professional, subjects, classes, role modes, pending requests)
+exports.getMyProfile = async (req, res) => {
+    try {
+        const { userId, institution_id } = req;
+
+        const { data: teacher, error: tErr } = await supabase
+            .from("teachers")
+            .select("*, users!inner(*)")
+            .eq("user_id", userId)
+            .single();
+
+        if (tErr || !teacher) {
+            return res.status(404).json({ error: "Teacher profile not found" });
+        }
+
+        const scope = await resolveTeacherScope(userId, institution_id);
+
+        // 1. Assigned subjects (primary + assistant)
+        const { data: primarySubjects } = await supabase
+            .from("subjects")
+            .select("id, title, class_id, classes(id, name, display_name, grade_level, form_level, stream, class_type)")
+            .eq("teacher_id", teacher.id)
+            .eq("institution_id", institution_id);
+
+        const { data: assocSubjects } = await supabase
+            .from("subject_teachers")
+            .select("subject_id, subject:subjects(id, title, class_id, classes(id, name, display_name, grade_level, form_level, stream, class_type))")
+            .eq("teacher_id", teacher.id);
+
+        const subjectsMap = new Map();
+        (primarySubjects || []).forEach((s) => {
+            subjectsMap.set(s.id, {
+                id: s.id,
+                title: s.title,
+                class_id: s.class_id,
+                class_name: buildClassLabel(s.classes) || s.classes?.name || s.classes?.display_name || "Class",
+                stream: s.classes?.stream || "",
+            });
+        });
+
+        (assocSubjects || []).map((a) => a.subject).filter(Boolean).forEach((s) => {
+            if (!subjectsMap.has(s.id)) {
+                subjectsMap.set(s.id, {
+                    id: s.id,
+                    title: s.title,
+                    class_id: s.class_id,
+                    class_name: buildClassLabel(s.classes) || s.classes?.name || s.classes?.display_name || "Class",
+                    stream: s.classes?.stream || "",
+                });
+            }
+        });
+
+        // 2. Designated classes where this teacher is Class Teacher
+        const { data: designatedClasses } = await supabase
+            .from("classes")
+            .select("id, name, display_name, grade_level, form_level, stream, class_type")
+            .eq("teacher_id", teacher.id)
+            .eq("institution_id", institution_id);
+
+        const formattedClasses = (designatedClasses || []).map((c) => ({
+            id: c.id,
+            name: buildClassLabel(c) || c.name || c.display_name || "Class",
+            stream: c.stream || "",
+            grade_level: c.grade_level,
+        }));
+
+        // 3. Pending name change request
+        let pendingRequest = null;
+        try {
+            const { data: reqData } = await supabase
+                .from("profile_change_requests")
+                .select("*")
+                .eq("user_id", userId)
+                .eq("status", "pending")
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            pendingRequest = reqData || null;
+        } catch {
+            pendingRequest = null;
+        }
+
+        const user = teacher.users || {};
+        const fullName = user.full_name || `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Teacher";
+
+        return res.json({
+            success: true,
+            data: {
+                personal: {
+                    id: teacher.id,
+                    user_id: user.id,
+                    full_name: fullName,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    email: user.email,
+                    phone: user.phone || null,
+                    avatar_url: user.avatar_url || null,
+                    employee_id: teacher.id,
+                    address: user.address || null,
+                    gender: user.gender || null,
+                    date_of_birth: user.date_of_birth || null,
+                },
+                professional: {
+                    position: teacher.position || "Teacher",
+                    department: teacher.department || "Academic",
+                    qualification: teacher.qualification || "Bachelor of Education",
+                    date_joined: teacher.created_at || user.created_at || null,
+                },
+                assigned_subjects: Array.from(subjectsMap.values()),
+                designated_classes: formattedClasses,
+                role_modes: scope?.availableModes || ["subject"],
+                active_role_mode: scope?.activeMode || "subject",
+                pending_name_change: pendingRequest,
+            },
+        });
+    } catch (err) {
+        console.error("getMyProfile error:", err);
+        res.status(500).json({ error: "Server error retrieving profile" });
+    }
+};
+
+// POST request name change (routes to admin for approval)
+exports.requestNameChange = async (req, res) => {
+    try {
+        const { userId, institution_id } = req;
+        const { requested_name, reason, document_url } = req.body;
+
+        if (!requested_name || !requested_name.trim()) {
+            return res.status(400).json({ error: "Requested name is required" });
+        }
+        if (!reason || !reason.trim()) {
+            return res.status(400).json({ error: "Reason for name change is required" });
+        }
+
+        const { data: user } = await supabase
+            .from("users")
+            .select("first_name, last_name, full_name")
+            .eq("id", userId)
+            .single();
+
+        const currentName = user?.full_name || `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || "Current Name";
+
+        // Check if pending request already exists
+        try {
+            const { data: existing } = await supabase
+                .from("profile_change_requests")
+                .select("id")
+                .eq("user_id", userId)
+                .eq("status", "pending")
+                .maybeSingle();
+
+            if (existing) {
+                return res.status(400).json({ error: "You already have a pending name change request undergoing administrative review." });
+            }
+
+            const { data: newReq, error: insertErr } = await supabase
+                .from("profile_change_requests")
+                .insert({
+                    user_id: userId,
+                    institution_id,
+                    current_name: currentName,
+                    requested_name: requested_name.trim(),
+                    reason: reason.trim(),
+                    document_url: document_url || null,
+                    status: "pending",
+                })
+                .select()
+                .single();
+
+            if (insertErr) throw insertErr;
+
+            await logRecordChange({
+                institution_id,
+                table_name: "profile_change_requests",
+                record_id: newReq.id,
+                action: "NAME_CHANGE_REQUESTED",
+                old_data: { current_name: currentName },
+                new_data: { requested_name: requested_name.trim(), reason: reason.trim() },
+                changed_by: userId,
+                reason: reason.trim(),
+            });
+
+            return res.json({
+                success: true,
+                message: "Name change request submitted for administrative approval.",
+                data: newReq,
+            });
+        } catch (dbErr) {
+            console.warn("profile_change_requests insert failed, fallback to audit log:", dbErr.message);
+            await logRecordChange({
+                institution_id,
+                table_name: "users",
+                record_id: userId,
+                action: "NAME_CHANGE_REQUESTED",
+                old_data: { current_name: currentName },
+                new_data: { requested_name: requested_name.trim(), reason: reason.trim() },
+                changed_by: userId,
+                reason: reason.trim(),
+            });
+
+            return res.json({
+                success: true,
+                message: "Name change request recorded for administrative review.",
+                data: {
+                    user_id: userId,
+                    current_name: currentName,
+                    requested_name: requested_name.trim(),
+                    reason: reason.trim(),
+                    status: "pending",
+                    created_at: new Date().toISOString(),
+                },
+            });
+        }
+    } catch (err) {
+        console.error("requestNameChange error:", err);
+        res.status(500).json({ error: "Failed to submit name change request" });
+    }
+};
+
+/**
+ * PART I: Student Rankings & Performance Distribution
+ * Strictly role-scoped: Subject Teacher sees subject rank, Class Teacher sees class rank
+ */
+exports.getStudentRankings = async (req, res) => {
+    try {
+        const { userId, userRole } = req;
+        const institution_id = req.institution_id || null;
+        if (userRole !== 'teacher' && userRole !== 'admin') {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        const { subject_id, class_id } = req.query;
+        const reqRoleMode = req.headers['x-teacher-role-mode'] || req.query.role_mode;
+        const scope = userRole === 'teacher' ? await resolveTeacherScope(userId, institution_id, reqRoleMode) : null;
+
+        // Resolve teacher's accessible subjects and classes
+        let allowedSubjectIds = [];
+        let allowedClassIds = [];
+
+        if (userRole === 'admin') {
+            // Admin sees all
+        } else if (scope?.activeMode === 'class') {
+            allowedClassIds = scope.classTeacherClassIds || [];
+        } else {
+            allowedSubjectIds = scope?.subjectIds || [];
+        }
+
+        // 1. Get teacher record if teacher
+        let teacherId = null;
+        if (userRole === 'teacher') {
+            const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+            teacherId = teacher?.id || null;
+        }
+
+        // Query subjects
+        let subjectsQuery = supabase
+            .from('subjects')
+            .select('id, title, class_id, classes(id, grade_level, form_level, stream, class_type)');
+        if (institution_id) subjectsQuery = subjectsQuery.eq('institution_id', institution_id);
+        if (subject_id) subjectsQuery = subjectsQuery.eq('id', subject_id);
+        if (class_id) subjectsQuery = subjectsQuery.eq('class_id', class_id);
+
+        if (userRole === 'teacher') {
+            if (scope?.activeMode === 'class' && allowedClassIds.length > 0) {
+                subjectsQuery = subjectsQuery.in('class_id', allowedClassIds);
+            } else if (allowedSubjectIds.length > 0) {
+                subjectsQuery = subjectsQuery.in('id', allowedSubjectIds);
+            } else if (teacherId) {
+                subjectsQuery = subjectsQuery.eq('teacher_id', teacherId);
+            }
+        }
+
+        const { data: subjects, error: subjErr } = await subjectsQuery;
+        if (subjErr) throw subjErr;
+
+        if (!subjects || subjects.length === 0) {
+            return res.json({ rankings: [], cbc_distribution: { EE: 0, ME: 0, AE: 0, BE: 0 }, total_students: 0 });
+        }
+
+        const targetSubjectIds = subjects.map(s => s.id);
+        const targetClassIds = [...new Set(subjects.map(s => s.class_id).filter(Boolean))];
+
+        // 2. Query student enrollments
+        let enrollmentsQuery = supabase
+            .from('enrollments')
+            .select(`
+                student_id, subject_id,
+                students ( id, user_id, grade_level, users ( first_name, last_name, full_name, email, avatar_url ) )
+            `)
+            .in('subject_id', targetSubjectIds)
+            .eq('status', 'enrolled');
+
+        const { data: enrollments } = await enrollmentsQuery;
+
+        // Class enrollments
+        let classEnrollments = [];
+        if (targetClassIds.length > 0) {
+            const { data: ceData } = await supabase
+                .from('class_enrollments')
+                .select(`
+                    student_id, class_id,
+                    students ( id, user_id, grade_level, users ( first_name, last_name, full_name, email, avatar_url ) )
+                `)
+                .in('class_id', targetClassIds);
+            classEnrollments = ceData || [];
+        }
+
+        // Map students
+        const studentsMap = new Map();
+        (enrollments || []).forEach(e => {
+            if (e.student_id && e.students) {
+                studentsMap.set(e.student_id, e.students);
+            }
+        });
+        classEnrollments.forEach(ce => {
+            if (ce.student_id && ce.students && !studentsMap.has(ce.student_id)) {
+                studentsMap.set(ce.student_id, ce.students);
+            }
+        });
+
+        const studentIds = Array.from(studentsMap.keys());
+        if (studentIds.length === 0) {
+            return res.json({ rankings: [], cbc_distribution: { EE: 0, ME: 0, AE: 0, BE: 0 }, total_students: 0 });
+        }
+
+        // 3. Fetch submissions/grades
+        const { data: submissions } = await supabase
+            .from('submissions')
+            .select(`
+                id, student_id, assignment_id, grade, status,
+                assignments!inner ( title, subject_id, total_points )
+            `)
+            .in('student_id', studentIds)
+            .in('assignments.subject_id', targetSubjectIds);
+
+        // 4. Calculate per-student performance and CBC band
+        const cbcDistribution = { EE: 0, ME: 0, AE: 0, BE: 0 };
+
+        const studentRankings = studentIds.map(sId => {
+            const stObj = studentsMap.get(sId);
+            const userObj = stObj?.users || {};
+            const fullName = userObj.full_name || `${userObj.first_name || ""} ${userObj.last_name || ""}`.trim() || "Student";
+
+            const stSubs = (submissions || []).filter(s => s.student_id === sId && s.grade !== null && s.grade !== undefined);
+            const validGrades = stSubs.map(s => Number(s.grade)).filter(g => !isNaN(g));
+
+            const avgScore = validGrades.length > 0
+                ? Math.round(validGrades.reduce((a, b) => a + b, 0) / validGrades.length)
+                : 0;
+
+            // Map to CBC Competency Bands:
+            // EE: 80 - 100 (Exceeding Expectation)
+            // ME: 60 - 79 (Meeting Expectation)
+            // AE: 40 - 59 (Approaching Expectation)
+            // BE: 0 - 39 (Below Expectation)
+            let cbcBand = "BE";
+            let cbcLabel = "Below Expectation";
+            if (avgScore >= 80) {
+                cbcBand = "EE";
+                cbcLabel = "Exceeding Expectation";
+                cbcDistribution.EE += 1;
+            } else if (avgScore >= 60) {
+                cbcBand = "ME";
+                cbcLabel = "Meeting Expectation";
+                cbcDistribution.ME += 1;
+            } else if (avgScore >= 40) {
+                cbcBand = "AE";
+                cbcLabel = "Approaching Expectation";
+                cbcDistribution.AE += 1;
+            } else {
+                cbcBand = "BE";
+                cbcLabel = "Below Expectation";
+                cbcDistribution.BE += 1;
+            }
+
+            return {
+                student_id: sId,
+                full_name: fullName,
+                email: userObj.email || "",
+                avatar_url: userObj.avatar_url || null,
+                grade_level: stObj?.grade_level || null,
+                graded_tasks: validGrades.length,
+                average_score: avgScore,
+                cbc_band: cbcBand,
+                cbc_label: cbcLabel,
+            };
+        });
+
+        // Sort descending by score
+        studentRankings.sort((a, b) => b.average_score - a.average_score);
+
+        // Assign ordinal rank (handling ties)
+        let currentRank = 1;
+        for (let i = 0; i < studentRankings.length; i++) {
+            if (i > 0 && studentRankings[i].average_score < studentRankings[i - 1].average_score) {
+                currentRank = i + 1;
+            }
+            studentRankings[i].rank = currentRank;
+        }
+
+        res.json({
+            scope_mode: scope?.activeMode || (userRole === 'admin' ? 'admin' : 'subject'),
+            total_students: studentRankings.length,
+            cbc_distribution: cbcDistribution,
+            rankings: studentRankings,
+        });
+    } catch (err) {
+        console.error("getStudentRankings error:", err);
+        res.status(500).json({ error: "Failed to compute student rankings" });
+    }
+};
+
+/**
+ * =========================================================================
+ * PHASE 6 / PART J: Content Coverage Planner (J1) & Record of Work (J2)
+ * =========================================================================
+ */
+
+// Helper to check if teacher is HOD or assigned to subject
+const checkTeacherSubjectAuth = async (teacherId, subjectId, institutionId) => {
+    if (!teacherId || !subjectId) return { isAuthorized: false, isHOD: false };
+
+    const { data: subj } = await supabase
+        .from('subjects')
+        .select('id, teacher_id, hod_teacher_id')
+        .eq('id', subjectId)
+        .eq('institution_id', institutionId)
+        .maybeSingle();
+
+    const isDirectTeacher = subj?.teacher_id === teacherId;
+    const isDirectHOD = subj?.hod_teacher_id === teacherId;
+
+    const { data: st } = await supabase
+        .from('subject_teachers')
+        .select('id, is_hod')
+        .eq('subject_id', subjectId)
+        .eq('teacher_id', teacherId)
+        .maybeSingle();
+
+    const isAssocTeacher = Boolean(st);
+    const isAssocHOD = Boolean(st?.is_hod);
+
+    const isHOD = isDirectHOD || isAssocHOD;
+    const isAuthorized = isDirectTeacher || isAssocTeacher || isHOD;
+
+    return { isAuthorized, isHOD, subject: subj };
+};
+
+// GET /teacher/hod-subjects - List subjects where the teacher is designated as HOD
+exports.getHODSubjects = async (req, res) => {
+    try {
+        const { userId, institution_id, userRole } = req;
+        const { data: teacher } = await supabase
+            .from("teachers")
+            .select("id")
+            .eq("user_id", userId)
+            .single();
+
+        if (!teacher && userRole !== 'admin') {
+            return res.status(404).json({ error: "Teacher profile not found" });
+        }
+
+        const teacherId = teacher?.id;
+
+        // If admin, return all subjects
+        if (userRole === 'admin') {
+            const { data: allSubjects, error: aErr } = await supabase
+                .from('subjects')
+                .select('id, title, category, level, hod_teacher_id')
+                .eq('institution_id', institution_id);
+            if (aErr) throw aErr;
+            return res.json((allSubjects || []).map(s => ({ ...s, is_hod: true })));
+        }
+
+        // Subjects where teacher is direct HOD
+        const { data: directHOD } = await supabase
+            .from('subjects')
+            .select('id, title, category, level, hod_teacher_id')
+            .eq('institution_id', institution_id)
+            .eq('hod_teacher_id', teacherId);
+
+        // Subjects where subject_teachers has is_hod = true
+        const { data: assocHOD } = await supabase
+            .from('subject_teachers')
+            .select('subject_id, is_hod, subjects(id, title, category, level, hod_teacher_id)')
+            .eq('teacher_id', teacherId)
+            .eq('is_hod', true);
+
+        const hodSubjectsMap = new Map();
+        (directHOD || []).forEach(s => hodSubjectsMap.set(s.id, { ...s, is_hod: true }));
+        (assocHOD || []).forEach(item => {
+            if (item.subjects) {
+                hodSubjectsMap.set(item.subjects.id, { ...item.subjects, is_hod: true });
+            }
+        });
+
+        res.json(Array.from(hodSubjectsMap.values()));
+    } catch (err) {
+        console.error("getHODSubjects error:", err);
+        res.status(500).json({ error: "Failed to fetch HOD subjects" });
+    }
+};
+
+// GET /teacher/coverage-plans - Termly/Yearly Coverage Plans (J1)
+exports.getCoveragePlans = async (req, res) => {
+    try {
+        const { institution_id, userRole, userId } = req;
+        const { subject_id, term, academic_year } = req.query;
+
+        if (!subject_id) {
+            return res.status(400).json({ error: "subject_id is required" });
+        }
+
+        let query = supabase
+            .from('subject_coverage_plans')
+            .select('*')
+            .eq('institution_id', institution_id)
+            .eq('subject_id', subject_id);
+
+        if (term) query = query.eq('term', term);
+        if (academic_year) query = query.eq('academic_year', academic_year);
+
+        query = query.order('week_start', { ascending: true }).order('order_index', { ascending: true });
+
+        const { data: plans, error: pErr } = await query;
+        if (pErr) {
+            if (pErr.code === '42P01' || pErr.code === 'PGRST205') {
+                return res.json([]);
+            }
+            throw pErr;
+        }
+
+        // Check if viewing teacher is HOD for this subject
+        let isHOD = false;
+        if (userRole === 'admin') {
+            isHOD = true;
+        } else {
+            const { data: teacher } = await supabase
+                .from("teachers")
+                .select("id")
+                .eq("user_id", userId)
+                .single();
+            if (teacher) {
+                const auth = await checkTeacherSubjectAuth(teacher.id, subject_id, institution_id);
+                isHOD = auth.isHOD;
+            }
+        }
+
+        res.json({
+            subject_id,
+            term: term || null,
+            academic_year: academic_year || null,
+            is_hod: isHOD,
+            plans: plans || []
+        });
+    } catch (err) {
+        console.error("getCoveragePlans error:", err);
+        res.status(500).json({ error: "Failed to load coverage plans" });
+    }
+};
+
+// POST /teacher/coverage-plans - Create a Coverage Plan Item (J1)
+exports.createCoveragePlan = async (req, res) => {
+    try {
+        const { institution_id, userRole, userId } = req;
+        const {
+            subject_id,
+            term,
+            academic_year,
+            title,
+            description,
+            strand,
+            sub_strand,
+            week_start,
+            week_end,
+            duration_weeks,
+            target_completion_date,
+            status,
+            order_index
+        } = req.body;
+
+        if (!subject_id || !title || !term || !academic_year) {
+            return res.status(400).json({ error: "subject_id, title, term, and academic_year are required" });
+        }
+
+        // Check authorization: Admin, HOD, or Assigned Teacher
+        let creatorId = userId;
+        if (userRole !== 'admin') {
+            const { data: teacher } = await supabase
+                .from("teachers")
+                .select("id")
+                .eq("user_id", userId)
+                .single();
+            if (!teacher) return res.status(403).json({ error: "Unauthorized teacher" });
+
+            const auth = await checkTeacherSubjectAuth(teacher.id, subject_id, institution_id);
+            if (!auth.isAuthorized) {
+                return res.status(403).json({ error: "Access denied: You are not assigned to this subject" });
+            }
+            creatorId = teacher.id;
+        }
+
+        const { data: created, error: cErr } = await supabase
+            .from('subject_coverage_plans')
+            .insert([{
+                institution_id,
+                subject_id,
+                term,
+                academic_year,
+                title: title.trim(),
+                description: description?.trim() || null,
+                strand: strand?.trim() || null,
+                sub_strand: sub_strand?.trim() || null,
+                week_start: week_start ? parseInt(week_start) : null,
+                week_end: week_end ? parseInt(week_end) : null,
+                duration_weeks: duration_weeks ? parseInt(duration_weeks) : (week_start && week_end ? (parseInt(week_end) - parseInt(week_start) + 1) : 1),
+                target_completion_date: target_completion_date || null,
+                status: status || 'active',
+                order_index: order_index || 0,
+                created_by: creatorId,
+            }])
+            .select()
+            .single();
+
+        if (cErr) throw cErr;
+        res.status(201).json(created);
+    } catch (err) {
+        console.error("createCoveragePlan error:", err);
+        res.status(500).json({ error: "Failed to create coverage plan item" });
+    }
+};
+
+// PUT /teacher/coverage-plans/:id - Update Coverage Plan Item (J1)
+exports.updateCoveragePlan = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { institution_id, userRole, userId } = req;
+        const updates = req.body;
+
+        const { data: existing, error: eErr } = await supabase
+            .from('subject_coverage_plans')
+            .select('*')
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .single();
+
+        if (eErr || !existing) {
+            return res.status(404).json({ error: "Coverage plan item not found" });
+        }
+
+        if (userRole !== 'admin') {
+            const { data: teacher } = await supabase
+                .from("teachers")
+                .select("id")
+                .eq("user_id", userId)
+                .single();
+            if (!teacher) return res.status(403).json({ error: "Unauthorized teacher" });
+
+            const auth = await checkTeacherSubjectAuth(teacher.id, existing.subject_id, institution_id);
+            if (!auth.isAuthorized) {
+                return res.status(403).json({ error: "Access denied: Unauthorized for this subject" });
+            }
+        }
+
+        const allowedFields = [
+            'title', 'description', 'strand', 'sub_strand', 'week_start',
+            'week_end', 'duration_weeks', 'target_completion_date', 'status', 'order_index'
+        ];
+        const sanitizedUpdates = {};
+        for (const f of allowedFields) {
+            if (updates[f] !== undefined) sanitizedUpdates[f] = updates[f];
+        }
+        sanitizedUpdates.updated_at = new Date().toISOString();
+
+        const { data: updated, error: uErr } = await supabase
+            .from('subject_coverage_plans')
+            .update(sanitizedUpdates)
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .select()
+            .single();
+
+        if (uErr) throw uErr;
+        res.json(updated);
+    } catch (err) {
+        console.error("updateCoveragePlan error:", err);
+        res.status(500).json({ error: "Failed to update coverage plan item" });
+    }
+};
+
+// DELETE /teacher/coverage-plans/:id - Delete Coverage Plan Item (J1)
+exports.deleteCoveragePlan = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { institution_id, userRole, userId } = req;
+
+        const { data: existing, error: eErr } = await supabase
+            .from('subject_coverage_plans')
+            .select('*')
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .single();
+
+        if (eErr || !existing) {
+            return res.status(404).json({ error: "Coverage plan item not found" });
+        }
+
+        if (userRole !== 'admin') {
+            const { data: teacher } = await supabase
+                .from("teachers")
+                .select("id")
+                .eq("user_id", userId)
+                .single();
+            if (!teacher) return res.status(403).json({ error: "Unauthorized teacher" });
+
+            const auth = await checkTeacherSubjectAuth(teacher.id, existing.subject_id, institution_id);
+            if (!auth.isHOD && existing.created_by !== teacher.id) {
+                return res.status(403).json({ error: "Access denied: Only HOD or Admin can delete plan items" });
+            }
+        }
+
+        const { error: dErr } = await supabase
+            .from('subject_coverage_plans')
+            .delete()
+            .eq('id', id)
+            .eq('institution_id', institution_id);
+
+        if (dErr) throw dErr;
+        res.json({ message: "Coverage plan item deleted successfully" });
+    } catch (err) {
+        console.error("deleteCoveragePlan error:", err);
+        res.status(500).json({ error: "Failed to delete coverage plan item" });
+    }
+};
+
+// GET /teacher/record-of-work - Teacher's Personal Lesson Plan & Record of Work (J2)
+exports.getRecordOfWork = async (req, res) => {
+    try {
+        const { institution_id, userRole, userId } = req;
+        const { subject_id, class_id, week_number, teacher_id: requestedTeacherId } = req.query;
+
+        let targetTeacherId = null;
+
+        if (userRole === 'admin') {
+            targetTeacherId = requestedTeacherId || null;
+        } else {
+            const { data: teacher } = await supabase
+                .from("teachers")
+                .select("id")
+                .eq("user_id", userId)
+                .single();
+            if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
+
+            // If teacher is HOD for this subject, they can view records of other teachers in this subject
+            if (requestedTeacherId && requestedTeacherId !== teacher.id && subject_id) {
+                const auth = await checkTeacherSubjectAuth(teacher.id, subject_id, institution_id);
+                if (auth.isHOD) {
+                    targetTeacherId = requestedTeacherId;
+                } else {
+                    targetTeacherId = teacher.id;
+                }
+            } else {
+                targetTeacherId = teacher.id;
+            }
+        }
+
+        let query = supabase
+            .from('record_of_work')
+            .select(`
+                *,
+                coverage_plan:subject_coverage_plans(id, title, strand, sub_strand, week_start, week_end),
+                class:classes(id, name, display_name, grade_level, form_level, stream),
+                teacher:teachers(id, users(full_name))
+            `)
+            .eq('institution_id', institution_id);
+
+        if (targetTeacherId) query = query.eq('teacher_id', targetTeacherId);
+        if (subject_id) query = query.eq('subject_id', subject_id);
+        if (class_id) query = query.eq('class_id', class_id);
+        if (week_number) query = query.eq('week_number', parseInt(week_number));
+
+        query = query.order('week_number', { ascending: true }).order('lesson_number', { ascending: true });
+
+        const { data: records, error: rErr } = await query;
+        if (rErr) {
+            if (rErr.code === '42P01' || rErr.code === 'PGRST205') {
+                return res.json([]);
+            }
+            throw rErr;
+        }
+
+        res.json(records || []);
+    } catch (err) {
+        console.error("getRecordOfWork error:", err);
+        res.status(500).json({ error: "Failed to load record of work" });
+    }
+};
+
+// POST /teacher/record-of-work - Create Record of Work entry (J2)
+exports.createRecordOfWork = async (req, res) => {
+    try {
+        const { institution_id, userRole, userId } = req;
+        const {
+            subject_id,
+            class_id,
+            coverage_plan_id,
+            week_number,
+            lesson_number,
+            date,
+            topic,
+            sub_topic,
+            learning_objectives,
+            activities_references,
+            status,
+            remarks
+        } = req.body;
+
+        if (!subject_id || !week_number || !topic) {
+            return res.status(400).json({ error: "subject_id, week_number, and topic are required" });
+        }
+
+        const { data: teacher } = await supabase
+            .from("teachers")
+            .select("id")
+            .eq("user_id", userId)
+            .single();
+
+        let effectiveTeacherId = teacher?.id;
+        if (userRole === 'admin' && req.body.teacher_id) {
+            effectiveTeacherId = req.body.teacher_id;
+        } else if (!effectiveTeacherId) {
+            return res.status(403).json({ error: "Unauthorized teacher" });
+        }
+
+        const { data: created, error: cErr } = await supabase
+            .from('record_of_work')
+            .insert([{
+                institution_id,
+                subject_id,
+                class_id: class_id || null,
+                teacher_id: effectiveTeacherId,
+                coverage_plan_id: coverage_plan_id || null,
+                week_number: parseInt(week_number),
+                lesson_number: lesson_number ? parseInt(lesson_number) : 1,
+                date: date || new Date().toISOString().split('T')[0],
+                topic: topic.trim(),
+                sub_topic: sub_topic?.trim() || null,
+                learning_objectives: learning_objectives?.trim() || null,
+                activities_references: activities_references?.trim() || null,
+                status: status || 'planned',
+                is_completed: status === 'completed',
+                completed_at: status === 'completed' ? new Date().toISOString() : null,
+                remarks: remarks?.trim() || null,
+            }])
+            .select(`
+                *,
+                coverage_plan:subject_coverage_plans(id, title, strand, sub_strand)
+            `)
+            .single();
+
+        if (cErr) throw cErr;
+        res.status(201).json(created);
+    } catch (err) {
+        console.error("createRecordOfWork error:", err);
+        res.status(500).json({ error: "Failed to create record of work entry" });
+    }
+};
+
+// PUT /teacher/record-of-work/:id - Update Record of Work entry (J2)
+exports.updateRecordOfWork = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { institution_id, userRole, userId } = req;
+        const updates = req.body;
+
+        const { data: existing, error: eErr } = await supabase
+            .from('record_of_work')
+            .select('*')
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .single();
+
+        if (eErr || !existing) {
+            return res.status(404).json({ error: "Record of work entry not found" });
+        }
+
+        // Authorization check: entry owner, HOD, or Admin
+        if (userRole !== 'admin') {
+            const { data: teacher } = await supabase
+                .from("teachers")
+                .select("id")
+                .eq("user_id", userId)
+                .single();
+            if (!teacher) return res.status(403).json({ error: "Unauthorized" });
+
+            if (existing.teacher_id !== teacher.id) {
+                const auth = await checkTeacherSubjectAuth(teacher.id, existing.subject_id, institution_id);
+                if (!auth.isHOD) {
+                    return res.status(403).json({ error: "Access denied: You can only edit your own record of work" });
+                }
+            }
+        }
+
+        const allowedFields = [
+            'class_id', 'coverage_plan_id', 'week_number', 'lesson_number',
+            'date', 'topic', 'sub_topic', 'learning_objectives',
+            'activities_references', 'status', 'is_completed', 'remarks', 'admin_notes'
+        ];
+
+        const sanitizedUpdates = {};
+        for (const f of allowedFields) {
+            if (updates[f] !== undefined) sanitizedUpdates[f] = updates[f];
+        }
+
+        // Auto-manage is_completed & completed_at
+        if (updates.is_completed !== undefined) {
+            sanitizedUpdates.is_completed = Boolean(updates.is_completed);
+            sanitizedUpdates.completed_at = sanitizedUpdates.is_completed ? (existing.completed_at || new Date().toISOString()) : null;
+            if (sanitizedUpdates.is_completed && !sanitizedUpdates.status) {
+                sanitizedUpdates.status = 'completed';
+            }
+        } else if (updates.status === 'completed' && !existing.is_completed) {
+            sanitizedUpdates.is_completed = true;
+            sanitizedUpdates.completed_at = new Date().toISOString();
+        }
+
+        sanitizedUpdates.updated_at = new Date().toISOString();
+
+        const { data: updated, error: uErr } = await supabase
+            .from('record_of_work')
+            .update(sanitizedUpdates)
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .select(`
+                *,
+                coverage_plan:subject_coverage_plans(id, title, strand, sub_strand)
+            `)
+            .single();
+
+        if (uErr) throw uErr;
+        res.json(updated);
+    } catch (err) {
+        console.error("updateRecordOfWork error:", err);
+        res.status(500).json({ error: "Failed to update record of work entry" });
+    }
+};
+
+// DELETE /teacher/record-of-work/:id - Delete Record of Work entry (J2)
+exports.deleteRecordOfWork = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { institution_id, userRole, userId } = req;
+
+        const { data: existing, error: eErr } = await supabase
+            .from('record_of_work')
+            .select('*')
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .single();
+
+        if (eErr || !existing) {
+            return res.status(404).json({ error: "Record of work entry not found" });
+        }
+
+        if (userRole !== 'admin') {
+            const { data: teacher } = await supabase
+                .from("teachers")
+                .select("id")
+                .eq("user_id", userId)
+                .single();
+            if (!teacher || existing.teacher_id !== teacher.id) {
+                return res.status(403).json({ error: "Access denied: You can only delete your own records" });
+            }
+        }
+
+        const { error: dErr } = await supabase
+            .from('record_of_work')
+            .delete()
+            .eq('id', id)
+            .eq('institution_id', institution_id);
+
+        if (dErr) throw dErr;
+        res.json({ message: "Record of work entry deleted successfully" });
+    } catch (err) {
+        console.error("deleteRecordOfWork error:", err);
+        res.status(500).json({ error: "Failed to delete record of work entry" });
+    }
+};
+
+

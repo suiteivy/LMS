@@ -1,5 +1,6 @@
 const supabase = require("../utils/supabaseClient.js");
 const { authorizeTeacherForSubject, resolveTeacher } = require("../middleware/resolveTeacher.js");
+const { logRecordChange } = require("../utils/auditLogger.js");
 
 const fetchSubjectClassLinkSource = async (subjectId, institutionId) => {
     const { data: subjectWithMetadata, error: subjectWithMetadataError } = await supabase
@@ -54,7 +55,8 @@ const getSubjectLinkedClassIds = async (subjectId, institutionId, cachedSubject 
 
     if (!linkErr) {
         linkRows = scopedLinkRows || [];
-    } else if (linkErr.code === '42P01') {
+    } else if (linkErr.code === '42P01' || linkErr.code === 'PGRST205') {
+        // Table does not exist (Postgres 42P01) or PostgREST can't find it (PGRST205)
         linkRows = [];
     } else if (linkErr.code === '42703') {
         const { data: fallbackLinkRows, error: fallbackLinkErr } = await supabase
@@ -62,7 +64,7 @@ const getSubjectLinkedClassIds = async (subjectId, institutionId, cachedSubject 
             .select('class_id')
             .eq('subject_id', subjectId);
 
-        if (fallbackLinkErr && fallbackLinkErr.code !== '42P01') throw fallbackLinkErr;
+        if (fallbackLinkErr && fallbackLinkErr.code !== '42P01' && fallbackLinkErr.code !== 'PGRST205') throw fallbackLinkErr;
         linkRows = fallbackLinkRows || [];
     } else {
         throw linkErr;
@@ -118,7 +120,7 @@ const getTeacherSubjectIds = async (userId, institutionId) => {
 exports.createExam = async (req, res) => {
     try {
         const { institution_id, userId, userRole } = req;
-        const { subject_id, teacher_id, title, description, date, max_score, weight, term, is_published } = req.body;
+        const { subject_id, teacher_id, title, description, date, max_score, weight, term, is_published, submission_deadline } = req.body;
 
         let effectiveTeacherId = teacher_id;
         if (userRole === 'teacher') {
@@ -141,7 +143,8 @@ exports.createExam = async (req, res) => {
                 max_score,
                 weight: weight || 0,
                 term,
-                is_published: is_published !== undefined ? is_published : true
+                is_published: is_published !== undefined ? is_published : true,
+                submission_deadline: submission_deadline || null
             }])
             .select()
             .single();
@@ -179,13 +182,28 @@ exports.getExams = async (req, res) => {
  */
 exports.recordExamResult = async (req, res) => {
     try {
-        const { exam_id, student_id, score, feedback, graded_by } = req.body;
+        const { exam_id, student_id, score, feedback, graded_by, competency_band } = req.body;
         const { institution_id, userId, userRole } = req;
 
-        // Fetch the exam to find its subject
-        const { data: exam } = await supabase.from('exams').select('subject_id').eq('id', exam_id).single();
+        // Fetch the exam to find its subject & deadline
+        const { data: exam } = await supabase
+            .from('exams')
+            .select('subject_id, submission_deadline, date, max_score')
+            .eq('id', exam_id)
+            .single();
         if (!exam) return res.status(404).json({ error: "Exam not found" });
         const subjectId = exam.subject_id;
+
+        // Submission deadline check: teachers are locked after deadline
+        if (userRole === 'teacher' && exam.submission_deadline) {
+            const now = new Date();
+            const deadline = new Date(exam.submission_deadline);
+            if (now > deadline) {
+                return res.status(403).json({
+                    error: "Submission deadline has passed. Exam results are now locked for teachers."
+                });
+            }
+        }
 
         // Fetch subject details (teacher and class)
         const { data: subject } = await supabase.from('subjects').select('class_id, teacher_id').eq('id', subjectId).single();
@@ -233,12 +251,56 @@ exports.recordExamResult = async (req, res) => {
             }
         }
 
+        // Compute CBC competency band (EE: >=80%, ME: >=60%, AE: >=40%, BE: <40%)
+        let calculatedBand = competency_band;
+        if (!calculatedBand && score !== undefined && score !== null) {
+            const maxScore = Number(exam.max_score) || 100;
+            const percentage = (Number(score) / maxScore) * 100;
+            if (percentage >= 80) calculatedBand = 'EE';
+            else if (percentage >= 60) calculatedBand = 'ME';
+            else if (percentage >= 40) calculatedBand = 'AE';
+            else calculatedBand = 'BE';
+        }
+
+        // Fetch existing result for audit logging
+        const { data: existingResult } = await supabase
+            .from('exam_results')
+            .select('*')
+            .eq('exam_id', exam_id)
+            .eq('student_id', student_id)
+            .maybeSingle();
+
+        const upsertPayload = {
+            exam_id,
+            student_id,
+            score,
+            feedback,
+            graded_by: effectiveTeacherId,
+            institution_id
+        };
+        if (calculatedBand) {
+            upsertPayload.competency_band = calculatedBand;
+        }
+
         const { data, error } = await supabase
             .from("exam_results")
-            .upsert({ exam_id, student_id, score, feedback, graded_by: effectiveTeacherId, institution_id }, { onConflict: "exam_id, student_id" })
+            .upsert(upsertPayload, { onConflict: "exam_id, student_id" })
             .select();
 
         if (error) throw error;
+
+        // Audit log modifications
+        await logRecordChange({
+            institution_id,
+            table_name: 'exam_results',
+            record_id: data[0]?.id || `${exam_id}_${student_id}`,
+            changed_by: userId,
+            change_type: existingResult ? 'UPDATE' : 'CREATE',
+            old_values: existingResult ? { score: existingResult.score, feedback: existingResult.feedback, competency_band: existingResult.competency_band } : null,
+            new_values: { score, feedback, competency_band: calculatedBand },
+            reason: 'Exam result recording/modification'
+        });
+
         res.json(data[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });

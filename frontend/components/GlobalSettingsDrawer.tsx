@@ -23,6 +23,7 @@ import InstitutionOwnership from '@/components/InstitutionOwnership';
 import MasterAdminSettings from '@/components/MasterAdminSettings';
 import ActiveSessions from '@/components/ActiveSessions';
 import ReadOnlyProfile from '@/components/ReadOnlyProfile';
+import TeacherProfile from '@/components/TeacherProfile';
 import { router } from 'expo-router';
 import { resolveAvatarUri } from '@/utils/avatar';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -316,10 +317,8 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
         )}
 
         <View style={{ paddingHorizontal: 24, paddingTop: 20 }}>
-          <Text style={{ fontSize: 10, fontWeight: 'bold', color: textSecondary, textTransform: 'uppercase', letterSpacing: 3, marginBottom: 12 }}>App Theme</Text>
-          <View style={{ borderRadius: 16, borderWidth: 1, borderColor: border, overflow: 'hidden' }}>
-            <ThemeSegmentedControl />
-          </View>
+          <Text style={{ fontSize: 10, fontWeight: 'bold', color: textSecondary, textTransform: 'uppercase', letterSpacing: 3, marginBottom: 8 }}>App Theme</Text>
+          <ThemeSegmentedControl />
         </View>
 
       </ScrollView>
@@ -363,6 +362,7 @@ export function GlobalSettingsContent({
     switch (activeScreen) {
       case 'overview': return <AdminOverview />;
       case 'profile':
+        if (userRole === 'teacher') return <TeacherProfile />;
         return <ReadOnlyProfile />;
       case 'settings':
         if (userRole === 'master_admin' || userRole === 'platform_admin') return <MasterAdminSettings />;

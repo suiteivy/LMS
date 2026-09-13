@@ -4,9 +4,14 @@ export interface TeacherAttendance {
     id: string;
     teacher_id: string;
     date: string;
-    status: 'present' | 'absent' | 'late' | 'excused';
+    status: 'present' | 'absent' | 'late' | 'excused' | 'pending';
+    confirmation_status?: 'unconfirmed' | 'confirmed';
     check_in_time?: string;
     notes?: string;
+    first_name?: string;
+    last_name?: string;
+    name?: string;
+    avatar_url?: string;
     teachers?: {
         id: string;
         users: {
@@ -18,6 +23,21 @@ export interface TeacherAttendance {
     }
 }
 
+export interface StaffPresenceItem {
+    id?: string;
+    teacher_id: string;
+    name: string;
+    first_name: string;
+    last_name: string;
+    avatar_url?: string;
+    department?: string;
+    position?: string;
+    status: 'present' | 'absent' | 'late' | 'pending';
+    confirmation_status: 'unconfirmed' | 'confirmed';
+    check_in_time?: string;
+    notes?: string;
+}
+
 export const AdminTeacherAttendanceAPI = {
     // Teacher Attendance (admin-only backend routes)
     getAttendance: async (date: string, pagination?: { page?: number; limit?: number }) => {
@@ -25,8 +45,13 @@ export const AdminTeacherAttendanceAPI = {
         return Array.isArray(response.data) ? response.data : (response.data?.data || []);
     },
 
-    markAttendance: async (data: { teacher_id: string; date: string; status: string; notes?: string }) => {
+    markAttendance: async (data: { teacher_id: string; date: string; status: string; notes?: string; confirmation_status?: string }) => {
         const response = await api.post('/attendance/teachers', data);
+        return response.data;
+    },
+
+    confirmAttendance: async (teacherIds: string[], date: string) => {
+        const response = await api.post('/attendance/teachers/confirm', { teacher_ids: teacherIds, date });
         return response.data;
     }
 };
@@ -68,5 +93,11 @@ export const TeacherAttendanceAPI = {
     selfCheckIn: async (data?: { date?: string; status?: string; notes?: string }) => {
         const response = await api.post('/attendance/teachers/self-checkin', data || {});
         return response.data;
+    },
+
+    // Staff presence for teachers (Part D2)
+    getStaffPresence: async (date?: string): Promise<StaffPresenceItem[]> => {
+        const response = await api.get('/attendance/staff-presence', { params: { date } });
+        return response.data || [];
     }
 };

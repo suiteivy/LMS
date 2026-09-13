@@ -1252,6 +1252,27 @@ export default function CreateUserScreen() {
                         </TouchableOpacity>
                     </View>
                 )}
+                {/* One-tap Full Credential Package (F3) */}
+                <TouchableOpacity
+                    onPress={() => {
+                        const fullPkg = result?.credential_document || `School Portal Login\nRole: ${form.role?.toUpperCase()}\nUser ID: ${result?.customId || 'N/A'}\nEmail: ${result?.email || 'N/A'}\nTemporary Password: ${result?.tempPassword || 'N/A'}${result?.credential_delivery?.url ? `\nOne-Time Link: ${result.credential_delivery.url}` : ''}`;
+                        copyToClipboard(fullPkg, 'Full Credential Package');
+                    }}
+                    style={{
+                        marginTop: 14,
+                        backgroundColor: '#FF6900',
+                        paddingVertical: 10,
+                        paddingHorizontal: 12,
+                        borderRadius: 10,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                    }}
+                >
+                    <Ionicons name="copy" size={16} color="#ffffff" />
+                    <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 13 }}>Copy Full Credential Package</Text>
+                </TouchableOpacity>
                 {result?.parentResult && (
                     <View style={{ marginTop: 24, paddingTop: 24, borderTopWidth: 2, borderTopColor: border, borderStyle: 'dashed' }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
@@ -1301,6 +1322,27 @@ export default function CreateUserScreen() {
                                         </TouchableOpacity>
                                     </View>
                                 )}
+                                {/* One-tap Full Parent Credential Package (F3) */}
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        const fullParentPkg = result?.parentResult?.credential_document || `School Portal Login\nRole: PARENT/GUARDIAN\nUser ID: ${result?.parentResult?.customId || 'N/A'}\nEmail: ${result?.parentResult?.email || 'N/A'}\nTemporary Password: ${result?.parentResult?.tempPassword || 'N/A'}${result?.parentResult?.credential_delivery?.url ? `\nOne-Time Link: ${result.parentResult.credential_delivery.url}` : ''}`;
+                                        copyToClipboard(fullParentPkg, 'Parent Full Credential Package');
+                                    }}
+                                    style={{
+                                        marginTop: 14,
+                                        backgroundColor: '#3b82f6',
+                                        paddingVertical: 10,
+                                        paddingHorizontal: 12,
+                                        borderRadius: 10,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 8,
+                                    }}
+                                >
+                                    <Ionicons name="copy" size={16} color="#ffffff" />
+                                    <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 13 }}>Copy Parent Full Credential Package</Text>
+                                </TouchableOpacity>
                             </>
                         )}
                     </View>

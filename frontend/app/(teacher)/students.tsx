@@ -71,8 +71,10 @@ export default function StudentsPage() {
             setLoading(true);
             const data = await StudentService.getStudents();
             setStudents(data || []);
-        } catch (error) {
-            console.error("Error fetching students:", error);
+        } catch (error: any) {
+            if (!error?.isAuthError) {
+                console.error("Error fetching students:", error?.message || error);
+            }
             showFetchError("students", error);
         } finally {
             setLoading(false);

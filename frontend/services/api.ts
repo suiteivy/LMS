@@ -4,6 +4,7 @@ import { assertNoDoubleApiSegment } from "@/utils/validateApiUrl";
 
 import { showError, showWarning, showInfo } from "../utils/toast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getActiveTeacherRoleMode } from "@/hooks/useTeacherRoleMode";
 
 // Extend Axios request config to support a per-request flag that suppresses
 // the global error toast (useful for background fetches that have silent fallbacks).
@@ -291,7 +292,14 @@ api.interceptors.request.use(
 
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-      } else if (!isLikelyPublicRoute(config.url)) {
+      }
+      
+      const roleMode = typeof getActiveTeacherRoleMode === 'function' ? getActiveTeacherRoleMode() : null;
+      if (roleMode) {
+        config.headers['X-Teacher-Role-Mode'] = roleMode;
+      }
+
+      if (!token && !isLikelyPublicRoute(config.url)) {
         // Prevent sending doomed unauthenticated requests over the wire for protected endpoints
         const unauthError: any = new Error('No authentication token available');
         unauthError.isAuthError = true;

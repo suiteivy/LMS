@@ -1,5 +1,6 @@
 const supabase = require("../utils/supabaseClient.js");
 const { parsePagination, paginatedResponse } = require("../utils/pagination.js");
+const { resolveTeacherScope } = require("../middleware/teacherScope.js");
 
 /**
  * Create a resource (status defaults to 'approved' for admin, 'approved' or 'pending' for teacher)
@@ -116,6 +117,15 @@ exports.getResources = async (req, res) => {
         } else if (userRole === 'teacher') {
             if (target_audience) {
                 query = query.eq('target_audience', target_audience);
+            }
+            const reqRoleMode = req.headers['x-teacher-role-mode'] || req.query.role_mode;
+            const scope = await resolveTeacherScope(userId, req.institution_id, reqRoleMode);
+            if (!subject_id && !class_id) {
+                if (scope && scope.activeMode === 'class' && scope.classTeacherClassIds.length > 0) {
+                    query = query.or(`class_id.in.(${scope.classTeacherClassIds.join(',')}),and(class_id.is.null,subject_id.is.null)`);
+                } else if (scope && scope.taughtSubjectIds.length > 0) {
+                    query = query.or(`subject_id.in.(${scope.taughtSubjectIds.join(',')}),and(class_id.is.null,subject_id.is.null)`);
+                }
             }
         } else if (target_audience) {
             query = query.eq('target_audience', target_audience);

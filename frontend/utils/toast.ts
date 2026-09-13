@@ -70,8 +70,8 @@ export const showFetchError = (resource: string, error?: any) => {
         ? error
         : error?.message || error?.error_description || error?.error;
 
-    // Suppress if the error indicates deliberate cancellation or abort
-    if (rawMessage && /abort|cancelled|canceled/i.test(rawMessage)) {
+    // Suppress if auth error (handled by auth interceptor) or deliberate cancellation/abort
+    if (error?.isAuthError || (rawMessage && /abort|cancelled|canceled/i.test(rawMessage))) {
         return;
     }
 

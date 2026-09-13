@@ -4,8 +4,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { api } from "@/services/api";
 import { GradingAPI } from "@/services/GradingService";
-import { showError, showFetchError } from "@/utils/toast";
+import { showError, showFetchError, showSuccess } from "@/utils/toast";
 import { getPerformanceLabel, type GradingScaleRow } from "@/utils/getPerformanceLabel";
+import { useTeacherRoleMode } from "@/hooks/useTeacherRoleMode";
+import { usePrint } from "@/hooks/usePrint";
 import { router } from "expo-router";
 import {
     AlertCircle,
@@ -13,15 +15,20 @@ import {
     BookOpen,
     ChevronDown,
     ChevronRight,
+    Download,
+    Edit3,
+    ExternalLink,
     FileText,
     Filter,
     Search,
+    Sparkles,
     TrendingUp,
     User,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
+    Modal,
     ScrollView,
     Text,
     TextInput,
@@ -266,6 +273,10 @@ const ReportCardRow = ({
     expanded,
     onToggle,
     gradingScales,
+    onDownloadPDF,
+    isDownloading,
+    onEditRemarks,
+    onViewStudentRecord,
 }: {
     card: ReportCard;
     isDark: boolean;
@@ -273,6 +284,10 @@ const ReportCardRow = ({
     expanded: boolean;
     onToggle: () => void;
     gradingScales: GradingScaleRow[];
+    onDownloadPDF?: (card: ReportCard) => void;
+    isDownloading?: boolean;
+    onEditRemarks?: (card: ReportCard) => void;
+    onViewStudentRecord?: (studentId: string) => void;
 }) => {
     return (
         <View
@@ -649,6 +664,67 @@ const ReportCardRow = ({
                             </Text>
                         </View>
                     )}
+
+                    {/* Action buttons */}
+                    <View style={{ flexDirection: "row", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+                        <TouchableOpacity
+                            onPress={() => onDownloadPDF?.(card)}
+                            disabled={isDownloading}
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                backgroundColor: isDark ? "rgba(255,107,0,0.15)" : "#FFF7ED",
+                                paddingHorizontal: 12,
+                                paddingVertical: 8,
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: isDark ? "rgba(255,107,0,0.3)" : "#FED7AA",
+                            }}
+                        >
+                            {isDownloading ? (
+                                <ActivityIndicator size="small" color={accentColor} style={{ marginRight: 6 }} />
+                            ) : (
+                                <Download size={13} color={accentColor} style={{ marginRight: 6 }} />
+                            )}
+                            <Text style={{ color: accentColor, fontWeight: "700", fontSize: 11 }}>
+                                {isDownloading ? "Generating PDF..." : "Download PDF"}
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => onEditRemarks?.(card)}
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                backgroundColor: isDark ? "#21262D" : "#F3F4F6",
+                                paddingHorizontal: 12,
+                                paddingVertical: 8,
+                                borderRadius: 12,
+                            }}
+                        >
+                            <Edit3 size={13} color={isDark ? "#E5E7EB" : "#374151"} style={{ marginRight: 6 }} />
+                            <Text style={{ color: isDark ? "#E5E7EB" : "#374151", fontWeight: "700", fontSize: 11 }}>
+                                {card.teacher_remarks ? "Edit Remarks" : "Add Remarks"}
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => onViewStudentRecord?.(card.student_id)}
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                backgroundColor: isDark ? "#21262D" : "#F3F4F6",
+                                paddingHorizontal: 12,
+                                paddingVertical: 8,
+                                borderRadius: 12,
+                            }}
+                        >
+                            <ExternalLink size={13} color={isDark ? "#9CA3AF" : "#6B7280"} style={{ marginRight: 6 }} />
+                            <Text style={{ color: isDark ? "#9CA3AF" : "#6B7280", fontWeight: "700", fontSize: 11 }}>
+                                Student Record
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             )}
         </View>
@@ -662,6 +738,8 @@ const ReportCardRow = ({
 export default function ReportCardsPage() {
     const { teacherId } = useAuth();
     const { isDark } = useTheme();
+    const { mode, isClassTeacher } = useTeacherRoleMode();
+    const { printHtml } = usePrint();
     const accentColor = "#FF6B00";
 
     // Data
@@ -671,6 +749,13 @@ export default function ReportCardsPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [gradingScales, setGradingScales] = useState<GradingScaleRow[]>([]);
+
+    // Action state
+    const [downloadingCardId, setDownloadingCardId] = useState<string | null>(null);
+    const [editingCard, setEditingCard] = useState<ReportCard | null>(null);
+    const [remarksInput, setRemarksInput] = useState("");
+    const [savingRemarks, setSavingRemarks] = useState(false);
+    const [generatingClass, setGeneratingClass] = useState(false);
 
     // Filters
     const [selectedSubjectId, setSelectedSubjectId] = useState("all");
@@ -686,26 +771,33 @@ export default function ReportCardsPage() {
     const uniqueSubjects = React.useMemo(() => {
         const map = new Map<string, { id: string; title: string }>();
         subjectClasses.forEach((sc) => {
-            if (!map.has(sc.subject_id)) {
-                map.set(sc.subject_id, { id: sc.subject_id, title: sc.subject_title });
+            if (sc && sc.subject_id && !map.has(sc.subject_id)) {
+                map.set(sc.subject_id, { id: sc.subject_id, title: sc.subject_title || "Untitled Subject" });
             }
         });
         return Array.from(map.values());
     }, [subjectClasses]);
 
     const availableClasses = React.useMemo(() => {
+        let list: { id: string; name: string }[] = [];
         if (selectedSubjectId === "all") {
             const map = new Map<string, { id: string; name: string }>();
             subjectClasses.forEach((sc) => {
-                if (!map.has(sc.class_id)) {
-                    map.set(sc.class_id, { id: sc.class_id, name: sc.class_name });
+                if (sc && sc.class_id && !map.has(sc.class_id)) {
+                    map.set(sc.class_id, { id: sc.class_id, name: sc.class_name || "Class" });
                 }
             });
-            return Array.from(map.values());
+            list = Array.from(map.values());
+        } else {
+            list = subjectClasses
+                .filter((sc) => sc && sc.subject_id === selectedSubjectId && sc.class_id)
+                .map((sc) => ({ id: sc.class_id, name: sc.class_name || "Class" }));
         }
-        return subjectClasses
-            .filter((sc) => sc.subject_id === selectedSubjectId)
-            .map((sc) => ({ id: sc.class_id, name: sc.class_name }));
+
+        // Strictly filter out invalid/undefined items to ensure clean UI
+        return list.filter(
+            (c) => Boolean(c && c.id && c.name && c.name !== "undefined" && c.name !== "null" && c.name.trim() !== "")
+        );
     }, [subjectClasses, selectedSubjectId]);
 
     // ---------------------------------------------------------------------------
@@ -745,6 +837,13 @@ export default function ReportCardsPage() {
     }, []);
 
     const fetchReportCards = useCallback(async () => {
+        if (mode === "subject") {
+            // Subject teachers cannot fetch whole-class report cards (backend restricts to class teacher / admin)
+            setReportCards([]);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
             const params: Record<string, string> = {};
@@ -763,7 +862,68 @@ export default function ReportCardsPage() {
         } finally {
             setLoading(false);
         }
-    }, [selectedSubjectId, selectedClassId, selectedTermId, selectedStatus]);
+    }, [mode, selectedSubjectId, selectedClassId, selectedTermId, selectedStatus]);
+
+    const handleDownloadPDF = async (card: ReportCard) => {
+        try {
+            setDownloadingCardId(card.id);
+            const payload = await GradingAPI.exportReportCardPDF({ report_card_id: card.id });
+            const html = payload?.html;
+            if (!html) throw new Error("Failed to generate report card preview");
+            await printHtml(html);
+        } catch (err: any) {
+            showError(err?.message || "Failed to generate report card PDF");
+        } finally {
+            setDownloadingCardId(null);
+        }
+    };
+
+    const handleOpenEditRemarks = (card: ReportCard) => {
+        setEditingCard(card);
+        setRemarksInput(card.teacher_remarks || "");
+    };
+
+    const handleSaveRemarks = async () => {
+        if (!editingCard) return;
+        setSavingRemarks(true);
+        try {
+            await GradingAPI.updateReportCardRemarks(editingCard.id, { teacher_remarks: remarksInput });
+            setReportCards((prev) =>
+                prev.map((c) => (c.id === editingCard.id ? { ...c, teacher_remarks: remarksInput } : c))
+            );
+            showSuccess("Remarks Updated", "Teacher remarks have been recorded.");
+            setEditingCard(null);
+        } catch (err: any) {
+            showError(err?.message || "Failed to update remarks");
+        } finally {
+            setSavingRemarks(false);
+        }
+    };
+
+    const handleGenerateClassCards = async () => {
+        if (selectedClassId === "all") {
+            showError("Select a Class", "Please select a specific class to compile report cards.");
+            return;
+        }
+        const effectiveTermId = selectedTermId !== "all" ? selectedTermId : resolvedActiveTerm?.id;
+        if (!effectiveTermId) {
+            showError("Select a Term", "Please select a term before compiling report cards.");
+            return;
+        }
+        setGeneratingClass(true);
+        try {
+            await GradingAPI.generateClassReportCards({
+                class_id: selectedClassId,
+                term_id: effectiveTermId,
+            });
+            showSuccess("Report Cards Generated", "Class report cards have been compiled into draft status.");
+            fetchReportCards();
+        } catch (err: any) {
+            showError(err?.message || "Failed to generate class report cards");
+        } finally {
+            setGeneratingClass(false);
+        }
+    };
 
     useEffect(() => {
         if (teacherId) {
@@ -1188,6 +1348,85 @@ export default function ReportCardsPage() {
                     </View>
 
                     {/* ------------------------------------------------------- */}
+                    {/* Role Guidance / Action Banner                             */}
+                    {/* ------------------------------------------------------- */}
+                    {mode === 'subject' && (
+                        <View style={{
+                            backgroundColor: isDark ? "rgba(59,130,246,0.12)" : "#EFF6FF",
+                            borderColor: isDark ? "rgba(59,130,246,0.3)" : "#BFDBFE",
+                            borderWidth: 1,
+                            borderRadius: 20,
+                            padding: 16,
+                            marginBottom: 20,
+                        }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+                                <BookOpen size={18} color="#3B82F6" style={{ marginRight: 8 }} />
+                                <Text style={{ color: isDark ? "#93C5FD" : "#1E40AF", fontWeight: "800", fontSize: 14 }}>
+                                    Subject Teacher Mode Active
+                                </Text>
+                            </View>
+                            <Text style={{ color: isDark ? "#E2E8F0" : "#334155", fontSize: 13, lineHeight: 18, marginBottom: 12 }}>
+                                Whole-class report card compilation, learner conduct remarks, and final publication are managed by Class Teachers. Ensure your subject's formative & summative scores are recorded in Grade Entry.
+                            </Text>
+                            <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
+                                <TouchableOpacity
+                                    onPress={() => router.push("/(teacher)/management/grade-entry" as any)}
+                                    style={{
+                                        backgroundColor: "#3B82F6",
+                                        paddingHorizontal: 14,
+                                        paddingVertical: 8,
+                                        borderRadius: 12,
+                                    }}
+                                >
+                                    <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 12 }}>
+                                        Open Grade Entry
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => router.push("/(teacher)/students" as any)}
+                                    style={{
+                                        backgroundColor: isDark ? "#1E293B" : "#DBEAFE",
+                                        paddingHorizontal: 14,
+                                        paddingVertical: 8,
+                                        borderRadius: 12,
+                                    }}
+                                >
+                                    <Text style={{ color: isDark ? "#93C5FD" : "#1E40AF", fontWeight: "700", fontSize: 12 }}>
+                                        View Student Records
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+
+                    {mode === 'class' && (
+                        <View style={{ marginBottom: 16 }}>
+                            <TouchableOpacity
+                                onPress={handleGenerateClassCards}
+                                disabled={generatingClass || selectedClassId === "all"}
+                                style={{
+                                    backgroundColor: selectedClassId === "all" ? (isDark ? "#21262D" : "#E5E7EB") : accentColor,
+                                    paddingVertical: 12,
+                                    paddingHorizontal: 16,
+                                    borderRadius: 16,
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                }}
+                            >
+                                {generatingClass ? (
+                                    <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 8 }} />
+                                ) : (
+                                    <Sparkles size={16} color={selectedClassId === "all" ? (isDark ? "#6B7280" : "#9CA3AF") : "#ffffff"} style={{ marginRight: 8 }} />
+                                )}
+                                <Text style={{ color: selectedClassId === "all" ? (isDark ? "#6B7280" : "#9CA3AF") : "#ffffff", fontWeight: "700", fontSize: 13 }}>
+                                    {generatingClass ? "Compiling Class Report Cards..." : selectedClassId === "all" ? "Select a Class to Compile Report Cards" : "Generate / Compile Class Report Cards"}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {/* ------------------------------------------------------- */}
                     {/* Report Card List                                         */}
                     {/* ------------------------------------------------------- */}
                     <View
@@ -1269,8 +1508,9 @@ export default function ReportCardsPage() {
                                     lineHeight: 20,
                                 }}
                             >
-                                No report cards match the selected filters.{"\n"}Try
-                                adjusting the subject, class, term, or status.
+                                {mode === 'subject'
+                                    ? "Report card compilation is handled in Class Teacher mode."
+                                    : "No report cards match the selected filters. Use Generate to compile draft cards."}
                             </Text>
                         </View>
                     ) : (
@@ -1287,11 +1527,15 @@ export default function ReportCardsPage() {
                                     )
                                 }
                                 gradingScales={gradingScales}
+                                onDownloadPDF={handleDownloadPDF}
+                                isDownloading={downloadingCardId === card.id}
+                                onEditRemarks={handleOpenEditRemarks}
+                                onViewStudentRecord={() => router.push("/(teacher)/students" as any)}
                             />
                         ))
                     )}
 
-                    {/* Read-only notice */}
+                    {/* Class Teacher Workflow Notice */}
                     {!loading && filteredCards.length > 0 && (
                         <View
                             style={{
@@ -1319,14 +1563,89 @@ export default function ReportCardsPage() {
                                     lineHeight: 18,
                                 }}
                             >
-                                You have read-only access to report cards.{"\n"}
-                                Generate, publish, and release actions are managed by
-                                administrators.
+                                Class Teachers can compile draft report cards and record teacher remarks for their assigned class. Final completeness review, official publication, and release to guardians are signed off by school administration.
                             </Text>
                         </View>
                     )}
                 </View>
             </ScrollView>
+
+            {/* Remarks Modal */}
+            <Modal
+                visible={!!editingCard}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setEditingCard(null)}
+            >
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 20 }}>
+                    <View style={{
+                        backgroundColor: isDark ? "#161B22" : "#ffffff",
+                        borderRadius: 24,
+                        padding: 24,
+                        width: "100%",
+                        maxWidth: 480,
+                        borderWidth: 1,
+                        borderColor: isDark ? "#30363D" : "#E5E7EB",
+                    }}>
+                        <Text style={{ fontSize: 18, fontWeight: "800", color: isDark ? "#FFFFFF" : "#111827", marginBottom: 4 }}>
+                            Edit Teacher Remarks
+                        </Text>
+                        <Text style={{ fontSize: 13, color: isDark ? "#9CA3AF" : "#6B7280", marginBottom: 16 }}>
+                            {editingCard?.student_name}
+                        </Text>
+                        <TextInput
+                            multiline
+                            numberOfLines={4}
+                            value={remarksInput}
+                            onChangeText={setRemarksInput}
+                            placeholder="Enter learner development remarks and competencies..."
+                            placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+                            style={{
+                                backgroundColor: isDark ? "#0D1117" : "#F9FAFB",
+                                color: isDark ? "#FFFFFF" : "#111827",
+                                borderWidth: 1,
+                                borderColor: isDark ? "#30363D" : "#D1D5DB",
+                                borderRadius: 16,
+                                padding: 14,
+                                height: 120,
+                                textAlignVertical: "top",
+                                fontSize: 14,
+                                marginBottom: 16,
+                            }}
+                        />
+                        <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 10 }}>
+                            <TouchableOpacity
+                                onPress={() => setEditingCard(null)}
+                                style={{
+                                    paddingHorizontal: 16,
+                                    paddingVertical: 10,
+                                    borderRadius: 12,
+                                    backgroundColor: isDark ? "#21262D" : "#E5E7EB",
+                                }}
+                            >
+                                <Text style={{ color: isDark ? "#E5E7EB" : "#374151", fontWeight: "700" }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={handleSaveRemarks}
+                                disabled={savingRemarks}
+                                style={{
+                                    paddingHorizontal: 18,
+                                    paddingVertical: 10,
+                                    borderRadius: 12,
+                                    backgroundColor: accentColor,
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                }}
+                            >
+                                {savingRemarks && <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 6 }} />}
+                                <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>
+                                    {savingRemarks ? "Saving..." : "Save Remarks"}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }

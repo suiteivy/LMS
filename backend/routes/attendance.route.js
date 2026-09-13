@@ -3,7 +3,9 @@ const router = express.Router();
 const {
     getTeacherAttendance,
     markTeacherAttendance,
+    confirmTeacherAttendance,
     selfMarkTeacherPresence,
+    getStaffPresence,
     getStudentAttendance,
     markStudentAttendance,
     bulkMarkStudentAttendance,
@@ -15,9 +17,11 @@ const { authMiddleware } = require("../middleware/auth.middleware.js");
 router.use(authMiddleware);
 
 // Teacher Attendance Routes
-router.get("/teachers", authorizeRoles(["admin"]), getTeacherAttendance);
-router.post("/teachers", authorizeRoles(["admin"]), markTeacherAttendance);
+router.get("/teachers", authorizeRoles(["admin", "master_admin"]), getTeacherAttendance);
+router.post("/teachers", authorizeRoles(["admin", "master_admin"]), markTeacherAttendance);
+router.post("/teachers/confirm", authorizeRoles(["admin", "master_admin"]), confirmTeacherAttendance);
 router.post("/teachers/self-checkin", authorizeRoles(["teacher"]), selfMarkTeacherPresence);
+router.get("/staff-presence", authorizeRoles(["teacher", "admin", "master_admin"]), getStaffPresence);
 
 // Student Attendance Routes
 router.get("/students", authorizeRoles(["admin", "teacher"]), getStudentAttendance);

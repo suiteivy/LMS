@@ -123,5 +123,134 @@ export const TeacherAPI = {
       throw error;
     }
   },
+
+  getMyProfile: async (): Promise<any> => {
+    try {
+      const response = await api.get("/teacher/profile");
+      return response.data;
+    } catch (error) {
+      console.error("Get teacher profile error", error);
+      throw error;
+    }
+  },
+
+  requestNameChange: async (requested_name: string, reason: string): Promise<any> => {
+    try {
+      const response = await api.post("/teacher/profile/request-name-change", {
+        requested_name,
+        reason,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Request name change error", error);
+      throw error;
+    }
+  },
+
+  getStudentRankings: async (params?: { class_id?: string; subject_id?: string; role_mode?: string }): Promise<any> => {
+    try {
+      const response = await api.get("/teacher/rankings", { params });
+      return response.data;
+    } catch (error) {
+      console.error("Get student rankings error", error);
+      throw error;
+    }
+  },
+
+  // HOD & Coverage Plans (J1)
+  getHODSubjects: async (): Promise<any[]> => {
+    try {
+      const response = await api.get("/teacher/hod-subjects");
+      return response.data;
+    } catch (error) {
+      console.error("Get HOD subjects error", error);
+      throw error;
+    }
+  },
+
+  getCoveragePlans: async (params: { subject_id: string; term?: string; academic_year?: string }): Promise<any> => {
+    try {
+      const response = await api.get("/teacher/coverage-plans", { params });
+      return response.data;
+    } catch (error) {
+      console.error("Get coverage plans error", error);
+      throw error;
+    }
+  },
+
+  createCoveragePlan: async (payload: any): Promise<any> => {
+    try {
+      const response = await api.post("/teacher/coverage-plans", payload);
+      return response.data;
+    } catch (error) {
+      console.error("Create coverage plan error", error);
+      throw error;
+    }
+  },
+
+  updateCoveragePlan: async (id: string, payload: any): Promise<any> => {
+    try {
+      const response = await api.put(`/teacher/coverage-plans/${id}`, payload);
+      return response.data;
+    } catch (error) {
+      console.error("Update coverage plan error", error);
+      throw error;
+    }
+  },
+
+  deleteCoveragePlan: async (id: string): Promise<any> => {
+    try {
+      const response = await api.delete(`/teacher/coverage-plans/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Delete coverage plan error", error);
+      throw error;
+    }
+  },
+
+  // Record of Work (J2)
+  getRecordOfWork: async (params?: { subject_id?: string; class_id?: string; week_number?: number }): Promise<any[]> => {
+    try {
+      const response = await api.get("/teacher/record-of-work", { params });
+      return response.data;
+    } catch (error) {
+      console.error("Get record of work error", error);
+      throw error;
+    }
+  },
+
+  createRecordOfWork: async (payload: any): Promise<any> => {
+    try {
+      const response = await api.post("/teacher/record-of-work", payload);
+      return response.data;
+    } catch (error) {
+      console.error("Create record of work error", error);
+      throw error;
+    }
+  },
+
+  updateRecordOfWork: async (id: string, payload: any): Promise<any> => {
+    try {
+      const response = await api.put(`/teacher/record-of-work/${id}`, payload);
+      return response.data;
+    } catch (error) {
+      console.error("Update record of work error", error);
+      throw error;
+    }
+  },
+
+  deleteRecordOfWork: async (id: string): Promise<any> => {
+    try {
+      const response = await api.delete(`/teacher/record-of-work/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Delete record of work error", error);
+      throw error;
+    }
+  },
 };
+
+export const TeacherService = TeacherAPI;
+export default TeacherAPI;
+
 

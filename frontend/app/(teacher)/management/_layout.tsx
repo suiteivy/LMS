@@ -30,6 +30,9 @@ export default function ManagementLayout() {
                 <Stack.Screen name="analytics" />
                 <Stack.Screen name="resources" />
                 <Stack.Screen name="diary" />
+                <Stack.Screen name="rankings" />
+                <Stack.Screen name="coverage" />
+                <Stack.Screen name="record-of-work" />
             </Stack>
         </View>
     );

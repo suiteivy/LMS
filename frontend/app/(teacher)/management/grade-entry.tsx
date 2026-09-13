@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { api } from "@/services/api";
 import { GradingAPI } from "@/services/GradingService";
-import { showError, showSuccess } from "@/utils/toast";
+import { showError, showFetchError, showSuccess } from "@/utils/toast";
 import * as DocumentPicker from "expo-document-picker";
 import { File as ExpoFile } from "expo-file-system";
 import { router } from "expo-router";
@@ -488,9 +488,11 @@ export default function GradeEntryPage() {
                 student_name: s.full_name || s.name || s.student_name || "Unknown",
                 student_display_id: s.display_id || s.student_display_id,
             })));
-        } catch (error) {
-            console.error("Error fetching students:", error);
-            showError("Error", "Failed to load students");
+        } catch (error: any) {
+            if (!error?.isAuthError) {
+                console.error("Error fetching students:", error?.message || error);
+                showFetchError("students", error);
+            }
             setStudents([]);
         } finally {
             setFetchingStudents(false);

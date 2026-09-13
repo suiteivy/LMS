@@ -1,323 +1,512 @@
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { authService, supabase } from "@/libs/supabase";
-import { Spinner } from "@/components/ui/Spinner";
-import { Database } from "@/types/database";
-import { showError, showSuccess } from "@/utils/toast";
-import { BookOpen, Calendar, Camera, GraduationCap, Layers, Mail, MapPin, Phone, User, UserCircle, Users } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Image, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { DatePicker } from '@/components/common/DatePicker';
+import { api } from "@/services/api";
 import { resolveAvatarUri } from "@/utils/avatar";
-
-type Subject = Database['public']['Tables']['subjects']['Row'];
-type Class = Database['public']['Tables']['classes']['Row'];
+import { showSuccess, showError } from "@/utils/toast";
+import {
+  UserCircle,
+  BookOpen,
+  Users,
+  GraduationCap,
+  Clock,
+  Send,
+  AlertCircle,
+  X,
+  FileText,
+  Layers,
+  Shield,
+  Briefcase,
+} from "lucide-react-native";
 
 export default function TeacherProfile() {
-    const { profile, user, refreshProfile, teacherId, displayId } = useAuth();
-    const { isDark } = useTheme();
-    const [isEditing, setIsEditing] = useState(false);
-    const [firstName, setFirstName] = useState(profile?.first_name || "");
-    const [lastName, setLastName] = useState(profile?.last_name || "");
-    const [phone, setPhone] = useState(profile?.phone || "");
-    const [gender, setGender] = useState(profile?.gender || "");
-    const [dob, setDob] = useState(profile?.date_of_birth || "");
-    const [address, setAddress] = useState(profile?.address || "");
-    const [saving, setSaving] = useState(false);
-    const [loadingData, setLoadingData] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
+  const { profile, displayId } = useAuth();
+  const { isDark } = useTheme();
 
-    const [subjects, setSubjects] = useState<Subject[]>([]);
-    const [classes, setClasses] = useState<Class[]>([]);
-    const [stats, setStats] = useState({
-        totalSubjects: 0,
-        activeClasses: 0,
-        totalStudents: 0
-    });
-    const [teacherDetails, setTeacherDetails] = useState<{ department: string | null }>({
-        department: null
-    });
-    const avatarUri = resolveAvatarUri(profile?.avatar_url);
+  const [loading, setLoading] = useState(true);
+  const [profileData, setProfileData] = useState<any>(null);
+  const [requestModalVisible, setRequestModalVisible] = useState(false);
+  const [requestedName, setRequestedName] = useState("");
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-    useEffect(() => {
-        if (profile) {
-            setFirstName(profile.first_name || "");
-            setLastName(profile.last_name || "");
-            setPhone(profile.phone || "");
-            setGender(profile.gender || "");
-            setDob(profile.date_of_birth || "");
-            setAddress(profile.address || "");
-        }
-    }, [profile]);
+  const bg = isDark ? "#0D1117" : "#F6F8FA";
+  const card = isDark ? "#161B22" : "#FFFFFF";
+  const border = isDark ? "#21262D" : "#D0D7DE";
+  const textPrimary = isDark ? "#F9FAFB" : "#111827";
+  const textSecondary = isDark ? "#9CA3AF" : "#6B7280";
+  const orange = "#FF6900";
 
-    useEffect(() => {
-        if (teacherId) {
-            fetchTeacherData();
-        } else {
-            setLoadingData(false);
-        }
-    }, [teacherId]);
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/teacher/profile");
+      if (res.data?.success && res.data?.data) {
+        setProfileData(res.data.data);
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch teacher profile:", err);
+      showError("Profile Error", err.response?.data?.error || "Could not load detailed teacher profile");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const fetchTeacherData = async () => {
-        if (!teacherId) return;
-        try {
-            const { data: subjectsData, error: subjectsError } = await supabase
-                .from('subjects')
-                .select('*')
-                .eq('teacher_id', teacherId)
-                .returns<Subject[]>();
+  useEffect(() => {
+    fetchProfile();
+  }, []);
 
-            if (subjectsError) throw subjectsError;
-
-            const { data: classesData, error: classesError } = await supabase
-                .from('classes')
-                .select('*')
-                .eq('teacher_id', teacherId)
-                .returns<Class[]>();
-
-            if (classesError) throw classesError;
-
-            let studentCount = 0;
-            if (classesData && classesData.length > 0) {
-                const classIds = classesData.map(c => c.id);
-                const { count, error: countError } = await supabase
-                    .from('enrollments')
-                    .select('*', { count: 'exact', head: true })
-                    .in('class_id', classIds);
-
-                if (!countError && count !== null) {
-                    studentCount = count;
-                }
-            }
-
-            // Fetch Teacher Details
-            const { data: teacherData, error: teacherError } = (await supabase
-                .from('teachers')
-                .select('department')
-                .eq('id', teacherId)
-                .single()) as any;
-
-            if (!teacherError && teacherData) {
-                setTeacherDetails({
-                    department: teacherData.department
-                });
-            }
-
-            setSubjects(subjectsData || []);
-            setClasses(classesData || []);
-            setStats({
-                totalSubjects: subjectsData?.length || 0,
-                activeClasses: classesData?.length || 0,
-                totalStudents: studentCount
-            });
-
-        } catch (error: any) {
-            console.error("Error fetching teacher data:", error);
-            showError("Error", "Failed to load profile data");
-        } finally {
-            setLoadingData(false);
-            setRefreshing(false);
-        }
-    };
-
-    const handleRefresh = () => {
-        setRefreshing(true);
-        refreshProfile();
-        fetchTeacherData();
-    };
-
-    const handleUpdateProfile = async () => {
-        if (!firstName.trim()) {
-            showError("Error", "First name cannot be empty");
-            return;
-        }
-
-        setSaving(true);
-        try {
-            const { error } = await authService.updateProfile({
-                first_name: firstName,
-                last_name: lastName,
-                phone: phone || null,
-                gender: (gender as any) || null,
-                date_of_birth: dob || null,
-                address: address || null,
-            });
-
-            if (error) throw error;
-
-            await refreshProfile();
-            await fetchTeacherData();
-            setIsEditing(false);
-            showSuccess("Success", "Profile updated successfully");
-        } catch (error: any) {
-            showError("Error", "Failed to update profile: " + error.message);
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    if (!profile) {
-        return (
-            <View className="flex-1 justify-center items-center bg-[#FFFFFF] dark:bg-navy">
-                <ActivityIndicator size="large" color="#FF6900" />
-            </View>
-        );
+  const handleNameChangeSubmit = async () => {
+    if (!requestedName.trim()) {
+      Alert.alert("Required", "Please provide the requested full name.");
+      return;
+    }
+    if (!reason.trim()) {
+      Alert.alert("Required", "Please provide the reason for this name change.");
+      return;
     }
 
+    try {
+      setSubmitting(true);
+      const res = await api.post("/teacher/profile/request-name-change", {
+        requested_name: requestedName.trim(),
+        reason: reason.trim(),
+      });
+
+      if (res.data?.success) {
+        showSuccess("Request Submitted", "Your name change request has been submitted for admin approval.");
+        setRequestModalVisible(false);
+        setRequestedName("");
+        setReason("");
+        await fetchProfile();
+      }
+    } catch (err: any) {
+      console.error("Failed to submit name change:", err);
+      Alert.alert("Submission Failed", err.response?.data?.error || "Unable to submit request.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
     return (
-        <View className="flex-1 bg-gray-50 dark:bg-navy">
-            <ScrollView
-                className="flex-1"
-                showsVerticalScrollIndicator={false}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#FF6900" />
-                }
-            >
-                {/* Profile Info Section */}
-                <View className="items-center mt-8 mb-4">
-                    <View className="relative">
-                        <View className="w-32 h-32 rounded-[40px] bg-white dark:bg-gray-800 items-center justify-center border-4 border-gray-100 dark:border-gray-800 shadow-2xl overflow-hidden">
-                            {avatarUri ? (
-                                <Image source={{ uri: avatarUri }} className="w-full h-full" resizeMode="cover" />
-                            ) : (
-                                <UserCircle size={80} color={isDark ? "#374151" : "#F3F4F6"} />
-                            )}
-                        </View>
-                        <TouchableOpacity className="absolute -bottom-2 -right-2 bg-[#FF6900] p-3 rounded-2xl shadow-lg border-2 border-gray-50 dark:border-gray-900">
-                            <Camera size={18} color="white" />
-                        </TouchableOpacity>
-                    </View>
-
-                    <Text className="text-gray-900 dark:text-white text-3xl font-black tracking-tighter mt-6 text-center">{profile?.first_name} {profile?.last_name}</Text>
-                    <View className="bg-[#FF6900]/10 px-4 py-1.5 rounded-full mt-2 border border-[#FF6900]/20 self-center">
-                        <Text className="text-[#FF6900] text-[10px] font-black uppercase tracking-[2px]">Faculty Member \u00B7 ID: {displayId || 'N/A'}</Text>
-                    </View>
-                </View>
-
-                {/* Main Content */}
-                <View className="px-6 pb-32">
-                    <View className="bg-[#F6F8FA] dark:bg-navy rounded-[48px] p-8 shadow-xl border border-[#D0D7DE] dark:border-[#21262D]">
-                        {/* Section Header */}
-                        <View className="flex-row items-center mb-10">
-                            <View className="bg-[#FF6900] w-1.5 h-6 rounded-full mr-4" />
-                            <Text className="text-gray-900 dark:text-white font-black text-2xl tracking-tight uppercase">Professional Identity</Text>
-                        </View>
-
-                        <View>
-                            <View className="flex-row justify-between items-center mb-8">
-                                <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tighter">Core Information</Text>
-                                <TouchableOpacity
-                                    onPress={() => setIsEditing(!isEditing)}
-                                    className="bg-orange-50 dark:bg-orange-950/30 px-5 py-2.5 rounded-lg border border-orange-100 dark:border-orange-900/30"
-                                >
-                                    <Text className="text-[#FF6900] font-bold text-[10px] uppercase tracking-widest">{isEditing ? 'Cancel' : 'Modify'}</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {isEditing ? (
-                                <View className="bg-gray-50 dark:bg-gray-900 p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-8">
-                                    <InfoInput label="First Name" value={firstName} onChange={setFirstName} icon={User} isDark={isDark} />
-                                    <InfoInput label="Last Name" value={lastName} onChange={setLastName} icon={User} isDark={isDark} />
-                                    <InfoInput label="Contact Number" value={phone} onChange={setPhone} icon={Phone} isDark={isDark} />
-                                    <InfoInput label="Staff Address" value={address} onChange={setAddress} icon={MapPin} isDark={isDark} />
-                                    <View className="mb-6">
-                                        <Text className="text-sm font-semibold text-gray-700 mb-2">Gender</Text>
-                                        <View className="flex-row gap-2">
-                                            {(['male', 'female', 'other'] as const).map((option) => (
-                                                <TouchableOpacity
-                                                    key={option}
-                                                    onPress={() => setGender(option)}
-                                                    className={`flex-1 p-4 rounded-2xl border items-center ${gender === option
-                                                            ? 'bg-orange-50 border-[#FF6900]'
-                                                            : 'bg-white dark:bg-navy border-gray-200 dark:border-gray-800'
-                                                        }`}
-                                                >
-                                                    <Text className={`font-bold text-xs capitalize ${gender === option ? 'text-[#FF6900]' : 'text-gray-500'
-                                                        }`}>{option}</Text>
-                                                </TouchableOpacity>
-                                            ))}
-                                        </View>
-                                    </View>
-                                    <View className="mb-6">
-                                        <Text className="text-sm font-semibold text-gray-700 mb-2">Date of Birth</Text>
-                                        <View className="bg-gray-50 dark:bg-navy border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm">
-                                            <DatePicker
-                                                label="Date of Birth"
-                                                value={dob}
-                                                onChange={setDob}
-                                                isDark={isDark}
-                                                inline={true}
-                                            />
-                                        </View>
-                                    </View>
-                                    <TouchableOpacity className="bg-[#FF6900] py-4 rounded-2xl items-center mt-4 shadow-lg shadow-orange-500/20" onPress={handleUpdateProfile} disabled={saving}>
-                                        {saving ? <Spinner color="white" label="Saving profile" /> : <Text className="text-white font-black text-xs uppercase tracking-[2px]">Save Changes</Text>}
-                                    </TouchableOpacity>
-                                </View>
-                            ) : (
-                                <View>
-                                    <InfoRow label="Email Identity" value={profile?.email || 'N/A'} icon={Mail} color="#6366f1" isDark={isDark} />
-                                    <InfoRow label="Contact Line" value={profile?.phone || 'Not listed'} icon={Phone} color="#10b981" isDark={isDark} />
-                                    <InfoRow label="Residence" value={profile?.address || 'Not listed'} icon={MapPin} color="#f59e0b" isDark={isDark} />
-                                    <View className="h-px bg-gray-50 dark:border-gray-800 my-6" />
-                                    <View className="flex-row gap-4">
-                                        <View className="flex-1 bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
-                                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mb-1">Gender</Text>
-                                            <Text className="text-gray-900 dark:text-white font-bold capitalize">{profile?.gender || 'N/A'}</Text>
-                                        </View>
-                                        <View className="flex-1 bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
-                                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mb-1">Birth Date</Text>
-                                            <Text className="text-gray-900 dark:text-white font-bold">{profile?.date_of_birth || 'N/A'}</Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            )}
-                        </View>
-
-                        {/* Academic Experience Section */}
-                        <View className="mt-12 pt-12 border-t border-gray-50 dark:border-gray-800">
-                            <View className="flex-row items-center mb-8">
-                                <View className="bg-purple-500 w-1.5 h-6 rounded-full mr-4" />
-                                <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tight uppercase">Academic Credentials</Text>
-                            </View>
-                            <View>
-                                <InfoRow label="Department" value={teacherDetails.department || 'General Faculty'} icon={GraduationCap} color="#ec4899" isDark={isDark} />
-                                <InfoRow label="Total Subjects" value={stats.totalSubjects.toString()} icon={BookOpen} color="#3b82f6" isDark={isDark} />
-                                <InfoRow label="Active Classes" value={stats.activeClasses.toString()} icon={Layers} color="#10b981" isDark={isDark} />
-                                <InfoRow label="Total Students" value={stats.totalStudents.toString()} icon={Users} color="#f59e0b" isDark={isDark} />
-                            </View>
-                        </View>
-                    </View>
-                </View>
-            </ScrollView>
-        </View>
+      <View style={{ flex: 1, backgroundColor: bg, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator size="large" color={orange} />
+        <Text style={{ color: textSecondary, marginTop: 12, fontWeight: "600" }}>Loading Profile...</Text>
+      </View>
     );
+  }
+
+  const personal = profileData?.personal || profile;
+  const professional = profileData?.professional || {};
+  const subjects = profileData?.assigned_subjects || [];
+  const classes = profileData?.designated_classes || [];
+  const roleModes = profileData?.role_modes || ["subject"];
+  const pendingChange = profileData?.pending_name_change;
+  const avatarUri = resolveAvatarUri(personal?.avatar_url || profile?.avatar_url);
+
+  const fullName = personal?.full_name || `${personal?.first_name || ""} ${personal?.last_name || ""}`.trim() || "Teacher";
+
+  return (
+    <ScrollView style={{ flex: 1, backgroundColor: bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      {/* Pending Request Banner */}
+      {pendingChange && (
+        <View
+          style={{
+            backgroundColor: isDark ? "rgba(255, 105, 0, 0.12)" : "#FFF7ED",
+            borderColor: orange,
+            borderWidth: 1,
+            borderRadius: 14,
+            padding: 14,
+            marginBottom: 16,
+            flexDirection: "row",
+            alignItems: "flex-start",
+          }}
+        >
+          <AlertCircle size={20} color={orange} style={{ marginRight: 10, marginTop: 2 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: isDark ? "#FFA756" : "#9A3412", fontWeight: "800", fontSize: 13 }}>
+              Name Change Request Pending Review
+            </Text>
+            <Text style={{ color: isDark ? "#E5E7EB" : "#7C2D12", fontSize: 12, marginTop: 2 }}>
+              Requested: <Text style={{ fontWeight: "700" }}>{pendingChange.requested_name}</Text>
+            </Text>
+            <Text style={{ color: textSecondary, fontSize: 11, marginTop: 2 }}>
+              Reason: {pendingChange.reason}
+            </Text>
+            <Text style={{ color: textSecondary, fontSize: 10, marginTop: 4, fontStyle: "italic" }}>
+              Status: Under administrative review · New credentials will be issued upon approval
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Profile Overview Card */}
+      <View style={{ backgroundColor: card, borderWidth: 1, borderColor: border, borderRadius: 20, padding: 20, marginBottom: 16 }}>
+        <View style={{ alignItems: "center", marginBottom: 16 }}>
+          <View
+            style={{
+              width: 96,
+              height: 96,
+              borderRadius: 24,
+              borderWidth: 1,
+              borderColor: border,
+              overflow: "hidden",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: isDark ? "#0F141C" : "#FFFFFF",
+            }}
+          >
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+            ) : (
+              <UserCircle size={60} color={isDark ? "#4B5563" : "#9CA3AF"} />
+            )}
+          </View>
+          <Text style={{ color: textPrimary, fontSize: 22, fontWeight: "900", marginTop: 12, textAlign: "center" }}>
+            {fullName}
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
+            <View style={{ backgroundColor: orange, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+              <Text style={{ color: "#FFF", fontSize: 10, fontWeight: "800", textTransform: "uppercase" }}>
+                {professional.position || "Teacher"}
+              </Text>
+            </View>
+            <Text style={{ color: textSecondary, fontSize: 12, fontWeight: "600" }}>
+              ID: {displayId || "N/A"}
+            </Text>
+          </View>
+
+          {/* Request Name Change Button */}
+          <TouchableOpacity
+            onPress={() => setRequestModalVisible(true)}
+            disabled={!!pendingChange}
+            style={{
+              marginTop: 14,
+              paddingVertical: 8,
+              paddingHorizontal: 14,
+              borderRadius: 10,
+              backgroundColor: pendingChange ? (isDark ? "#21262D" : "#E5E7EB") : (isDark ? "rgba(255, 105, 0, 0.15)" : "#FFF7ED"),
+              borderWidth: 1,
+              borderColor: pendingChange ? "transparent" : orange,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <Send size={13} color={pendingChange ? textSecondary : orange} />
+            <Text style={{ color: pendingChange ? textSecondary : orange, fontSize: 12, fontWeight: "700" }}>
+              {pendingChange ? "Name Change Pending" : "Request Name Change"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Contact Info Rows */}
+        <View style={{ gap: 10, borderTopWidth: 1, borderTopColor: border, paddingTop: 14 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            <Text style={{ color: textSecondary, fontSize: 12, fontWeight: "600" }}>Email</Text>
+            <Text style={{ color: textPrimary, fontSize: 13, fontWeight: "700" }}>{personal.email || "N/A"}</Text>
+          </View>
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            <Text style={{ color: textSecondary, fontSize: 12, fontWeight: "600" }}>Phone</Text>
+            <Text style={{ color: textPrimary, fontSize: 13, fontWeight: "700" }}>{personal.phone || "Not set"}</Text>
+          </View>
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            <Text style={{ color: textSecondary, fontSize: 12, fontWeight: "600" }}>Department</Text>
+            <Text style={{ color: textPrimary, fontSize: 13, fontWeight: "700" }}>{professional.department || "Academic"}</Text>
+          </View>
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            <Text style={{ color: textSecondary, fontSize: 12, fontWeight: "600" }}>Qualification</Text>
+            <Text style={{ color: textPrimary, fontSize: 13, fontWeight: "700" }}>{professional.qualification || "Bachelor of Education"}</Text>
+          </View>
+          {professional.date_joined && (
+            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+              <Text style={{ color: textSecondary, fontSize: 12, fontWeight: "600" }}>Joined Institution</Text>
+              <Text style={{ color: textPrimary, fontSize: 13, fontWeight: "700" }}>
+                {new Date(professional.date_joined).toLocaleDateString()}
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* Role Scopes & Modes */}
+      <View style={{ backgroundColor: card, borderWidth: 1, borderColor: border, borderRadius: 20, padding: 18, marginBottom: 16 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+          <Shield size={16} color={orange} style={{ marginRight: 8 }} />
+          <Text style={{ color: textPrimary, fontSize: 14, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Authorized Role Scopes
+          </Text>
+        </View>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {roleModes.map((mode: string) => {
+            const isClass = mode === "class";
+            const isLib = mode === "librarian";
+            return (
+              <View
+                key={mode}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: 6,
+                  paddingHorizontal: 10,
+                  borderRadius: 8,
+                  backgroundColor: isClass ? "#3B82F620" : isLib ? "#10B98120" : "#FF690020",
+                  borderWidth: 1,
+                  borderColor: isClass ? "#3B82F6" : isLib ? "#10B981" : "#FF6900",
+                }}
+              >
+                <Text
+                  style={{
+                    color: isClass ? "#3B82F6" : isLib ? "#10B981" : "#FF6900",
+                    fontWeight: "800",
+                    fontSize: 11,
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {mode === "class" ? "Class Teacher" : mode === "librarian" ? "Librarian" : "Subject Teacher"}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Designated Classes (for Class Teacher) */}
+      <View style={{ backgroundColor: card, borderWidth: 1, borderColor: border, borderRadius: 20, padding: 18, marginBottom: 16 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+          <Users size={16} color="#3B82F6" style={{ marginRight: 8 }} />
+          <Text style={{ color: textPrimary, fontSize: 14, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Designated Classes ({classes.length})
+          </Text>
+        </View>
+        {classes.length === 0 ? (
+          <Text style={{ color: textSecondary, fontSize: 12, fontStyle: "italic" }}>
+            No class teacher assignments currently active.
+          </Text>
+        ) : (
+          <View style={{ gap: 8 }}>
+            {classes.map((c: any) => (
+              <View
+                key={c.id}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: 10,
+                  borderRadius: 10,
+                  backgroundColor: isDark ? "#0F141C" : "#F6F8FA",
+                  borderWidth: 1,
+                  borderColor: border,
+                }}
+              >
+                <Text style={{ color: textPrimary, fontWeight: "700", fontSize: 13 }}>{c.label}</Text>
+                <Text style={{ color: "#3B82F6", fontSize: 10, fontWeight: "800", textTransform: "uppercase" }}>
+                  Class Teacher
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+
+      {/* Assigned Subjects */}
+      <View style={{ backgroundColor: card, borderWidth: 1, borderColor: border, borderRadius: 20, padding: 18, marginBottom: 20 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+          <BookOpen size={16} color={orange} style={{ marginRight: 8 }} />
+          <Text style={{ color: textPrimary, fontSize: 14, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Assigned Subjects ({subjects.length})
+          </Text>
+        </View>
+        {subjects.length === 0 ? (
+          <Text style={{ color: textSecondary, fontSize: 12, fontStyle: "italic" }}>
+            No teaching subjects assigned yet.
+          </Text>
+        ) : (
+          <View style={{ gap: 8 }}>
+            {subjects.map((s: any) => (
+              <View
+                key={s.id}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: 10,
+                  borderRadius: 10,
+                  backgroundColor: isDark ? "#0F141C" : "#F6F8FA",
+                  borderWidth: 1,
+                  borderColor: border,
+                }}
+              >
+                <View>
+                  <Text style={{ color: textPrimary, fontWeight: "700", fontSize: 13 }}>{s.title}</Text>
+                  {s.class_name && (
+                    <Text style={{ color: textSecondary, fontSize: 11, marginTop: 2 }}>{s.class_name}</Text>
+                  )}
+                </View>
+                <View
+                  style={{
+                    backgroundColor: s.role === "assistant" ? (isDark ? "#374151" : "#E5E7EB") : orange,
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    borderRadius: 6,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: s.role === "assistant" ? textPrimary : "#FFF",
+                      fontSize: 10,
+                      fontWeight: "800",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {s.role === "assistant" ? "Assistant" : "Lead"}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+
+      {/* Request Name Change Modal */}
+      <Modal visible={requestModalVisible} transparent animationType="fade" onRequestClose={() => setRequestModalVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 16 }}>
+          <View
+            style={{
+              backgroundColor: card,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: border,
+              width: "100%",
+              maxWidth: 480,
+              padding: 22,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.3,
+              shadowRadius: 16,
+              elevation: 10,
+            }}
+          >
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <View>
+                <Text style={{ color: textPrimary, fontSize: 18, fontWeight: "900" }}>Request Name Change</Text>
+                <Text style={{ color: textSecondary, fontSize: 12, marginTop: 2 }}>
+                  Submits a formal request to your school administrator
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setRequestModalVisible(false)} style={{ padding: 4 }}>
+                <X size={20} color={textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ backgroundColor: isDark ? "#0F141C" : "#F6F8FA", padding: 12, borderRadius: 10, marginBottom: 14, borderWidth: 1, borderColor: border }}>
+              <Text style={{ color: textSecondary, fontSize: 11, fontWeight: "700", textTransform: "uppercase" }}>Current Registered Name</Text>
+              <Text style={{ color: textPrimary, fontSize: 14, fontWeight: "800", marginTop: 2 }}>{fullName}</Text>
+            </View>
+
+            <View style={{ marginBottom: 12 }}>
+              <Text style={{ color: textSecondary, fontSize: 12, fontWeight: "700", marginBottom: 6 }}>
+                New Requested Name *
+              </Text>
+              <TextInput
+                style={{
+                  backgroundColor: isDark ? "#0D1117" : "#FFFFFF",
+                  borderWidth: 1,
+                  borderColor: border,
+                  borderRadius: 10,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  color: textPrimary,
+                  fontSize: 14,
+                }}
+                placeholder="Enter your official new name"
+                placeholderTextColor={textSecondary}
+                value={requestedName}
+                onChangeText={setRequestedName}
+              />
+            </View>
+
+            <View style={{ marginBottom: 18 }}>
+              <Text style={{ color: textSecondary, fontSize: 12, fontWeight: "700", marginBottom: 6 }}>
+                Reason / Documentation Reference *
+              </Text>
+              <TextInput
+                style={{
+                  backgroundColor: isDark ? "#0D1117" : "#FFFFFF",
+                  borderWidth: 1,
+                  borderColor: border,
+                  borderRadius: 10,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  color: textPrimary,
+                  fontSize: 13,
+                  minHeight: 80,
+                  textAlignVertical: "top",
+                }}
+                multiline
+                numberOfLines={3}
+                placeholder="State the reason (e.g. Marriage, Legal Deed Poll, Gazette Notice)"
+                placeholderTextColor={textSecondary}
+                value={reason}
+                onChangeText={setReason}
+              />
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setRequestModalVisible(false)}
+                disabled={submitting}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: border,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: textSecondary, fontWeight: "700", fontSize: 13 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleNameChangeSubmit}
+                disabled={submitting}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  backgroundColor: orange,
+                  alignItems: "center",
+                  flexDirection: "row",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                {submitting ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <>
+                    <Send size={14} color="#FFF" />
+                    <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 13 }}>Submit Request</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </ScrollView>
+  );
 }
-
-const InfoRow = ({ label, value, icon: Icon, color, isDark }: any) => (
-    <View className="flex-row items-center mb-6">
-        <View className="w-12 h-12 rounded-lg items-center justify-center mr-4" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : `${color}10` }}>
-            <Icon size={20} color={color} />
-        </View>
-        <View className="flex-1">
-            <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mb-0.5">{label}</Text>
-            <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight" numberOfLines={1}>{value}</Text>
-        </View>
-    </View>
-);
-
-const InfoInput = ({ label, value, onChange, icon: Icon, isDark }: any) => (
-    <View className="mb-6">
-        <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mb-2 ml-1">{label}</Text>
-        <View className="flex-row items-center bg-[#FFFFFF] dark:bg-navy border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-3">
-            <Icon size={16} color={isDark ? "#4B5563" : "#9CA3AF"} />
-            <TextInput
-                className="flex-1 ml-3 text-gray-900 dark:text-white font-bold text-xs"
-                value={value}
-                onChangeText={onChange}
-                placeholder={`Enter ${label.toLowerCase()}`}
-                placeholderTextColor={isDark ? "#4B5563" : "#D1D5DB"}
-            />
-        </View>
-    </View>
-);

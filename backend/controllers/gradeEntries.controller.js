@@ -2,6 +2,18 @@ const supabase = require('../utils/supabaseClient.js');
 const { isTermLocked } = require('../utils/resolveActiveTerm');
 const { buildClassLabel } = require('../utils/classLabel');
 const { parsePagination, paginatedResponse } = require('../utils/pagination.js');
+const { resolveTeacherScope, isTeacherAuthorizedForSubject, isTeacherAuthorizedForClass } = require('../middleware/teacherScope.js');
+const { logRecordChange } = require('../utils/auditLogger.js');
+
+async function resolveTeacherId(userId) {
+  if (!userId) return null;
+  const { data: teacher } = await supabase
+    .from('teachers')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+  return teacher?.id || null;
+}
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -123,8 +135,21 @@ async function getGradeEntries(req, res) {
         return res.json({ success: true, ...paginatedResponse([], 0, page, limit) });
       }
       query = query.in('student_id', children.map((c) => c.student_id));
+    } else if (user_role === 'teacher') {
+      const reqRoleMode = req.headers['x-teacher-role-mode'] || req.query.role_mode;
+      const scope = await resolveTeacherScope(user_id, institution_id, reqRoleMode);
+      if (scope && scope.activeMode === 'class' && scope.classTeacherClassIds.length > 0) {
+        query = query.in('class_id', scope.classTeacherClassIds);
+      } else if (scope && scope.taughtSubjectIds.length > 0) {
+        query = query.in('subject_id', scope.taughtSubjectIds);
+      } else {
+        return res.json({ success: true, ...paginatedResponse([], 0, page, limit) });
+      }
+      if (student_id) {
+        query = query.eq('student_id', student_id);
+      }
     } else if (student_id) {
-      // admin/teacher can filter by specific student
+      // admin can filter by specific student
       query = query.eq('student_id', student_id);
     }
 
@@ -222,17 +247,18 @@ async function createGradeEntry(req, res) {
       return sendError(res, 409, 'Grade entry already exists for this student, subject, assessment, class, term, and source');
     }
 
-    // Auto-set graded_by if teacher
+    // Auto-set graded_by and authorize if teacher
     let graded_by = null;
     if (user_role === 'teacher') {
-      const { data: teacherProfile } = await supabase
-        .from('teacher_profiles')
-        .select('id')
-        .eq('user_id', user_id)
-        .eq('institution_id', institution_id)
-        .single();
+      const teacherId = await resolveTeacherId(user_id);
+      if (!teacherId) return sendError(res, 404, 'Teacher profile not found');
+      graded_by = teacherId;
 
-      if (teacherProfile) graded_by = teacherProfile.id;
+      const isSubjectAuth = await isTeacherAuthorizedForSubject(teacherId, subject_id, institution_id);
+      const isClassAuth = await isTeacherAuthorizedForClass(teacherId, class_id, institution_id);
+      if (!isSubjectAuth && !isClassAuth) {
+        return sendError(res, 403, 'You are not authorized to grade this subject or class');
+      }
     }
 
     const insertPayload = {
@@ -262,6 +288,16 @@ async function createGradeEntry(req, res) {
       .single();
 
     if (insertErr) throw insertErr;
+
+    await logRecordChange({
+      institution_id,
+      table_name: 'grade_entries',
+      record_id: created.id,
+      changed_by: user_id,
+      change_type: 'create',
+      new_values: { score: created.score, max_score: created.max_score, student_id: created.student_id, subject_id: created.subject_id },
+      reason: req.body.reason || 'Grade entry created',
+    });
 
     const normalizedCreated = {
       ...created,
@@ -298,19 +334,20 @@ async function updateGradeEntry(req, res) {
       return sendError(res, 404, 'Grade entry not found');
     }
 
-    // Only the original grader or admin can update
+    // Only the original grader, authorized teacher, or admin can update
     if (user_role === 'admin') {
       // allowed
     } else {
-      const { data: teacherProfile } = await supabase
-        .from('teacher_profiles')
-        .select('id')
-        .eq('user_id', user_id)
-        .eq('institution_id', institution_id)
-        .single();
+      const teacherId = await resolveTeacherId(user_id);
+      if (!teacherId) {
+        return sendError(res, 403, 'Teacher profile not found');
+      }
 
-      if (!teacherProfile || existing.graded_by !== teacherProfile.id) {
-        return sendError(res, 403, 'Only the original grader or an admin can update this entry');
+      const isOriginalGrader = existing.graded_by === teacherId;
+      const isSubjectAuth = await isTeacherAuthorizedForSubject(teacherId, existing.subject_id, institution_id);
+      const isClassAuth = await isTeacherAuthorizedForClass(teacherId, existing.class_id, institution_id);
+      if (!isOriginalGrader && !isSubjectAuth && !isClassAuth) {
+        return sendError(res, 403, 'Only the assigned teacher or an admin can update this entry');
       }
     }
 
@@ -377,6 +414,17 @@ async function updateGradeEntry(req, res) {
 
     if (updateErr) throw updateErr;
 
+    await logRecordChange({
+      institution_id,
+      table_name: 'grade_entries',
+      record_id: id,
+      changed_by: user_id,
+      change_type: 'update',
+      old_values: existing,
+      new_values: updated,
+      reason: req.body.reason || 'Grade entry updated',
+    });
+
     const normalizedUpdated = {
       ...updated,
       class_name: buildClassLabel(updated?.classes),
@@ -431,6 +479,16 @@ async function deleteGradeEntry(req, res) {
 
     if (auditErr) throw auditErr;
 
+    await logRecordChange({
+      institution_id,
+      table_name: 'grade_entries',
+      record_id: id,
+      changed_by: user_id,
+      change_type: 'delete',
+      old_values: existing,
+      reason: req.body.reason || 'Grade entry deleted',
+    });
+
     const { error: deleteErr } = await supabase
       .from('grade_entries')
       .delete()
@@ -461,16 +519,20 @@ async function bulkCreateGradeEntries(req, res) {
       return sendError(res, 400, 'entries must be a non-empty array');
     }
 
-    // Resolve graded_by if teacher
+    // Resolve graded_by and check authorization if teacher
     let graded_by = null;
     if (user_role === 'teacher') {
-      const { data: teacherProfile } = await supabase
-        .from('teacher_profiles')
-        .select('id')
-        .eq('user_id', user_id)
-        .eq('institution_id', institution_id)
-        .single();
-      if (teacherProfile) graded_by = teacherProfile.id;
+      const teacherId = await resolveTeacherId(user_id);
+      if (!teacherId) return sendError(res, 404, 'Teacher profile not found');
+      graded_by = teacherId;
+
+      for (const entry of entries) {
+        const isSubjectAuth = await isTeacherAuthorizedForSubject(teacherId, entry.subject_id, institution_id);
+        const isClassAuth = await isTeacherAuthorizedForClass(teacherId, entry.class_id, institution_id);
+        if (!isSubjectAuth && !isClassAuth) {
+          return sendError(res, 403, `You are not authorized to grade subject ${entry.subject_id} or class ${entry.class_id}`);
+        }
+      }
     }
 
     let created = 0;
@@ -689,16 +751,18 @@ async function bulkImportGrades(req, res) {
 
     const enrolledStudentIds = new Set((enrollments || []).map((e) => e.student_id));
 
-    // Resolve graded_by if teacher
+    // Resolve graded_by and check authorization if teacher
     let graded_by = null;
     if (user_role === 'teacher') {
-      const { data: tp } = await supabase
-        .from('teacher_profiles')
-        .select('id')
-        .eq('user_id', user_id)
-        .eq('institution_id', institution_id)
-        .single();
-      if (tp) graded_by = tp.id;
+      const teacherId = await resolveTeacherId(user_id);
+      if (!teacherId) return sendError(res, 404, 'Teacher profile not found');
+      graded_by = teacherId;
+
+      const isSubjectAuth = await isTeacherAuthorizedForSubject(teacherId, subject_id, institution_id);
+      const isClassAuth = await isTeacherAuthorizedForClass(teacherId, class_id, institution_id);
+      if (!isSubjectAuth && !isClassAuth) {
+        return sendError(res, 403, 'You are not authorized to grade this subject or class');
+      }
     }
 
     let created = 0;
@@ -837,13 +901,8 @@ async function syncAssignmentGrades(req, res) {
     // Resolve graded_by if teacher
     let graded_by = null;
     if (user_role === 'teacher') {
-      const { data: tp } = await supabase
-        .from('teacher_profiles')
-        .select('id')
-        .eq('user_id', user_id)
-        .eq('institution_id', institution_id)
-        .single();
-      if (tp) graded_by = tp.id;
+      const teacherId = await resolveTeacherId(user_id);
+      if (teacherId) graded_by = teacherId;
     }
 
     let created = 0;
@@ -967,13 +1026,8 @@ async function syncExamGrades(req, res) {
     // Resolve graded_by if teacher
     let graded_by = null;
     if (user_role === 'teacher') {
-      const { data: tp } = await supabase
-        .from('teacher_profiles')
-        .select('id')
-        .eq('user_id', user_id)
-        .eq('institution_id', institution_id)
-        .single();
-      if (tp) graded_by = tp.id;
+      const teacherId = await resolveTeacherId(user_id);
+      if (teacherId) graded_by = teacherId;
     }
 
     let created = 0;

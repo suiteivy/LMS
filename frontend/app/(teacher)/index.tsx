@@ -7,13 +7,14 @@ import { CacheService } from "@/services/CacheService";
 import { CalendarAPI } from "@/services/CalendarService";
 import { downloadTimetablePdf } from "@/utils/timetablePdfGenerator";
 import { router } from "expo-router";
-import { ArrowRight, BookOpen, Calendar, Clock, Download, GraduationCap, MessageSquare, School, Users, LogOut } from 'lucide-react-native';
+import { ArrowRight, BookOpen, Calendar, Check, Clock, Download, GraduationCap, MessageSquare, School, Users, LogOut } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View, StatusBar } from 'react-native';
 import { SubscriptionBanner, SubscriptionGate } from '@/components/shared/SubscriptionComponents';
 import { formatClassLabel } from '@/utils/classLabel';
 import { useTeacherRoleMode } from '@/hooks/useTeacherRoleMode';
 import { showError, showFetchError, showSuccess } from '@/utils/toast';
+import { TeacherAttendanceAPI, StaffPresenceItem } from '@/services/TeacherAttendanceService';
 
 const localDateKey = (date: Date): string => {
     const year = date.getFullYear();
@@ -84,9 +85,11 @@ export default function TeacherHome() {
     const [assignedSubjects, setAssignedSubjects] = useState<any[]>([]);
     const [selectedSubjectTitle, setSelectedSubjectTitle] = useState<string>('');
     const [selectedClassId, setSelectedClassId] = useState<string>('');
+    const [staffPresence, setStaffPresence] = useState<StaffPresenceItem[]>([]);
+    const [checkingIn, setCheckingIn] = useState(false);
     const hydratedFromCacheRef = useRef(false);
 
-    const cacheKey = profile?.id ? `teacher_dashboard_${profile.id}` : null;
+    const cacheKey = profile?.id ? `teacher_dashboard_${profile.id}_${mode}` : null;
 
     useEffect(() => {
         hydratedFromCacheRef.current = false;
@@ -116,8 +119,8 @@ export default function TeacherHome() {
             if (isDemo) {
                 // High-quality mock data for Teacher Demo Mode
                 setStats({
-                    studentsCount: 42,
-                    subjectsCount: 4
+                    studentsCount: mode === 'class' ? 32 : 42,
+                    subjectsCount: mode === 'class' ? 8 : 4
                 });
                 setSchedule([
                     {
@@ -176,6 +179,54 @@ export default function TeacherHome() {
                     }
                 ];
 
+                const mockStaff: StaffPresenceItem[] = [
+                    {
+                        teacher_id: profile?.id || 'demo-me',
+                        name: profile?.full_name || 'Dr. Sarah Jenkins',
+                        first_name: 'Sarah',
+                        last_name: 'Jenkins',
+                        department: 'Mathematics',
+                        position: 'Senior Teacher',
+                        status: 'present',
+                        confirmation_status: 'confirmed',
+                        check_in_time: '07:45 AM'
+                    },
+                    {
+                        teacher_id: 'demo-t2',
+                        name: 'Mr. James Mwangi',
+                        first_name: 'James',
+                        last_name: 'Mwangi',
+                        department: 'Sciences',
+                        position: 'Class Teacher',
+                        status: 'present',
+                        confirmation_status: 'unconfirmed',
+                        check_in_time: '08:10 AM'
+                    },
+                    {
+                        teacher_id: 'demo-t3',
+                        name: 'Ms. Grace Wanjiku',
+                        first_name: 'Grace',
+                        last_name: 'Wanjiku',
+                        department: 'Languages',
+                        position: 'Head of Department',
+                        status: 'present',
+                        confirmation_status: 'confirmed',
+                        check_in_time: '07:55 AM'
+                    },
+                    {
+                        teacher_id: 'demo-t4',
+                        name: 'Mr. Peter Omondi',
+                        first_name: 'Peter',
+                        last_name: 'Omondi',
+                        department: 'Humanities',
+                        position: 'Teacher',
+                        status: 'late',
+                        confirmation_status: 'unconfirmed',
+                        check_in_time: '08:40 AM'
+                    }
+                ];
+                setStaffPresence(mockStaff);
+
                 setRoles(mockRoles);
                 syncRoles(mockRoles);
                 setClassTeacherOf(mockCT);
@@ -211,6 +262,13 @@ export default function TeacherHome() {
                 }
             }
 
+            try {
+                const presenceData = await TeacherAttendanceAPI.getStaffPresence();
+                setStaffPresence(presenceData || []);
+            } catch {
+                // Non-blocking staff presence
+            }
+
             if (cacheKey) {
                 CacheService.set(cacheKey, {
                     stats: data.stats,
@@ -220,14 +278,52 @@ export default function TeacherHome() {
                     assignedSubjects: fetchedSubjects,
                 }, 10 * 60 * 1000);
             }
-        } catch (error) {
-            console.error("Error fetching dashboard data:", error);
+        } catch (error: any) {
+            if (!error?.isAuthError) {
+                console.error("Error fetching dashboard data:", error?.message || error);
+            }
             showFetchError("dashboard data", error);
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [isDemo, isInitializing, session, cacheKey, syncRoles, setMode]);
+    }, [isDemo, isInitializing, session, cacheKey, syncRoles, setMode, mode]);
+
+    const handleSelfCheckIn = async () => {
+        try {
+            setCheckingIn(true);
+            if (isDemo) {
+                setStaffPresence(prev => [
+                    {
+                        teacher_id: profile?.id || 'demo-me',
+                        name: profile?.full_name || 'Teacher',
+                        first_name: '',
+                        last_name: '',
+                        position: 'Teacher',
+                        status: 'present',
+                        confirmation_status: 'unconfirmed',
+                        check_in_time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    },
+                    ...prev.filter(p => p.teacher_id !== (profile?.id || 'demo-me'))
+                ]);
+                showSuccess('Checked In', 'Your presence today has been recorded (Self-Reported).');
+                return;
+            }
+
+            await TeacherAttendanceAPI.selfCheckIn({ status: 'present' });
+            showSuccess('Checked In', 'Your presence today has been recorded (Self-Reported).');
+            const presenceData = await TeacherAttendanceAPI.getStaffPresence();
+            setStaffPresence(presenceData || []);
+        } catch (err: any) {
+            showError('Check-in failed', err?.message || 'Could not record attendance');
+        } finally {
+            setCheckingIn(false);
+        }
+    };
+
+    const isSelfPresent = staffPresence.some(
+        s => (s.teacher_id === profile?.id || s.name === profile?.full_name) && s.status === 'present'
+    );
 
     useEffect(() => {
         if (isInitializing) return;
@@ -237,7 +333,7 @@ export default function TeacherHome() {
         } else {
             setLoading(false);
         }
-    }, [isInitializing, session, isDemo, fetchDashboardData]);
+    }, [isInitializing, session, isDemo, fetchDashboardData, mode]);
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -533,7 +629,7 @@ export default function TeacherHome() {
                             </View>
                             <Text className="text-white text-3xl font-bold">{stats?.studentsCount || 0}</Text>
                             <Text className="text-white/80 text-xs font-semibold uppercase tracking-wider">
-                                Students Taught
+                                {mode === 'class' ? 'Class Students' : 'Students Taught'}
                             </Text>
                         </View>
                         <View 
@@ -559,7 +655,7 @@ export default function TeacherHome() {
                                 {stats?.subjectsCount || 0}
                             </Text>
                             <Text className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider">
-                                Active Subjects
+                                {mode === 'class' ? 'Class Subjects' : 'Active Subjects'}
                             </Text>
                         </View>
                     </View>
@@ -715,14 +811,21 @@ export default function TeacherHome() {
                                                     onPress={() => router.push("/(teacher)/classes" as any)}
                                                     className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] border border-gray-200 dark:border-gray-800 py-2.5 rounded-xl items-center active:bg-[#F6F8FA] dark:active:bg-gray-900"
                                                 >
-                                                    <Text className="text-gray-700 dark:text-gray-200 font-bold text-xs">Attendance & Roster</Text>
+                                                    <Text className="text-gray-700 dark:text-gray-200 font-bold text-xs">Roster</Text>
                                                 </TouchableOpacity>
                                                 
                                                 <TouchableOpacity 
-                                                    onPress={() => router.push("/(teacher)/students" as any)}
+                                                    onPress={() => router.push("/(teacher)/management/attendance" as any)}
+                                                    className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] border border-gray-200 dark:border-gray-800 py-2.5 rounded-xl items-center active:bg-[#F6F8FA] dark:active:bg-gray-900"
+                                                >
+                                                    <Text className="text-gray-700 dark:text-gray-200 font-bold text-xs">Attendance</Text>
+                                                </TouchableOpacity>
+
+                                                <TouchableOpacity 
+                                                    onPress={() => router.push("/(teacher)/management/report-cards" as any)}
                                                     className="flex-1 bg-[#FF6900] py-2.5 rounded-xl items-center active:bg-orange-600"
                                                 >
-                                                    <Text className="text-white font-bold text-xs">Student Profiles</Text>
+                                                    <Text className="text-white font-bold text-xs">Report Cards</Text>
                                                 </TouchableOpacity>
                                             </View>
                                         </View>
@@ -765,6 +868,65 @@ export default function TeacherHome() {
                                     </View>
                                 </View>
                             </View>
+                        )}
+                    </View>
+
+                    {/* --- Faculty Presence Today (Part D2) --- */}
+                    <View className="bg-white dark:bg-[#161B22] rounded-[32px] border border-gray-100 dark:border-gray-800 p-5 mb-8 shadow-sm">
+                        <View className="flex-row justify-between items-center mb-4">
+                            <View>
+                                <Text className="text-base font-bold text-gray-900 dark:text-white">Faculty Presence Today</Text>
+                                <Text className="text-gray-400 dark:text-gray-500 text-xs">
+                                    {staffPresence.filter(s => s.status === 'present').length} Present &middot; Real-time status
+                                </Text>
+                            </View>
+                            {isSelfPresent ? (
+                                <View className="flex-row items-center bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20">
+                                    <Check size={14} color="#10b981" />
+                                    <Text className="ml-1.5 text-emerald-600 font-bold text-xs">Checked In</Text>
+                                </View>
+                            ) : (
+                                <TouchableOpacity
+                                    onPress={handleSelfCheckIn}
+                                    disabled={checkingIn}
+                                    className="bg-[#FF6900] px-3.5 py-1.5 rounded-xl active:bg-orange-600"
+                                >
+                                    <Text className="text-white font-bold text-xs">
+                                        {checkingIn ? 'Checking In...' : 'Check In'}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        {staffPresence.length === 0 ? (
+                            <Text className="text-gray-400 text-xs text-center py-2">No presence recorded today yet.</Text>
+                        ) : (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row -mx-2 px-2">
+                                {staffPresence.map((staff, idx) => (
+                                    <View key={staff.teacher_id || idx} className="items-center mr-4 w-20">
+                                        <View className="relative">
+                                            <View className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-950/40 items-center justify-center border-2 border-white dark:border-gray-800">
+                                                <Text className="font-bold text-sm text-[#FF6900]">
+                                                    {(staff.name || 'T').split(' ').map(n => n[0]).slice(0, 2).join('')}
+                                                </Text>
+                                            </View>
+                                            <View className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-[#161B22] ${
+                                                staff.status === 'present' ? 'bg-emerald-500' : staff.status === 'late' ? 'bg-amber-500' : 'bg-gray-400'
+                                            }`} />
+                                        </View>
+                                        <Text numberOfLines={1} className="text-gray-800 dark:text-gray-200 text-xs font-semibold mt-1.5 text-center">
+                                            {staff.name?.split(' ')[0]}
+                                        </Text>
+                                        <View className="mt-0.5">
+                                            <Text className={`text-[9px] font-bold ${
+                                                staff.confirmation_status === 'confirmed' ? 'text-emerald-600' : 'text-amber-500'
+                                            }`}>
+                                                {staff.confirmation_status === 'confirmed' ? 'Confirmed' : 'Self-Reported'}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                ))}
+                            </ScrollView>
                         )}
                     </View>
 

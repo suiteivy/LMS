@@ -418,6 +418,8 @@ exports.getClassTimetable = async (req, res) => {
       )
       .eq("class_id", class_id)
       .eq("institution_id", institution_id)
+      .eq("class_id", class_id)
+      .eq("institution_id", institution_id)
       .order("start_time", { ascending: true }); // Need custom sort for days normally, but this sorts time
 
     if (error) throw error;
@@ -433,6 +435,7 @@ exports.getClassTimetable = async (req, res) => {
  * Get teacher's timetable
  * Uses a two-step query because Supabase JS v2 `.eq("joined_table.col", val)`
  * filters joined columns, NOT rows. We must resolve subject IDs first.
+ * Supports active teacher role mode (class vs subject).
  */
 exports.getTeacherTimetable = async (req, res) => {
   try {
@@ -458,44 +461,79 @@ exports.getTeacherTimetable = async (req, res) => {
     if (!teacherId)
       return res.status(400).json({ error: "Teacher ID required" });
 
-    // Step 1: Get subject IDs taught by this teacher (primary or assistant)
-    const { data: primarySubjectRows, error: primarySubjectError } = await supabase
-      .from("subjects")
+    // Determine active teacher role mode (class vs subject)
+    const reqRoleMode = req.headers["x-teacher-role-mode"] || req.query.role_mode;
+
+    let ctClassIds = [];
+    const { data: ctClasses } = await supabase
+      .from("classes")
       .select("id")
       .eq("teacher_id", teacherId)
       .eq("institution_id", institution_id);
-
-    if (primarySubjectError) throw primarySubjectError;
-
-    const { data: assocSubjectRows, error: assocSubjectError } = await supabase
-      .from("subject_teachers")
-      .select("subject_id")
-      .eq("teacher_id", teacherId)
-      .eq("institution_id", institution_id);
-
-    if (assocSubjectError) throw assocSubjectError;
-
-    const primarySubjectIds = (primarySubjectRows || []).map((s) => s.id);
-    const assocSubjectIds = (assocSubjectRows || []).map((s) => s.subject_id);
-
-    const subjectIds = [...new Set([...primarySubjectIds, ...assocSubjectIds])];
-
-    if (subjectIds.length === 0) {
-      return res.json([]); // Teacher has no assigned subjects yet
+    if (ctClasses && ctClasses.length > 0) {
+      ctClassIds = ctClasses.map((c) => c.id);
     }
 
-    // Step 2: Fetch timetable rows for those subjects
-    const { data, error } = await supabase
+    let activeMode = "subject";
+    if (reqRoleMode === "class" && ctClassIds.length > 0) {
+      activeMode = "class";
+    } else if (reqRoleMode === "subject") {
+      activeMode = "subject";
+    } else if (ctClassIds.length > 0) {
+      const { data: ps } = await supabase
+        .from("subjects")
+        .select("id")
+        .eq("teacher_id", teacherId)
+        .eq("institution_id", institution_id)
+        .limit(1);
+      if (!ps || ps.length === 0) {
+        activeMode = "class";
+      }
+    }
+
+    let timetableQuery = supabase
       .from("timetables")
       .select(
         `
-        id, day_of_week, start_time, end_time, room_number,
+        id, day_of_week, start_time, end_time, room_number, class_id, subject_id,
         classes ( grade_level, form_level, stream ),
         subjects ( title )
         `,
       )
-      .in("subject_id", subjectIds)
-      .eq("institution_id", institution_id)
+      .eq("institution_id", institution_id);
+
+    if (activeMode === "class") {
+      if (ctClassIds.length === 0) return res.json([]);
+      timetableQuery = timetableQuery.in("class_id", ctClassIds);
+    } else {
+      // Subject mode: get taught subjects
+      const { data: primarySubjectRows, error: primarySubjectError } = await supabase
+        .from("subjects")
+        .select("id")
+        .eq("teacher_id", teacherId)
+        .eq("institution_id", institution_id);
+
+      if (primarySubjectError) throw primarySubjectError;
+
+      const { data: assocSubjectRows, error: assocSubjectError } = await supabase
+        .from("subject_teachers")
+        .select("subject_id")
+        .eq("teacher_id", teacherId)
+        .eq("institution_id", institution_id);
+
+      if (assocSubjectError) throw assocSubjectError;
+
+      const primarySubjectIds = (primarySubjectRows || []).map((s) => s.id);
+      const assocSubjectIds = (assocSubjectRows || []).map((s) => s.subject_id);
+      const subjectIds = [...new Set([...primarySubjectIds, ...assocSubjectIds])];
+
+      if (subjectIds.length === 0) {
+        return res.json([]);
+      }
+      timetableQuery = timetableQuery.in("subject_id", subjectIds);
+    }
+
+    const { data, error } = await timetableQuery
       .order("day_of_week", { ascending: true })
       .order("start_time", { ascending: true });
 

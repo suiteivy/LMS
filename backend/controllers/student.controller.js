@@ -2,6 +2,7 @@ const supabase = require("../utils/supabaseClient.js");
 const { buildClassLabel } = require('../utils/classLabel');
 const { getStudentCurrentClassEnrollment } = require('../utils/studentClassEnrollment');
 const { resolveActiveTerm } = require('../utils/resolveActiveTerm');
+const { resolveTeacherScope } = require('../middleware/teacherScope');
 
 const normalizeText = (value) => {
     if (typeof value !== 'string') return '';
@@ -315,49 +316,72 @@ exports.listStudents = async (req, res) => {
             const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
             if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
 
-            // A. Students in classes where this teacher is Class Teacher
-            const { data: ctClasses } = await supabase
-                .from('classes')
-                .select('id')
-                .eq('teacher_id', teacher.id);
-            
-            const ctClassIds = (ctClasses || []).map(c => c.id);
-            let ctStudentIds = [];
-            if (ctClassIds.length > 0) {
+            const reqRoleMode = req.headers['x-teacher-role-mode'] || req.query.role_mode;
+            const scope = await resolveTeacherScope(userId, institution_id, reqRoleMode);
+
+            if (scope && scope.activeMode === 'class' && scope.classTeacherClassIds.length > 0) {
+                // Class Teacher mode: Strictly students in designated classes
                 const { data: ctEnrollments } = await supabase
                     .from('class_enrollments')
                     .select('student_id')
-                    .in('class_id', ctClassIds)
+                    .in('class_id', scope.classTeacherClassIds)
                     .eq('status', 'enrolled');
-                ctStudentIds = (ctEnrollments || []).map(e => e.student_id);
+                allowedStudentIds = (ctEnrollments || []).map(e => e.student_id);
+            } else if (scope && scope.activeMode === 'subject') {
+                // Subject Teacher mode: Strictly students taught by this teacher
+                const subjectIds = scope.taughtSubjectIds || [];
+                if (subjectIds.length > 0) {
+                    const { data: stEnrollments } = await supabase
+                        .from('enrollments')
+                        .select('student_id')
+                        .in('subject_id', subjectIds)
+                        .eq('status', 'enrolled');
+                    allowedStudentIds = (stEnrollments || []).map(e => e.student_id);
+                } else {
+                    allowedStudentIds = [];
+                }
+            } else {
+                // Fallback: designated classes + taught subjects
+                const { data: ctClasses } = await supabase
+                    .from('classes')
+                    .select('id')
+                    .eq('teacher_id', teacher.id);
+                const ctClassIds = (ctClasses || []).map(c => c.id);
+                let ctStudentIds = [];
+                if (ctClassIds.length > 0) {
+                    const { data: ctEnrollments } = await supabase
+                        .from('class_enrollments')
+                        .select('student_id')
+                        .in('class_id', ctClassIds)
+                        .eq('status', 'enrolled');
+                    ctStudentIds = (ctEnrollments || []).map(e => e.student_id);
+                }
+
+                const { data: primarySubjects } = await supabase
+                    .from('subjects')
+                    .select('id')
+                    .eq('teacher_id', teacher.id);
+                const primarySubjectIds = (primarySubjects || []).map(s => s.id);
+
+                const { data: assocSubjects } = await supabase
+                    .from('subject_teachers')
+                    .select('subject_id')
+                    .eq('teacher_id', teacher.id);
+                const assocSubjectIds = (assocSubjects || []).map(s => s.subject_id);
+
+                const subjectIds = [...new Set([...primarySubjectIds, ...assocSubjectIds])];
+                let stStudentIds = [];
+                if (subjectIds.length > 0) {
+                    const { data: stEnrollments } = await supabase
+                        .from('enrollments')
+                        .select('student_id')
+                        .in('subject_id', subjectIds)
+                        .eq('status', 'enrolled');
+                    stStudentIds = (stEnrollments || []).map(e => e.student_id);
+                }
+
+                allowedStudentIds = [...new Set([...ctStudentIds, ...stStudentIds])];
             }
-
-            // B. Students enrolled in subjects where this teacher is primary or assistant
-            const { data: primarySubjects } = await supabase
-                .from('subjects')
-                .select('id')
-                .eq('teacher_id', teacher.id);
-            const primarySubjectIds = (primarySubjects || []).map(s => s.id);
-
-            const { data: assocSubjects } = await supabase
-                .from('subject_teachers')
-                .select('subject_id')
-                .eq('teacher_id', teacher.id);
-            const assocSubjectIds = (assocSubjects || []).map(s => s.subject_id);
-
-            const subjectIds = [...new Set([...primarySubjectIds, ...assocSubjectIds])];
-
-            let stStudentIds = [];
-            if (subjectIds.length > 0) {
-                const { data: stEnrollments } = await supabase
-                    .from('enrollments')
-                    .select('student_id')
-                    .in('subject_id', subjectIds)
-                    .eq('status', 'enrolled');
-                stStudentIds = (stEnrollments || []).map(e => e.student_id);
-            }
-
-            allowedStudentIds = [...new Set([...ctStudentIds, ...stStudentIds])];
         }
 
         let query = supabase

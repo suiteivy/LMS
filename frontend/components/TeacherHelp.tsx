@@ -98,30 +98,6 @@ export default function TeacherHelp() {
                         <Text className="text-gray-500 mt-1">Resources to help you manage your classes.</Text>
                     </View>
 
-                    {/* Search Bar */}
-                    <View 
-                        className="flex-row items-center border rounded-lg px-4 py-3 mb-8"
-                        style={{ 
-                            backgroundColor: isDark ? '#1C2128' : '#FCFCFC',
-                            borderColor: isFocused ? '#FB6900' : (isDark ? '#4B5563' : '#E5E7EB')
-                        }}
-                    >
-                        <Search size={20} color="#9ca3af" className="mr-2" />
-                        <TextInput
-                            placeholder="Search teacher resources..."
-                            className="flex-1 text-gray-700 dark:text-gray-200 h-6 bg-transparent"
-                            placeholderTextColor="#9ca3af"
-                            style={{ 
-                                color: isDark ? '#F9FAFB' : '#111827',
-                                ...Platform.select({
-                                    web: { outlineStyle: 'none' } as any
-                                })
-                            }}
-                            onFocus={() => setIsFocused(true)}
-                            onBlur={() => setIsFocused(false)}
-                        />
-                    </View>
-
                     {/* FAQ Section */}
                     <Text className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mb-4">Frequently Asked Questions</Text>
 
@@ -147,7 +123,7 @@ export default function TeacherHelp() {
                             className="w-[48%] bg-white dark:bg-[#161B22] p-5 rounded-lg border border-gray-100 dark:border-gray-600 items-center"
                         >
                             <Send size={24} color="#0d9488" />
-                            <Text className="mt-2 font-bold text-gray-800 dark:text-white">Submit Ticket</Text>
+                            <Text className="mt-2 font-bold text-gray-800 dark:text-white">Submit Issue</Text>
                             <Text className="text-xs text-gray-400">In-App Support</Text>
                         </TouchableOpacity>
 
@@ -172,7 +148,7 @@ export default function TeacherHelp() {
                         {/* Modal Header */}
                         <View className="flex-row justify-between items-center p-6 border-b border-gray-100">
                             <Text className="text-xl font-bold text-gray-900 dark:text-white">
-                                {selectedTab === 'ticket' ? 'Submit Support Ticket' : 'Email Support'}
+                                {selectedTab === 'ticket' ? 'Submit Support Issue' : 'Email Support'}
                             </Text>
                             <TouchableOpacity onPress={() => setSelectedTab(null)}>
                                 <X size={24} color="#9ca3af" />
@@ -213,7 +189,7 @@ export default function TeacherHelp() {
                                         {submitting ? <ActivityIndicator color="#fff" /> : (
                                             <>
                                                 <Send size={20} color="#fff" style={{ marginRight: 8 }} />
-                                                <Text className="text-white font-extrabold tracking-wide">SUBMIT TICKET</Text>
+                                                <Text className="text-white font-extrabold tracking-wide">SUBMIT ISSUE</Text>
                                             </>
                                         )}
                                     </TouchableOpacity>

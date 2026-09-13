@@ -9,6 +9,7 @@ router.use(authMiddleware);
 
 // GET routes: all roles (restricted internally for student/parent)
 router.get('/', authorizeRoles(['admin', 'teacher', 'student', 'parent', 'master_admin']), reportsController.getReports);
+router.get('/rankings', authorizeRoles(['admin', 'teacher', 'master_admin']), require('../controllers/teacher.controller.js').getStudentRankings);
 router.get('/:id', authorizeRoles(['admin', 'teacher', 'student', 'parent', 'master_admin']), reportsController.getReportById);
 
 // Mutation routes: admin and teacher only

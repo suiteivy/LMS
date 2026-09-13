@@ -10,7 +10,10 @@ import {
     GraduationCap,
     Megaphone,
     MessageSquare,
-    Award
+    Award,
+    Trophy,
+    Layers,
+    FileText
 } from 'lucide-react-native';
 import { ScrollView, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -65,7 +68,7 @@ export default function ManagementIndex() {
     const { mode, setMode, canToggle, isSubjectTeacher, isClassTeacher, isLibrarian } = useTeacherRoleMode();
     const [pendingCount, setPendingCount] = useState<number | null>(null);
     const [submittedCount, setSubmittedCount] = useState<number | null>(null);
-    const [classCount, setClassCount] = useState<number | null>(null);
+    const [classAttendanceCount, setClassAttendanceCount] = useState<number | null>(null);
     const [classStudentCount, setClassStudentCount] = useState<number | null>(null);
     const [statsLoading, setStatsLoading] = useState(true);
 
@@ -75,7 +78,7 @@ export default function ManagementIndex() {
             if (isDemo) {
                 setPendingCount(12);
                 setSubmittedCount(28);
-                setClassCount(1);
+                setClassAttendanceCount(33);
                 setClassStudentCount(35);
                 return;
             }
@@ -83,7 +86,7 @@ export default function ManagementIndex() {
             if (!teacherId) {
                 setPendingCount(0);
                 setSubmittedCount(0);
-                setClassCount(0);
+                setClassAttendanceCount(0);
                 setClassStudentCount(0);
                 return;
             }
@@ -131,7 +134,7 @@ export default function ManagementIndex() {
                 setSubmittedCount(0);
             }
 
-            // 2. Fetch Class Teacher stats
+            // 2. Fetch Class Teacher stats (Class Students & Attendance Today)
             const cacheKey = `teacher_dashboard_${teacherId}`;
             const cached = await CacheService.get<any>(cacheKey, { allowStale: true });
             let ctClasses = cached?.data?.classTeacherOf;
@@ -145,7 +148,6 @@ export default function ManagementIndex() {
             }
 
             const ctClassIds = (ctClasses || []).map((c: any) => c.id);
-            setClassCount(ctClassIds.length);
 
             if (ctClassIds.length > 0) {
                 const { data: ctEnrollments } = await supabase
@@ -155,14 +157,24 @@ export default function ManagementIndex() {
                     .eq('status', 'enrolled');
                 const uniqueStudents = new Set((ctEnrollments || []).map((e: any) => e.student_id));
                 setClassStudentCount(uniqueStudents.size);
+
+                const todayStr = new Date().toISOString().split('T')[0];
+                const { count: presentCount } = await supabase
+                    .from('attendance')
+                    .select('id', { count: 'exact', head: true })
+                    .in('class_id', ctClassIds)
+                    .eq('date', todayStr)
+                    .eq('status', 'present');
+                setClassAttendanceCount(presentCount || 0);
             } else {
                 setClassStudentCount(0);
+                setClassAttendanceCount(0);
             }
         } catch (error) {
             console.error("Error fetching management stats:", error);
             setPendingCount(0);
             setSubmittedCount(0);
-            setClassCount(0);
+            setClassAttendanceCount(0);
             setClassStudentCount(0);
         } finally {
             setStatsLoading(false);
@@ -233,6 +245,33 @@ export default function ManagementIndex() {
             tooltipId: 'teacher.manage.resources'
         },
         {
+            icon: Layers,
+            title: "Coverage Planner",
+            description: "Termly CBC topic strands and syllabus timeline",
+            color: "#6366f1",
+            bgColor: "#e0e7ff",
+            route: "/(teacher)/management/coverage",
+            tooltipId: 'teacher.manage.coverage'
+        },
+        {
+            icon: BookOpen,
+            title: "Record of Work",
+            description: "Lesson plans, learning objectives & reflections",
+            color: "#059669",
+            bgColor: "#d1fae5",
+            route: "/(teacher)/management/record-of-work",
+            tooltipId: 'teacher.manage.record_of_work'
+        },
+        {
+            icon: FileText,
+            title: "Exams Module",
+            description: "Schedule exams and record graded assessments",
+            color: "#d97706",
+            bgColor: "#fef3c7",
+            route: "/(teacher)/management/exams",
+            tooltipId: 'teacher.manage.exams'
+        },
+        {
             icon: Award,
             title: "Report Cards",
             description: "View and manage student report cards",
@@ -240,6 +279,15 @@ export default function ManagementIndex() {
             bgColor: "#ede9fe",
             route: "/(teacher)/management/report-cards",
             tooltipId: 'teacher.manage.report_cards'
+        },
+        {
+            icon: Trophy,
+            title: "Student Rankings",
+            description: "View student academic leaderboards and CBC competency bands",
+            color: "#10B981",
+            bgColor: "#D1FAE5",
+            route: "/(teacher)/management/rankings",
+            tooltipId: 'teacher.manage.rankings'
         },
         {
             icon: MessageSquare,
@@ -275,19 +323,27 @@ export default function ManagementIndex() {
         '/(teacher)/management/grade-entry',
         '/(teacher)/management/assignments',
         '/(teacher)/management/attendance',
+        '/(teacher)/management/coverage',
+        '/(teacher)/management/record-of-work',
+        '/(teacher)/management/exams',
         '/(teacher)/management/resources',
         '/(teacher)/management/messages',
         '/(teacher)/management/announcements',
         '/(teacher)/management/analytics',
+        '/(teacher)/management/rankings',
     ];
 
     const classModeRoutes = [
         '/(teacher)/management/attendance',
+        '/(teacher)/management/coverage',
+        '/(teacher)/management/record-of-work',
+        '/(teacher)/management/exams',
         '/(teacher)/management/report-cards',
         '/(teacher)/management/diary',
         '/(teacher)/management/messages',
         '/(teacher)/management/announcements',
         '/(teacher)/management/analytics',
+        '/(teacher)/management/rankings',
     ];
 
     const librarianModeRoutes = [
@@ -369,41 +425,41 @@ export default function ManagementIndex() {
                     <View className="flex-row gap-4 mb-8">
                         <TouchableOpacity
                             activeOpacity={0.8}
-                            onPress={() => mode !== 'class' && router.push('/(teacher)/management/assignments' as any)}
+                            onPress={() => router.push((mode === 'class' ? '/(teacher)/classes' : '/(teacher)/management/assignments') as any)}
                             className="flex-1 bg-gray-900 dark:bg-[#161B22] p-6 rounded-[32px] shadow-lg border border-transparent dark:border-gray-800 justify-center active:opacity-90"
                         >
                             <Text className="text-white/40 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">
-                                {mode === 'class' ? 'Designated Classes' : 'Awaiting Grading'}
+                                {mode === 'class' ? 'Class Students' : 'Awaiting Grading'}
                             </Text>
                             {statsLoading ? (
                                 <ActivityIndicator size="small" color="white" className="mt-2" style={{ alignSelf: 'flex-start' }} />
                             ) : (
                                 <Text className="text-white text-3xl font-bold mt-1">
-                                    {mode === 'class' ? (classCount ?? 0) : (pendingCount ?? 0)}
+                                    {mode === 'class' ? (classStudentCount ?? 0) : (pendingCount ?? 0)}
                                 </Text>
                             )}
-                            {mode !== 'class' && (
-                                <Text className="text-white/50 text-[9px] font-medium mt-1">Review pending submissions →</Text>
-                            )}
+                            <Text className="text-white/50 text-[9px] font-medium mt-1">
+                                {mode === 'class' ? 'View class roster →' : 'Review pending submissions →'}
+                            </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             activeOpacity={0.8}
-                            onPress={() => mode !== 'class' && router.push('/(teacher)/management/assignments' as any)}
+                            onPress={() => router.push((mode === 'class' ? '/(teacher)/management/attendance' : '/(teacher)/management/assignments') as any)}
                             className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm justify-center active:opacity-90"
                         >
                             <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">
-                                {mode === 'class' ? 'Class Students' : 'Graded Submissions'}
+                                {mode === 'class' ? 'Attendance Today' : 'Graded Submissions'}
                             </Text>
                             {statsLoading ? (
                                 <ActivityIndicator size="small" color="#FF6900" className="mt-2" style={{ alignSelf: 'flex-start' }} />
                             ) : (
                                 <Text className="text-gray-900 dark:text-white text-3xl font-bold mt-1">
-                                    {mode === 'class' ? (classStudentCount ?? 0) : (submittedCount ?? 0)}
+                                    {mode === 'class' ? `${classAttendanceCount ?? 0}` : `${submittedCount ?? 0}`}
                                 </Text>
                             )}
-                            {mode !== 'class' && (
-                                <Text className="text-gray-400 dark:text-gray-500 text-[9px] font-medium mt-1">Completed grading →</Text>
-                            )}
+                            <Text className="text-gray-400 dark:text-gray-500 text-[9px] font-medium mt-1">
+                                {mode === 'class' ? 'Mark homeroom attendance →' : 'Completed grading →'}
+                            </Text>
                         </TouchableOpacity>
                     </View>
 
