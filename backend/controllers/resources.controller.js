@@ -21,12 +21,12 @@ exports.createResource = async (req, res) => {
 
         let teacherId = null;
         if (userRole === 'teacher') {
-            const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+            const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).maybeSingle();
             if (!teacher) return res.status(403).json({ error: "Teacher profile not found" });
             teacherId = teacher.id;
         } else if (userRole === 'admin') {
             if (subject_id) {
-                const { data: subject } = await supabase.from('subjects').select('teacher_id').eq('id', subject_id).single();
+                const { data: subject } = await supabase.from('subjects').select('teacher_id').eq('id', subject_id).maybeSingle();
                 if (subject) teacherId = subject.teacher_id;
             }
         } else {
@@ -36,7 +36,7 @@ exports.createResource = async (req, res) => {
         // Auto-resolve class_id from subject if not explicitly supplied
         let finalClassId = class_id || null;
         if (!finalClassId && subject_id) {
-            const { data: subjectRow } = await supabase.from('subjects').select('class_id').eq('id', subject_id).single();
+            const { data: subjectRow } = await supabase.from('subjects').select('class_id').eq('id', subject_id).maybeSingle();
             if (subjectRow?.class_id) {
                 finalClassId = subjectRow.class_id;
             }
@@ -98,7 +98,7 @@ exports.getResources = async (req, res) => {
             // Strict audience control: students only see 'everyone' resources and approved status
             query = query.eq('target_audience', 'everyone').eq('status', 'approved');
 
-            const { data: student } = await supabase.from('students').select('id, class_id').eq('user_id', userId).single();
+            const { data: student } = await supabase.from('students').select('id, class_id').eq('user_id', userId).maybeSingle();
             if (!student) return res.json(paginatedResponse([], 0, page, limit));
 
             const { data: enrollments } = await supabase.from('enrollments').select('subject_id').eq('student_id', student.id).eq('status', 'enrolled');
@@ -120,11 +120,17 @@ exports.getResources = async (req, res) => {
             }
             const reqRoleMode = req.headers['x-teacher-role-mode'] || req.query.role_mode;
             const scope = await resolveTeacherScope(userId, req.institution_id, reqRoleMode);
-            if (!subject_id && !class_id) {
-                if (scope && scope.activeMode === 'class' && scope.classTeacherClassIds.length > 0) {
-                    query = query.or(`class_id.in.(${scope.classTeacherClassIds.join(',')}),and(class_id.is.null,subject_id.is.null)`);
-                } else if (scope && scope.taughtSubjectIds.length > 0) {
-                    query = query.or(`subject_id.in.(${scope.taughtSubjectIds.join(',')}),and(class_id.is.null,subject_id.is.null)`);
+            if (!subject_id && !class_id && scope) {
+                const ctClassIds = scope.classTeacherClassIds || [];
+                const taughtSubjIds = scope.taughtSubjectIds || scope.subjectIds || [];
+                const hodSubjIds = scope.hodSubjectIds || [];
+
+                if (scope.activeMode === 'class' && ctClassIds.length > 0) {
+                    query = query.or(`class_id.in.(${ctClassIds.join(',')}),and(class_id.is.null,subject_id.is.null)`);
+                } else if (scope.activeMode === 'hod' && hodSubjIds.length > 0) {
+                    query = query.or(`subject_id.in.(${hodSubjIds.join(',')}),and(class_id.is.null,subject_id.is.null)`);
+                } else if (taughtSubjIds.length > 0) {
+                    query = query.or(`subject_id.in.(${taughtSubjIds.join(',')}),and(class_id.is.null,subject_id.is.null)`);
                 }
             }
         } else if (target_audience) {

@@ -3,6 +3,7 @@ import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { SchoolProvider } from "@/contexts/SchoolContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { Slot, Tabs } from "expo-router";
 import { House, LayoutGrid, Settings, Users, Wallet, MessageSquare, Bell, Calendar } from "lucide-react-native";
@@ -248,10 +249,24 @@ function AdminTabs() {
 
 function AdminSidebar() {
     const { showFinancials, hasMessaging } = useSubscriptionTier();
-    const items = (showFinancials ? ALL_NAV_ITEMS : BETA_NAV_ITEMS)
+    const { activeRole, profile, isFinanceAdmin } = useAuth();
+
+    const currentRole = String(activeRole || profile?.role || '').toLowerCase();
+    const isPureFinanceAdmin =
+        currentRole === 'finance_administrator' ||
+        currentRole === 'finance_admin' ||
+        (isFinanceAdmin && profile?.role !== 'admin');
+
+    const baseItems = (showFinancials ? ALL_NAV_ITEMS : BETA_NAV_ITEMS)
         .filter((item) => (item.name === 'communication/index' ? hasMessaging : true));
+
+    // If the user's active role is strictly finance admin, limit sidebar navigation strictly to finance and accessibility
+    const items = isPureFinanceAdmin
+        ? baseItems.filter((item) => ['finance/index', 'accessibility/settings', 'notifications'].includes(item.name))
+        : baseItems;
+
     return (
-        <WebSidebar items={items} basePath="(admin)" role="Admin">
+        <WebSidebar items={items} basePath="(admin)" role={isPureFinanceAdmin ? "Finance" : "Admin"}>
             <Slot />
         </WebSidebar>
     );
@@ -263,7 +278,7 @@ export default function AdminLayout() {
     const useWebLayout = width >= 768;
 
     return (
-        <AuthGuard allowedRoles={['admin']}>
+        <AuthGuard allowedRoles={['admin', 'finance_administrator', 'finance_admin']}>
             <SchoolProvider>
                 {useWebLayout ? <AdminSidebar /> : <AdminTabs />}
             </SchoolProvider>

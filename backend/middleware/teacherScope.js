@@ -77,9 +77,35 @@ async function resolveTeacherScope(userId, institutionId, requestedMode = null) 
     const { data: ctClasses } = await ctQuery;
     const classTeacherClassIds = (ctClasses || []).map((c) => c.id);
 
+    // Fetch HOD subjects where this teacher is HOD
+    let hodQuery = supabase
+        .from('subjects')
+        .select('id')
+        .eq('hod_teacher_id', teacherId);
+    if (institutionId) hodQuery = hodQuery.eq('institution_id', institutionId);
+
+    let hodAssocQuery = supabase
+        .from('subject_teachers')
+        .select('subject_id')
+        .eq('teacher_id', teacherId)
+        .eq('is_hod', true);
+    if (institutionId) hodAssocQuery = hodAssocQuery.eq('institution_id', institutionId);
+
+    const [{ data: hodDirect }, { data: hodAssoc }] = await Promise.all([
+        hodQuery,
+        hodAssocQuery,
+    ]);
+
+    const hodSubjectIds = [
+        ...new Set([
+            ...(hodDirect || []).map((s) => s.id),
+            ...(hodAssoc || []).map((a) => a.subject_id),
+        ]),
+    ];
+
     const isClassTeacher = classTeacherClassIds.length > 0;
     const isSubjectTeacher = subjectIds.length > 0;
-    const isHOD = teacher.position === 'head_of_department';
+    const isHOD = teacher.position === 'head_of_department' || hodSubjectIds.length > 0;
 
     // 4. Determine activeMode strictly per Part B6
     // If requestedMode is valid for this teacher, use it; otherwise fallback cleanly.
@@ -88,6 +114,8 @@ async function resolveTeacherScope(userId, institutionId, requestedMode = null) 
 
     if (normReqMode === 'class' && isClassTeacher) {
         activeMode = 'class';
+    } else if (normReqMode === 'hod' && isHOD) {
+        activeMode = 'hod';
     } else if (normReqMode === 'subject' && isSubjectTeacher) {
         activeMode = 'subject';
     } else if (normReqMode === 'librarian') {
@@ -96,18 +124,23 @@ async function resolveTeacherScope(userId, institutionId, requestedMode = null) 
         activeMode = 'subject';
     } else if (isClassTeacher) {
         activeMode = 'class';
+    } else if (isHOD) {
+        activeMode = 'hod';
     }
 
     return {
         teacherId,
         teacher,
         subjectIds,
+        taughtSubjectIds: subjectIds,
         subjectClassIds,
+        taughtClassIds: subjectClassIds,
         classTeacherClassIds,
         classTeacherClasses: ctClasses || [],
         isClassTeacher,
         isSubjectTeacher,
         isHOD,
+        hodSubjectIds,
         activeMode,
     };
 }

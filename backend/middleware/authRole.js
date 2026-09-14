@@ -48,31 +48,39 @@ function authorizeRoles(roles = []) {
         expandRoleAliases(role).forEach((alias) => allowedRoles.add(alias));
       });
 
-      const userRoles = new Set();
-      const addUserRole = (role) => {
-        expandRoleAliases(role).forEach((alias) => userRoles.add(alias));
-      };
+      const explicitActiveRole = req.headers['x-active-role'] || user.active_role;
+      let isAllowed = false;
 
-      addUserRole(user.active_role);
-      addUserRole(user.role);
-
-      let isAllowed = Array.from(userRoles).some((role) => allowedRoles.has(role));
-
-      // Check available roles (e.g. admin who is also teacher)
-      if (!isAllowed && Array.isArray(user.available_roles) && user.available_roles.length > 0) {
-        user.available_roles.forEach(addUserRole);
-        isAllowed = Array.from(userRoles).some((role) => allowedRoles.has(role));
+      if (explicitActiveRole) {
+        const activeRoleAliases = expandRoleAliases(explicitActiveRole);
+        isAllowed = activeRoleAliases.some((role) => allowedRoles.has(role));
       }
 
-      // Check custom roles as well
-      if (!isAllowed && user.roles && user.roles.length > 0) {
-        user.roles.forEach(addUserRole);
+      // If active_role is not explicit or didn't match, check user profile role and available roles
+      if (!isAllowed && !req.headers['x-active-role']) {
+        const userRoles = new Set();
+        const addUserRole = (role) => {
+          expandRoleAliases(role).forEach((alias) => userRoles.add(alias));
+        };
+
+        addUserRole(user.role);
+
+        if (Array.isArray(user.available_roles) && user.available_roles.length > 0) {
+          user.available_roles.forEach(addUserRole);
+        }
+
+        if (user.roles && user.roles.length > 0) {
+          user.roles.forEach(addUserRole);
+        }
+
         isAllowed = Array.from(userRoles).some((role) => allowedRoles.has(role));
       }
 
       // Master admins (including platform_admin alias) inherit standard admin route privileges
-      if (!isAllowed && userRoles.has('master_admin') && allowedRoles.has('admin')) {
-        isAllowed = true;
+      if (!isAllowed && (user.role === 'master_admin' || user.is_platform_admin || explicitActiveRole === 'master_admin')) {
+        if (allowedRoles.has('admin')) {
+          isAllowed = true;
+        }
       }
 
       if (!isAllowed) {

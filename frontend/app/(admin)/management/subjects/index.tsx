@@ -1,3 +1,4 @@
+import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Subject } from '@/types/types';
@@ -158,12 +159,18 @@ export default function SubjectsIndex() {
                                 </TouchableOpacity>
                             )}
                         </View>
-                        <TouchableOpacity
-                            onPress={() => router.push('/(admin)/management/subjects/create' as any)}
-                            style={{ width: 40, height: 40, backgroundColor: '#FF6B00', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                        <ActionTooltip
+                            label="Create Subject"
+                            description="Configure curriculum title, syllabus codes, departmental HOD, and class offerings."
+                            learnMoreAnchor="hod-role"
                         >
-                            <Ionicons name="add" size={24} color="white" />
-                        </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => router.push('/(admin)/management/subjects/create' as any)}
+                                style={{ width: 40, height: 40, backgroundColor: '#FF6B00', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                <Ionicons name="add" size={24} color="white" />
+                            </TouchableOpacity>
+                        </ActionTooltip>
                     </View>
                 </View>
 

@@ -656,6 +656,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (studentId) rolesSet.add('student');
       if (isLibrarianActive) rolesSet.add('librarian');
       if (isFinanceAdminActive) rolesSet.add('finance_administrator');
+      if (userData.custom_roles && Array.isArray(userData.custom_roles)) {
+        userData.custom_roles.forEach((cr: any) => {
+          if (cr?.name) rolesSet.add(cr.name.toLowerCase());
+        });
+      }
     }
     const newAvailableRoles = Array.from(rolesSet);
     setAvailableRoles(newAvailableRoles);
@@ -799,6 +804,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsFinanceAdmin(isFinanceAdminFlag);
       userData.is_finance_admin = isFinanceAdminFlag;
 
+      let customRoles: any[] = [];
+      try {
+        const { data: urData } = await supabase
+          .from('user_roles')
+          .select('roles(id, name, description)')
+          .eq('user_id', userId);
+        if (urData) {
+          customRoles = urData.map((ur: any) => ur.roles).filter(Boolean);
+        }
+      } catch (urErr) {
+        console.warn('[AuthContext] Error loading user custom roles:', urErr);
+      }
+      userData.custom_roles = customRoles;
+
       // Cache profile locally for offline resilience
       try {
         await AsyncStorage.setItem(`lms_cached_profile_${userId}`, JSON.stringify(userData));
@@ -849,7 +868,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       case "librarian": return "/(teacher)/management/library";
       case "finance_administrator":
       case "finance_admin": return "/(admin)/finance";
-      default: return "/(auth)/signIn";
+      default: {
+        if (userProfile.role === 'admin') return "/(admin)";
+        if (userProfile.role === 'teacher') return "/(teacher)";
+        return "/(auth)/signIn";
+      }
     }
   }, [activeRole]);
 

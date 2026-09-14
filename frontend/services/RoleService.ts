@@ -7,13 +7,98 @@ export interface Permission {
   category?: string;
 }
 
+export type DataScope = 'all' | 'levels' | 'classes';
+
 export interface CustomRole {
   id: string;
   name: string;
   description?: string;
+  data_scope?: DataScope;
+  metadata?: {
+    level_ids?: string[];
+    class_ids?: string[];
+    actions?: Record<string, boolean>;
+    template?: string;
+    [key: string]: any;
+  };
   isDefault: boolean;
   permissions: string[];
 }
+
+export interface RoleTemplate {
+  id: string;
+  title: string;
+  description: string;
+  permissions: string[];
+  data_scope: DataScope;
+}
+
+export const ROLE_TEMPLATES: RoleTemplate[] = [
+  {
+    id: 'blank',
+    title: 'Clean Slate',
+    description: 'Start with no pre-selected permissions and configure from scratch.',
+    permissions: [],
+    data_scope: 'all'
+  },
+  {
+    id: 'academic_coordinator',
+    title: 'Academic Coordinator',
+    description: 'Full academic management, timetables, and report card publishing.',
+    permissions: [
+      'academic:read',
+      'academic:write',
+      'academic:publish_reports',
+      'timetables:read',
+      'timetables:write',
+      'timetables:publish',
+      'classes:read',
+      'attendance:read'
+    ],
+    data_scope: 'all'
+  },
+  {
+    id: 'grade_head',
+    title: 'Head of Year / Level Lead',
+    description: 'Academic and attendance management scoped to assigned levels.',
+    permissions: [
+      'academic:read',
+      'academic:write',
+      'attendance:read',
+      'attendance:write',
+      'classes:read',
+      'messages:read',
+      'messages:write'
+    ],
+    data_scope: 'levels'
+  },
+  {
+    id: 'assistant_bursar',
+    title: 'Assistant Bursar',
+    description: 'Finance and bursaries read/write access without core institution settings.',
+    permissions: [
+      'finance:read',
+      'finance:write',
+      'bursary:read',
+      'bursary:write',
+      'classes:read'
+    ],
+    data_scope: 'all'
+  },
+  {
+    id: 'communications_officer',
+    title: 'Communications Officer',
+    description: 'Institution announcements, messaging hub, and directory viewing.',
+    permissions: [
+      'messages:read',
+      'messages:write',
+      'announcements:write',
+      'users:read',
+      'classes:read'
+    ],
+    data_scope: 'all'
+  }
+];
 
 export const RoleAPI = {
   // Get all roles with their permissions
@@ -39,12 +124,20 @@ export const RoleAPI = {
   },
 
   // Create a new custom role
-  createRole: async (name: string, description: string, permissionNames: string[]): Promise<any> => {
+  createRole: async (
+    name: string,
+    description: string,
+    permissionNames: string[],
+    dataScope: 'all' | 'levels' | 'classes' = 'all',
+    metadata: Record<string, any> = {}
+  ): Promise<any> => {
     try {
       const response = await api.post("/roles", {
         name,
         description,
-        permission_names: permissionNames
+        permission_names: permissionNames,
+        data_scope: dataScope,
+        metadata
       });
       return response.data;
     } catch (error) {
@@ -54,12 +147,21 @@ export const RoleAPI = {
   },
 
   // Update a custom role & its permissions
-  updateRole: async (id: string, name: string, description: string, permissionNames: string[]): Promise<any> => {
+  updateRole: async (
+    id: string,
+    name: string,
+    description: string,
+    permissionNames: string[],
+    dataScope: 'all' | 'levels' | 'classes' = 'all',
+    metadata: Record<string, any> = {}
+  ): Promise<any> => {
     try {
       const response = await api.put(`/roles/${id}`, {
         name,
         description,
-        permission_names: permissionNames
+        permission_names: permissionNames,
+        data_scope: dataScope,
+        metadata
       });
       return response.data;
     } catch (error) {

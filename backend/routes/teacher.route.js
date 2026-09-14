@@ -18,7 +18,8 @@ const {
     getRecordOfWork,
     createRecordOfWork,
     updateRecordOfWork,
-    deleteRecordOfWork
+    deleteRecordOfWork,
+    detectLessonDateInfo
 } = require("../controllers/teacher.controller.js");
 const { authMiddleware } = require("../middleware/auth.middleware.js");
 const { authorizeRoles } = require("../middleware/authRole.js");
@@ -44,6 +45,7 @@ router.put("/coverage-plans/:id", updateCoveragePlan);
 router.delete("/coverage-plans/:id", deleteCoveragePlan);
 
 // Record of Work (J2)
+router.get("/record-of-work/detect-date", detectLessonDateInfo);
 router.get("/record-of-work", getRecordOfWork);
 router.post("/record-of-work", createRecordOfWork);
 router.put("/record-of-work/:id", updateRecordOfWork);

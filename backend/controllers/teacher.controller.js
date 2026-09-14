@@ -784,7 +784,7 @@ exports.getSubjectClasses = async (req, res) => {
 
         let query = supabase
             .from("subjects")
-            .select("id, title, class_id, classes(id, name, display_name, grade_level, form_level, stream, class_type)");
+            .select("id, title, class_id, classes(id, display_name, grade_level, form_level, stream, class_type)");
 
         if (institution_id) query = query.eq("institution_id", institution_id);
         if (subject_id) query = query.eq("id", subject_id);
@@ -814,7 +814,7 @@ exports.getSubjectClasses = async (req, res) => {
 
             const { data: assoc } = await supabase
                 .from("subject_teachers")
-                .select("subject_id, subject:subjects(id, title, class_id, classes(id, name, display_name, grade_level, form_level, stream, class_type))")
+                .select("subject_id, subject:subjects(id, title, class_id, classes(id, display_name, grade_level, form_level, stream, class_type))")
                 .eq("teacher_id", teacher.id);
 
             const map = new Map();
@@ -916,13 +916,13 @@ exports.getMyProfile = async (req, res) => {
         // 1. Assigned subjects (primary + assistant)
         const { data: primarySubjects } = await supabase
             .from("subjects")
-            .select("id, title, class_id, classes(id, name, display_name, grade_level, form_level, stream, class_type)")
+            .select("id, title, class_id, classes(id, display_name, grade_level, form_level, stream, class_type)")
             .eq("teacher_id", teacher.id)
             .eq("institution_id", institution_id);
 
         const { data: assocSubjects } = await supabase
             .from("subject_teachers")
-            .select("subject_id, subject:subjects(id, title, class_id, classes(id, name, display_name, grade_level, form_level, stream, class_type))")
+            .select("subject_id, subject:subjects(id, title, class_id, classes(id, display_name, grade_level, form_level, stream, class_type))")
             .eq("teacher_id", teacher.id);
 
         const subjectsMap = new Map();
@@ -1231,8 +1231,29 @@ exports.getStudentRankings = async (req, res) => {
             .in('student_id', studentIds)
             .in('assignments.subject_id', targetSubjectIds);
 
-        // 4. Calculate per-student performance and CBC band
-        const cbcDistribution = { EE: 0, ME: 0, AE: 0, BE: 0 };
+        // 4. Fetch institution's configured grading scale
+        let activeScales = [];
+        if (institution_id) {
+            const { data: scalesData } = await supabase
+                .from('grading_scales')
+                .select('*')
+                .eq('institution_id', institution_id)
+                .eq('is_active', true)
+                .order('min_score', { ascending: false });
+            activeScales = scalesData || [];
+        }
+
+        // Initialize dynamic distribution map
+        const gradeDistribution = {};
+        if (activeScales.length > 0) {
+            activeScales.forEach(s => {
+                const key = s.letter_grade || s.name;
+                gradeDistribution[key] = 0;
+            });
+        } else {
+            // Default fallback if no scales are configured
+            ['EE', 'ME', 'AE', 'BE'].forEach(k => { gradeDistribution[k] = 0; });
+        }
 
         const studentRankings = studentIds.map(sId => {
             const stObj = studentsMap.get(sId);
@@ -1246,30 +1267,40 @@ exports.getStudentRankings = async (req, res) => {
                 ? Math.round(validGrades.reduce((a, b) => a + b, 0) / validGrades.length)
                 : 0;
 
-            // Map to CBC Competency Bands:
-            // EE: 80 - 100 (Exceeding Expectation)
-            // ME: 60 - 79 (Meeting Expectation)
-            // AE: 40 - 59 (Approaching Expectation)
-            // BE: 0 - 39 (Below Expectation)
-            let cbcBand = "BE";
-            let cbcLabel = "Below Expectation";
-            if (avgScore >= 80) {
-                cbcBand = "EE";
-                cbcLabel = "Exceeding Expectation";
-                cbcDistribution.EE += 1;
-            } else if (avgScore >= 60) {
-                cbcBand = "ME";
-                cbcLabel = "Meeting Expectation";
-                cbcDistribution.ME += 1;
-            } else if (avgScore >= 40) {
-                cbcBand = "AE";
-                cbcLabel = "Approaching Expectation";
-                cbcDistribution.AE += 1;
+            let assignedGrade = "BE";
+            let assignedLabel = "Below Expectation";
+
+            if (activeScales.length > 0) {
+                const match = activeScales.find(s => avgScore >= s.min_score && avgScore <= s.max_score);
+                if (match) {
+                    assignedGrade = match.letter_grade || match.name;
+                    assignedLabel = match.description || match.name || assignedGrade;
+                } else if (avgScore < activeScales[activeScales.length - 1].min_score) {
+                    const lowest = activeScales[activeScales.length - 1];
+                    assignedGrade = lowest.letter_grade || lowest.name;
+                    assignedLabel = lowest.description || lowest.name || assignedGrade;
+                } else {
+                    const highest = activeScales[0];
+                    assignedGrade = highest.letter_grade || highest.name;
+                    assignedLabel = highest.description || highest.name || assignedGrade;
+                }
             } else {
-                cbcBand = "BE";
-                cbcLabel = "Below Expectation";
-                cbcDistribution.BE += 1;
+                if (avgScore >= 80) {
+                    assignedGrade = "EE";
+                    assignedLabel = "Exceeding Expectation";
+                } else if (avgScore >= 60) {
+                    assignedGrade = "ME";
+                    assignedLabel = "Meeting Expectation";
+                } else if (avgScore >= 40) {
+                    assignedGrade = "AE";
+                    assignedLabel = "Approaching Expectation";
+                } else {
+                    assignedGrade = "BE";
+                    assignedLabel = "Below Expectation";
+                }
             }
+
+            gradeDistribution[assignedGrade] = (gradeDistribution[assignedGrade] || 0) + 1;
 
             return {
                 student_id: sId,
@@ -1279,8 +1310,10 @@ exports.getStudentRankings = async (req, res) => {
                 grade_level: stObj?.grade_level || null,
                 graded_tasks: validGrades.length,
                 average_score: avgScore,
-                cbc_band: cbcBand,
-                cbc_label: cbcLabel,
+                cbc_band: assignedGrade,
+                cbc_label: assignedLabel,
+                grade: assignedGrade,
+                grade_label: assignedLabel,
             };
         });
 
@@ -1299,7 +1332,9 @@ exports.getStudentRankings = async (req, res) => {
         res.json({
             scope_mode: scope?.activeMode || (userRole === 'admin' ? 'admin' : 'subject'),
             total_students: studentRankings.length,
-            cbc_distribution: cbcDistribution,
+            cbc_distribution: gradeDistribution,
+            grade_distribution: gradeDistribution,
+            grading_scale: activeScales,
             rankings: studentRankings,
         });
     } catch (err) {
@@ -1481,7 +1516,7 @@ exports.createCoveragePlan = async (req, res) => {
             return res.status(400).json({ error: "subject_id, title, term, and academic_year are required" });
         }
 
-        // Check authorization: Admin, HOD, or Assigned Teacher
+        // Check authorization: Admin, or HOD for this specific subject
         let creatorId = userId;
         if (userRole !== 'admin') {
             const { data: teacher } = await supabase
@@ -1492,8 +1527,8 @@ exports.createCoveragePlan = async (req, res) => {
             if (!teacher) return res.status(403).json({ error: "Unauthorized teacher" });
 
             const auth = await checkTeacherSubjectAuth(teacher.id, subject_id, institution_id);
-            if (!auth.isAuthorized) {
-                return res.status(403).json({ error: "Access denied: You are not assigned to this subject" });
+            if (!auth.isHOD) {
+                return res.status(403).json({ error: "Access denied: Only Admin and the Head of Department (HOD) for this subject can create coverage plans" });
             }
             creatorId = teacher.id;
         }
@@ -1546,6 +1581,7 @@ exports.updateCoveragePlan = async (req, res) => {
             return res.status(404).json({ error: "Coverage plan item not found" });
         }
 
+        let isHOD = userRole === 'admin';
         if (userRole !== 'admin') {
             const { data: teacher } = await supabase
                 .from("teachers")
@@ -1557,6 +1593,15 @@ exports.updateCoveragePlan = async (req, res) => {
             const auth = await checkTeacherSubjectAuth(teacher.id, existing.subject_id, institution_id);
             if (!auth.isAuthorized) {
                 return res.status(403).json({ error: "Access denied: Unauthorized for this subject" });
+            }
+            isHOD = auth.isHOD;
+
+            // If not HOD, regular subject teachers can only update 'status' (e.g. check off covered lesson)
+            const attemptedStructuralUpdate = Object.keys(updates).some(k =>
+                ['title', 'description', 'strand', 'sub_strand', 'week_start', 'week_end', 'duration_weeks', 'target_completion_date'].includes(k)
+            );
+            if (!isHOD && attemptedStructuralUpdate) {
+                return res.status(403).json({ error: "Access denied: Only Admin and the HOD for this subject can modify plan structure. Teachers may only check off lesson status." });
             }
         }
 
@@ -1612,8 +1657,8 @@ exports.deleteCoveragePlan = async (req, res) => {
             if (!teacher) return res.status(403).json({ error: "Unauthorized teacher" });
 
             const auth = await checkTeacherSubjectAuth(teacher.id, existing.subject_id, institution_id);
-            if (!auth.isHOD && existing.created_by !== teacher.id) {
-                return res.status(403).json({ error: "Access denied: Only HOD or Admin can delete plan items" });
+            if (!auth.isHOD) {
+                return res.status(403).json({ error: "Access denied: Only Head of Department (HOD) or Admin can delete plan items" });
             }
         }
 
@@ -1667,7 +1712,7 @@ exports.getRecordOfWork = async (req, res) => {
             .select(`
                 *,
                 coverage_plan:subject_coverage_plans(id, title, strand, sub_strand, week_start, week_end),
-                class:classes(id, name, display_name, grade_level, form_level, stream),
+                class:classes(id, display_name, grade_level, form_level, stream),
                 teacher:teachers(id, users(full_name))
             `)
             .eq('institution_id', institution_id);
@@ -1702,7 +1747,6 @@ exports.createRecordOfWork = async (req, res) => {
             subject_id,
             class_id,
             coverage_plan_id,
-            week_number,
             lesson_number,
             date,
             topic,
@@ -1712,6 +1756,25 @@ exports.createRecordOfWork = async (req, res) => {
             status,
             remarks
         } = req.body;
+        let { week_number } = req.body;
+
+        const effectiveDate = date || new Date().toISOString().split('T')[0];
+
+        // Part D4: Automatic week detection if not supplied
+        if (!week_number && effectiveDate) {
+            try {
+                const { resolveActiveTerm } = require('../utils/resolveActiveTerm.js');
+                const activeTerm = await resolveActiveTerm(institution_id);
+                if (activeTerm?.start_date) {
+                    const diffDays = Math.floor((new Date(effectiveDate) - new Date(activeTerm.start_date)) / (1000 * 60 * 60 * 24));
+                    week_number = Math.max(1, Math.floor(diffDays / 7) + 1);
+                } else {
+                    week_number = 1;
+                }
+            } catch (e) {
+                week_number = 1;
+            }
+        }
 
         if (!subject_id || !week_number || !topic) {
             return res.status(400).json({ error: "subject_id, week_number, and topic are required" });
@@ -1730,6 +1793,36 @@ exports.createRecordOfWork = async (req, res) => {
             return res.status(403).json({ error: "Unauthorized teacher" });
         }
 
+        // Part D3: Automatic holiday/cancellation detection via calendar_events
+        let finalRemarks = remarks?.trim() || null;
+        try {
+            let { data: eventData } = await supabase
+                .from('calendar_events')
+                .select('title, cancel_classes, start_date, end_date, event_date')
+                .eq('institution_id', institution_id)
+                .lte('start_date', effectiveDate)
+                .gte('end_date', effectiveDate)
+                .limit(1)
+                .maybeSingle();
+
+            if (!eventData) {
+                const { data: legacyEvent } = await supabase
+                    .from('calendar_events')
+                    .select('title, cancel_classes')
+                    .eq('institution_id', institution_id)
+                    .eq('event_date', effectiveDate)
+                    .maybeSingle();
+                eventData = legacyEvent;
+            }
+
+            if (eventData && eventData.cancel_classes) {
+                const notice = `[Notice: ${eventData.title} (Classes Cancelled)]`;
+                finalRemarks = finalRemarks ? `${notice} ${finalRemarks}` : notice;
+            }
+        } catch (e) {
+            // Non-blocking if table or event lookup fails
+        }
+
         const { data: created, error: cErr } = await supabase
             .from('record_of_work')
             .insert([{
@@ -1740,7 +1833,7 @@ exports.createRecordOfWork = async (req, res) => {
                 coverage_plan_id: coverage_plan_id || null,
                 week_number: parseInt(week_number),
                 lesson_number: lesson_number ? parseInt(lesson_number) : 1,
-                date: date || new Date().toISOString().split('T')[0],
+                date: effectiveDate,
                 duration_minutes: req.body.duration_minutes ? parseInt(req.body.duration_minutes) : 40,
                 topic: topic.trim(),
                 sub_topic: sub_topic?.trim() || null,
@@ -1749,7 +1842,7 @@ exports.createRecordOfWork = async (req, res) => {
                 status: status || 'planned',
                 is_completed: status === 'completed',
                 completed_at: status === 'completed' ? new Date().toISOString() : null,
-                remarks: remarks?.trim() || null,
+                remarks: finalRemarks,
             }])
             .select(`
                 *,
@@ -1885,5 +1978,77 @@ exports.deleteRecordOfWork = async (req, res) => {
         res.status(500).json({ error: "Failed to delete record of work entry" });
     }
 };
+
+// GET /teacher/record-of-work/detect-date - Auto-detect week and check for holiday/cancelled classes (D3, D4)
+exports.detectLessonDateInfo = async (req, res) => {
+    try {
+        const { date } = req.query;
+        const institution_id = req.institution_id;
+        if (!date) return res.status(400).json({ error: "date query parameter is required" });
+
+        let week_number = 1;
+        let term_name = null;
+        let term_id = null;
+
+        try {
+            const { resolveActiveTerm } = require('../utils/resolveActiveTerm.js');
+            const activeTerm = await resolveActiveTerm(institution_id);
+            if (activeTerm) {
+                term_name = activeTerm.name || null;
+                term_id = activeTerm.id || null;
+                if (activeTerm.start_date) {
+                    const diffDays = Math.floor((new Date(date) - new Date(activeTerm.start_date)) / (1000 * 60 * 60 * 24));
+                    week_number = Math.max(1, Math.floor(diffDays / 7) + 1);
+                }
+            }
+        } catch (e) {
+            // Term resolution fallback
+        }
+
+        let is_cancelled = false;
+        let cancellation_event = null;
+
+        try {
+            let { data: eventData } = await supabase
+                .from('calendar_events')
+                .select('title, description, cancel_classes, event_type, start_date, end_date, event_date')
+                .eq('institution_id', institution_id)
+                .lte('start_date', date)
+                .gte('end_date', date)
+                .limit(1)
+                .maybeSingle();
+
+            if (!eventData) {
+                const { data: legacyEvent } = await supabase
+                    .from('calendar_events')
+                    .select('title, description, cancel_classes, event_type')
+                    .eq('institution_id', institution_id)
+                    .eq('event_date', date)
+                    .maybeSingle();
+                eventData = legacyEvent;
+            }
+
+            if (eventData && eventData.cancel_classes) {
+                is_cancelled = true;
+                cancellation_event = eventData.title;
+            }
+        } catch (e) {
+            // Calendar event lookup fallback
+        }
+
+        res.json({
+            date,
+            week_number,
+            term: term_name,
+            term_id,
+            is_cancelled,
+            cancellation_event
+        });
+    } catch (err) {
+        console.error("detectLessonDateInfo error:", err);
+        res.status(500).json({ error: "Failed to detect lesson date info" });
+    }
+};
+
 
 

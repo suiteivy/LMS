@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Toast from 'react-native-toast-message';
 import { DiaryAPI, DiaryEntry } from "@/services/DiaryService";
 import { ClassAPI, ClassItem } from "@/services/ClassService";
+import { formatClassLabel } from "@/utils/classLabel";
 import { showError, showSuccess, showFetchError } from "@/utils/toast";
 import { router } from "expo-router";
 import { BookOpen, Calendar, ChevronDown, Edit2, Plus, Send, Trash2, X, Zap } from 'lucide-react-native';
@@ -75,8 +76,12 @@ export default function TeacherDiaryPage() {
     const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
 
     useEffect(() => {
-        fetchClasses();
-    }, []);
+        if (teacherId) {
+            fetchClasses();
+        } else {
+            setLoading(false);
+        }
+    }, [teacherId]);
 
     useEffect(() => {
         if (selectedClassId) {
@@ -85,12 +90,18 @@ export default function TeacherDiaryPage() {
     }, [selectedClassId]);
 
     const fetchClasses = async () => {
+        if (!teacherId) return;
         setLoading(true);
         try {
-            const data = await ClassAPI.getClasses();
-            setClasses(data);
-            if (data.length > 0) {
-                setSelectedClassId(data[0].id);
+            const data = await ClassAPI.getClasses({ teacher_id: teacherId } as any);
+            const designatedClasses = (Array.isArray(data) ? data : []).filter(
+                (c: any) => c.teacher_id === teacherId
+            );
+            setClasses(designatedClasses);
+            if (designatedClasses.length > 0) {
+                setSelectedClassId(designatedClasses[0].id);
+            } else {
+                setSelectedClassId("");
             }
         } catch (error: any) {
             console.error("Error fetching classes:", error);
@@ -204,7 +215,10 @@ export default function TeacherDiaryPage() {
         setShowModal(true);
     };
 
-    const selectedClassName = classes.find(c => c.id === selectedClassId)?.display_name || "Select Class";
+    const selectedClass = classes.find(c => c.id === selectedClassId);
+    const selectedClassName = selectedClass
+        ? (selectedClass.display_name || formatClassLabel(selectedClass) || selectedClass.name || "Designated Class")
+        : "Select Designated Class";
 
     const handlePrint = async () => {
         if (!selectedClassId || entries.length === 0) {
@@ -314,9 +328,9 @@ export default function TeacherDiaryPage() {
                             <View className="bg-orange-100 dark:bg-orange-950/20 p-6 rounded-full mb-6">
                                 <BookOpen size={48} color="#FF6900" />
                             </View>
-                            <Text className="text-xl font-bold text-gray-900 dark:text-white text-center mb-3">No Classes Assigned</Text>
+                            <Text className="text-xl font-bold text-gray-900 dark:text-white text-center mb-3">No Designated Class</Text>
                             <Text className="text-gray-500 dark:text-gray-400 text-center mb-8 leading-6">
-                                You haven&apos;t been assigned to any classes yet. Please contact your administrator to assign you a class before you can create diary entries.
+                                Virtual Diary is reserved for designated Class Teachers. You are not currently assigned as a Class Teacher for any homeroom class.
                             </Text>
                             <TouchableOpacity
                                 className="bg-[#EAEEF2] dark:bg-[#161B22] px-8 py-4 rounded-lg active:bg-gray-200"
@@ -356,7 +370,9 @@ export default function TeacherDiaryPage() {
                                                     setShowClassDropdown(false);
                                                 }}
                                             >
-                                                <Text className="text-gray-900 dark:text-white font-bold text-sm">{cls.display_name}</Text>
+                                                <Text className="text-gray-900 dark:text-white font-bold text-sm">
+                                                    {cls.display_name || formatClassLabel(cls) || cls.name}
+                                                </Text>
                                             </TouchableOpacity>
                                         ))}
                                     </View>

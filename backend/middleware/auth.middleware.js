@@ -482,6 +482,8 @@ async function authMiddleware(req, res, next) {
         .select(`
           roles (
             name,
+            data_scope,
+            metadata,
             role_permissions (
               permissions (
                 name
@@ -493,11 +495,17 @@ async function authMiddleware(req, res, next) {
 
       const customRoles = [];
       const permissions = [];
+      const roleScopes = {};
 
       if (userRolesData) {
         userRolesData.forEach(ur => {
           if (ur.roles) {
-            customRoles.push(ur.roles.name);
+            const rName = ur.roles.name;
+            customRoles.push(rName);
+            roleScopes[rName.toLowerCase()] = {
+              data_scope: ur.roles.data_scope || 'all',
+              metadata: ur.roles.metadata || {}
+            };
 
             if (ur.roles.role_permissions) {
               ur.roles.role_permissions.forEach(rp => {
@@ -574,7 +582,8 @@ async function authMiddleware(req, res, next) {
         is_finance_admin: isFinanceAdmin,
         is_leaver: isLeaver,
         customRoles,
-        permissions
+        permissions,
+        role_scopes: roleScopes
       };
 
       // Update cache
@@ -607,6 +616,7 @@ async function authMiddleware(req, res, next) {
       requires_security_questions_setup: !!profile.requires_security_questions_setup,
       roles: profile.customRoles || [],
       permissions: profile.permissions || [],
+      role_scopes: profile.role_scopes || {},
       is_main: profile.is_main || false,
       can_manage_users: profile.can_manage_users || false,
       is_platform_admin: profile.isPlatformAdmin || false,

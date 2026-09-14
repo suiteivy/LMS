@@ -284,7 +284,7 @@ export default function ManagementIndex() {
         {
             icon: Trophy,
             title: "Student Rankings",
-            description: "View student academic leaderboards and CBC competency bands",
+            description: "View student academic leaderboards and performance distribution",
             color: "#10B981",
             bgColor: "#D1FAE5",
             route: "/(teacher)/management/rankings",

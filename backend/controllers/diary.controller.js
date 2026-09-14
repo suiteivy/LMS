@@ -21,19 +21,10 @@ exports.createEntry = async (req, res) => {
             const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
             if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
 
-            // Verify teacher is assigned to this class
+            // Verify teacher is designated Class Teacher for this class
             const { data: cls } = await supabase.from('classes').select('id').eq('id', class_id).eq('teacher_id', teacher.id).single();
             if (!cls) {
-                // Also check if they teach any subject in this class
-                const { data: sub } = await supabase.from('subjects').select('id').eq('class_id', class_id).eq('teacher_id', teacher.id).single();
-                if (!sub) {
-                    const { data: subTeacher } = await supabase.from('subject_teachers')
-                        .select('id, subjects!inner(class_id)')
-                        .eq('teacher_id', teacher.id)
-                        .eq('subjects.class_id', class_id)
-                        .maybeSingle();
-                    if (!subTeacher) return res.status(403).json({ error: "Access denied: You are not assigned to this class" });
-                }
+                return res.status(403).json({ error: "Access denied: Virtual diary is only available to the designated class teacher for this class." });
             }
 
             effectiveTeacherId = teacher.id;
@@ -113,6 +104,19 @@ exports.getEntries = async (req, res) => {
             if (!enrollment) return res.json(paginatedResponse([], 0, page, limit));
             targetClassId = enrollment.class_id;
             targetStudentId = student_id;
+        } else if (userRole === 'teacher') {
+            const { data: teacher } = await supabase.from('teachers').select('id').eq('user_id', userId).single();
+            if (!teacher) return res.status(404).json({ error: "Teacher profile not found" });
+
+            if (!targetClassId) {
+                return res.status(400).json({ error: "Class ID is required" });
+            }
+
+            // Verify teacher is designated Class Teacher for this class
+            const { data: cls } = await supabase.from('classes').select('id').eq('id', targetClassId).eq('teacher_id', teacher.id).single();
+            if (!cls) {
+                return res.status(403).json({ error: "Access denied: Virtual diary is only available to the designated class teacher for this class." });
+            }
         }
 
         if (!targetClassId && !targetStudentId) {

@@ -22,6 +22,8 @@ export interface CalendarEvent {
   title: string;
   description?: string | null;
   event_date: string; // YYYY-MM-DD
+  start_date: string; // YYYY-MM-DD (formalized multi-day start)
+  end_date: string; // YYYY-MM-DD (formalized multi-day end)
   start_time?: string | null;
   end_time?: string | null;
   event_type?: 'event' | 'holiday' | 'exam' | 'meeting' | string;
@@ -36,6 +38,8 @@ export interface CreateCalendarEventDto {
   title: string;
   description?: string;
   event_date: string;
+  start_date?: string;
+  end_date?: string;
   start_time?: string;
   end_time?: string;
   event_type?: string;

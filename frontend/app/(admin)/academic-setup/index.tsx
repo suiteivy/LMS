@@ -1,4 +1,5 @@
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
+import { ActionTooltip } from '@/components/common/ActionTooltip';
 import { DatePicker } from '@/components/common/DatePicker';
 import { Spinner } from '@/components/ui/Spinner';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -804,13 +805,19 @@ export default function AcademicSetupPage() {
                             <Text style={{ fontSize: 12, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>
                                 {academicYears.length} Academic Year{academicYears.length !== 1 ? 's' : ''}
                             </Text>
-                            <TouchableOpacity
-                                onPress={openCreateYear}
-                                style={{ backgroundColor: accent, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                            <ActionTooltip
+                                label="Add Academic Year"
+                                description="Define a new academic calendar year with start and end dates."
+                                learnMoreAnchor="school-calendar"
                             >
-                                <Plus size={15} color="white" />
-                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Add Year</Text>
-                            </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={openCreateYear}
+                                    style={{ backgroundColor: accent, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                                >
+                                    <Plus size={15} color="white" />
+                                    <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Add Year</Text>
+                                </TouchableOpacity>
+                            </ActionTooltip>
                         </View>
 
                         {academicYears.length === 0 ? (
@@ -873,9 +880,15 @@ export default function AcademicSetupPage() {
                                                     </View>
                                                 </View>
                                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                    <TouchableOpacity onPress={() => handleDeleteYear(year)} style={{ padding: 8 }}>
-                                                        <Trash2 size={18} color="#EF4444" />
-                                                    </TouchableOpacity>
+                                                    <ActionTooltip
+                                                        label="Delete Academic Year"
+                                                        description="Remove academic year record and associated terms."
+                                                        learnMoreAnchor="school-calendar"
+                                                    >
+                                                        <TouchableOpacity onPress={() => handleDeleteYear(year)} style={{ padding: 8 }}>
+                                                            <Trash2 size={18} color="#EF4444" />
+                                                        </TouchableOpacity>
+                                                    </ActionTooltip>
                                                     {isExpanded ? (
                                                         <ChevronUp size={20} color={textSecondary} />
                                                     ) : (
@@ -892,13 +905,19 @@ export default function AcademicSetupPage() {
                                                     <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                                                         Terms
                                                     </Text>
-                                                    <TouchableOpacity
-                                                        onPress={() => openAddTerm(year.id)}
-                                                        style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: accent, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 }}
+                                                    <ActionTooltip
+                                                        label="Add Term"
+                                                        description="Define a new term or semester within this academic year."
+                                                        learnMoreAnchor="school-calendar"
                                                     >
-                                                        <Plus size={14} color="white" />
-                                                        <Text style={{ color: 'white', fontWeight: '700', fontSize: 11, marginLeft: 4 }}>Add Term</Text>
-                                                    </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            onPress={() => openAddTerm(year.id)}
+                                                            style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: accent, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 }}
+                                                        >
+                                                            <Plus size={14} color="white" />
+                                                            <Text style={{ color: 'white', fontWeight: '700', fontSize: 11, marginLeft: 4 }}>Add Term</Text>
+                                                        </TouchableOpacity>
+                                                    </ActionTooltip>
                                                 </View>
 
                                                 {yearTerms.length === 0 ? (
@@ -951,32 +970,44 @@ export default function AcademicSetupPage() {
                                                                     </Text>
                                                                 </View>
                                                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                                    <TouchableOpacity
-                                                                        onPress={() => handleSetTermLockState(term, !term.locked_at)}
-                                                                        style={{
-                                                                            paddingHorizontal: 8,
-                                                                            paddingVertical: 4,
-                                                                            borderRadius: 8,
-                                                                            borderWidth: 1,
-                                                                            borderColor: term.locked_at ? '#10B981' : '#EF4444',
-                                                                            marginRight: 6,
-                                                                        }}
+                                                                    <ActionTooltip
+                                                                        label={term.locked_at ? "Unlock Term" : "Lock Term"}
+                                                                        description={term.locked_at ? "Reopen grade submissions and attendance for this term." : "Lock grade submissions and attendance for this term."}
+                                                                        learnMoreAnchor="exams-module"
                                                                     >
-                                                                        <Text style={{
-                                                                            fontSize: 10,
-                                                                            fontWeight: '700',
-                                                                            color: term.locked_at ? '#10B981' : '#EF4444',
-                                                                        }}>
-                                                                            {term.locked_at ? 'UNLOCK' : 'LOCK'}
-                                                                        </Text>
-                                                                    </TouchableOpacity>
-                                                                    {status === 'active' && !term.is_current && (
                                                                         <TouchableOpacity
-                                                                            onPress={() => handleSetCurrentTerm(term)}
-                                                                            style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: accent, marginRight: 6 }}
+                                                                            onPress={() => handleSetTermLockState(term, !term.locked_at)}
+                                                                            style={{
+                                                                                paddingHorizontal: 8,
+                                                                                paddingVertical: 4,
+                                                                                borderRadius: 8,
+                                                                                borderWidth: 1,
+                                                                                borderColor: term.locked_at ? '#10B981' : '#EF4444',
+                                                                                marginRight: 6,
+                                                                            }}
                                                                         >
-                                                                            <Text style={{ fontSize: 10, fontWeight: '700', color: accent }}>SET CURRENT</Text>
+                                                                            <Text style={{
+                                                                                fontSize: 10,
+                                                                                fontWeight: '700',
+                                                                                color: term.locked_at ? '#10B981' : '#EF4444',
+                                                                            }}>
+                                                                                {term.locked_at ? 'UNLOCK' : 'LOCK'}
+                                                                            </Text>
                                                                         </TouchableOpacity>
+                                                                    </ActionTooltip>
+                                                                    {status === 'active' && !term.is_current && (
+                                                                        <ActionTooltip
+                                                                            label="Set Active Term"
+                                                                            description="Designate this term as the current active session for the school."
+                                                                            learnMoreAnchor="school-calendar"
+                                                                        >
+                                                                            <TouchableOpacity
+                                                                                onPress={() => handleSetCurrentTerm(term)}
+                                                                                style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: accent, marginRight: 6 }}
+                                                                            >
+                                                                                <Text style={{ fontSize: 10, fontWeight: '700', color: accent }}>SET CURRENT</Text>
+                                                                            </TouchableOpacity>
+                                                                        </ActionTooltip>
                                                                     )}
                                                                     <TouchableOpacity
                                                                         onPress={() => openEditTerm(term)}
@@ -1014,25 +1045,37 @@ export default function AcademicSetupPage() {
                                 {gradingScales.length} Scale{gradingScales.length !== 1 ? 's' : ''}
                             </Text>
                             <View style={{ flexDirection: 'row', gap: 8 }}>
-                                <TouchableOpacity
-                                    onPress={handleLoadDefaultScale}
-                                    disabled={saving}
-                                    style={{
-                                        backgroundColor: isDark ? '#161B22' : '#F3F4F6',
-                                        paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12,
-                                        flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: border,
-                                    }}
+                                <ActionTooltip
+                                    label="Load Default Scale"
+                                    description="Populate standard 7-point grading scale (A through F)."
+                                    learnMoreAnchor="exams-module"
                                 >
-                                    <RotateCcw size={14} color={textSecondary} />
-                                    <Text style={{ color: textSecondary, fontWeight: '700', fontSize: 11, marginLeft: 5 }}>Default</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={openCreateScale}
-                                    style={{ backgroundColor: accent, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                                    <TouchableOpacity
+                                        onPress={handleLoadDefaultScale}
+                                        disabled={saving}
+                                        style={{
+                                            backgroundColor: isDark ? '#161B22' : '#F3F4F6',
+                                            paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12,
+                                            flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: border,
+                                        }}
+                                    >
+                                        <RotateCcw size={14} color={textSecondary} />
+                                        <Text style={{ color: textSecondary, fontWeight: '700', fontSize: 11, marginLeft: 5 }}>Default</Text>
+                                    </TouchableOpacity>
+                                </ActionTooltip>
+                                <ActionTooltip
+                                    label="Add Grading Scale"
+                                    description="Configure custom letter grade, score range, and GPA points."
+                                    learnMoreAnchor="exams-module"
                                 >
-                                    <Plus size={15} color="white" />
-                                    <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Add Scale</Text>
-                                </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={openCreateScale}
+                                        style={{ backgroundColor: accent, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                                    >
+                                        <Plus size={15} color="white" />
+                                        <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Add Scale</Text>
+                                    </TouchableOpacity>
+                                </ActionTooltip>
                             </View>
                         </View>
 
@@ -1123,13 +1166,19 @@ export default function AcademicSetupPage() {
                             <Text style={{ fontSize: 12, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>
                                 {assessmentTypes.length} Assessment Type{assessmentTypes.length !== 1 ? 's' : ''}
                             </Text>
-                            <TouchableOpacity
-                                onPress={openCreateType}
-                                style={{ backgroundColor: accent, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                            <ActionTooltip
+                                label="Add Assessment Type"
+                                description="Define continuous assessment or exam category with default weight."
+                                learnMoreAnchor="exams-module"
                             >
-                                <Plus size={15} color="white" />
-                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Add Type</Text>
-                            </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={openCreateType}
+                                    style={{ backgroundColor: accent, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                                >
+                                    <Plus size={15} color="white" />
+                                    <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Add Type</Text>
+                                </TouchableOpacity>
+                            </ActionTooltip>
                         </View>
 
                         {sortedTypes.length === 0 ? (

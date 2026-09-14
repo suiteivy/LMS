@@ -6,7 +6,7 @@
  * - Soft-delete / Archive for inactive students and teachers (departed > 7 years)
  */
 
-const { supabase } = require('../libs/supabase');
+const supabase = require('../utils/supabaseClient');
 const logger = require('../utils/logger');
 
 const runDataRetentionCleanup = async () => {

@@ -185,13 +185,23 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
 
         {/* Nav items */}
         <View style={{ flex: 1, gap: 8, paddingHorizontal: collapsed ? 12 : 16 }}>
-          {items.map((item) => {
-            const Icon = item.icon;
-            const isRootRoute = item.route === `/${basePath}`;
-            const isActive = isRootRoute 
-              ? (currentPath === `/${basePath}` || currentPath === `/${basePath}/index`)
-              : (currentPath === item.route || currentPath.startsWith(item.route + '/'));
-            return (
+          {(() => {
+            // Find all matching items to handle prefix overlaps (e.g. /management vs /management/timetable)
+            const matchingItems = items.filter(item => {
+              const isRootRoute = item.route === `/${basePath}`;
+              return isRootRoute
+                ? (currentPath === `/${basePath}` || currentPath === `/${basePath}/index`)
+                : (currentPath === item.route || currentPath.startsWith(item.route + '/'));
+            });
+            // Choose the most specific (longest) route match
+            const bestMatch = matchingItems.reduce<NavItem | null>((best, curr) => 
+              !best || curr.route.length > best.route.length ? curr : best, null
+            );
+
+            return items.map((item) => {
+              const Icon = item.icon;
+              const isActive = bestMatch ? bestMatch.name === item.name : false;
+              return (
               <TouchableOpacity
                 key={item.name}
                 onPress={() => router.push(item.route as any)}
@@ -227,7 +237,8 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
                 )}
               </TouchableOpacity>
             );
-          })}
+          });
+        })()}
         </View>
 
         {/* Collapse toggle */}

@@ -1,3 +1,4 @@
+import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Subject } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
@@ -205,29 +206,33 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
           </View>
         </View>
         {onDelete ? (
-          <TouchableOpacity
-            onPress={handleDeletePress}
-            disabled={deleting}
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 10,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: deleting ? '#9ca3af' : '#ef4444',
-              marginRight: 8,
-            }}
-          >
-            <Ionicons name={deleting ? 'hourglass-outline' : 'trash-outline'} size={16} color="white" />
-          </TouchableOpacity>
+          <ActionTooltip label="Delete Subject" description="Permanently delete this subject and unassign related enrollments.">
+            <TouchableOpacity
+              onPress={handleDeletePress}
+              disabled={deleting}
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 10,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: deleting ? '#9ca3af' : '#ef4444',
+                marginRight: 8,
+              }}
+            >
+              <Ionicons name={deleting ? 'hourglass-outline' : 'trash-outline'} size={16} color="white" />
+            </TouchableOpacity>
+          </ActionTooltip>
         ) : null}
-        <TouchableOpacity
-          onPress={onPress}
-          activeOpacity={0.8}
-          style={{ backgroundColor: '#f97316', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Ionicons name="chevron-forward" size={16} color="white" />
-        </TouchableOpacity>
+        <ActionTooltip label="View Subject" description="Inspect syllabus, curriculum topics, assigned classes, and teachers.">
+          <TouchableOpacity
+            onPress={onPress}
+            activeOpacity={0.8}
+            style={{ backgroundColor: '#f97316', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name="chevron-forward" size={16} color="white" />
+          </TouchableOpacity>
+        </ActionTooltip>
       </View>
     </View>
   );

@@ -1,4 +1,5 @@
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
+import { ActionTooltip } from '@/components/common/ActionTooltip';
 import { Spinner } from '@/components/ui/Spinner';
 import { useTheme } from '@/contexts/ThemeContext';
 import { router } from 'expo-router';
@@ -577,23 +578,29 @@ export default function AdminResults() {
                 onBack={() => router.back()}
                 showNotification={false}
                 rightActions={
-                    <TouchableOpacity
-                        onPress={() => setShowScaleModal(true)}
-                        style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8',
-                            borderWidth: 1,
-                            borderColor: isDark ? '#78350F' : '#FFEDD5',
-                            borderRadius: 10,
-                            paddingHorizontal: 10,
-                            paddingVertical: 6,
-                            gap: 6,
-                        }}
+                    <ActionTooltip
+                        label="Grading Scales"
+                        description="Review active GPA score ranges and letter grade thresholds."
+                        learnMoreAnchor="exams-module"
                     >
-                        <Award size={14} color="#FF6900" />
-                        <Text style={{ color: '#FF6900', fontWeight: '700', fontSize: 12 }}>Grading Scale</Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => setShowScaleModal(true)}
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8',
+                                borderWidth: 1,
+                                borderColor: isDark ? '#78350F' : '#FFEDD5',
+                                borderRadius: 10,
+                                paddingHorizontal: 10,
+                                paddingVertical: 6,
+                                gap: 6,
+                            }}
+                        >
+                            <Award size={14} color="#FF6900" />
+                            <Text style={{ color: '#FF6900', fontWeight: '700', fontSize: 12 }}>Grading Scale</Text>
+                        </TouchableOpacity>
+                    </ActionTooltip>
                 }
             />
 
@@ -617,31 +624,37 @@ export default function AdminResults() {
                                 <Filter size={18} color="#FF6900" />
                             </View>
                             <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 16, flex: 1 }}>Filters</Text>
-                            <TouchableOpacity
-                                onPress={handleRefreshPage}
-                                disabled={manualRefreshing}
-                                style={{
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    backgroundColor: isDark ? '#161B22' : '#FFFFFF',
-                                    borderWidth: 1,
-                                    borderColor: border,
-                                    borderRadius: 10,
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 6,
-                                    opacity: manualRefreshing ? 0.7 : 1,
-                                }}
-                                accessibilityState={{ disabled: manualRefreshing, busy: manualRefreshing }}
+                            <ActionTooltip
+                                label="Refresh Results"
+                                description="Reload class roster, subject completion records, and report cards."
+                                learnMoreAnchor="exams-module"
                             >
-                                {manualRefreshing ? (
-                                    <Spinner size="small" color={isDark ? '#F9FAFB' : '#111827'} label="Refreshing results page" />
-                                ) : (
-                                    <RefreshCw size={14} color={isDark ? '#F9FAFB' : '#111827'} />
-                                )}
-                                <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 12, marginLeft: 6 }}>
-                                    Refresh
-                                </Text>
-                            </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={handleRefreshPage}
+                                    disabled={manualRefreshing}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        backgroundColor: isDark ? '#161B22' : '#FFFFFF',
+                                        borderWidth: 1,
+                                        borderColor: border,
+                                        borderRadius: 10,
+                                        paddingHorizontal: 10,
+                                        paddingVertical: 6,
+                                        opacity: manualRefreshing ? 0.7 : 1,
+                                    }}
+                                    accessibilityState={{ disabled: manualRefreshing, busy: manualRefreshing }}
+                                >
+                                    {manualRefreshing ? (
+                                        <Spinner size="small" color={isDark ? '#F9FAFB' : '#111827'} label="Refreshing results page" />
+                                    ) : (
+                                        <RefreshCw size={14} color={isDark ? '#F9FAFB' : '#111827'} />
+                                    )}
+                                    <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 12, marginLeft: 6 }}>
+                                        Refresh
+                                    </Text>
+                                </TouchableOpacity>
+                            </ActionTooltip>
                             {loadingFilters && !manualRefreshing && (
                                 <ActivityIndicator size="small" color="#FF6900" style={{ marginLeft: 8 }} />
                             )}
@@ -724,56 +737,68 @@ export default function AdminResults() {
                         })}
                     </View>
 
-                    <TouchableOpacity
-                        onPress={() => router.push('/(admin)/results/promotions')}
-                        style={{
-                            backgroundColor: card,
-                            borderRadius: 14,
-                            borderWidth: 1,
-                            borderColor: border,
-                            paddingHorizontal: 14,
-                            paddingVertical: 12,
-                            marginBottom: 16,
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                        }}
+                    <ActionTooltip
+                        label="Promotion Cycles"
+                        description="Audit student progression and transition classes to the next academic grade."
+                        learnMoreAnchor="exams-module"
                     >
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Shield size={16} color="#FF6900" />
-                            <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 13 }}>
-                                Promotion Cycles
-                            </Text>
-                        </View>
-                        <ChevronRight size={16} color={textSecondary} />
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => router.push('/(admin)/results/promotions')}
+                            style={{
+                                backgroundColor: card,
+                                borderRadius: 14,
+                                borderWidth: 1,
+                                borderColor: border,
+                                paddingHorizontal: 14,
+                                paddingVertical: 12,
+                                marginBottom: 16,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                            }}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Shield size={16} color="#FF6900" />
+                                <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 13 }}>
+                                    Promotion Cycles
+                                </Text>
+                            </View>
+                            <ChevronRight size={16} color={textSecondary} />
+                        </TouchableOpacity>
+                    </ActionTooltip>
 
                     {/* ═══ COMPLETENESS TAB ═══ */}
                     {activeTab === 'completeness' && (
                         <View>
                             {/* Check Button */}
-                            <TouchableOpacity
-                                onPress={handleCheckCompleteness}
-                                disabled={checkingCompleteness || !hasFilters}
-                                style={{
-                                    backgroundColor: !hasFilters ? (isDark ? '#374151' : '#E5E7EB') : '#FF6900',
-                                    paddingVertical: 14, borderRadius: 16, alignItems: 'center', marginBottom: 16,
-                                    flexDirection: 'row', justifyContent: 'center', gap: 8,
-                                    opacity: !hasFilters ? 0.5 : 1,
-                                }}
-                                accessibilityState={{ disabled: checkingCompleteness || !hasFilters, busy: checkingCompleteness }}
+                            <ActionTooltip
+                                label="Audit Completeness"
+                                description="Scan selected class and term for missing exam and assessment marks."
+                                learnMoreAnchor="exams-module"
                             >
-                                {checkingCompleteness ? (
-                                    <Spinner color="#FFFFFF" label="Checking grade completeness" />
-                                ) : (
-                                    <>
-                                        <RefreshCw size={16} color="#FFFFFF" />
-                                        <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>
-                                            Check Completeness
-                                        </Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={handleCheckCompleteness}
+                                    disabled={checkingCompleteness || !hasFilters}
+                                    style={{
+                                        backgroundColor: !hasFilters ? (isDark ? '#374151' : '#E5E7EB') : '#FF6900',
+                                        paddingVertical: 14, borderRadius: 16, alignItems: 'center', marginBottom: 16,
+                                        flexDirection: 'row', justifyContent: 'center', gap: 8,
+                                        opacity: !hasFilters ? 0.5 : 1,
+                                    }}
+                                    accessibilityState={{ disabled: checkingCompleteness || !hasFilters, busy: checkingCompleteness }}
+                                >
+                                    {checkingCompleteness ? (
+                                        <Spinner color="#FFFFFF" label="Checking grade completeness" />
+                                    ) : (
+                                        <>
+                                            <RefreshCw size={16} color="#FFFFFF" />
+                                            <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>
+                                                Check Completeness
+                                            </Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            </ActionTooltip>
 
                             {!hasFilters && (
                                 <View style={{
@@ -978,54 +1003,72 @@ export default function AdminResults() {
 
                                     {/* Bulk Actions */}
                                     <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                                        <TouchableOpacity
-                                            onPress={handleGenerateAll}
-                                            disabled={generatingAll}
-                                            style={{
-                                                flex: 1, backgroundColor: '#8B5CF6', paddingVertical: 12, borderRadius: 14,
-                                                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                            }}
-                                            accessibilityState={{ disabled: generatingAll, busy: generatingAll }}
+                                        <ActionTooltip
+                                            label="Generate All Reports"
+                                            description="Compile term report cards with GPA points and remarks for all enrolled students."
+                                            learnMoreAnchor="exams-module"
                                         >
-                                            {generatingAll ? <Spinner color="#FFF" size="small" label="Generating report cards" /> : (
-                                                <>
-                                                    <FileText size={14} color="#FFF" />
-                                                    <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Generate All</Text>
-                                                </>
-                                            )}
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            onPress={handlePublishAll}
-                                            disabled={publishingAll}
-                                            style={{
-                                                flex: 1, backgroundColor: '#2563EB', paddingVertical: 12, borderRadius: 14,
-                                                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                            }}
-                                            accessibilityState={{ disabled: publishingAll, busy: publishingAll }}
+                                            <TouchableOpacity
+                                                onPress={handleGenerateAll}
+                                                disabled={generatingAll}
+                                                style={{
+                                                    flex: 1, backgroundColor: '#8B5CF6', paddingVertical: 12, borderRadius: 14,
+                                                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                                }}
+                                                accessibilityState={{ disabled: generatingAll, busy: generatingAll }}
+                                            >
+                                                {generatingAll ? <Spinner color="#FFF" size="small" label="Generating report cards" /> : (
+                                                    <>
+                                                        <FileText size={14} color="#FFF" />
+                                                        <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Generate All</Text>
+                                                    </>
+                                                )}
+                                            </TouchableOpacity>
+                                        </ActionTooltip>
+                                        <ActionTooltip
+                                            label="Publish All Reports"
+                                            description="Move drafted report cards into verified published status ready for release."
+                                            learnMoreAnchor="exams-module"
                                         >
-                                            {publishingAll ? <Spinner color="#FFF" size="small" label="Publishing report cards" /> : (
-                                                <>
-                                                    <Shield size={14} color="#FFF" />
-                                                    <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Publish All</Text>
-                                                </>
-                                            )}
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            onPress={handleReleaseAll}
-                                            disabled={releasingAll}
-                                            style={{
-                                                flex: 1, backgroundColor: '#059669', paddingVertical: 12, borderRadius: 14,
-                                                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                            }}
-                                            accessibilityState={{ disabled: releasingAll, busy: releasingAll }}
+                                            <TouchableOpacity
+                                                onPress={handlePublishAll}
+                                                disabled={publishingAll}
+                                                style={{
+                                                    flex: 1, backgroundColor: '#2563EB', paddingVertical: 12, borderRadius: 14,
+                                                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                                }}
+                                                accessibilityState={{ disabled: publishingAll, busy: publishingAll }}
+                                            >
+                                                {publishingAll ? <Spinner color="#FFF" size="small" label="Publishing report cards" /> : (
+                                                    <>
+                                                        <Shield size={14} color="#FFF" />
+                                                        <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Publish All</Text>
+                                                    </>
+                                                )}
+                                            </TouchableOpacity>
+                                        </ActionTooltip>
+                                        <ActionTooltip
+                                            label="Release All to Parents"
+                                            description="Dispatch official report cards to parents and student portals."
+                                            learnMoreAnchor="exams-module"
                                         >
-                                            {releasingAll ? <Spinner color="#FFF" size="small" label="Releasing report cards" /> : (
-                                                <>
-                                                    <Send size={14} color="#FFF" />
-                                                    <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Release All</Text>
-                                                </>
-                                            )}
-                                        </TouchableOpacity>
+                                            <TouchableOpacity
+                                                onPress={handleReleaseAll}
+                                                disabled={releasingAll}
+                                                style={{
+                                                    flex: 1, backgroundColor: '#059669', paddingVertical: 12, borderRadius: 14,
+                                                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                                }}
+                                                accessibilityState={{ disabled: releasingAll, busy: releasingAll }}
+                                            >
+                                                {releasingAll ? <Spinner color="#FFF" size="small" label="Releasing report cards" /> : (
+                                                    <>
+                                                        <Send size={14} color="#FFF" />
+                                                        <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Release All</Text>
+                                                    </>
+                                                )}
+                                            </TouchableOpacity>
+                                        </ActionTooltip>
                                     </View>
 
                                     {/* Status Filter Pills */}

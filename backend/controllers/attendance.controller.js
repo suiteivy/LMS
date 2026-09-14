@@ -948,17 +948,61 @@ exports.getStaffPresence = async (req, res) => {
         // Fetch attendance records for targetDate
         const { data: attendance, error: aErr } = await supabase
             .from('teacher_attendance')
-            .select('id, teacher_id, status, confirmation_status, check_in_time, notes, created_at')
+            .select('id, teacher_id, status, confirmation_status, check_in_time, notes, recorded_at')
             .eq('date', targetDate)
             .eq('institution_id', institution_id);
 
         if (aErr) throw aErr;
+
+        // Resolve day of week to check who is scheduled on timetable for this day
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayIndex = new Date(targetDate + 'T00:00:00').getDay();
+        const targetDayName = dayNames[dayIndex];
+
+        const { data: scheduledSlots } = await supabase
+            .from('timetables')
+            .select('subject_id, subject:subjects(teacher_id)')
+            .eq('institution_id', institution_id)
+            .eq('day_of_week', targetDayName);
+
+        const scheduledTeacherIds = new Set();
+        const scheduledSubjectIds = [];
+        (scheduledSlots || []).forEach(slot => {
+            if (slot.subject?.teacher_id) scheduledTeacherIds.add(slot.subject.teacher_id);
+            if (slot.subject_id) scheduledSubjectIds.push(slot.subject_id);
+        });
+
+        if (scheduledSubjectIds.length > 0) {
+            const { data: assistantTeachers } = await supabase
+                .from('subject_teachers')
+                .select('teacher_id')
+                .in('subject_id', scheduledSubjectIds);
+            (assistantTeachers || []).forEach(at => {
+                if (at.teacher_id) scheduledTeacherIds.add(at.teacher_id);
+            });
+        }
 
         const attendanceByTeacher = new Map();
         (attendance || []).forEach(a => attendanceByTeacher.set(a.teacher_id, a));
 
         const staffList = (teachers || []).map(t => {
             const att = attendanceByTeacher.get(t.id);
+            const isScheduled = scheduledTeacherIds.has(t.id);
+
+            let status = 'not_present';
+            let confirmationStatus = null;
+
+            if (att) {
+                status = att.status || 'present';
+                confirmationStatus = att.confirmation_status || 'unconfirmed';
+            } else if (isScheduled) {
+                status = 'pending';
+                confirmationStatus = null;
+            } else {
+                status = 'not_present';
+                confirmationStatus = null;
+            }
+
             return {
                 teacher_id: t.id,
                 name: t.users?.full_name || `${t.users?.first_name || ''} ${t.users?.last_name || ''}`.trim() || 'Teacher',
@@ -967,9 +1011,10 @@ exports.getStaffPresence = async (req, res) => {
                 avatar_url: t.users?.avatar_url || null,
                 department: t.department || null,
                 position: t.position || 'Teacher',
-                status: att?.status || 'pending',
-                confirmation_status: att ? (att.confirmation_status || 'unconfirmed') : 'unconfirmed',
-                check_in_time: att?.check_in_time || att?.created_at || null,
+                status,
+                confirmation_status: confirmationStatus,
+                check_in_time: att?.check_in_time || att?.recorded_at || null,
+                is_scheduled: isScheduled,
                 notes: att?.notes || null
             };
         });

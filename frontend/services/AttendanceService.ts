@@ -80,7 +80,7 @@ export const AttendanceService = {
                 student_id,
                 class_id,
                 status,
-                class:classes(id, display_name, name, grade_level, cbc_band)
+                class:classes(id, display_name, grade_level, cbc_band)
             `)
             .eq("date", date)
             .eq("institution_id", institutionId);

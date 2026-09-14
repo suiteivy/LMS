@@ -40,7 +40,7 @@ exports.getReports = async (req, res) => {
         // Parent Logic: If role is parent, ensure they can only fetch linked students
         if (user.role === 'parent') {
             // 1. Get Parent ID
-            const { data: parent } = await supabase.from('parents').select('id').eq('user_id', user.id).single();
+            const { data: parent } = await supabase.from('parents').select('id').eq('user_id', user.id).maybeSingle();
             if (!parent) return res.status(404).json({ success: false, message: "Parent profile not found" });
 
             // 2. Get all linked student IDs for this parent
@@ -58,7 +58,7 @@ exports.getReports = async (req, res) => {
             }
         } else if (user.role === 'student') {
             // Get student ID
-            const { data: student } = await supabase.from('students').select('id').eq('user_id', user.id).single();
+            const { data: student } = await supabase.from('students').select('id').eq('user_id', user.id).maybeSingle();
             if (!student) return res.status(404).json({ success: false, message: "Student profile not found" });
 
             if (studentId && studentId !== student.id) {

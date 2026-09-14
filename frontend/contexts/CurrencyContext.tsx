@@ -40,8 +40,10 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
             setRates(legacyRates);
             setCurrencies(currencyRows);
-        } catch (error) {
-            console.error('Failed to fetch rates:', error);
+        } catch (error: any) {
+            if (!error?.isAuthError && error?.response?.status !== 401) {
+                console.error('Failed to fetch rates:', error);
+            }
         } finally {
             setLoading(false);
         }

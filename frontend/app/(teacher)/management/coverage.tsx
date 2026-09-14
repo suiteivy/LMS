@@ -1,12 +1,20 @@
+import { ActionTooltip } from "@/components/common/ActionTooltip";
+import { DatePicker } from "@/components/common/DatePicker";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { WeekPickerModal } from "@/components/common/WeekPickerModal";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
+import { CalendarAPI } from "@/services/CalendarService";
+import { GradingAPI } from "@/services/GradingService";
 import { SubjectAPI } from "@/services/SubjectService";
 import { TeacherService } from "@/services/TeacherService";
+import { AcademicTermItem, calculateWeeksForTerm, CalendarEventItem, InstructionalWeek } from "@/utils/academicWeekEngine";
 import { router } from "expo-router";
 import {
+    AlertCircle,
     BookOpen,
     Calendar,
+    CalendarDays,
     CheckCircle2,
     Clock,
     Layers,
@@ -45,12 +53,20 @@ interface CoveragePlanItem {
 }
 
 export default function ContentCoveragePage() {
-    const { teacherId, isDemo } = useAuth();
+    const { teacherId, isDemo, user } = useAuth();
+    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'principal' || user?.role === 'head_teacher';
     const [subjects, setSubjects] = useState<any[]>([]);
     const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
-    const [selectedTerm, setSelectedTerm] = useState<string>("Term 1");
-    const [academicYear, setAcademicYear] = useState<string>("2026");
+    const [availableTerms, setAvailableTerms] = useState<string[]>([]);
+    const [termsObjects, setTermsObjects] = useState<AcademicTermItem[]>([]);
+    const [selectedTerm, setSelectedTerm] = useState<string>("");
+    const [academicYear, setAcademicYear] = useState<string>("");
+    const [calendarEvents, setCalendarEvents] = useState<CalendarEventItem[]>([]);
+    const [calculatedWeeks, setCalculatedWeeks] = useState<InstructionalWeek[]>([]);
+    const [showStartWeekPicker, setShowStartWeekPicker] = useState<boolean>(false);
+    const [showEndWeekPicker, setShowEndWeekPicker] = useState<boolean>(false);
     const [isHOD, setIsHOD] = useState<boolean>(false);
+    const canWrite = isAdmin || isHOD;
     const [plans, setPlans] = useState<CoveragePlanItem[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
@@ -74,18 +90,82 @@ export default function ContentCoveragePage() {
             }
 
             if (!isDemo) {
+                // 1. Fetch active academic year
+                let activeYearName = "";
+                let activeYearId = "";
+                try {
+                    const years = await GradingAPI.getAcademicYears();
+                    const activeYear = (years || []).find((y: any) => y.is_current) || (years || [])[0] || null;
+                    if (activeYear) {
+                        activeYearName = activeYear.name;
+                        activeYearId = activeYear.id;
+                        setAcademicYear(activeYearName);
+                    }
+                } catch (e) {
+                    console.error("fetchAcademicYears error:", e);
+                }
+
+                // 2. Fetch live terms scoped to institution & active year
+                try {
+                    const termsData = await GradingAPI.getTerms(activeYearId || undefined).catch(() => []);
+                    if (Array.isArray(termsData) && termsData.length > 0) {
+                        const sorted = [...termsData].sort((a, b) => (a.start_date || '').localeCompare(b.start_date || ''));
+                        setTermsObjects(sorted);
+                        const termNames = sorted.map((t: any) => t.name || `Term ${t.term_number || ''}`.trim());
+                        setAvailableTerms(termNames);
+                        const currentTerm = sorted.find((t: any) => t.is_current) || sorted[0];
+                        setSelectedTerm(prev => (prev && termNames.includes(prev) ? prev : (currentTerm?.name || termNames[0])));
+                    } else {
+                        // Explicit empty state - NO fallback to fabricated terms
+                        setTermsObjects([]);
+                        setAvailableTerms([]);
+                        setSelectedTerm("");
+                    }
+                } catch (e) {
+                    console.error("fetchTerms error:", e);
+                    setTermsObjects([]);
+                    setAvailableTerms([]);
+                    setSelectedTerm("");
+                }
+
+                // 3. Fetch calendar events for non-instructional day detection
+                try {
+                    const evs = await CalendarAPI.getEvents().catch(() => []);
+                    setCalendarEvents(evs || []);
+                } catch {
+                    setCalendarEvents([]);
+                }
+
                 const hodList = await TeacherService.getHODSubjects().catch(() => []);
                 const hodIds = new Set((hodList || []).map((s: any) => s.id));
                 if (selectedSubjectId) {
                     setIsHOD(hodIds.has(selectedSubjectId));
                 }
             } else {
+                setAvailableTerms(['Term 1', 'Term 2', 'Term 3']);
+                setSelectedTerm('Term 1');
+                setAcademicYear('2026');
                 setIsHOD(true);
             }
         } catch (err) {
             console.error("fetchSubjectsAndHOD error:", err);
         }
     }, [isDemo, selectedSubjectId]);
+
+    // Recalculate instructional weeks for selected term
+    useEffect(() => {
+        if (!selectedTerm || termsObjects.length === 0) {
+            setCalculatedWeeks([]);
+            return;
+        }
+        const currentTermObj = termsObjects.find(t => t.name === selectedTerm);
+        if (currentTermObj) {
+            const weeks = calculateWeeksForTerm(currentTermObj, calendarEvents);
+            setCalculatedWeeks(weeks);
+        } else {
+            setCalculatedWeeks([]);
+        }
+    }, [selectedTerm, termsObjects, calendarEvents]);
 
     const fetchCoveragePlans = useCallback(async () => {
         if (!selectedSubjectId) return;
@@ -330,56 +410,92 @@ export default function ContentCoveragePage() {
                     <View className="flex-row justify-between items-center mb-6 px-1">
                         <View>
                             <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-widest">
-                                CBC Syllabus Timeline
+                                Curriculum Syllabus Timeline
                             </Text>
                             <Text className="text-gray-900 dark:text-white font-bold text-2xl tracking-tight mt-0.5">
                                 Content Coverage
                             </Text>
                         </View>
-                        <TouchableOpacity
-                            onPress={() => setShowCreateModal(true)}
-                            className="flex-row items-center bg-[#FF6900] px-4 py-2.5 rounded-xl shadow-sm active:bg-orange-600"
-                        >
-                            <Plus size={16} color="white" />
-                            <Text className="text-white font-bold text-xs ml-1.5 uppercase tracking-wider">Add Item</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Term Selector */}
-                    <View className="flex-row bg-white dark:bg-[#0D1117] p-1 rounded-2xl border border-gray-200 dark:border-gray-800 mb-5">
-                        {['Term 1', 'Term 2', 'Term 3'].map((termOption) => (
-                            <TouchableOpacity
-                                key={termOption}
-                                onPress={() => setSelectedTerm(termOption)}
-                                className={`flex-1 py-2.5 rounded-xl items-center justify-center ${selectedTerm === termOption ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
-                            >
-                                <Text className={`font-bold text-xs uppercase tracking-wider ${selectedTerm === termOption ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                                    {termOption}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-
-                    {/* Subject Pill Selector */}
-                    <View className="mb-6">
-                        <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-widest mb-2.5 px-1">
-                            Select Subject
-                        </Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-                            {subjects.map((s) => (
+                        {canWrite && availableTerms.length > 0 && (
+                            <ActionTooltip text="Add new curriculum coverage topic">
                                 <TouchableOpacity
-                                    key={s.id}
-                                    onPress={() => setSelectedSubjectId(s.id)}
-                                    className={`mr-3 px-4 py-2.5 rounded-2xl border flex-row items-center ${selectedSubjectId === s.id ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-white dark:bg-[#161B22] border-gray-200 dark:border-gray-800'}`}
+                                    onPress={() => setShowCreateModal(true)}
+                                    className="flex-row items-center bg-[#FF6900] px-4 py-2.5 rounded-xl shadow-sm active:bg-orange-600"
                                 >
-                                    <BookOpen size={14} color={selectedSubjectId === s.id ? 'white' : '#6B7280'} />
-                                    <Text className={`font-bold text-xs ml-2 ${selectedSubjectId === s.id ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
-                                        {s.title}
-                                    </Text>
+                                    <Plus size={16} color="white" />
+                                    <Text className="text-white font-bold text-xs ml-1.5 uppercase tracking-wider">Add Item</Text>
                                 </TouchableOpacity>
-                            ))}
-                        </ScrollView>
+                            </ActionTooltip>
+                        )}
                     </View>
+
+                    {/* Empty State when no academic periods are configured */}
+                    {availableTerms.length === 0 ? (
+                        <View className="bg-white dark:bg-[#161B22] p-8 md:p-12 rounded-[32px] items-center border border-dashed border-gray-300 dark:border-gray-800 my-4 shadow-sm">
+                            <View className="w-16 h-16 rounded-3xl bg-orange-50 dark:bg-orange-950/40 items-center justify-center mb-4 border border-orange-200 dark:border-orange-800/40">
+                                <Calendar size={32} color="#FF6900" />
+                            </View>
+                            <Text className="text-gray-900 dark:text-white font-bold text-lg text-center tracking-tight">
+                                {isAdmin ? "No Academic Periods Configured" : "Academic Periods Not Configured"}
+                            </Text>
+                            <Text className="text-gray-500 dark:text-gray-400 text-xs text-center mt-2 max-w-md leading-relaxed">
+                                {isAdmin
+                                    ? "Academic periods haven't been set up for this year yet — add terms and dates in Academic Setup to begin."
+                                    : "Academic periods haven't been set up for this year yet — contact your school admin to add terms and dates."}
+                            </Text>
+                            {isAdmin && (
+                                <ActionTooltip text="Open Academic Setup to create academic years and terms">
+                                    <TouchableOpacity
+                                        onPress={() => router.push('/(admin)/academic-setup')}
+                                        className="mt-6 flex-row items-center bg-[#FF6900] px-5 py-3 rounded-xl shadow-sm active:bg-orange-600"
+                                    >
+                                        <Plus size={16} color="white" />
+                                        <Text className="text-white font-bold text-xs ml-2 uppercase tracking-wider">
+                                            Configure Academic Periods
+                                        </Text>
+                                    </TouchableOpacity>
+                                </ActionTooltip>
+                            )}
+                        </View>
+                    ) : (
+                        <>
+                            {/* Term Selector */}
+                            <View className="flex-row bg-white dark:bg-[#0D1117] p-1 rounded-2xl border border-gray-200 dark:border-gray-800 mb-5">
+                                {availableTerms.map((termOption) => (
+                                    <ActionTooltip key={termOption} text={`View coverage for ${termOption}`}>
+                                        <TouchableOpacity
+                                            onPress={() => setSelectedTerm(termOption)}
+                                            className={`flex-1 py-2.5 rounded-xl items-center justify-center ${selectedTerm === termOption ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
+                                        >
+                                            <Text className={`font-bold text-xs uppercase tracking-wider ${selectedTerm === termOption ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                                {termOption}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </ActionTooltip>
+                                ))}
+                            </View>
+
+                            {/* Subject Pill Selector */}
+                            <View className="mb-6">
+                                <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-widest mb-2.5 px-1">
+                                    Select Subject
+                                </Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+                                    {subjects.map((s) => (
+                                        <ActionTooltip key={s.id} text={`Select ${s.title}`}>
+                                            <TouchableOpacity
+                                                onPress={() => setSelectedSubjectId(s.id)}
+                                                className={`mr-3 px-4 py-2.5 rounded-2xl border flex-row items-center ${selectedSubjectId === s.id ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-white dark:bg-[#161B22] border-gray-200 dark:border-gray-800'}`}
+                                            >
+                                                <BookOpen size={14} color={selectedSubjectId === s.id ? 'white' : '#6B7280'} />
+                                                <Text className={`font-bold text-xs ml-2 ${selectedSubjectId === s.id ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                                                    {s.title}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </ActionTooltip>
+                                    ))}
+                                </ScrollView>
+                            </View>
 
                     {/* HOD Authority & Progress Banner */}
                     <View className="bg-white dark:bg-[#161B22] p-5 rounded-[28px] border border-gray-200 dark:border-gray-800 mb-6 shadow-sm">
@@ -390,16 +506,16 @@ export default function ContentCoveragePage() {
                                 </View>
                                 <View>
                                     <Text className="text-gray-900 dark:text-white font-bold text-sm tracking-tight">
-                                        {isHOD ? "Subject Head (HOD) Access" : "Faculty Subject View"}
+                                        {isAdmin ? "Administrative Authority" : (isHOD ? "Subject Head (HOD) Access" : "Faculty Subject View")}
                                     </Text>
                                     <Text className="text-gray-400 dark:text-gray-500 text-[11px] font-medium">
-                                        {isHOD ? "You have full planning authority for this subject" : "View termly coverage schedule & track completion"}
+                                        {canWrite ? "You have full planning and modification authority for this subject" : "View termly coverage schedule & track lesson completion"}
                                     </Text>
                                 </View>
                             </View>
-                            {isHOD && (
+                            {canWrite && (
                                 <View className="bg-[#FF6900]/10 px-2.5 py-1 rounded-full border border-[#FF6900]/20">
-                                    <Text className="text-[#FF6900] text-[9px] font-bold uppercase tracking-wider">HOD</Text>
+                                    <Text className="text-[#FF6900] text-[9px] font-bold uppercase tracking-wider">{isAdmin ? 'ADMIN' : 'HOD'}</Text>
                                 </View>
                             )}
                         </View>
@@ -424,7 +540,7 @@ export default function ContentCoveragePage() {
                     {/* Coverage Items List */}
                     <View className="px-1 mb-3">
                         <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-widest">
-                            Planned Topics & Strands ({plans.length})
+                            Planned Topics & Learning Units ({plans.length})
                         </Text>
                     </View>
 
@@ -437,14 +553,18 @@ export default function ContentCoveragePage() {
                                 No Coverage Plan Set
                             </Text>
                             <Text className="text-gray-400 dark:text-gray-500 text-xs text-center mt-1 max-w-xs font-medium">
-                                Optional: Define termly CBC topic strands and weekly lesson durations for this subject.
+                                {canWrite
+                                    ? "Define termly curriculum topics, units and weekly lesson durations for this subject."
+                                    : "No curriculum coverage plans have been configured for this subject yet."}
                             </Text>
-                            <TouchableOpacity
-                                onPress={() => setShowCreateModal(true)}
-                                className="mt-5 bg-[#FF6900] px-5 py-2.5 rounded-xl shadow-sm active:bg-orange-600"
-                            >
-                                <Text className="text-white font-bold text-xs uppercase tracking-wider">Set Up Plan</Text>
-                            </TouchableOpacity>
+                            {canWrite && (
+                                <TouchableOpacity
+                                    onPress={() => setShowCreateModal(true)}
+                                    className="mt-5 bg-[#FF6900] px-5 py-2.5 rounded-xl shadow-sm active:bg-orange-600"
+                                >
+                                    <Text className="text-white font-bold text-xs uppercase tracking-wider">Set Up Plan</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     ) : (
                         plans.map((item) => (
@@ -462,7 +582,7 @@ export default function ContentCoveragePage() {
                                         {item.strand && (
                                             <View className="bg-gray-100 dark:bg-[#0D1117] px-2.5 py-1 rounded-lg">
                                                 <Text className="text-gray-600 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">
-                                                    Strand: {item.strand}
+                                                    Topic Area: {item.strand}
                                                 </Text>
                                             </View>
                                         )}
@@ -476,22 +596,26 @@ export default function ContentCoveragePage() {
                                     </View>
 
                                     <View className="flex-row items-center gap-2">
-                                        <TouchableOpacity
-                                            onPress={() => handleToggleStatus(item)}
-                                            className={`px-3 py-1 rounded-full border ${item.status === 'completed' ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-600' : 'bg-gray-50 dark:bg-gray-900 border-gray-200'}`}
-                                        >
-                                            <Text className={`text-[10px] font-bold uppercase tracking-widest ${item.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500'}`}>
-                                                {item.status}
-                                            </Text>
-                                        </TouchableOpacity>
-
-                                        {isHOD && (
+                                        <ActionTooltip text={item.status === 'completed' ? 'Reopen topic to active status' : 'Mark topic as completed'}>
                                             <TouchableOpacity
-                                                onPress={() => handleDelete(item.id)}
-                                                className="p-1.5 text-gray-400 active:opacity-60"
+                                                onPress={() => handleToggleStatus(item)}
+                                                className={`px-3 py-1 rounded-full border ${item.status === 'completed' ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-600' : 'bg-gray-50 dark:bg-gray-900 border-gray-200'}`}
                                             >
-                                                <Trash2 size={16} color="#EF4444" />
+                                                <Text className={`text-[10px] font-bold uppercase tracking-widest ${item.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500'}`}>
+                                                    {item.status}
+                                                </Text>
                                             </TouchableOpacity>
+                                        </ActionTooltip>
+
+                                        {canWrite && (
+                                            <ActionTooltip text="Delete coverage item">
+                                                <TouchableOpacity
+                                                    onPress={() => handleDelete(item.id)}
+                                                    className="p-1.5 text-gray-400 active:opacity-60"
+                                                >
+                                                    <Trash2 size={16} color="#EF4444" />
+                                                </TouchableOpacity>
+                                            </ActionTooltip>
                                         )}
                                     </View>
                                 </View>
@@ -524,6 +648,8 @@ export default function ContentCoveragePage() {
                             </View>
                         ))
                     )}
+                        </>
+                    )}
                 </View>
             </ScrollView>
 
@@ -537,15 +663,17 @@ export default function ContentCoveragePage() {
                                     Add Coverage Topic
                                 </Text>
                                 <Text className="text-gray-400 text-xs font-medium mt-0.5">
-                                    Termly Syllabus Strand for {selectedTerm}
+                                    Termly Syllabus Unit for {selectedTerm}
                                 </Text>
                             </View>
-                            <TouchableOpacity
-                                className="w-9 h-9 rounded-full bg-gray-100 dark:bg-[#0D1117] items-center justify-center"
-                                onPress={() => setShowCreateModal(false)}
-                            >
-                                <X size={18} color="#6B7280" />
-                            </TouchableOpacity>
+                            <ActionTooltip text="Close modal">
+                                <TouchableOpacity
+                                    className="w-9 h-9 rounded-full bg-gray-100 dark:bg-[#0D1117] items-center justify-center"
+                                    onPress={() => setShowCreateModal(false)}
+                                >
+                                    <X size={18} color="#6B7280" />
+                                </TouchableOpacity>
+                            </ActionTooltip>
                         </View>
 
                         <ScrollView showsVerticalScrollIndicator={false}>
@@ -563,11 +691,11 @@ export default function ContentCoveragePage() {
                                 />
                             </View>
 
-                            {/* Strand & Sub-strand (CBC) */}
+                            {/* Topic Area & Sub-area */}
                             <View className="flex-row gap-3 mb-4">
                                 <View className="flex-1">
                                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 ml-1">
-                                        CBC Strand
+                                        Topic Area
                                     </Text>
                                     <TextInput
                                         className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 text-sm"
@@ -579,7 +707,7 @@ export default function ContentCoveragePage() {
                                 </View>
                                 <View className="flex-1">
                                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 ml-1">
-                                        Sub-strand
+                                        Topic / Sub-area
                                     </Text>
                                     <TextInput
                                         className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 text-sm"
@@ -595,43 +723,45 @@ export default function ContentCoveragePage() {
                             <View className="flex-row gap-3 mb-4">
                                 <View className="flex-1">
                                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 ml-1">
-                                        Start Week
+                                        Start Week *
                                     </Text>
-                                    <TextInput
-                                        className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 text-sm"
-                                        placeholder="1"
-                                        placeholderTextColor="#9CA3AF"
-                                        keyboardType="numeric"
-                                        value={weekStart}
-                                        onChangeText={setWeekStart}
-                                    />
+                                    <ActionTooltip text="Choose start instructional week">
+                                        <TouchableOpacity
+                                            onPress={() => setShowStartWeekPicker(true)}
+                                            className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 flex-row items-center justify-between"
+                                        >
+                                            <Text className="text-gray-900 dark:text-white font-medium text-sm">
+                                                {calculatedWeeks.find(w => w.weekNumber === parseInt(weekStart))?.label || `Week ${weekStart}`}
+                                            </Text>
+                                            <Calendar size={14} color="#6B7280" />
+                                        </TouchableOpacity>
+                                    </ActionTooltip>
                                 </View>
                                 <View className="flex-1">
                                     <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 ml-1">
-                                        End Week
+                                        End Week *
                                     </Text>
-                                    <TextInput
-                                        className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 text-sm"
-                                        placeholder="3"
-                                        placeholderTextColor="#9CA3AF"
-                                        keyboardType="numeric"
-                                        value={weekEnd}
-                                        onChangeText={setWeekEnd}
-                                    />
+                                    <ActionTooltip text="Choose end instructional week">
+                                        <TouchableOpacity
+                                            onPress={() => setShowEndWeekPicker(true)}
+                                            className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 flex-row items-center justify-between"
+                                        >
+                                            <Text className="text-gray-900 dark:text-white font-medium text-sm">
+                                                {calculatedWeeks.find(w => w.weekNumber === parseInt(weekEnd))?.label || `Week ${weekEnd}`}
+                                            </Text>
+                                            <Calendar size={14} color="#6B7280" />
+                                        </TouchableOpacity>
+                                    </ActionTooltip>
                                 </View>
                             </View>
 
-                            {/* Target Date */}
+                            {/* Target Date with DatePicker */}
                             <View className="mb-4">
-                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2 ml-1">
-                                    Target Completion Date (YYYY-MM-DD)
-                                </Text>
-                                <TextInput
-                                    className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 text-sm"
-                                    placeholder="2026-03-25"
-                                    placeholderTextColor="#9CA3AF"
+                                <DatePicker
+                                    label="Target Completion Date"
                                     value={targetDate}
-                                    onChangeText={setTargetDate}
+                                    onChange={(selected) => setTargetDate(selected)}
+                                    placeholder="Select completion date"
                                 />
                             </View>
 
@@ -652,21 +782,45 @@ export default function ContentCoveragePage() {
                                 />
                             </View>
 
-                            <TouchableOpacity
-                                onPress={handleCreatePlanItem}
-                                disabled={saving}
-                                className="bg-[#FF6900] py-4 rounded-xl items-center shadow-md active:bg-orange-600 mb-6"
-                            >
-                                {saving ? (
-                                    <ActivityIndicator size="small" color="white" />
-                                ) : (
-                                    <Text className="text-white font-bold text-base">Save Coverage Item</Text>
-                                )}
-                            </TouchableOpacity>
+                            <ActionTooltip text="Save coverage plan item">
+                                <TouchableOpacity
+                                    onPress={handleCreatePlanItem}
+                                    disabled={saving}
+                                    className="bg-[#FF6900] py-4 rounded-xl items-center shadow-md active:bg-orange-600 mb-6"
+                                >
+                                    {saving ? (
+                                        <ActivityIndicator size="small" color="white" />
+                                    ) : (
+                                        <Text className="text-white font-bold text-base">Save Coverage Item</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </ActionTooltip>
                         </ScrollView>
                     </View>
                 </View>
             </Modal>
+
+            {/* Start Week Picker Modal */}
+            <WeekPickerModal
+                visible={showStartWeekPicker}
+                onClose={() => setShowStartWeekPicker(false)}
+                weeks={calculatedWeeks}
+                selectedWeekNumber={parseInt(weekStart)}
+                onSelectWeek={(w) => setWeekStart(String(w.weekNumber))}
+                title="Select Start Week"
+                subtitle={`Instructional week for ${selectedTerm}`}
+            />
+
+            {/* End Week Picker Modal */}
+            <WeekPickerModal
+                visible={showEndWeekPicker}
+                onClose={() => setShowEndWeekPicker(false)}
+                weeks={calculatedWeeks}
+                selectedWeekNumber={parseInt(weekEnd)}
+                onSelectWeek={(w) => setWeekEnd(String(w.weekNumber))}
+                title="Select End Week"
+                subtitle={`Instructional week for ${selectedTerm}`}
+            />
         </View>
     );
 }

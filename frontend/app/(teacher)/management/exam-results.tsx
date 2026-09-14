@@ -2,6 +2,8 @@ import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { ExamService } from "@/services/ExamService";
+import { GradingAPI } from "@/services/GradingService";
+import { TeacherService } from "@/services/TeacherService";
 import { showError, showSuccess } from "@/utils/toast";
 import { router, useLocalSearchParams } from "expo-router";
 import {
@@ -35,15 +37,20 @@ interface StudentScore {
 export default function ExamResultsPage() {
     const { examId } = useLocalSearchParams();
     const { isDemo, user } = useAuth();
+    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'principal' || user?.role === 'head_teacher';
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [exam, setExam] = useState<any>(null);
     const [studentScores, setStudentScores] = useState<StudentScore[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
+    const [gradingScale, setGradingScale] = useState<any>(null);
+    const [isHOD, setIsHOD] = useState(false);
 
-    const isLocked = exam?.submission_deadline
-        ? new Date() > new Date(exam.submission_deadline) && user?.role !== 'admin'
+    const isDeadlinePassed = exam?.submission_deadline
+        ? new Date() > new Date(exam.submission_deadline)
         : false;
+    const canOverride = isAdmin || isHOD;
+    const isLocked = isDeadlinePassed && !canOverride;
 
     useEffect(() => {
         if (examId) {
@@ -54,8 +61,21 @@ export default function ExamResultsPage() {
     const fetchInitialData = async () => {
         try {
             setLoading(true);
-            const currentExam = await ExamService.getExamById(examId as string);
+            const [currentExam, studentList, existingResults, defaultScale, hodList] = await Promise.all([
+                ExamService.getExamById(examId as string),
+                ExamService.getExamRoster(examId as string).catch(() => []),
+                ExamService.getExamResults(examId as string).catch(() => []),
+                GradingAPI.getDefaultScale().catch(() => null),
+                TeacherService.getHODSubjects().catch(() => [])
+            ]);
+
             setExam(currentExam);
+            setGradingScale(defaultScale);
+
+            if (currentExam && Array.isArray(hodList)) {
+                const isSubjectHod = hodList.some((s: any) => s.id === currentExam.subject_id);
+                setIsHOD(isSubjectHod);
+            }
 
             if (!currentExam) {
                 showError("Error", "Exam not found");
@@ -63,11 +83,8 @@ export default function ExamResultsPage() {
                 return;
             }
 
-            const studentList = await ExamService.getExamRoster(examId as string);
-            const existingResults = await ExamService.getExamResults(examId as string);
-
-            const initialScores = studentList.map((s: any) => {
-                const existing = existingResults.find((r: any) => r.student_id === s.student_id);
+            const initialScores = (studentList || []).map((s: any) => {
+                const existing = (existingResults || []).find((r: any) => r.student_id === s.student_id);
                 return {
                     student_id: s.student_id,
                     student_name: s.name || s.full_name || s.student_name || "Unknown Student",
@@ -86,6 +103,19 @@ export default function ExamResultsPage() {
         }
     };
 
+    const calculateBand = (scoreNum: number, max: number) => {
+        if (isNaN(scoreNum)) return undefined;
+        const pct = (scoreNum / max) * 100;
+        if (gradingScale?.descriptors && Array.isArray(gradingScale.descriptors)) {
+            const found = gradingScale.descriptors.find((d: any) => pct >= d.min_score && pct <= d.max_score);
+            if (found) return found.grade || found.label;
+        }
+        if (pct >= 80) return 'EE';
+        if (pct >= 60) return 'ME';
+        if (pct >= 40) return 'AE';
+        return 'BE';
+    };
+
     const handleUpdateScore = (studentId: string, field: 'score' | 'feedback', value: string) => {
         if (isLocked) return;
         setStudentScores(prev => prev.map(s => {
@@ -94,15 +124,7 @@ export default function ExamResultsPage() {
             if (field === 'score') {
                 const numScore = parseFloat(value);
                 const max = Number(exam?.max_score) || 100;
-                if (!isNaN(numScore)) {
-                    const pct = (numScore / max) * 100;
-                    if (pct >= 80) updated.competency_band = 'EE';
-                    else if (pct >= 60) updated.competency_band = 'ME';
-                    else if (pct >= 40) updated.competency_band = 'AE';
-                    else updated.competency_band = 'BE';
-                } else {
-                    updated.competency_band = undefined;
-                }
+                updated.competency_band = calculateBand(numScore, max);
             }
             return updated;
         }));
@@ -151,14 +173,24 @@ export default function ExamResultsPage() {
         if (isNaN(numScore)) return null;
 
         const max = Number(exam?.max_score) || 100;
-        const pct = (numScore / max) * 100;
+        const b = band || calculateBand(numScore, max);
+        if (!b) return null;
 
-        let b = band;
-        if (!b) {
-            if (pct >= 80) b = 'EE';
-            else if (pct >= 60) b = 'ME';
-            else if (pct >= 40) b = 'AE';
-            else b = 'BE';
+        if (gradingScale?.descriptors && Array.isArray(gradingScale.descriptors)) {
+            const desc = gradingScale.descriptors.find((d: any) => d.grade === b || d.label === b);
+            if (desc) {
+                return (
+                    <View
+                        style={{ borderColor: desc.color || '#FF6900' }}
+                        className="bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-md border flex-row items-center"
+                    >
+                        <Award size={10} color={desc.color || '#FF6900'} />
+                        <Text style={{ color: desc.color || '#FF6900' }} className="font-bold text-[9px] uppercase ml-1">
+                            {desc.grade || b} • {desc.label || desc.description || ''}
+                        </Text>
+                    </View>
+                );
+            }
         }
 
         switch (b) {
@@ -186,7 +218,7 @@ export default function ExamResultsPage() {
             default:
                 return (
                     <View className="bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-md border border-rose-200 dark:border-rose-800/40 flex-row items-center">
-                        <Text className="text-rose-700 dark:text-rose-400 font-bold text-[9px] uppercase">BE • Below</Text>
+                        <Text className="text-rose-700 dark:text-rose-400 font-bold text-[9px] uppercase">{b}</Text>
                     </View>
                 );
         }
@@ -216,7 +248,21 @@ export default function ExamResultsPage() {
                                     Submissions Closed
                                 </Text>
                                 <Text className="text-rose-600 dark:text-rose-400 text-[11px] font-medium mt-0.5">
-                                    The deadline for submitting grades ({new Date(exam.submission_deadline).toLocaleDateString()}) has passed. Contact Administration for changes.
+                                    The deadline for submitting grades ({new Date(exam.submission_deadline).toLocaleDateString()}) has passed. Contact your Subject Head (HOD) or Administration for changes.
+                                </Text>
+                            </View>
+                        </View>
+                    )}
+
+                    {isDeadlinePassed && canOverride && (
+                        <View className="bg-amber-50 dark:bg-amber-950/40 p-3.5 rounded-2xl border border-amber-300 dark:border-amber-800/60 mb-5 flex-row items-center">
+                            <AlertCircle size={18} color="#D97706" />
+                            <View className="flex-1 ml-2.5">
+                                <Text className="text-amber-800 dark:text-amber-300 font-bold text-xs">
+                                    Submission Deadline Passed (Override Active)
+                                </Text>
+                                <Text className="text-amber-700 dark:text-amber-400 text-[11px] mt-0.5">
+                                    You are editing under {isAdmin ? 'Administrator' : 'Subject Head (HOD)'} authority.
                                 </Text>
                             </View>
                         </View>

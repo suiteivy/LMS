@@ -268,7 +268,7 @@ const resolveFeeStructureCurrentPair = async ({ institution_id, term_id, academi
 exports.createFund = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) return res.status(403).json({ error: "Unauthorized" });
 
         const { name, description, total_amount } = req.body;
         if (!name) return res.status(400).json({ error: "Fund name is required" });
@@ -313,7 +313,7 @@ exports.getFunds = async (req, res) => {
 exports.createAllocation = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) return res.status(403).json({ error: "Unauthorized" });
 
         const { fund_id, title, description, amount, category, status } = req.body;
         if (!fund_id || !title || !amount) {
@@ -411,8 +411,8 @@ exports.getTransactions = async (req, res) => {
             .eq("institution_id", institution_id)
             .order("date", { ascending: false });
 
-        if (userRole !== "admin" && userRole !== "master_admin" && userRole !== "bursary") {
-            // Non-admins/bursaries can only see their own transactions
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) {
+            // Non-finance admins can only see their own transactions
             query = query.eq("user_id", userId);
         } else if (distinct_user_id) {
             // Admin filtering by specific user
@@ -935,7 +935,7 @@ exports.processTransaction = async (req, res) => {
         const { id } = req.params;
         const { userRole, institution_id } = req;
 
-        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) return res.status(403).json({ error: "Unauthorized" });
 
         const { data: tx, error: fetchError } = await supabase
             .from("financial_transactions")
@@ -971,7 +971,7 @@ exports.processTransaction = async (req, res) => {
 exports.createTransaction = async (req, res) => {
     try {
         const { userRole, institution_id, userId } = req;
-        if (!['admin', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) return res.status(403).json({ error: "Unauthorized" });
 
         const { user_id, type, direction, amount, date, method, status, reference_id, meta, origin_type, origin_id, origin_label, target_type, target_id, target_label } = req.body;
         const recorder = await getRecordedByIdentity(userId);
@@ -1019,7 +1019,7 @@ exports.createTransaction = async (req, res) => {
 exports.recordFeePayment = async (req, res) => {
     try {
         const { userRole, institution_id, userId } = req;
-        if (!['admin', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) return res.status(403).json({ error: "Unauthorized" });
         const { student_id, fee_structure_id, amount, payment_method, reference_number, notes } = req.body;
         // Verify student exists and get details including institution_id
         const { data: student, error: studentError } = await supabase
@@ -1143,7 +1143,7 @@ exports.getFeeStructures = async (req, res) => {
 exports.updateFeeStructure = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
-        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) return res.status(403).json({ error: "Unauthorized" });
 
         const id = req.params.id || req.body.id;
         if (!id) return res.status(400).json({ error: 'Fee structure id is required' });
@@ -1353,10 +1353,10 @@ exports.releaseFeeStructure = async (req, res) => {
                     req.query?.strict_current_pair === '1' ||
                     req.body?.strict_current_pair === true
                 );
-        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: 'Unauthorized' });
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) return res.status(403).json({ error: 'Unauthorized' });
         if (!id) return res.status(400).json({ error: 'Fee structure id is required' });
 
-        const canOverrideStrictRelease = userRole === 'admin' || userRole === 'school_admin';
+        const canOverrideStrictRelease = hasRequiredFinanceRole(req, ['admin', 'school_admin', 'platform_admin', 'master_admin']);
         if (!strictCurrentPair && !canOverrideStrictRelease) {
             return res.status(403).json({ error: 'Only institution admins can override strict current pair release policy' });
         }
@@ -1420,7 +1420,7 @@ exports.deleteFeeStructure = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
         const { id } = req.params;
-        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: 'Unauthorized' });
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) return res.status(403).json({ error: 'Unauthorized' });
         if (!id) return res.status(400).json({ error: 'Fee structure id is required' });
 
         const mutableCheck = await assertFeeStructureMutable({
@@ -1469,7 +1469,7 @@ exports.revertReleaseFeeStructure = async (req, res) => {
     try {
         const { userRole, institution_id } = req;
         const { id } = req.params;
-        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: 'Unauthorized' });
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) return res.status(403).json({ error: 'Unauthorized' });
         if (!id) return res.status(400).json({ error: 'Fee structure id is required' });
 
         const mutableCheck = await assertFeeStructureMutable({
@@ -1554,7 +1554,7 @@ exports.submitPaymentEvidence = async (req, res) => {
 exports.getPendingPayments = async (req, res) => {
     try {
         const { institution_id, userRole } = req;
-        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) return res.status(403).json({ error: "Unauthorized" });
 
         const { data, error } = await supabase
             .from("payments")
@@ -1577,7 +1577,7 @@ exports.getPendingPayments = async (req, res) => {
 exports.confirmPaymentEvidence = async (req, res) => {
     try {
         const { userRole, institution_id, userId } = req;
-        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) return res.status(403).json({ error: "Unauthorized" });
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) return res.status(403).json({ error: "Unauthorized" });
 
         const { payment_id, action, admin_notes } = req.body;
         const isApproved = action === 'approve';
@@ -1635,7 +1635,7 @@ exports.getPaymentReceipt = async (req, res) => {
         const { institution_id, userRole } = req;
 
         if (!id) return res.status(400).json({ error: 'Payment id is required' });
-        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) {
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) {
             return res.status(403).json({ error: 'Unauthorized' });
         }
 
@@ -1703,7 +1703,7 @@ exports.getTransactionReceipt = async (req, res) => {
         const { institution_id, userRole } = req;
 
         if (!id) return res.status(400).json({ error: 'Transaction id is required' });
-        if (!['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin'].includes(userRole)) {
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) {
             return res.status(403).json({ error: 'Unauthorized' });
         }
 

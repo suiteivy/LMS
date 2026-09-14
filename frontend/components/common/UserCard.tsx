@@ -1,393 +1,444 @@
+import { ActionTooltip } from '@/components/common/ActionTooltip';
 import { useTheme } from '@/contexts/ThemeContext';
 import { BaseComponentProps, User } from '@/types/types';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 
-
-
 interface UserCardProps extends BaseComponentProps {
- user: User;
- variant?: 'default' | 'compact' | 'detailed';
- onPress?: (user: User) => void;
- showActions?: boolean;
- onEditPress?: (user: User) => void;
- onResetCredentialsPress?: (user: User) => void;
- onDeletePress?: (user: User) => void;
- onMarkLeaverPress?: (user: User) => void;
- onReactivatePress?: (user: User) => void;
- showBackButton?: boolean;
- onBackPress?: () => void;
+    user: User;
+    variant?: 'default' | 'compact' | 'detailed';
+    onPress?: (user: User) => void;
+    showActions?: boolean;
+    onEditPress?: (user: User) => void;
+    onResetCredentialsPress?: (user: User) => void;
+    onDeletePress?: (user: User) => void;
+    onMarkLeaverPress?: (user: User) => void;
+    onReactivatePress?: (user: User) => void;
+    showBackButton?: boolean;
+    onBackPress?: () => void;
 }
 
 export const UserCard: React.FC<UserCardProps> = ({
- user,
- variant = 'default',
- onPress,
- showActions = false,
- onEditPress,
- onResetCredentialsPress,
- onDeletePress,
- onMarkLeaverPress,
- onReactivatePress,
- showBackButton = false,
- onBackPress,
- className ="",
- testID
+    user,
+    variant = 'default',
+    onPress,
+    showActions = false,
+    onEditPress,
+    onResetCredentialsPress,
+    onDeletePress,
+    onMarkLeaverPress,
+    onReactivatePress,
+    showBackButton = false,
+    onBackPress,
+    className = "",
+    testID,
 }) => {
- const { isDark } = useTheme();
- const getRoleColor = (role: string) => {
- switch (role.toLowerCase()) {
- case 'admin':
- return {
- bg: 'bg-red-50',
- text: 'text-red-600',
- border: 'border-red-100',
- icon: 'shield'
- };
- case 'teacher':
- return {
- bg: 'bg-blue-50',
- text: 'text-blue-600',
- border: 'border-blue-100',
- icon: 'school'
- };
- case 'student':
- return {
- bg: 'bg-orange-50',
- text: 'text-orange-600',
- border: 'border-orange-100',
- icon: 'person'
- };
- default:
- return {
- bg: 'bg-gray-50',
- text: 'text-gray-600',
- border: 'border-gray-100',
- icon: 'help'
- };
- }
- };
+    const { isDark } = useTheme();
 
- const roleColors = getRoleColor(user.role);
+    const getRoleColor = (role: string) => {
+        switch (role?.toLowerCase()) {
+            case 'admin':
+                return {
+                    bg: 'bg-red-50',
+                    text: 'text-red-600',
+                    border: 'border-red-100',
+                    icon: 'shield',
+                };
+            case 'teacher':
+                return {
+                    bg: 'bg-blue-50',
+                    text: 'text-blue-600',
+                    border: 'border-blue-100',
+                    icon: 'school',
+                };
+            case 'student':
+                return {
+                    bg: 'bg-orange-50',
+                    text: 'text-orange-600',
+                    border: 'border-orange-100',
+                    icon: 'person',
+                };
+            default:
+                return {
+                    bg: 'bg-gray-50',
+                    text: 'text-gray-600',
+                    border: 'border-gray-100',
+                    icon: 'help',
+                };
+        }
+    };
 
- const handlePress = () => {
- onPress?.(user);
- };
+    const roleColors = getRoleColor(user.role);
 
- const handleEditPress = (e: any) => {
- e.stopPropagation();
- onEditPress?.(user);
- };
+    const handlePress = () => {
+        onPress?.(user);
+    };
 
- const handleResetCredentialsPress = (e: any) => {
- e.stopPropagation();
- onResetCredentialsPress?.(user);
- };
+    const handleEditPress = (e: any) => {
+        e.stopPropagation();
+        onEditPress?.(user);
+    };
 
- const handleDeletePress = (e: any) => {
- e.stopPropagation();
- onDeletePress?.(user);
- };
+    const handleResetCredentialsPress = (e: any) => {
+        e.stopPropagation();
+        onResetCredentialsPress?.(user);
+    };
 
- const handleMarkLeaverPress = (e: any) => {
- e.stopPropagation();
- onMarkLeaverPress?.(user);
- };
+    const handleDeletePress = (e: any) => {
+        e.stopPropagation();
+        onDeletePress?.(user);
+    };
 
- const handleReactivatePress = (e: any) => {
- e.stopPropagation();
- onReactivatePress?.(user);
- };
+    const handleMarkLeaverPress = (e: any) => {
+        e.stopPropagation();
+        onMarkLeaverPress?.(user);
+    };
 
- const renderAvatar = (size: number = 12) => {
- const sizeClass = `w-${size} h-${size}`;
- if (user.avatar) {
- return (
- <Image
- source={{ uri: user.avatar }}
- className={`${sizeClass} rounded-lg`}
- />
- );
- }
+    const handleReactivatePress = (e: any) => {
+        e.stopPropagation();
+        onReactivatePress?.(user);
+    };
 
- return (
- <View className={`${sizeClass} rounded-lg bg-[#EAEEF2] dark:bg-[#161B22] items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]`}>
- <Text className="text-gray-500 dark:text-gray-400 font-bold text-lg">
- {(user.name || 'U').charAt(0).toUpperCase()}
- </Text>
- </View>
- );
- };
+    const renderAvatar = (size: number = 12) => {
+        const sizeClass = `w-${size} h-${size}`;
+        if (user.avatar) {
+            return (
+                <Image
+                    source={{ uri: user.avatar }}
+                    className={`${sizeClass} rounded-xl`}
+                />
+            );
+        }
 
- const renderBackButton = () => {
- if (!showBackButton) return null;
- return (
- <TouchableOpacity
- onPress={onBackPress}
- className="absolute -left-2 top-1/2 -mt-5 w-10 h-10 items-center justify-center z-10"
- >
- <Ionicons name="chevron-back" size={24} color={isDark ?"#F9FAFB" :"#1F2937"} />
- </TouchableOpacity>
- );
- };
+        return (
+            <View className={`${sizeClass} rounded-xl bg-[#EAEEF2] dark:bg-[#161B22] items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]`}>
+                <Text className="text-gray-500 dark:text-gray-400 font-bold text-base">
+                    {(user.name || 'U').charAt(0).toUpperCase()}
+                </Text>
+            </View>
+        );
+    };
 
- const renderCompactCard = () => (
- <View 
- style={{
- boxShadow: [{
- offsetX: 0,
- offsetY: 1,
- blurRadius: 2,
- color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
- }],
- shadowOpacity: isDark ? 0.4 : 0.05,
- }}
- className="bg-white dark:bg-[#161B22] rounded-lg p-4 border border-[#D0D7DE] dark:border-[#21262D] mb-4"
- >
- <View className="flex-row items-center gap-4">
- {renderAvatar(12)}
- <View className="flex-1">
- <Text className="font-bold text-lg text-gray-900 dark:text-white leading-tight mb-1" numberOfLines={1}>
- {user.name}
- </Text>
- <Text className="text-sm text-gray-500 dark:text-gray-400 font-medium" numberOfLines={1}>
- {user.displayId || user.email}
- </Text>
- </View>
- <View className={`px-3 py-1.5 rounded-xl border ${roleColors.bg} dark:bg-orange-950/20 ${roleColors.border} dark:border-orange-500/20`}>
- <Text className={`text-[10px] font-bold uppercase tracking-wider ${roleColors.text}`}>
- {user.role}
- </Text>
- </View>
- </View>
- </View>
- );
+    const renderBackButton = () => {
+        if (!showBackButton) return null;
+        return (
+            <TouchableOpacity
+                onPress={onBackPress}
+                className="absolute -left-2 top-1/2 -mt-5 w-10 h-10 items-center justify-center z-10"
+            >
+                <Ionicons name="chevron-back" size={24} color={isDark ? "#F9FAFB" : "#1F2937"} />
+            </TouchableOpacity>
+        );
+    };
 
- const renderDefaultCard = () => (
- <View 
- style={{
- boxShadow: [{
- offsetX: 0,
- offsetY: 1,
- blurRadius: 2,
- color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
- }],
- shadowOpacity: isDark ? 0.4 : 0.05,
- }}
- className="bg-white dark:bg-[#161B22] rounded-[24px] border border-[#D0D7DE] dark:border-[#21262D] mb-3 overflow-hidden"
- >
- <View className="p-5">
- <View className="flex-row items-center justify-between">
- {/* Left: Avatar + Info */}
- <View className={`flex-row items-center flex-1 ${showBackButton ? 'pl-8' : ''}`}>
- {renderBackButton()}
- <View className="flex-row items-center gap-4 flex-1">
- {renderAvatar(14)}
- <View className="flex-1">
- <Text className="font-bold text-lg text-gray-900 dark:text-white leading-snug" numberOfLines={1}>
- {user.name}
- </Text>
- <Text className="text-gray-500 dark:text-gray-400 font-medium text-xs leading-none mt-1" numberOfLines={1}>
- {user.email}
- </Text>
- </View>
- </View>
- </View>
+    const renderCompactCard = () => (
+        <View 
+            style={{
+                boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 1,
+                    blurRadius: 2,
+                    color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                }],
+                shadowOpacity: isDark ? 0.4 : 0.05,
+            }}
+            className="bg-white dark:bg-[#161B22] rounded-lg p-4 border border-[#D0D7DE] dark:border-[#21262D] mb-4"
+        >
+            <View className="flex-row items-center gap-4">
+                {renderAvatar(12)}
+                <View className="flex-1">
+                    <Text className="font-bold text-lg text-gray-900 dark:text-white leading-tight mb-1" numberOfLines={1}>
+                        {user.name}
+                    </Text>
+                    <Text className="text-sm text-gray-500 dark:text-gray-400 font-medium" numberOfLines={1}>
+                        {user.displayId || user.email}
+                    </Text>
+                </View>
+                <View className={`px-3 py-1.5 rounded-xl border ${roleColors.bg} dark:bg-orange-950/20 ${roleColors.border} dark:border-orange-500/20`}>
+                    <Text className={`text-[10px] font-bold uppercase tracking-wider ${roleColors.text}`}>
+                        {user.role}
+                    </Text>
+                </View>
+            </View>
+        </View>
+    );
 
- {/* Right: Role + Date + Actions */}
- <View className="flex-row items-center gap-4">
- <View className="items-end gap-1.5">
- <View className="flex-row items-center gap-1.5">
- {user.is_active === false && (
- <View className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30">
- <Text className="text-[9px] font-bold text-amber-500 uppercase">
- {user.status || 'Leaver'}
- </Text>
- </View>
- )}
- <View className={`px-2.5 py-1 rounded-lg border ${roleColors.bg} dark:bg-orange-950/20 ${roleColors.border} dark:border-orange-500/20`}>
- <Text className={`text-[9px] font-bold uppercase tracking-widest ${roleColors.text}`}>
- {user.role}
- </Text>
- </View>
- </View>
- <Text className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
- {user.joinDate
- ? new Date(user.joinDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
- : 'N/A'}
- </Text>
- </View>
+    /**
+     * Vertical Card Layout for Institution Users list:
+     * - Top Row: Avatar + Role badge (+ Leaver indicator)
+     * - Middle: Full-width User Name (no premature truncation), ID, and Email
+     * - Divider
+     * - Bottom Row: Joined date + Actions Toolbar with short tooltips
+     */
+    const renderDefaultCard = () => (
+        <View 
+            style={{
+                boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 1,
+                    blurRadius: 3,
+                    color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.06)',
+                }],
+                shadowOpacity: isDark ? 0.4 : 0.06,
+            }}
+            className="bg-white dark:bg-[#161B22] rounded-[20px] border border-[#D0D7DE] dark:border-[#21262D] mb-4 overflow-hidden"
+        >
+            <View className="p-5 flex-col justify-between" style={{ minHeight: 205 }}>
+                {/* Top Section: Avatar & Badges */}
+                <View className="flex-row items-center justify-between mb-3">
+                    <View className="relative">
+                        {renderAvatar(12)}
+                        {user.is_active === false && (
+                            <View className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-white dark:border-[#161B22]" />
+                        )}
+                    </View>
 
- {showActions && (
- <View className="flex-row gap-1.5">
- {onResetCredentialsPress && (
- <TouchableOpacity
- onPress={handleResetCredentialsPress}
- className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-500/20 items-center justify-center"
- activeOpacity={0.7}
- >
- <MaterialCommunityIcons name="lock-reset" size={16} color="#FF6900" />
- </TouchableOpacity>
- )}
- {user.is_active === false ? (
- onReactivatePress && (
- <TouchableOpacity
- onPress={handleReactivatePress}
- className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-500/20 items-center justify-center"
- activeOpacity={0.7}
- >
- <Ionicons name="refresh" size={16} color="#10B981" />
- </TouchableOpacity>
- )
- ) : (
- onMarkLeaverPress && (
- <TouchableOpacity
- onPress={handleMarkLeaverPress}
- className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-500/20 items-center justify-center"
- activeOpacity={0.7}
- >
- <Ionicons name="exit-outline" size={16} color="#F59E0B" />
- </TouchableOpacity>
- )
- )}
- <TouchableOpacity
- onPress={handleEditPress}
- className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] items-center justify-center"
- activeOpacity={0.7}
- >
- <Ionicons name="pencil" size={16} color="#9CA3AF" />
- </TouchableOpacity>
- <TouchableOpacity
- onPress={handleDeletePress}
- className="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-500/20 items-center justify-center"
- activeOpacity={0.7}
- >
- <Ionicons name="trash" size={16} color="#EF4444" />
- </TouchableOpacity>
- </View>
- )}
- </View>
- </View>
- </View>
- </View>
- );
+                    <View className="flex-row items-center gap-2">
+                        {user.is_active === false && (
+                            <View className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30">
+                                <Text className="text-[9px] font-bold text-amber-500 uppercase">
+                                    {user.status || 'Leaver'}
+                                </Text>
+                            </View>
+                        )}
+                        <View className={`px-2.5 py-1 rounded-lg border ${roleColors.bg} dark:bg-orange-950/20 ${roleColors.border} dark:border-orange-500/20`}>
+                            <Text className={`text-[9px] font-bold uppercase tracking-widest ${roleColors.text}`}>
+                                {user.role}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
 
- const renderDetailedCard = () => (
- <View 
- style={{
- boxShadow: [{
- offsetX: 0,
- offsetY: 2,
- blurRadius: 4,
- color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)',
- }],
- shadowOpacity: isDark ? 0.4 : 0.08,
- }}
- className="bg-white dark:bg-[#161B22] rounded-[24px] border border-[#D0D7DE] dark:border-[#21262D] mb-4 overflow-hidden"
- >
- <View className="p-6">
- <View className="flex-row items-center justify-between">
- {/* Left: Enhanced Avatar + Detailed Info */}
- <View className={`flex-row items-center flex-1 ${showBackButton ? 'pl-10' : ''}`}>
- {renderBackButton()}
- <View className="flex-row items-center gap-5 flex-1">
- {renderAvatar(16)}
- <View className="flex-1">
- <Text className="text-xl font-bold text-gray-900 dark:text-white leading-tight">
- {user.name}
- </Text>
- <Text className="text-gray-500 dark:text-gray-400 font-bold text-sm mt-0.5" numberOfLines={1}>
- {user.email}
- </Text>
- {user.displayId && (
- <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] mt-1 uppercase tracking-tighter">
- ID: {user.displayId}
- </Text>
- )}
- </View>
- </View>
- </View>
+                {/* Middle Section: Full-Width Name, ID, & Email */}
+                <View className="flex-1 my-1 justify-center">
+                    <Text 
+                        className="font-bold text-base text-gray-900 dark:text-white leading-snug" 
+                        numberOfLines={2}
+                    >
+                        {user.name}
+                    </Text>
+                    {user.displayId && (
+                        <Text className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tight mt-0.5">
+                            ID: {user.displayId}
+                        </Text>
+                    )}
+                    <Text className="text-gray-500 dark:text-gray-400 font-medium text-xs mt-1" numberOfLines={1}>
+                        {user.email}
+                    </Text>
+                </View>
 
- {/* Right: Detailed Stats + Actions */}
- <View className="flex-row items-center gap-6">
- <View className="items-end gap-2">
- <View className={`flex-row items-center px-3 py-1.5 rounded-xl border ${roleColors.bg} dark:bg-orange-950/20 ${roleColors.border} dark:border-orange-500/20`}>
- <Ionicons name={roleColors.icon as any} size={12} color={roleColors.text.replace('text-', '')} style={{ marginRight: 6 }} />
- <Text className={`text-[10px] font-bold uppercase tracking-widest ${roleColors.text}`}>
- {user.role}
- </Text>
- </View>
- <View className="items-end">
- <Text className="text-[9px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-tighter">Joined</Text>
- <Text className="text-xs font-bold text-gray-700 dark:text-gray-300">
- {user.joinDate
- ? new Date(user.joinDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
- : 'N/A'}
- </Text>
- </View>
- </View>
+                {/* Divider */}
+                <View className="h-[1px] bg-[#EAEEF2] dark:bg-[#21262D] my-3" />
 
- {showActions && (
- <View className="flex-col gap-1.5">
- {onResetCredentialsPress && (
- <TouchableOpacity
- onPress={handleResetCredentialsPress}
- className="w-10 h-10 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-500/20 items-center justify-center"
- activeOpacity={0.7}
- >
- <MaterialCommunityIcons name="lock-reset" size={18} color="#FF6900" />
- </TouchableOpacity>
- )}
- <TouchableOpacity
- onPress={handleEditPress}
- className="w-10 h-10 rounded-lg bg-gray-50 dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] items-center justify-center"
- activeOpacity={0.7}
- >
- <Ionicons name="pencil" size={18} color="#9CA3AF" />
- </TouchableOpacity>
- <TouchableOpacity
- onPress={handleDeletePress}
- className="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-500/20 items-center justify-center"
- activeOpacity={0.7}
- >
- <Ionicons name="trash" size={18} color="#EF4444" />
- </TouchableOpacity>
- </View>
- )}
- </View>
- </View>
- </View>
- </View>
- );
+                {/* Bottom Section: Join Date & Actions Toolbar */}
+                <View className="flex-row items-center justify-between">
+                    <Text className="text-[10px] font-medium text-gray-400 dark:text-gray-500">
+                        {user.joinDate
+                            ? `Joined ${new Date(user.joinDate).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`
+                            : ''}
+                    </Text>
 
- const renderCard = () => {
- switch (variant) {
- case 'compact':
- return renderCompactCard();
- case 'detailed':
- return renderDetailedCard();
- default:
- return renderDefaultCard();
- }
- };
+                    {showActions && (
+                        <View className="flex-row items-center gap-1.5">
+                            {onResetCredentialsPress && (
+                                <ActionTooltip text="Reset credentials">
+                                    <TouchableOpacity
+                                        onPress={handleResetCredentialsPress}
+                                        className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-500/20 items-center justify-center"
+                                        activeOpacity={0.7}
+                                        accessibilityLabel="Reset credentials"
+                                    >
+                                        <MaterialCommunityIcons name="lock-reset" size={15} color="#FF6900" />
+                                    </TouchableOpacity>
+                                </ActionTooltip>
+                            )}
+                            {user.is_active === false ? (
+                                onReactivatePress && (
+                                    <ActionTooltip text="Reactivate account">
+                                        <TouchableOpacity
+                                            onPress={handleReactivatePress}
+                                            className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-500/20 items-center justify-center"
+                                            activeOpacity={0.7}
+                                            accessibilityLabel="Reactivate user"
+                                        >
+                                            <Ionicons name="refresh" size={15} color="#10B981" />
+                                        </TouchableOpacity>
+                                    </ActionTooltip>
+                                )
+                            ) : (
+                                onMarkLeaverPress && (
+                                    <ActionTooltip text="Mark as leaver">
+                                        <TouchableOpacity
+                                            onPress={handleMarkLeaverPress}
+                                            className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-500/20 items-center justify-center"
+                                            activeOpacity={0.7}
+                                            accessibilityLabel="Mark user as leaver"
+                                        >
+                                            <Ionicons name="exit-outline" size={15} color="#F59E0B" />
+                                        </TouchableOpacity>
+                                    </ActionTooltip>
+                                )
+                            )}
+                            {onEditPress && (
+                                <ActionTooltip text="Edit user details">
+                                    <TouchableOpacity
+                                        onPress={handleEditPress}
+                                        className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] items-center justify-center"
+                                        activeOpacity={0.7}
+                                        accessibilityLabel="Edit user"
+                                    >
+                                        <Ionicons name="pencil" size={15} color="#9CA3AF" />
+                                    </TouchableOpacity>
+                                </ActionTooltip>
+                            )}
+                            {onDeletePress && (
+                                <ActionTooltip text="Delete user permanently">
+                                    <TouchableOpacity
+                                        onPress={handleDeletePress}
+                                        className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-500/20 items-center justify-center"
+                                        activeOpacity={0.7}
+                                        accessibilityLabel="Delete user"
+                                    >
+                                        <Ionicons name="trash" size={15} color="#EF4444" />
+                                    </TouchableOpacity>
+                                </ActionTooltip>
+                            )}
+                        </View>
+                    )}
+                </View>
+            </View>
+        </View>
+    );
 
- if (onPress) {
- return (
- <TouchableOpacity
- onPress={handlePress}
- activeOpacity={0.8}
- className={className}
- testID={testID}
- >
- {renderCard()}
- </TouchableOpacity>
- );
- }
+    const renderDetailedCard = () => (
+        <View 
+            style={{
+                boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 2,
+                    blurRadius: 4,
+                    color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.08)',
+                }],
+                shadowOpacity: isDark ? 0.4 : 0.08,
+            }}
+            className="bg-white dark:bg-[#161B22] rounded-[24px] border border-[#D0D7DE] dark:border-[#21262D] mb-4 overflow-hidden"
+        >
+            <View className="p-6">
+                <View className="flex-row items-center justify-between">
+                    {/* Left: Enhanced Avatar + Detailed Info */}
+                    <View className={`flex-row items-center flex-1 ${showBackButton ? 'pl-10' : ''}`}>
+                        {renderBackButton()}
+                        <View className="flex-row items-center gap-5 flex-1">
+                            {renderAvatar(16)}
+                            <View className="flex-1">
+                                <Text className="text-xl font-bold text-gray-900 dark:text-white leading-tight">
+                                    {user.name}
+                                </Text>
+                                <Text className="text-gray-500 dark:text-gray-400 font-bold text-sm mt-0.5" numberOfLines={1}>
+                                    {user.email}
+                                </Text>
+                                {user.displayId && (
+                                    <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] mt-1 uppercase tracking-tighter">
+                                        ID: {user.displayId}
+                                    </Text>
+                                )}
+                            </View>
+                        </View>
+                    </View>
 
- return (
- <View className={className} testID={testID}>
- {renderCard()}
- </View>
- );
+                    {/* Right: Detailed Stats + Actions */}
+                    <View className="flex-row items-center gap-6">
+                        <View className="items-end gap-2">
+                            <View className={`flex-row items-center px-3 py-1.5 rounded-xl border ${roleColors.bg} dark:bg-orange-950/20 ${roleColors.border} dark:border-orange-500/20`}>
+                                <Ionicons name={roleColors.icon as any} size={12} color={roleColors.text.replace('text-', '')} style={{ marginRight: 6 }} />
+                                <Text className={`text-[10px] font-bold uppercase tracking-widest ${roleColors.text}`}>
+                                    {user.role}
+                                </Text>
+                            </View>
+                            <View className="items-end">
+                                <Text className="text-[9px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-tighter">Joined</Text>
+                                <Text className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                    {user.joinDate
+                                        ? new Date(user.joinDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                                        : 'N/A'}
+                                </Text>
+                            </View>
+                        </View>
+
+                        {showActions && (
+                            <View className="flex-col gap-1.5">
+                                {onResetCredentialsPress && (
+                                    <ActionTooltip text="Reset credentials">
+                                        <TouchableOpacity
+                                            onPress={handleResetCredentialsPress}
+                                            className="w-10 h-10 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-500/20 items-center justify-center"
+                                            activeOpacity={0.7}
+                                            accessibilityLabel="Reset credentials"
+                                        >
+                                            <MaterialCommunityIcons name="lock-reset" size={18} color="#FF6900" />
+                                        </TouchableOpacity>
+                                    </ActionTooltip>
+                                )}
+                                {onEditPress && (
+                                    <ActionTooltip text="Edit user details">
+                                        <TouchableOpacity
+                                            onPress={handleEditPress}
+                                            className="w-10 h-10 rounded-lg bg-gray-50 dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] items-center justify-center"
+                                            activeOpacity={0.7}
+                                            accessibilityLabel="Edit user"
+                                        >
+                                            <Ionicons name="pencil" size={18} color="#9CA3AF" />
+                                        </TouchableOpacity>
+                                    </ActionTooltip>
+                                )}
+                                {onDeletePress && (
+                                    <ActionTooltip text="Delete user permanently">
+                                        <TouchableOpacity
+                                            onPress={handleDeletePress}
+                                            className="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-500/20 items-center justify-center"
+                                            activeOpacity={0.7}
+                                            accessibilityLabel="Delete user"
+                                        >
+                                            <Ionicons name="trash" size={18} color="#EF4444" />
+                                        </TouchableOpacity>
+                                    </ActionTooltip>
+                                )}
+                            </View>
+                        )}
+                    </View>
+                </View>
+            </View>
+        </View>
+    );
+
+    const renderCard = () => {
+        switch (variant) {
+            case 'compact':
+                return renderCompactCard();
+            case 'detailed':
+                return renderDetailedCard();
+            default:
+                return renderDefaultCard();
+        }
+    };
+
+    if (onPress) {
+        return (
+            <TouchableOpacity
+                onPress={handlePress}
+                activeOpacity={0.8}
+                className={className}
+                testID={testID}
+            >
+                {renderCard()}
+            </TouchableOpacity>
+        );
+    }
+
+    return (
+        <View className={className} testID={testID}>
+            {renderCard()}
+        </View>
+    );
 };

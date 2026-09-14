@@ -1,4 +1,5 @@
 // (admin)/timetable/index.tsx   Theme-aware Timetable Builder
+import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { Spinner } from "@/components/ui/Spinner";
 import { supabase } from "@/libs/supabase";
@@ -683,6 +684,11 @@ export default function TimetableBuilder() {
                 rightActions={
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         {selectedClassId && (
+                            <ActionTooltip
+                                label="Export PDF"
+                                description="Generate and download printable classroom timetable schedule."
+                                learnMoreAnchor="timetable-builder"
+                            >
                             <TouchableOpacity
                                 onPress={handleDownloadPdf}
                                 disabled={downloadingPdf}
@@ -695,10 +701,17 @@ export default function TimetableBuilder() {
                                     {downloadingPdf ? 'Exporting...' : 'PDF'}
                                 </Text>
                             </TouchableOpacity>
+                            </ActionTooltip>
                         )}
+                        <ActionTooltip
+                            label="Refresh Timetable"
+                            description="Reload class periods, room allocations, and clash detection checks."
+                            learnMoreAnchor="timetable-builder"
+                        >
                         <TouchableOpacity onPress={handleRefresh} style={styles.iconBtn}>
                             <RefreshCw size={18} color={colors.textSub} />
                         </TouchableOpacity>
+                        </ActionTooltip>
                     </View>
                 }
             />
@@ -817,10 +830,16 @@ export default function TimetableBuilder() {
                         <View style={styles.emptyDay}>
                             <Clock size={36} color={colors.border} />
                             <Text style={styles.emptyDayText}>No sessions for {selectedDay}</Text>
+                            <ActionTooltip
+                                label="Add Period Slot"
+                                description="Assign subject, room, start/end time, and teacher."
+                                learnMoreAnchor="timetable-builder"
+                            >
                             <TouchableOpacity style={styles.emptyDayBtn} onPress={openAdd}>
                                 <Plus size={14} color={colors.accent} />
                                 <Text style={styles.emptyDayBtnText}>Add slot</Text>
                             </TouchableOpacity>
+                            </ActionTooltip>
                         </View>
                     ) : (
                         daySlots.map((slot, idx) => {
@@ -864,12 +883,16 @@ export default function TimetableBuilder() {
                                     </View>
 
                                     <View style={styles.slotActions}>
-                                        <TouchableOpacity style={styles.slotActionBtn} onPress={() => openEdit(slot)}>
-                                            <Edit3 size={15} color={colors.textSub} />
-                                        </TouchableOpacity>
-                                        <TouchableOpacity style={[styles.slotActionBtn, styles.deleteBtn]} onPress={() => handleDelete(slot.id)}>
-                                            <Trash2 size={15} color={colors.red} />
-                                        </TouchableOpacity>
+                                        <ActionTooltip label="Edit Slot" description="Adjust timing, subject, room, or educator." learnMoreAnchor="timetable-builder">
+                                            <TouchableOpacity style={styles.slotActionBtn} onPress={() => openEdit(slot)}>
+                                                <Edit3 size={15} color={colors.textSub} />
+                                            </TouchableOpacity>
+                                        </ActionTooltip>
+                                        <ActionTooltip label="Delete Slot" description="Remove session from class weekly schedule." learnMoreAnchor="timetable-builder">
+                                            <TouchableOpacity style={[styles.slotActionBtn, styles.deleteBtn]} onPress={() => handleDelete(slot.id)}>
+                                                <Trash2 size={15} color={colors.red} />
+                                            </TouchableOpacity>
+                                        </ActionTooltip>
                                     </View>
                                 </View>
                             );
@@ -882,9 +905,11 @@ export default function TimetableBuilder() {
 
             {/* ── FAB ── */}
             {selectedClassId && (
-                <TouchableOpacity style={styles.fab} onPress={openAdd} activeOpacity={0.85}>
+                <ActionTooltip label="Add Period Slot" description="Create a new scheduled timetable lesson for this cohort." learnMoreAnchor="timetable-builder">
+                    <TouchableOpacity style={styles.fab} onPress={openAdd} activeOpacity={0.85}>
                     <Plus size={24} color="#fff" />
                 </TouchableOpacity>
+                </ActionTooltip>
             )}
 
             {/* ── Add / Edit Modal ── */}

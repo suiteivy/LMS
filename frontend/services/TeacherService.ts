@@ -248,6 +248,23 @@ export const TeacherAPI = {
       throw error;
     }
   },
+
+  detectLessonDateInfo: async (date: string): Promise<{
+    date: string;
+    week_number: number;
+    term: string | null;
+    term_id: string | null;
+    is_cancelled: boolean;
+    cancellation_event: string | null;
+  }> => {
+    try {
+      const response = await api.get("/teacher/record-of-work/detect-date", { params: { date } });
+      return response.data;
+    } catch (error) {
+      console.error("Detect lesson date info error", error);
+      throw error;
+    }
+  },
 };
 
 export const TeacherService = TeacherAPI;

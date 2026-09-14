@@ -11,6 +11,14 @@ export interface SubjectData {
     class_ids?: string[];
     level_ids?: string[] | null;
     teacher_ids?: string[];
+    hod_teacher_id?: string | null;
+    hod_teacher?: {
+        id: string;
+        first_name?: string;
+        last_name?: string;
+        full_name?: string;
+        email?: string;
+    } | null;
     teachers?: {
         users: {
             first_name: string;

@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { formatClassLabel } from "@/utils/classLabel";
+import { ActionTooltip } from "@/components/common/ActionTooltip";
 import {
   ActivityIndicator,
   Text,
@@ -55,12 +56,34 @@ function SubjectDetailsScreen() {
           .from("teachers")
           .select("id, user_id, users:user_id(full_name, institution_id)")
           .eq("institution_id", profile.institution_id),
-        supabase
-          .from("v_classes_detailed")
-          .select("id, name, display_name, grade_level, form_level, stream")
-          .eq("institution_id", profile.institution_id)
-          .order("grade_level", { ascending: true })
-          .order("form_level", { ascending: true }),
+        (async () => {
+          try {
+            const data = await ClassService.getClasses();
+            if (data && data.length > 0) {
+              return {
+                data: data.map((c: any) => ({
+                  id: c.id,
+                  name: formatClassLabel(c),
+                  grade_level: c.grade_level,
+                  level_id: c.level_id,
+                }))
+              };
+            }
+          } catch {}
+          const { data } = await (supabase.from("classes") as any)
+            .select("id, display_name, grade_level, form_level, stream, level_id")
+            .eq("institution_id", profile.institution_id)
+            .order("grade_level", { ascending: true })
+            .order("form_level", { ascending: true });
+          return {
+            data: (data || []).map((c: any) => ({
+              id: c.id,
+              name: formatClassLabel(c),
+              grade_level: c.grade_level,
+              level_id: c.level_id,
+            }))
+          };
+        })(),
         (async () => {
           try {
             const domainOptions = await ClassService.getClassOptions();
@@ -80,13 +103,7 @@ function SubjectDetailsScreen() {
 
       if (teacherRes.data) setTeachers(teacherRes.data);
       if (classRes.data) {
-        setClasses(
-          classRes.data.map((c: any) => ({
-            id: c.id,
-            name: formatClassLabel(c),
-            grade_level: c.grade_level,
-          }))
-        );
+        setClasses(classRes.data);
       }
       if (levelsData) setLevels(levelsData);
     } catch (err) {
@@ -178,6 +195,7 @@ function SubjectDetailsScreen() {
         ...subjectUpdateData,
         level_ids: Array.isArray(form.level_ids) && form.level_ids.length > 0 ? form.level_ids : null,
         teacher_ids: teacher_ids || [],
+        hod_teacher_id: form.hod_teacher_id || null,
         class_id: form.class_id || null,
         class_ids: Array.isArray(form?.metadata?.class_ids) ? form.metadata.class_ids : [],
         metadata: form.metadata || {},
@@ -284,12 +302,16 @@ function SubjectDetailsScreen() {
           }}
         >
           {!editing && (
-            <TouchableOpacity
-              onPress={() => setEditing(true)}
-              style={{ backgroundColor: "transparent", padding: 8 }}
-            >
-              <Ionicons name="pencil" size={24} color="#FF6B00" />
-            </TouchableOpacity>
+            <ActionTooltip text="Edit subject details">
+              <TouchableOpacity
+                onPress={() => setEditing(true)}
+                style={{ backgroundColor: "transparent", padding: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Edit subject"
+              >
+                <Ionicons name="pencil" size={24} color="#FF6B00" />
+              </TouchableOpacity>
+            </ActionTooltip>
           )}
         </View>
 
@@ -454,43 +476,169 @@ function SubjectDetailsScreen() {
             </View>
           )}
 
-          {/* Classes Dropdown (multi-link via metadata.class_ids + legacy class_id) */}
-          <Text style={{ color: textMuted, fontSize: 13, marginBottom: 4 }}>
-            Assigned Classes
-          </Text>
+          {/* Head of Department (HOD) Section */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 6 }}>
+            <Text style={{ color: textMuted, fontSize: 13 }}>
+              Head of Department (HOD)
+            </Text>
+            <ActionTooltip text="Assign HOD for curriculum pacing and exam approvals" learnMoreAnchor="hod-role">
+              <Ionicons name="information-circle-outline" size={16} color="#FF6B00" />
+            </ActionTooltip>
+          </View>
           {editing ? (
-            <View style={{ backgroundColor: inputBg, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: border, marginBottom: 12 }}>
-              {classes.map((c) => {
-                const classIds = new Set<string>([
-                  ...(Array.isArray(form?.metadata?.class_ids) ? form.metadata.class_ids : []),
-                  ...(form.class_id ? [form.class_id] : []),
-                ]);
-                const isSelected = classIds.has(c.id);
+            <View style={{ backgroundColor: inputBg, borderRadius: 12, borderWidth: 1, borderColor: border, marginBottom: 12, overflow: 'hidden' }}>
+              <TouchableOpacity
+                onPress={() => handleChange("hod_teacher_id", null)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  borderBottomWidth: 1,
+                  borderBottomColor: border,
+                  backgroundColor: !form.hod_teacher_id ? (isDark ? '#21262D' : '#FFF7ED') : 'transparent',
+                }}
+              >
+                <Ionicons
+                  name={!form.hod_teacher_id ? "radio-button-on" : "radio-button-off"}
+                  size={18}
+                  color={!form.hod_teacher_id ? "#FF6B00" : textMuted}
+                  style={{ marginRight: 10 }}
+                />
+                <Text style={{ color: !form.hod_teacher_id ? '#FF6B00' : textMuted, fontSize: 14, fontWeight: !form.hod_teacher_id ? '700' : '400' }}>
+                  None (No HOD assigned)
+                </Text>
+              </TouchableOpacity>
+              {teachers.map((t) => {
+                const isHod = form.hod_teacher_id === t.id;
                 return (
                   <TouchableOpacity
-                    key={c.id}
+                    key={`hod-${t.id}`}
                     onPress={() => {
-                      const next = new Set(classIds);
-                      if (isSelected) next.delete(c.id); else next.add(c.id);
-                      const arr = Array.from(next);
-                      handleChange('class_id', arr[0] || null);
-                      handleChange('metadata', { ...(form.metadata || {}), class_ids: arr });
+                      handleChange("hod_teacher_id", t.id);
+                      if (!(form.teacher_ids || []).includes(t.id)) {
+                        handleChange("teacher_ids", [...(form.teacher_ids || []), t.id]);
+                      }
                     }}
-                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: border }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      borderBottomWidth: 1,
+                      borderBottomColor: border,
+                      backgroundColor: isHod ? (isDark ? '#21262D' : '#FFF7ED') : 'transparent',
+                    }}
                   >
                     <Ionicons
-                      name={isSelected ? 'checkbox' : 'square-outline'}
-                      size={20}
-                      color={isSelected ? '#FF6B00' : textMuted}
+                      name={isHod ? "radio-button-on" : "radio-button-off"}
+                      size={18}
+                      color={isHod ? "#FF6B00" : textMuted}
                       style={{ marginRight: 10 }}
                     />
-                    <Text style={{ color: textPrimary, fontSize: 14, fontWeight: '500' }}>{c.name}</Text>
+                    <Text style={{ color: isHod ? textPrimary : textMuted, fontSize: 14, fontWeight: isHod ? '700' : '500', flex: 1 }}>
+                      {t.users?.full_name || t.id}
+                    </Text>
+                    {isHod && (
+                      <View style={{ backgroundColor: '#FF6B00', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                        <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>HOD</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 );
               })}
-              {classes.length === 0 ? (
-                <Text style={{ color: textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 10 }}>No classes available</Text>
-              ) : null}
+            </View>
+          ) : (
+            <View style={{ backgroundColor: inputBg, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: border, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ color: form.hod_teacher_id ? textPrimary : textMuted, fontSize: 14, fontWeight: form.hod_teacher_id ? '700' : '400' }}>
+                {(() => {
+                  if (!form.hod_teacher_id) return "None (No HOD assigned)";
+                  const hodTeacher = teachers.find(t => t.id === form.hod_teacher_id);
+                  return hodTeacher?.users?.full_name || form.hod_teacher_id;
+                })()}
+              </Text>
+              {form.hod_teacher_id && (
+                <View style={{ backgroundColor: '#FF6B00', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                  <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>HOD</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Classes Dropdown (multi-link via metadata.class_ids + legacy class_id) */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <Text style={{ color: textMuted, fontSize: 13 }}>
+              Assigned Classes
+            </Text>
+            {(form.level_ids || []).length > 0 && (
+              <Text style={{ fontSize: 11, color: '#FF6B00', fontWeight: '600' }}>
+                Filtered by {form.level_ids?.length} Level(s)
+              </Text>
+            )}
+          </View>
+          {editing ? (
+            <View style={{ backgroundColor: inputBg, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: border, marginBottom: 12 }}>
+              {(() => {
+                const selectedLevels = form.level_ids || [];
+                const displayedClasses = selectedLevels.length > 0
+                  ? classes.filter((c: any) => !c.level_id || selectedLevels.includes(c.level_id))
+                  : classes;
+
+                return (
+                  <>
+                    {displayedClasses.map((c: any) => {
+                      const selected = new Set<string>([
+                        ...(Array.isArray(form?.metadata?.class_ids) ? form.metadata.class_ids : []),
+                        ...(form.class_id ? [form.class_id] : []),
+                      ]);
+                      const isSelected = selected.has(c.id);
+                      return (
+                        <TouchableOpacity
+                          key={c.id}
+                          onPress={() => {
+                            if (isSelected) {
+                              selected.delete(c.id);
+                            } else {
+                              selected.add(c.id);
+                            }
+                            const next = Array.from(selected);
+                            setForm((prev: any) => ({
+                              ...prev,
+                              class_id: next[0] || null,
+                              metadata: {
+                                ...(prev?.metadata || {}),
+                                class_ids: next,
+                              },
+                            }));
+                          }}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            paddingVertical: 10,
+                            borderBottomWidth: 1,
+                            borderBottomColor: border,
+                          }}
+                        >
+                          <Ionicons
+                            name={isSelected ? "checkbox" : "square-outline"}
+                            size={20}
+                            color={isSelected ? "#FF6B00" : textMuted}
+                            style={{ marginRight: 10 }}
+                          />
+                          <Text style={{ color: textPrimary, fontSize: 14, fontWeight: '500' }}>
+                            {c.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                    {displayedClasses.length === 0 && (
+                      <Text style={{ color: textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 10 }}>
+                        {selectedLevels.length > 0 ? 'No classes found in selected level(s)' : 'No classes available'}
+                      </Text>
+                    )}
+                  </>
+                );
+              })()}
             </View>
           ) : (
             <View style={{ backgroundColor: inputBg, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: border, marginBottom: 12 }}>
@@ -510,43 +658,51 @@ function SubjectDetailsScreen() {
           {/* Edit/Save Buttons */}
           {editing && (
             <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
-              <TouchableOpacity
-                onPress={handleSave}
-                disabled={saving}
-                style={{
-                  backgroundColor: "#FF6B00",
-                  borderRadius: 8,
-                  paddingVertical: 10,
-                  paddingHorizontal: 24,
-                  alignItems: "center",
-                  opacity: saving ? 0.7 : 1,
-                }}
-              >
-                {saving ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <Text style={{ color: "white", fontWeight: "bold" }}>
-                    Save
+              <ActionTooltip text="Save changes to subject">
+                <TouchableOpacity
+                  onPress={handleSave}
+                  disabled={saving}
+                  style={{
+                    backgroundColor: "#FF6B00",
+                    borderRadius: 8,
+                    paddingVertical: 10,
+                    paddingHorizontal: 24,
+                    alignItems: "center",
+                    opacity: saving ? 0.7 : 1,
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Save subject"
+                >
+                  {saving ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text style={{ color: "white", fontWeight: "bold" }}>
+                      Save
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </ActionTooltip>
+              <ActionTooltip text="Cancel and discard changes">
+                <TouchableOpacity
+                  onPress={() => {
+                    setEditing(false);
+                    setForm(subject);
+                  }}
+                  style={{
+                    backgroundColor: border,
+                    borderRadius: 8,
+                    paddingVertical: 10,
+                    paddingHorizontal: 24,
+                    alignItems: "center",
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel editing"
+                >
+                  <Text style={{ color: textPrimary, fontWeight: "bold" }}>
+                    Cancel
                   </Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  setEditing(false);
-                  setForm(subject);
-                }}
-                style={{
-                  backgroundColor: border,
-                  borderRadius: 8,
-                  paddingVertical: 10,
-                  paddingHorizontal: 24,
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ color: textPrimary, fontWeight: "bold" }}>
-                  Cancel
-                </Text>
-              </TouchableOpacity>
+                </TouchableOpacity>
+              </ActionTooltip>
             </View>
           )}
         </View>

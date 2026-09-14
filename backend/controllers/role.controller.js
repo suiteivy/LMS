@@ -1,5 +1,38 @@
 const supabase = require("../utils/supabaseClient.js");
 
+const RESERVED_ROLE_NAMES = new Set([
+  'admin',
+  'master_admin',
+  'platform_admin',
+  'main_admin',
+  'owner',
+  'superadmin'
+]);
+
+const RESERVED_PERMISSIONS = new Set([
+  'roles:manage',
+  'roles:create',
+  'roles:update',
+  'roles:delete',
+  'roles:assign',
+  'institutions:manage',
+  'institutions:delete',
+  'billing:manage',
+  'subscription:manage',
+  'audit:manage'
+]);
+
+// Helper to check if requester is Main Admin or Master Admin
+function isAuthorizedAdmin(req) {
+  return !!(
+    req.user?.is_main ||
+    req.isMain ||
+    req.user?.role === 'master_admin' ||
+    req.isPlatformAdmin ||
+    req.user?.is_platform_admin
+  );
+}
+
 // GET ALL ROLES FOR INSTITUTION
 exports.getRoles = async (req, res) => {
   const { institution_id } = req;
@@ -27,6 +60,8 @@ exports.getRoles = async (req, res) => {
       id: r.id,
       name: r.name,
       description: r.description,
+      data_scope: r.data_scope || 'all',
+      metadata: r.metadata || {},
       isDefault: ['admin', 'teacher', 'student', 'parent', 'bursar', 'librarian'].includes(r.name.toLowerCase()),
       permissions: r.role_permissions
         ? r.role_permissions.filter(rp => rp.permissions).map(rp => rp.permissions.name)
@@ -49,7 +84,10 @@ exports.getPermissions = async (req, res) => {
       .order("category");
 
     if (error) throw error;
-    res.json(permissions);
+
+    // Exclude reserved permissions from being returned for custom role creation
+    const filtered = permissions.filter(p => !RESERVED_PERMISSIONS.has(p.name));
+    res.json(filtered);
   } catch (err) {
     console.error("getPermissions error:", err);
     res.status(500).json({ error: "Failed to retrieve permissions" });
@@ -58,20 +96,39 @@ exports.getPermissions = async (req, res) => {
 
 // CREATE CUSTOM ROLE
 exports.createRole = async (req, res) => {
-  const { name, description, permission_names } = req.body;
+  const { name, description, permission_names, data_scope, metadata } = req.body;
   const { institution_id } = req;
 
-  if (!name) {
+  if (!isAuthorizedAdmin(req)) {
+    return res.status(403).json({ error: "Only the Main Administrator or Platform Admin can create custom roles." });
+  }
+
+  if (!name || !name.trim()) {
     return res.status(400).json({ error: "Role name is required" });
   }
+
+  const trimmedName = name.trim();
+  if (RESERVED_ROLE_NAMES.has(trimmedName.toLowerCase())) {
+    return res.status(400).json({ error: `The role name "${trimmedName}" is reserved for system administration and cannot be used.` });
+  }
+
+  if (data_scope && !['all', 'levels', 'classes'].includes(data_scope)) {
+    return res.status(400).json({ error: 'Invalid data_scope. Must be one of: all, levels, classes.' });
+  }
+
+  // Filter out any reserved permissions as a guardrail against privilege escalation
+  const safePermissions = (permission_names || []).filter(p => !RESERVED_PERMISSIONS.has(p));
+  const validDataScope = data_scope || 'all';
 
   try {
     // 1. Create role
     const { data: role, error: roleError } = await supabase
       .from("roles")
       .insert({
-        name,
-        description,
+        name: trimmedName,
+        description: description || null,
+        data_scope: validDataScope,
+        metadata: metadata || {},
         institution_id
       })
       .select()
@@ -85,12 +142,11 @@ exports.createRole = async (req, res) => {
     }
 
     // 2. Link permissions if provided
-    if (permission_names && permission_names.length > 0) {
-      // Find permission IDs by name
+    if (safePermissions.length > 0) {
       const { data: perms } = await supabase
         .from("permissions")
         .select("id, name")
-        .in("name", permission_names);
+        .in("name", safePermissions);
 
       if (perms && perms.length > 0) {
         const rpRows = perms.map(p => ({
@@ -116,8 +172,12 @@ exports.createRole = async (req, res) => {
 // UPDATE CUSTOM ROLE & PERMISSIONS
 exports.updateRole = async (req, res) => {
   const { id } = req.params;
-  const { name, description, permission_names } = req.body;
+  const { name, description, permission_names, data_scope, metadata } = req.body;
   const { institution_id } = req;
+
+  if (!isAuthorizedAdmin(req)) {
+    return res.status(403).json({ error: "Only the Main Administrator or Platform Admin can modify custom roles." });
+  }
 
   try {
     // Verify role belongs to institution and is not system restricted
@@ -137,12 +197,26 @@ exports.updateRole = async (req, res) => {
       return res.status(403).json({ error: "System default roles cannot be edited or updated" });
     }
 
+    if (name && RESERVED_ROLE_NAMES.has(name.trim().toLowerCase())) {
+      return res.status(400).json({ error: `The role name "${name.trim()}" is reserved for system administration.` });
+    }
+
+    if (data_scope && !['all', 'levels', 'classes'].includes(data_scope)) {
+      return res.status(400).json({ error: 'Invalid data_scope. Must be one of: all, levels, classes.' });
+    }
+
+    const validDataScope = data_scope !== undefined
+      ? data_scope
+      : role.data_scope;
+
     // 1. Update role metadata
     const { error: updateErr } = await supabase
       .from("roles")
       .update({
-        name: name || role.name,
+        name: name ? name.trim() : role.name,
         description: description !== undefined ? description : role.description,
+        data_scope: validDataScope,
+        metadata: metadata !== undefined ? metadata : role.metadata,
         updated_at: new Date().toISOString()
       })
       .eq("id", id);
@@ -151,14 +225,16 @@ exports.updateRole = async (req, res) => {
 
     // 2. Update permissions
     if (permission_names !== undefined) {
+      const safePermissions = (permission_names || []).filter(p => !RESERVED_PERMISSIONS.has(p));
+
       // Clear existing mappings
       await supabase.from("role_permissions").delete().eq("role_id", id);
 
-      if (permission_names.length > 0) {
+      if (safePermissions.length > 0) {
         const { data: perms } = await supabase
           .from("permissions")
           .select("id")
-          .in("name", permission_names);
+          .in("name", safePermissions);
 
         if (perms && perms.length > 0) {
           const rpRows = perms.map(p => ({
@@ -187,6 +263,10 @@ exports.deleteRole = async (req, res) => {
   const { id } = req.params;
   const { institution_id } = req;
 
+  if (!isAuthorizedAdmin(req)) {
+    return res.status(403).json({ error: "Only the Main Administrator or Platform Admin can delete custom roles." });
+  }
+
   try {
     const { data: role, error: fetchErr } = await supabase
       .from("roles")
@@ -204,6 +284,8 @@ exports.deleteRole = async (req, res) => {
       return res.status(403).json({ error: "System default roles cannot be deleted" });
     }
 
+    // Delete role assignments and role
+    await supabase.from("user_roles").delete().eq("role_id", id);
     const { error: deleteErr } = await supabase
       .from("roles")
       .delete()
@@ -223,8 +305,12 @@ exports.assignUserRoles = async (req, res) => {
   const { userId, role_ids } = req.body;
   const { institution_id } = req;
 
-  if (!userId || !role_ids) {
-    return res.status(400).json({ error: "userId and role_ids are required" });
+  if (!isAuthorizedAdmin(req)) {
+    return res.status(403).json({ error: "Only the Main Administrator or Platform Admin can assign custom roles." });
+  }
+
+  if (!userId || !Array.isArray(role_ids)) {
+    return res.status(400).json({ error: "userId and role_ids array are required" });
   }
 
   try {
@@ -241,14 +327,16 @@ exports.assignUserRoles = async (req, res) => {
     }
 
     // Verify all role_ids belong to the institution
-    const { data: roles } = await supabase
-      .from("roles")
-      .select("id")
-      .in("id", role_ids)
-      .eq("institution_id", institution_id);
+    if (role_ids.length > 0) {
+      const { data: roles } = await supabase
+        .from("roles")
+        .select("id")
+        .in("id", role_ids)
+        .eq("institution_id", institution_id);
 
-    if (!roles || roles.length !== role_ids.length) {
-      return res.status(400).json({ error: "One or more invalid role IDs specified" });
+      if (!roles || roles.length !== role_ids.length) {
+        return res.status(400).json({ error: "One or more invalid role IDs specified" });
+      }
     }
 
     // 1. Clear existing user role assignments
@@ -281,18 +369,37 @@ exports.getUserRoles = async (req, res) => {
   const { institution_id } = req;
 
   try {
-    const { data: userRoles, error } = await supabase
+    let { data: userRoles, error } = await supabase
       .from("user_roles")
       .select(`
         role_id,
         roles (
           id,
           name,
-          description
+          description,
+          data_scope,
+          metadata
         )
       `)
       .eq("user_id", userId)
       .eq("roles.institution_id", institution_id);
+
+    if (error && (error.code === '42703' || error.message?.includes('does not exist'))) {
+      const fallback = await supabase
+        .from("user_roles")
+        .select(`
+          role_id,
+          roles (
+            id,
+            name,
+            description
+          )
+        `)
+        .eq("user_id", userId)
+        .eq("roles.institution_id", institution_id);
+      userRoles = fallback.data;
+      error = fallback.error;
+    }
 
     if (error) throw error;
 
@@ -301,7 +408,9 @@ exports.getUserRoles = async (req, res) => {
       .map(ur => ({
         id: ur.roles.id,
         name: ur.roles.name,
-        description: ur.roles.description
+        description: ur.roles.description,
+        data_scope: ur.roles.data_scope || 'all',
+        metadata: ur.roles.metadata || {}
       }));
 
     res.json(formatted);

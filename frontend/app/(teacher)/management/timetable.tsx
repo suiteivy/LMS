@@ -3,10 +3,12 @@ import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { TimetableAPI, TimetableEntry } from "@/services/TimetableService";
+import { SubjectAPI } from "@/services/SubjectService";
+import { ClassAPI } from "@/services/ClassService";
 import { downloadTimetablePdf } from "@/utils/timetablePdfGenerator";
 import { CalendarAPI, CancelledDateInfo } from "@/services/CalendarService";
 import { useFocusEffect } from "expo-router";
-import { AlertTriangle, Calendar, Clock, Download, MapPin, Users } from 'lucide-react-native';
+import { AlertTriangle, Calendar, Clock, Download, GraduationCap, MapPin, Users } from 'lucide-react-native';
 import React, { useCallback, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { showFetchError, showError, showSuccess } from "@/utils/toast";
@@ -60,24 +62,59 @@ const TimetableCard = ({ entry, isDark }: { entry: TimetableEntry; isDark: boole
 
 export default function TimetablePage() {
     const { isDark } = useTheme();
-    const { institutionName, institutionLogo, profile } = useAuth();
+    const { institutionName, institutionLogo, profile, user } = useAuth();
+    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
     const [loading, setLoading] = useState(true);
     const [downloadingPdf, setDownloadingPdf] = useState(false);
+    const [scheduleType, setScheduleType] = useState<'teacher' | 'class'>('teacher');
+    const [classes, setClasses] = useState<any[]>([]);
+    const [selectedClassId, setSelectedClassId] = useState<string>("");
     const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
     const [activeDay, setActiveDay] = useState<string>(DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]);
     const [cancelledDates, setCancelledDates] = useState<CancelledDateInfo[]>([]);
 
-    useFocusEffect(
-        useCallback(() => {
-            fetchData();
-        }, [])
-    );
+    const fetchClasses = useCallback(async () => {
+        try {
+            const [subjList, allCls] = await Promise.all([
+                SubjectAPI.getFilteredSubjects().catch(() => []),
+                ClassAPI.getClasses().catch(() => [])
+            ]);
 
-    const fetchData = async () => {
+            let availableClasses: any[] = [];
+            if (isAdmin) {
+                availableClasses = allCls || [];
+            } else {
+                const classIds = new Set<string>();
+                (subjList || []).forEach((s: any) => {
+                    if (s.class_id) classIds.add(s.class_id);
+                    if (Array.isArray(s.class_ids)) s.class_ids.forEach((id: string) => classIds.add(id));
+                    if (s.classes) {
+                        if (Array.isArray(s.classes)) s.classes.forEach((c: any) => classIds.add(c.id));
+                        else if (s.classes.id) classIds.add(s.classes.id);
+                    }
+                });
+                availableClasses = (allCls || []).filter((c: any) => classIds.has(c.id));
+                if (availableClasses.length === 0) {
+                    availableClasses = allCls || [];
+                }
+            }
+
+            setClasses(availableClasses);
+            if (availableClasses.length > 0 && !selectedClassId) {
+                setSelectedClassId(availableClasses[0].id);
+            }
+        } catch (e) {
+            console.error("fetchClasses error:", e);
+        }
+    }, [isAdmin, selectedClassId]);
+
+    const fetchData = useCallback(async () => {
         try {
             setLoading(true);
             const [data, cancelled] = await Promise.all([
-                TimetableAPI.getTeacherTimetable(),
+                scheduleType === 'class' && selectedClassId
+                    ? TimetableAPI.getClassTimetable(selectedClassId)
+                    : TimetableAPI.getTeacherTimetable(),
                 CalendarAPI.getCancelledDates(),
             ]);
             setTimetable(data || []);
@@ -88,22 +125,42 @@ export default function TimetablePage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [scheduleType, selectedClassId]);
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchClasses();
+        }, [fetchClasses])
+    );
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchData();
+        }, [fetchData])
+    );
 
     const handleDownloadPdf = async () => {
         try {
             setDownloadingPdf(true);
+            const currentClass = classes.find(c => c.id === selectedClassId);
+            const title = scheduleType === 'class'
+                ? `Class Timetable - ${currentClass?.display_name || currentClass?.name || 'Class'}`
+                : "Teacher Teaching Schedule";
+            const subtitle = scheduleType === 'class'
+                ? `Full Schedule for ${currentClass?.display_name || currentClass?.name || 'Class'}`
+                : (profile?.full_name ? `Schedule for ${profile.full_name}` : "Academic Schedule");
+
             await downloadTimetablePdf({
-                title: "Teacher Teaching Schedule",
-                subtitle: profile?.full_name ? `Schedule for ${profile.full_name}` : "Academic Schedule",
+                title,
+                subtitle,
                 institutionName,
                 institutionLogo,
                 entries: timetable,
                 cancelledDates,
                 referenceDate: weekStart,
-                fileName: `${profile?.full_name || 'teacher'}-teaching-schedule-${activeDateStr}`,
+                fileName: `${profile?.full_name || 'timetable'}-${scheduleType}-${activeDateStr}`,
             });
-            showSuccess("PDF Ready", "Teaching schedule PDF generated successfully.");
+            showSuccess("PDF Ready", "Timetable PDF generated successfully.");
         } catch {
             showError("Export failed", "Failed to generate timetable PDF.");
         } finally {
@@ -148,7 +205,53 @@ export default function TimetablePage() {
                 }
             />
 
-            <View className="px-4 md:p-8 pt-4">
+            {/* Schedule View Mode Selector (Subject Teacher vs Class Schedule) */}
+            <View className="px-4 md:px-8 pt-3 pb-1">
+                <View className={`flex-row p-1 rounded-2xl ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+                    <TouchableOpacity
+                        onPress={() => setScheduleType('teacher')}
+                        className={`flex-1 py-2 rounded-xl items-center justify-center ${scheduleType === 'teacher' ? (isDark ? 'bg-navy-card shadow-sm' : 'bg-white shadow-sm') : ''}`}
+                    >
+                        <Text className={`text-xs font-bold ${scheduleType === 'teacher' ? (isDark ? 'text-white' : 'text-gray-900') : (isDark ? 'text-gray-400' : 'text-gray-500')}`}>
+                            My Teaching Schedule
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => setScheduleType('class')}
+                        className={`flex-1 py-2 rounded-xl items-center justify-center ${scheduleType === 'class' ? (isDark ? 'bg-navy-card shadow-sm' : 'bg-white shadow-sm') : ''}`}
+                    >
+                        <Text className={`text-xs font-bold ${scheduleType === 'class' ? (isDark ? 'text-white' : 'text-gray-900') : (isDark ? 'text-gray-400' : 'text-gray-500')}`}>
+                            Class Schedule
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* If Class Schedule is selected, show horizontal list of classes */}
+            {scheduleType === 'class' && classes.length > 0 && (
+                <View className="px-4 md:px-8 pt-2 pb-1">
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+                        {classes.map((cls) => {
+                            const isSelected = selectedClassId === cls.id;
+                            return (
+                                <TouchableOpacity
+                                    key={cls.id}
+                                    onPress={() => setSelectedClassId(cls.id)}
+                                    className={`mr-2 px-3.5 py-1.5 rounded-full border ${isSelected
+                                        ? 'bg-[#FF6900] border-[#FF6900]'
+                                        : isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'}`}
+                                >
+                                    <Text className={`text-xs font-bold ${isSelected ? 'text-white' : isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                        {cls.display_name || cls.name || 'Class'}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
+            )}
+
+            <View className="px-4 md:p-8 pt-3">
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}

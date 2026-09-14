@@ -26,6 +26,7 @@ import {
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
+import { ActionTooltip } from '@/components/common/ActionTooltip';
 import { GlassCard } from '@/components/ui/GlassCard';
 import {
   CalendarAPI,
@@ -339,33 +340,45 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
         rightActions={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             {isAdmin && (
-              <TouchableOpacity
-                onPress={() => handleOpenCreateModal()}
-                style={styles.addButton}
-                accessibilityRole="button"
-                accessibilityLabel="Create Calendar Event"
+              <ActionTooltip
+                label="Add Calendar Event"
+                description="Schedule an institution event, examination window, holiday, or class cancellation."
+                learnMoreAnchor="school-calendar"
               >
-                <Plus size={15} color="#ffffff" style={{ marginRight: 4 }} />
-                <Text className="text-white font-bold text-xs">Add Event</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleOpenCreateModal()}
+                  style={styles.addButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Create Calendar Event"
+                >
+                  <Plus size={15} color="#ffffff" style={{ marginRight: 4 }} />
+                  <Text className="text-white font-bold text-xs">Add Event</Text>
+                </TouchableOpacity>
+              </ActionTooltip>
             )}
-            <TouchableOpacity
-              onPress={fetchEvents}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                borderWidth: 1,
-                borderColor: colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: colors.surface,
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Refresh Events"
+            <ActionTooltip
+              label="Refresh Calendar"
+              description="Reload published institutional dates, term events, and class closures."
+              learnMoreAnchor="school-calendar"
             >
-              <RefreshCw size={15} color={colors.textSub} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={fetchEvents}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: colors.surface,
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Refresh Events"
+              >
+                <RefreshCw size={15} color={colors.textSub} />
+              </TouchableOpacity>
+            </ActionTooltip>
           </View>
         }
       />
@@ -380,9 +393,11 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
             contentStyle={{ paddingHorizontal: 16, paddingVertical: 14 }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <TouchableOpacity onPress={handlePrevMonth} style={[styles.monthNavBtn, { borderColor: colors.border, backgroundColor: colors.surface2 }]} accessibilityLabel="Previous month">
-                <ChevronLeft size={18} color={colors.text} />
-              </TouchableOpacity>
+              <ActionTooltip label="Previous Month" description="Navigate to preceding month's calendar view." learnMoreAnchor="school-calendar">
+                <TouchableOpacity onPress={handlePrevMonth} style={[styles.monthNavBtn, { borderColor: colors.border, backgroundColor: colors.surface2 }]} accessibilityLabel="Previous month">
+                  <ChevronLeft size={18} color={colors.text} />
+                </TouchableOpacity>
+              </ActionTooltip>
 
               <View style={{ alignItems: 'center', gap: 2 }}>
                 <Text style={{ color: colors.text, fontWeight: '900', fontSize: isTablet ? 22 : 18 }}>
@@ -393,9 +408,11 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
                 </Text>
               </View>
 
-              <TouchableOpacity onPress={handleNextMonth} style={[styles.monthNavBtn, { borderColor: colors.border, backgroundColor: colors.surface2 }]} accessibilityLabel="Next month">
-                <ChevronRight size={18} color={colors.text} />
-              </TouchableOpacity>
+              <ActionTooltip label="Next Month" description="Navigate to subsequent month's calendar view." learnMoreAnchor="school-calendar">
+                <TouchableOpacity onPress={handleNextMonth} style={[styles.monthNavBtn, { borderColor: colors.border, backgroundColor: colors.surface2 }]} accessibilityLabel="Next month">
+                  <ChevronRight size={18} color={colors.text} />
+                </TouchableOpacity>
+              </ActionTooltip>
             </View>
 
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>

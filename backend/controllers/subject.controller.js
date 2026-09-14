@@ -80,7 +80,7 @@ const enrichSubjectsWithClassIds = async (subjects = [], institution_id) => {
 // CREATE SUBJECT
 exports.createSubject = async (req, res) => {
   try {
-    const { title, description, fee_amount, teacher_id, teacher_ids, class_ids, level_ids, fee_config, materials, metadata } = req.body;
+    const { title, description, fee_amount, teacher_id, teacher_ids, class_ids, level_ids, fee_config, materials, metadata, hod_teacher_id } = req.body;
     let teacherId;
     const institution_id = req.institution_id;
 
@@ -146,7 +146,7 @@ exports.createSubject = async (req, res) => {
       }
 
       const validTeacherIds = new Set((validTeachers || []).map((row) => row.id));
-      const invalidTeacherIds = allTeacherIds.filter((id) => !validTeacherIds.has(id));
+      const invalidTeacherIds = allTeacherIds.filter((tid) => !validTeacherIds.has(tid));
       if (invalidTeacherIds.length > 0) {
         return res.status(400).json({ error: 'Invalid teacher assignment for institution' });
       }
@@ -162,6 +162,7 @@ exports.createSubject = async (req, res) => {
         description,
         fee_amount: normalizedFeeAmount,
         teacher_id: teacherId,
+        hod_teacher_id: hod_teacher_id || null,
         class_id: primaryClassId,
         level_ids: finalLevelIds,
         institution_id,
@@ -203,7 +204,8 @@ exports.createSubject = async (req, res) => {
       const records = allTeacherIds.map(tid => ({
         subject_id: data.id,
         teacher_id: tid,
-        institution_id
+        institution_id,
+        is_hod: tid === hod_teacher_id,
       }));
       const { error: assocError } = await supabase
         .from("subject_teachers")
@@ -301,7 +303,7 @@ exports.getSubjects = async (req, res) => {
   try {
     const richSelect = `
         *,
-        teacher:teachers(user:users(first_name, last_name, full_name)),
+        teacher:teachers!courses_new_teacher_id_fkey(user:users(first_name, last_name, full_name)),
         subject_teachers(
           teacher_id,
           teachers(
@@ -813,6 +815,7 @@ exports.updateSubject = async (req, res) => {
       fee_config,
       materials,
       metadata,
+      hod_teacher_id,
     } = req.body || {};
 
     const { data: existing, error: existingError } = await supabase
@@ -888,6 +891,7 @@ exports.updateSubject = async (req, res) => {
       ...(description !== undefined ? { description } : {}),
       ...(fee_amount !== undefined ? { fee_amount: Number.isFinite(Number(fee_amount)) ? Number(fee_amount) : 0 } : {}),
       teacher_id: primaryTeacherId,
+      ...(hod_teacher_id !== undefined ? { hod_teacher_id: hod_teacher_id || null } : {}),
       class_id: primaryClassId,
       ...(finalLevelIds !== undefined ? { level_ids: finalLevelIds } : {}),
       ...(fee_config !== undefined ? { fee_config } : {}),
@@ -920,6 +924,7 @@ exports.updateSubject = async (req, res) => {
         subject_id: id,
         teacher_id: tid,
         institution_id,
+        is_hod: tid === (hod_teacher_id !== undefined ? hod_teacher_id : existing?.hod_teacher_id),
       }));
       const { error: insertTeacherError } = await supabase
         .from("subject_teachers")

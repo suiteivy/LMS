@@ -80,7 +80,25 @@ html, body {
 }
 
 /* Global focus styling for React Native Web inputs */
+input, textarea, select {
+  outline: none !important;
+}
+
 input:focus, textarea:focus, select:focus {
+  outline: none !important;
+  border-color: #FF6900 !important;
+  box-shadow: 0 0 0 2px rgba(255, 105, 0, 0.20) !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Accessible, intentional focus ring on custom input wrapper containers */
+[data-focusable="true"]:focus-within {
+  border-color: #FF6900 !important;
+  box-shadow: 0 0 0 2px rgba(255, 105, 0, 0.25) !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus-visible, textarea:focus-visible, select:focus-visible {
   outline: none !important;
   border-color: #FF6900 !important;
   box-shadow: 0 0 0 2px rgba(255, 105, 0, 0.25) !important;

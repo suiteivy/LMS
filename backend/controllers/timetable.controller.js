@@ -413,7 +413,7 @@ exports.getClassTimetable = async (req, res) => {
       .select(
         `
         id, class_id, subject_id, institution_id, day_of_week, start_time, end_time, room_number,
-        subjects ( id, title, teacher_id, teachers(users(full_name)) )
+        subjects ( id, title, teacher_id, teachers:teachers!courses_new_teacher_id_fkey(users(full_name)) )
       `,
       )
       .eq("class_id", class_id)

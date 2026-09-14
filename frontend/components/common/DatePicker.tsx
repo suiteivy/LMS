@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, useMemo } from 'react';
 import { Modal, Text, TouchableOpacity, View, ScrollView } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const CELL_SIZE = 36;
 const GRID_ROWS = 6;
@@ -141,7 +142,7 @@ export interface DatePickerProps {
   label?: string;
   value: string; // 'YYYY-MM-DD'
   onChange: (d: string) => void;
-  isDark: boolean;
+  isDark?: boolean;
   inline?: boolean;
   placeholder?: string;
   minDate?: string; // 'YYYY-MM-DD'
@@ -152,12 +153,14 @@ export function DatePicker({
   label,
   value,
   onChange,
-  isDark,
+  isDark: propIsDark,
   inline = false,
   placeholder = 'Select date',
   minDate,
   maxDate,
 }: DatePickerProps) {
+  const { isDark: themeDark } = useTheme();
+  const isDark = propIsDark ?? themeDark;
   const [visible, setVisible] = useState(false);
   const today = new Date();
   const parsed = value ? new Date(value + 'T00:00:00') : null;
@@ -374,7 +377,7 @@ export interface DateRangePickerProps {
   startDate: string; // 'YYYY-MM-DD'
   endDate: string; // 'YYYY-MM-DD'
   onRangeChange: (range: { startDate: string; endDate: string }) => void;
-  isDark: boolean;
+  isDark?: boolean;
   label?: string;
   placeholder?: string;
   allowClear?: boolean;
@@ -386,13 +389,15 @@ export function DateRangePicker({
   startDate,
   endDate,
   onRangeChange,
-  isDark,
+  isDark: propIsDark,
   label,
   placeholder = 'Select date range',
   allowClear = true,
   minDate,
   maxDate,
 }: DateRangePickerProps) {
+  const { isDark: themeDark } = useTheme();
+  const isDark = propIsDark ?? themeDark;
   const [visible, setVisible] = useState(false);
   const today = new Date();
 

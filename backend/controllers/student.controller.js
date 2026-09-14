@@ -215,7 +215,7 @@ exports.getMyTimetable = async (req, res) => {
             .from("timetables")
             .select(`
                 id, day_of_week, start_time, end_time, room_number,
-                subjects ( title, teacher_id, teachers(users(first_name, last_name, full_name)) )
+                subjects ( title, teacher_id, teachers:teachers!courses_new_teacher_id_fkey(users(first_name, last_name, full_name)) )
             `)
             .eq("class_id", enrollment.class_id)
             .eq("institution_id", institution_id)
@@ -282,7 +282,7 @@ exports.getMyAnnouncements = async (req, res) => {
             .from('announcements')
             .select(`
                 id, title, description:message, created_at, updated_at,
-                subjects ( id, title, teacher_id, teachers(users(first_name, last_name, full_name)) )
+                subjects ( id, title, teacher_id, teachers:teachers!courses_new_teacher_id_fkey(users(first_name, last_name, full_name)) )
             `)
             .eq('institution_id', institution_id)
             .order('created_at', { ascending: false });

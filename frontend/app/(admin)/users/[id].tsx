@@ -1,3 +1,4 @@
+import { ConfirmationModal } from '@/components/common/ConfirmationModal';
 import { DatePicker } from '@/components/common/DatePicker';
 import { UserCard } from '@/components/common/UserCard';
 import { NotFoundView } from '@/components/common/NotFoundView';
@@ -17,6 +18,7 @@ import {
     TextInput, TouchableOpacity, View, Platform, Switch
 } from 'react-native';
 import { SettingsService } from '@/services/SettingsService';
+import { RoleAPI, CustomRole } from '@/services/RoleService';
 import { AdminPasswordResetModal, VerificationDetails } from '@/components/auth/AdminPasswordResetModal';
 import { formatClassLabel } from '@/utils/classLabel';
 import { formatCredentialExpiry } from '@/utils/formatExpiry';
@@ -123,6 +125,15 @@ export default function UserDetailsScreen() {
     const [isTeacherRoleEnabled, setIsTeacherRoleEnabled] = useState(false);
     const [teacherRecord, setTeacherRecord] = useState<any>(null);
 
+    // Custom roles state
+    const [allCustomRoles, setAllCustomRoles] = useState<CustomRole[]>([]);
+    const [assignedCustomRoleIds, setAssignedCustomRoleIds] = useState<string[]>([]);
+    const [savedCustomRoleIds, setSavedCustomRoleIds] = useState<string[]>([]);
+
+    // Standardized Delete Confirmation state
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+
     const computedAge = calculateAgeFromDob(dob);
 
     const mappedUser: User | null = user ? {
@@ -183,6 +194,13 @@ export default function UserDetailsScreen() {
         if (subjectRes.data) setAllSubjects(subjectRes.data);
         if (studentRes.data) setStudents(studentRes.data);
         if (parentRes.data) setAllParents(parentRes.data);
+
+        try {
+            const rolesData = await RoleAPI.getRoles();
+            setAllCustomRoles(rolesData || []);
+        } catch (rErr) {
+            console.warn('[USERS] Error fetching custom roles:', rErr);
+        }
     };
 
     const fetchUserDetails = async () => {
@@ -287,6 +305,15 @@ export default function UserDetailsScreen() {
                         }
                     }
                 }
+            }
+
+            try {
+                const userRoles = await RoleAPI.getUserRoles(id as string);
+                const roleIds = (userRoles || []).map((r: any) => r.id);
+                setAssignedCustomRoleIds(roleIds);
+                setSavedCustomRoleIds(roleIds);
+            } catch (urErr) {
+                console.warn('[USERS] Error fetching user custom roles:', urErr);
             }
         } catch (error: any) {
             // If the record doesn't exist, NotFoundView renders cleanly without an intrusive alert
@@ -510,20 +537,29 @@ export default function UserDetailsScreen() {
         }
     };
 
-    const handleDelete = async () => {
-        Alert.alert('Confirm Delete', 'Are you sure you want to permanently delete this user? This action cannot be undone.', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Delete', style: 'destructive', onPress: async () => {
-                    try {
-                        setLoading(true);
-                        await api.delete(`/auth/delete-user/${id}`);
-                        Alert.alert('Success', 'User deleted successfully');
-                        router.replace('/(admin)/users');
-                    } catch (err: any) { Alert.alert('Error', err?.message || 'Failed to delete user'); setLoading(false); }
-                }
-            }
-        ]);
+    const handleDelete = () => {
+        setShowDeleteConfirm(true);
+    };
+
+    const confirmDelete = async () => {
+        setDeleteLoading(true);
+        try {
+            await api.delete(`/auth/delete-user/${id}`);
+            setShowDeleteConfirm(false);
+            Toast.show({
+                type: 'success',
+                text1: 'User Deleted',
+                text2: `${mappedUser?.name || 'User'} has been permanently deleted.`,
+            });
+            router.replace('/(admin)/users');
+        } catch (err: any) {
+            setDeleteLoading(false);
+            Toast.show({
+                type: 'error',
+                text1: 'Delete Failed',
+                text2: err?.message || 'Failed to delete user',
+            });
+        }
     };
 
     const handleCancel = () => {
@@ -544,6 +580,7 @@ export default function UserDetailsScreen() {
                 setClassId(null);
             }
         }
+        setAssignedCustomRoleIds(savedCustomRoleIds);
         setIsEditing(false);
     };
     
@@ -607,6 +644,20 @@ export default function UserDetailsScreen() {
             const { data } = await api.put(`/auth/admin-update-user/${id}`, body);
 
             if (!data) throw new Error('Update failed');
+
+            // Persist custom roles assignment
+            try {
+                await RoleAPI.assignUserRoles(id as string, assignedCustomRoleIds);
+                setSavedCustomRoleIds(assignedCustomRoleIds);
+            } catch (roleAssignErr: any) {
+                console.error('[SAVE] Error assigning custom roles:', roleAssignErr);
+                Toast.show({
+                    type: 'error',
+                    text1: 'Role Assignment Issue',
+                    text2: roleAssignErr?.response?.data?.error || roleAssignErr.message || 'Failed to update custom roles',
+                });
+            }
+
             Alert.alert('Success', 'User updated successfully');
             setIsEditing(false);
 
@@ -1107,6 +1158,108 @@ export default function UserDetailsScreen() {
                     </View>
                 )}
 
+                {/* Assigned Custom Roles */}
+                <View style={{ marginHorizontal: 24, marginTop: 16, backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <View style={{ flex: 1, marginRight: 12 }}>
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: textPrimary }}>
+                                Assigned Custom Roles
+                            </Text>
+                            <Text style={{ fontSize: 11, color: textSecondary, marginTop: 2 }}>
+                                Custom roles grant specific modular permissions, action privileges, and data access scopes.
+                            </Text>
+                        </View>
+                    </View>
+
+                    {isEditing ? (
+                        <View style={{ marginTop: 8 }}>
+                            {allCustomRoles.length === 0 ? (
+                                <Text style={{ color: textSecondary, fontSize: 12, fontStyle: 'italic' }}>
+                                    No custom roles configured in institution. Create one under Management &gt; Roles.
+                                </Text>
+                            ) : (
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                                    {allCustomRoles.map((role) => {
+                                        const isSelected = assignedCustomRoleIds.includes(role.id);
+                                        return (
+                                            <TouchableOpacity
+                                                key={role.id}
+                                                onPress={() => {
+                                                    if (isSelected) {
+                                                        setAssignedCustomRoleIds(assignedCustomRoleIds.filter(rid => rid !== role.id));
+                                                    } else {
+                                                        setAssignedCustomRoleIds([...assignedCustomRoleIds, role.id]);
+                                                    }
+                                                }}
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    paddingHorizontal: 12,
+                                                    paddingVertical: 8,
+                                                    borderRadius: 8,
+                                                    borderWidth: 1,
+                                                    borderColor: isSelected ? '#FF6900' : border,
+                                                    backgroundColor: isSelected ? 'rgba(255, 105, 0, 0.1)' : inputBg,
+                                                    gap: 6
+                                                }}
+                                            >
+                                                <Ionicons 
+                                                    name={isSelected ? "checkbox" : "square-outline"} 
+                                                    size={18} 
+                                                    color={isSelected ? "#FF6900" : textSecondary} 
+                                                />
+                                                <View>
+                                                    <Text style={{ fontSize: 13, fontWeight: '600', color: isSelected ? '#FF6900' : textPrimary }}>
+                                                        {role.name}
+                                                    </Text>
+                                                    {role.data_scope ? (
+                                                        <Text style={{ fontSize: 10, color: textSecondary, textTransform: 'capitalize' }}>
+                                                            Scope: {role.data_scope}
+                                                        </Text>
+                                                    ) : null}
+                                                </View>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            )}
+                        </View>
+                    ) : (
+                        <View style={{ marginTop: 8 }}>
+                            {assignedCustomRoleIds.length === 0 ? (
+                                <Text style={{ color: textSecondary, fontSize: 12, fontStyle: 'italic' }}>
+                                    No custom roles assigned.
+                                </Text>
+                            ) : (
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                                    {allCustomRoles
+                                        .filter(r => assignedCustomRoleIds.includes(r.id))
+                                        .map(r => (
+                                            <View
+                                                key={r.id}
+                                                style={{
+                                                    backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+                                                    borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE',
+                                                    borderWidth: 1,
+                                                    paddingHorizontal: 10,
+                                                    paddingVertical: 6,
+                                                    borderRadius: 8,
+                                                }}
+                                            >
+                                                <Text style={{ fontSize: 12, fontWeight: '700', color: '#3b82f6' }}>
+                                                    {r.name}
+                                                </Text>
+                                                <Text style={{ fontSize: 10, color: textSecondary, textTransform: 'capitalize' }}>
+                                                    Scope: {r.data_scope || 'all'}
+                                                </Text>
+                                            </View>
+                                        ))}
+                                </View>
+                            )}
+                        </View>
+                    )}
+                </View>
+
                 {/* Permissions */}
                 <View style={{ marginHorizontal: 24, marginTop: 16, backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16 }}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Role Permissions</Text>
@@ -1241,6 +1394,20 @@ export default function UserDetailsScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Standardized Delete User Confirmation Modal */}
+            <ConfirmationModal
+                visible={showDeleteConfirm}
+                title="Permanently Delete User"
+                targetName={mappedUser ? `${mappedUser.name} (${mappedUser.role})` : undefined}
+                message="Are you sure you want to permanently delete this user account? All credentials, profiles, and associations will be purged. This action cannot be undone."
+                confirmText="Delete Permanently"
+                isDestructive={true}
+                icon="trash-outline"
+                loading={deleteLoading}
+                onConfirm={confirmDelete}
+                onClose={() => !deleteLoading && setShowDeleteConfirm(false)}
+            />
         </View>
     );
 }

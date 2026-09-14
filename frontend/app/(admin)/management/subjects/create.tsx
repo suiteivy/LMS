@@ -18,6 +18,7 @@ import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatClassLabel } from "@/utils/classLabel";
 import { ClassService } from "@/services/ClassService";
+import { ActionTooltip } from "@/components/common/ActionTooltip";
 
 const CreateSubject = () => {
     const router = useRouter();
@@ -211,13 +212,13 @@ const CreateSubject = () => {
                                 <TextInput
                                     value={formData.title}
                                     onChangeText={(text) => handleInputChange("title", text)}
-                                    placeholder="Enter subject title"
+                                    placeholder="e.g. Mathematics, Physical Science"
                                     placeholderTextColor={textSecondary}
                                     style={{
                                         backgroundColor: inputBg,
                                         color: textPrimary,
                                         borderRadius: 12,
-                                        paddingHorizontal: 12,
+                                        paddingHorizontal: 16,
                                         paddingVertical: 12,
                                         borderWidth: 1,
                                         borderColor: border,
@@ -226,18 +227,46 @@ const CreateSubject = () => {
                                 />
                             </View>
 
+                            <View style={{ marginBottom: 16 }}>
+                                <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary, marginBottom: 6 }}>
+                                    Description
+                                </Text>
+                                <TextInput
+                                    value={formData.description}
+                                    onChangeText={(text) => handleInputChange("description", text)}
+                                    placeholder="Overview of subject syllabus and scope"
+                                    placeholderTextColor={textSecondary}
+                                    multiline
+                                    numberOfLines={3}
+                                    style={{
+                                        backgroundColor: inputBg,
+                                        borderRadius: 12,
+                                        paddingHorizontal: 16,
+                                        paddingVertical: 12,
+                                        borderWidth: 1,
+                                        borderColor: border,
+                                        color: textPrimary,
+                                        fontSize: 14,
+                                        textAlignVertical: 'top',
+                                        minHeight: 80,
+                                    }}
+                                />
+                            </View>
+
                             {/* Level Scoping */}
                             <View style={{ marginBottom: 16 }}>
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                                     <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary }}>
-                                        Grade/Level Scoping
+                                        Applicable Levels
                                     </Text>
-                                    <Text style={{ fontSize: 11, color: (formData.level_ids || []).length === 0 ? '#10b981' : '#FF6B00', fontWeight: '600' }}>
-                                        {(formData.level_ids || []).length === 0 ? 'All Levels (Default)' : `${formData.level_ids?.length} Level(s) Selected`}
-                                    </Text>
+                                    {(formData.level_ids || []).length > 0 && (
+                                        <TouchableOpacity onPress={() => handleInputChange("level_ids", [])}>
+                                            <Text style={{ fontSize: 11, color: '#FF6B00', fontWeight: '600' }}>Clear Filter</Text>
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                                 <Text style={{ fontSize: 11, color: textSecondary, marginBottom: 8 }}>
-                                    Restricts this subject to specific levels. Leave empty to allow all levels.
+                                    Select which educational levels take this subject. Selecting levels also filters the assigned classes list below.
                                 </Text>
                                 {levels.length > 0 ? (
                                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -249,21 +278,13 @@ const CreateSubject = () => {
                                                     onPress={() => handleLevelToggle(lvl.id)}
                                                     style={{
                                                         paddingHorizontal: 12,
-                                                        paddingVertical: 8,
-                                                        borderRadius: 10,
+                                                        paddingVertical: 6,
+                                                        borderRadius: 20,
                                                         borderWidth: 1,
                                                         borderColor: isSelected ? '#FF6B00' : border,
-                                                        backgroundColor: isSelected ? (isDark ? 'rgba(255,107,0,0.15)' : '#fff7ed') : inputBg,
-                                                        flexDirection: 'row',
-                                                        alignItems: 'center',
+                                                        backgroundColor: isSelected ? (isDark ? '#21262D' : '#FFF7ED') : inputBg,
                                                     }}
                                                 >
-                                                    <Ionicons
-                                                        name={isSelected ? "checkmark-circle" : "ellipse-outline"}
-                                                        size={14}
-                                                        color={isSelected ? "#FF6B00" : textSecondary}
-                                                        style={{ marginRight: 6 }}
-                                                    />
                                                     <Text
                                                         style={{
                                                             fontSize: 12,
@@ -281,32 +302,122 @@ const CreateSubject = () => {
                             </View>
 
                             <View style={{ marginBottom: 16 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary, marginBottom: 6 }}>Assigned Classes</Text>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                    <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary }}>Assigned Classes</Text>
+                                    {(formData.level_ids || []).length > 0 && (
+                                        <Text style={{ fontSize: 11, color: '#FF6B00', fontWeight: '600' }}>
+                                            Filtered by {formData.level_ids?.length} Level(s)
+                                        </Text>
+                                    )}
+                                </View>
                                 <View style={{ backgroundColor: inputBg, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: border }}>
-                                    {classes.map((c) => {
-                                        const selected = new Set<string>([...(formData.class_ids || []), ...(formData.class_id ? [formData.class_id] : [])]);
-                                        const isSelected = selected.has(c.value);
+                                    {(() => {
+                                        const selectedLevels = formData.level_ids || [];
+                                        const displayedClasses = selectedLevels.length > 0
+                                            ? classes.filter(c => !c.level_id || selectedLevels.includes(c.level_id))
+                                            : classes;
+
+                                        return (
+                                            <>
+                                                {displayedClasses.map((c) => {
+                                                    const selected = new Set<string>([...(formData.class_ids || []), ...(formData.class_id ? [formData.class_id] : [])]);
+                                                    const isSelected = selected.has(c.value);
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={c.value}
+                                                            onPress={() => handleClassToggle(c.value)}
+                                                            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: border }}
+                                                        >
+                                                            <Ionicons
+                                                                name={isSelected ? 'checkbox' : 'square-outline'}
+                                                                size={20}
+                                                                color={isSelected ? '#FF6B00' : textSecondary}
+                                                                style={{ marginRight: 10 }}
+                                                            />
+                                                            <Text style={{ color: textPrimary, fontSize: 14, fontWeight: '500' }}>{c.label}</Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+                                                {displayedClasses.length === 0 && (
+                                                    <Text style={{ color: textSecondary, fontSize: 13, textAlign: 'center', paddingVertical: 10 }}>
+                                                        {selectedLevels.length > 0 ? 'No classes found in selected level(s)' : 'No classes available'}
+                                                    </Text>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
+                                </View>
+                            </View>
+
+                            {/* Head of Department (HOD) Picker */}
+                            <View style={{ marginBottom: 16 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 6 }}>
+                                    <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary }}>Head of Department (HOD)</Text>
+                                    <ActionTooltip text="Assign HOD for curriculum pacing and exam approvals" learnMoreAnchor="hod-role">
+                                        <Ionicons name="information-circle-outline" size={16} color="#FF6B00" />
+                                    </ActionTooltip>
+                                </View>
+                                <View style={{ backgroundColor: inputBg, borderRadius: 12, borderWidth: 1, borderColor: border, overflow: 'hidden' }}>
+                                    <TouchableOpacity
+                                        onPress={() => handleInputChange("hod_teacher_id", "")}
+                                        style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 10,
+                                            borderBottomWidth: 1,
+                                            borderBottomColor: border,
+                                            backgroundColor: !formData.hod_teacher_id ? (isDark ? '#21262D' : '#FFF7ED') : 'transparent',
+                                        }}
+                                    >
+                                        <Ionicons
+                                            name={!formData.hod_teacher_id ? "radio-button-on" : "radio-button-off"}
+                                            size={18}
+                                            color={!formData.hod_teacher_id ? "#FF6B00" : textSecondary}
+                                            style={{ marginRight: 10 }}
+                                        />
+                                        <Text style={{ color: !formData.hod_teacher_id ? '#FF6B00' : textSecondary, fontSize: 14, fontWeight: !formData.hod_teacher_id ? '700' : '400' }}>
+                                            None (No HOD assigned)
+                                        </Text>
+                                    </TouchableOpacity>
+                                    {teachers.map((t) => {
+                                        const isHod = formData.hod_teacher_id === t.id;
                                         return (
                                             <TouchableOpacity
-                                                key={c.value}
-                                                onPress={() => handleClassToggle(c.value)}
-                                                style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: border }}
+                                                key={`hod-${t.id}`}
+                                                onPress={() => {
+                                                    handleInputChange("hod_teacher_id", t.id);
+                                                    if (!(formData.teacher_ids || []).includes(t.id)) {
+                                                        handleInputChange("teacher_ids", [...(formData.teacher_ids || []), t.id]);
+                                                    }
+                                                }}
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    paddingHorizontal: 12,
+                                                    paddingVertical: 10,
+                                                    borderBottomWidth: 1,
+                                                    borderBottomColor: border,
+                                                    backgroundColor: isHod ? (isDark ? '#21262D' : '#FFF7ED') : 'transparent',
+                                                }}
                                             >
                                                 <Ionicons
-                                                    name={isSelected ? 'checkbox' : 'square-outline'}
-                                                    size={20}
-                                                    color={isSelected ? '#FF6B00' : textSecondary}
+                                                    name={isHod ? "radio-button-on" : "radio-button-off"}
+                                                    size={18}
+                                                    color={isHod ? "#FF6B00" : textSecondary}
                                                     style={{ marginRight: 10 }}
                                                 />
-                                                <Text style={{ color: textPrimary, fontSize: 14, fontWeight: '500' }}>{c.label}</Text>
+                                                <Text style={{ color: isHod ? textPrimary : textSecondary, fontSize: 14, fontWeight: isHod ? '700' : '500', flex: 1 }}>
+                                                    {t.users?.full_name || t.id}
+                                                </Text>
+                                                {isHod && (
+                                                    <View style={{ backgroundColor: '#FF6B00', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                                                        <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>HOD</Text>
+                                                    </View>
+                                                )}
                                             </TouchableOpacity>
                                         );
                                     })}
-                                    {classes.length === 0 && (
-                                        <Text style={{ color: textSecondary, fontSize: 13, textAlign: 'center', paddingVertical: 10 }}>
-                                            No classes available
-                                        </Text>
-                                    )}
                                 </View>
                             </View>
 
@@ -364,15 +475,17 @@ const CreateSubject = () => {
                             flexDirection: 'row',
                             gap: 12,
                         }}>
-                    <TouchableOpacity
-                        onPress={handleSubmit}
-                        disabled={isSubmitting}
-                        style={{ flex: 2, paddingVertical: 14, borderRadius: 16, alignItems: 'center', backgroundColor: '#FF6B00', opacity: isSubmitting ? 0.5 : 1 }}
-                    >
-                        <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>
-                            {isSubmitting ? "Creating..." : "Create Subject"}
-                        </Text>
-                    </TouchableOpacity>
+                    <ActionTooltip text="Save and create new subject" style={{ flex: 2 }}>
+                        <TouchableOpacity
+                            onPress={handleSubmit}
+                            disabled={isSubmitting}
+                            style={{ flex: 1, paddingVertical: 14, borderRadius: 16, alignItems: 'center', backgroundColor: '#FF6B00', opacity: isSubmitting ? 0.5 : 1 }}
+                        >
+                            <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>
+                                {isSubmitting ? "Creating..." : "Create Subject"}
+                            </Text>
+                        </TouchableOpacity>
+                    </ActionTooltip>
                         </View>
                     </View>
                 </View>

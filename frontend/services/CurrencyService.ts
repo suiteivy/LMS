@@ -16,8 +16,13 @@ export interface CurrencyRecord {
 
 export const CurrencyService = {
   getPublicCurrencies: async (): Promise<CurrencyRecord[]> => {
-    const response = await api.get('/settings/currencies', { skipErrorToast: true });
-    return response.data?.currencies || [];
+    try {
+      const response = await api.get('/settings/currencies', { skipErrorToast: true });
+      return response.data?.currencies || [];
+    } catch (error) {
+      // Fallback silently if public rates cannot be fetched (e.g. offline, auth warming up)
+      return [];
+    }
   },
 
   getMasterCurrencies: async (): Promise<CurrencyRecord[]> => {

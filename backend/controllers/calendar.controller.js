@@ -284,6 +284,8 @@ exports.createEvent = async (req, res) => {
       title,
       description,
       event_date,
+      start_date,
+      end_date,
       start_time,
       end_time,
       event_type = 'event',
@@ -295,12 +297,23 @@ exports.createEvent = async (req, res) => {
       return res.status(400).json({ error: 'Event title is required.' });
     }
 
-    if (!event_date || typeof event_date !== 'string') {
+    const finalStartDate = start_date || event_date;
+    const finalEndDate = end_date || finalStartDate;
+
+    if (!finalStartDate || typeof finalStartDate !== 'string') {
       return res.status(400).json({ error: 'Valid event date (YYYY-MM-DD) is required.' });
     }
 
-    if (!isValidDateOnlyString(event_date)) {
+    if (!isValidDateOnlyString(finalStartDate)) {
       return res.status(400).json({ error: 'Invalid event date format. Expected YYYY-MM-DD.' });
+    }
+
+    if (!isValidDateOnlyString(finalEndDate)) {
+      return res.status(400).json({ error: 'Invalid end date format. Expected YYYY-MM-DD.' });
+    }
+
+    if (finalEndDate < finalStartDate) {
+      return res.status(400).json({ error: 'End date cannot be before start date.' });
     }
 
     const isCancelClasses = Boolean(cancel_classes);
@@ -312,7 +325,10 @@ exports.createEvent = async (req, res) => {
         ? `🚨 [Classes Cancelled] ${title.trim()}`
         : `📅 [School Event] ${title.trim()}`;
 
-      let annMessage = `${title.trim()} has been scheduled for ${event_date}`;
+      const dateLabel = finalStartDate === finalEndDate
+        ? finalStartDate
+        : `${finalStartDate} to ${finalEndDate}`;
+      let annMessage = `${title.trim()} has been scheduled for ${dateLabel}`;
       if (start_time) annMessage += ` at ${start_time}`;
       if (end_time) annMessage += ` - ${end_time}`;
       annMessage += '.\n';
@@ -364,7 +380,9 @@ exports.createEvent = async (req, res) => {
         created_by: userId || null,
         title: title.trim(),
         description: description ? description.trim() : null,
-        event_date,
+        event_date: finalStartDate,
+        start_date: finalStartDate,
+        end_date: finalEndDate,
         start_time: start_time || null,
         end_time: end_time || null,
         event_type,
@@ -404,6 +422,8 @@ exports.updateEvent = async (req, res) => {
       title,
       description,
       event_date,
+      start_date,
+      end_date,
       start_time,
       end_time,
       event_type,
@@ -428,12 +448,37 @@ exports.updateEvent = async (req, res) => {
     const updatePayload = {};
     if (title !== undefined) updatePayload.title = title.trim();
     if (description !== undefined) updatePayload.description = description ? description.trim() : null;
-    if (event_date !== undefined) {
+
+    if (start_date !== undefined) {
+      if (!isValidDateOnlyString(start_date)) {
+        return res.status(400).json({ error: 'Invalid start date format. Expected YYYY-MM-DD.' });
+      }
+      updatePayload.start_date = start_date;
+      updatePayload.event_date = start_date;
+    }
+    if (end_date !== undefined) {
+      if (!isValidDateOnlyString(end_date)) {
+        return res.status(400).json({ error: 'Invalid end date format. Expected YYYY-MM-DD.' });
+      }
+      updatePayload.end_date = end_date;
+    }
+    if (event_date !== undefined && start_date === undefined) {
       if (!isValidDateOnlyString(event_date)) {
         return res.status(400).json({ error: 'Invalid event date format. Expected YYYY-MM-DD.' });
       }
       updatePayload.event_date = event_date;
+      updatePayload.start_date = event_date;
+      if (end_date === undefined && !existing.end_date) {
+        updatePayload.end_date = event_date;
+      }
     }
+
+    const checkStart = updatePayload.start_date || existing.start_date || existing.event_date;
+    const checkEnd = updatePayload.end_date || existing.end_date || existing.event_date;
+    if (checkStart && checkEnd && checkEnd < checkStart) {
+      return res.status(400).json({ error: 'End date cannot be before start date.' });
+    }
+
     if (start_time !== undefined) updatePayload.start_time = start_time || null;
     if (end_time !== undefined) updatePayload.end_time = end_time || null;
     if (event_type !== undefined) updatePayload.event_type = event_type;
@@ -558,7 +603,7 @@ exports.getCancelledDates = async (req, res) => {
 
     let query = supabase
       .from('calendar_events')
-      .select('id, event_date, title, description, start_time, end_time')
+      .select('id, event_date, start_date, end_date, title, description, start_time, end_time')
       .eq('cancel_classes', true);
 
     if (req.userRole !== 'master_admin') {
@@ -568,7 +613,40 @@ exports.getCancelledDates = async (req, res) => {
     const { data, error } = await withSupabaseRetry(() => query);
     if (error) throw error;
 
-    return res.status(200).json({ cancelled_dates: data || [] });
+    // Expand multi-day cancellation ranges so daily checks match all days
+    const cancelledDates = [];
+    for (const item of (data || [])) {
+      const s = item.start_date || item.event_date;
+      const e = item.end_date || s;
+      if (s && e && s !== e) {
+        let cur = new Date(s);
+        const end = new Date(e);
+        while (cur <= end) {
+          const y = cur.getFullYear();
+          const m = String(cur.getMonth() + 1).padStart(2, '0');
+          const d = String(cur.getDate()).padStart(2, '0');
+          cancelledDates.push({
+            id: `${item.id}-${y}-${m}-${d}`,
+            event_date: `${y}-${m}-${d}`,
+            start_date: item.start_date || s,
+            end_date: item.end_date || e,
+            title: item.title,
+            description: item.description,
+            start_time: item.start_time,
+            end_time: item.end_time
+          });
+          cur.setDate(cur.getDate() + 1);
+        }
+      } else {
+        cancelledDates.push({
+          ...item,
+          start_date: item.start_date || item.event_date,
+          end_date: item.end_date || item.event_date
+        });
+      }
+    }
+
+    return res.status(200).json({ cancelled_dates: cancelledDates });
   } catch (err) {
     console.error('getCancelledDates error:', err);
     return res.status(500).json({ error: 'Failed to fetch cancelled dates' });

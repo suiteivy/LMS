@@ -122,14 +122,36 @@ exports.createExam = async (req, res) => {
         const { institution_id, userId, userRole } = req;
         const { subject_id, teacher_id, title, description, date, max_score, weight, term, is_published, submission_deadline } = req.body;
 
+        if (!subject_id || !title || !date) {
+            return res.status(400).json({ error: "subject_id, title, and date are required" });
+        }
+
+        // Part F1: Gate scheduling behind completed Admin setup (active term/academic year)
+        const { resolveActiveTerm } = require("../utils/resolveActiveTerm.js");
+        const activeTerm = await resolveActiveTerm(institution_id);
+        if (!activeTerm) {
+            return res.status(400).json({
+                error: "Exam scheduling is disabled: An active academic year and term must first be configured by Admin."
+            });
+        }
+
+        // Part F2: Scheduling & paper creation restricted strictly to Admin and HOD for this subject
         let effectiveTeacherId = teacher_id;
         if (userRole === 'teacher') {
-            const result = await authorizeTeacherForSubject(userId, subject_id, res);
-            if (!result) return;
-            effectiveTeacherId = result.teacherId;
+            const { resolveTeacherScope } = require("../middleware/teacherScope.js");
+            const scope = await resolveTeacherScope(userId, institution_id);
+            const isHODForSubject = scope?.isHOD && (scope.hodSubjectIds || []).includes(subject_id);
+            if (!isHODForSubject) {
+                return res.status(403).json({
+                    error: "Access denied: Only the Head of Department (HOD) for this subject or an Admin can schedule exams."
+                });
+            }
+            effectiveTeacherId = scope.teacherId;
         } else if (userRole !== 'admin') {
             return res.status(403).json({ error: "Unauthorized" });
         }
+
+        const effectiveTerm = term || activeTerm.name || "Term 1";
 
         const { data, error } = await supabase
             .from("exams")
@@ -140,9 +162,9 @@ exports.createExam = async (req, res) => {
                 title,
                 description,
                 date,
-                max_score,
+                max_score: max_score || 100,
                 weight: weight || 0,
-                term,
+                term: effectiveTerm,
                 is_published: is_published !== undefined ? is_published : true,
                 submission_deadline: submission_deadline || null
             }])
@@ -168,7 +190,7 @@ exports.getExams = async (req, res) => {
             if (allowedSubjectIds.length === 0) return res.json([]);
             query = query.in('subject_id', allowedSubjectIds);
         } else if (userRole === 'student') {
-            const { data: student } = await supabase.from('students').select('id').eq('user_id', userId).single();
+            const { data: student } = await supabase.from('students').select('id').eq('user_id', userId).maybeSingle();
             if (!student) return res.json([]);
 
             const { data: enrollments } = await supabase.from('enrollments').select('subject_id').eq('student_id', student.id).eq('status', 'enrolled');
@@ -183,7 +205,7 @@ exports.getExams = async (req, res) => {
             if (studentSubjectIds.length === 0) return res.json([]);
             query = query.in('subject_id', studentSubjectIds).eq('is_published', true);
         } else if (userRole === 'parent') {
-            const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).single();
+            const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).maybeSingle();
             if (!parent) return res.json([]);
 
             const { data: parentStudents } = await supabase.from('parent_students').select('student_id').eq('parent_id', parent.id);
@@ -230,14 +252,19 @@ exports.recordExamResult = async (req, res) => {
         if (!exam) return res.status(404).json({ error: "Exam not found" });
         const subjectId = exam.subject_id;
 
-        // Submission deadline check: teachers are locked after deadline
+        // Submission deadline check: regular teachers are locked after deadline; HOD/Admin retain override access
         if (userRole === 'teacher' && exam.submission_deadline) {
             const now = new Date();
             const deadline = new Date(exam.submission_deadline);
             if (now > deadline) {
-                return res.status(403).json({
-                    error: "Submission deadline has passed. Exam results are now locked for teachers."
-                });
+                const { resolveTeacherScope } = require("../middleware/teacherScope.js");
+                const scope = await resolveTeacherScope(userId, institution_id);
+                const isHOD = scope?.isHOD && (scope.hodSubjectIds || []).includes(subjectId);
+                if (!isHOD) {
+                    return res.status(403).json({
+                        error: "Submission deadline has passed. Exam results are now locked for teachers."
+                    });
+                }
             }
         }
 
@@ -287,15 +314,38 @@ exports.recordExamResult = async (req, res) => {
             }
         }
 
-        // Compute CBC competency band (EE: >=80%, ME: >=60%, AE: >=40%, BE: <40%)
+        // Part G: Dynamic competency / grading band based on configured grading scales
         let calculatedBand = competency_band;
         if (!calculatedBand && score !== undefined && score !== null) {
             const maxScore = Number(exam.max_score) || 100;
             const percentage = (Number(score) / maxScore) * 100;
-            if (percentage >= 80) calculatedBand = 'EE';
-            else if (percentage >= 60) calculatedBand = 'ME';
-            else if (percentage >= 40) calculatedBand = 'AE';
-            else calculatedBand = 'BE';
+
+            let activeScales = [];
+            if (institution_id) {
+                const { data: scalesData } = await supabase
+                    .from('grading_scales')
+                    .select('*')
+                    .eq('institution_id', institution_id)
+                    .eq('is_active', true)
+                    .order('min_score', { ascending: false });
+                activeScales = scalesData || [];
+            }
+
+            if (activeScales.length > 0) {
+                const match = activeScales.find(s => percentage >= s.min_score && percentage <= s.max_score);
+                if (match) {
+                    calculatedBand = match.letter_grade || match.name;
+                } else if (percentage < activeScales[activeScales.length - 1].min_score) {
+                    calculatedBand = activeScales[activeScales.length - 1].letter_grade || activeScales[activeScales.length - 1].name;
+                } else {
+                    calculatedBand = activeScales[0].letter_grade || activeScales[0].name;
+                }
+            } else {
+                if (percentage >= 80) calculatedBand = 'EE';
+                else if (percentage >= 60) calculatedBand = 'ME';
+                else if (percentage >= 40) calculatedBand = 'AE';
+                else calculatedBand = 'BE';
+            }
         }
 
         // Fetch existing result for audit logging

@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { useTheme } from "@/contexts/ThemeContext";
 import { ResourceAPI, Resource } from "@/services/ResourceService";
 import { router } from "expo-router";
@@ -246,29 +247,41 @@ export default function AdminResourceManager() {
                                         {/* Action buttons */}
                                         <View className="flex-row items-center justify-end gap-2 mt-2 pt-2 border-t border-gray-200/50 dark:border-white/5">
                                             {resource.url ? (
-                                                <TouchableOpacity
-                                                    onPress={() => handleOpenResource(resource.url)}
-                                                    className="flex-row items-center px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40"
+                                                <ActionTooltip
+                                                    label="Open Resource"
+                                                    description="Launch or preview uploaded curriculum material in a browser."
+                                                    learnMoreAnchor="academic-vault"
                                                 >
-                                                    <ExternalLink size={13} color="#2563eb" />
-                                                    <Text className="text-[#2563eb] text-[12px] font-bold ml-1.5">Open Link</Text>
-                                                </TouchableOpacity>
+                                                    <TouchableOpacity
+                                                        onPress={() => handleOpenResource(resource.url)}
+                                                        className="flex-row items-center px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40"
+                                                    >
+                                                        <ExternalLink size={13} color="#2563eb" />
+                                                        <Text className="text-[#2563eb] text-[12px] font-bold ml-1.5">Open Link</Text>
+                                                    </TouchableOpacity>
+                                                </ActionTooltip>
                                             ) : null}
 
-                                            <TouchableOpacity
-                                                onPress={() => handleDelete(resource.id, resource.title)}
-                                                disabled={isDeleting}
-                                                className="flex-row items-center px-3 py-1.5 rounded-xl bg-red-50 dark:bg-red-950/40"
+                                            <ActionTooltip
+                                                label="Delete Resource"
+                                                description="Permanently delete this curriculum file from the institutional repository."
+                                                learnMoreAnchor="academic-vault"
                                             >
-                                                {isDeleting ? (
-                                                    <ActivityIndicator size="small" color="#ef4444" />
-                                                ) : (
-                                                    <>
-                                                        <Trash2 size={13} color="#ef4444" />
-                                                        <Text className="text-[#ef4444] text-[12px] font-bold ml-1.5">Delete</Text>
-                                                    </>
-                                                )}
-                                            </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    onPress={() => handleDelete(resource.id, resource.title)}
+                                                    disabled={isDeleting}
+                                                    className="flex-row items-center px-3 py-1.5 rounded-xl bg-red-50 dark:bg-red-950/40"
+                                                >
+                                                    {isDeleting ? (
+                                                        <ActivityIndicator size="small" color="#ef4444" />
+                                                    ) : (
+                                                        <>
+                                                            <Trash2 size={13} color="#ef4444" />
+                                                            <Text className="text-[#ef4444] text-[12px] font-bold ml-1.5">Delete</Text>
+                                                        </>
+                                                    )}
+                                                </TouchableOpacity>
+                                            </ActionTooltip>
                                         </View>
                                     </View>
                                 );

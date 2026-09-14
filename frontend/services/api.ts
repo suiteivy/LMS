@@ -4,7 +4,7 @@ import { assertNoDoubleApiSegment } from "@/utils/validateApiUrl";
 
 import { showError, showWarning, showInfo } from "../utils/toast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getActiveTeacherRoleMode } from "@/hooks/useTeacherRoleMode";
+import { getActiveTeacherRoleMode } from "@/services/teacherRoleModeState";
 
 // Extend Axios request config to support a per-request flag that suppresses
 // the global error toast (useful for background fetches that have silent fallbacks).
@@ -132,7 +132,8 @@ const isLikelyPublicRoute = (url?: string) => {
     target.includes('/auth/credential-delivery') ||
     target.includes('/demo/') ||
     target.includes('/settings/maintenance') ||
-    target.includes('/settings/currency')
+    target.includes('/settings/currency') ||
+    target.includes('/settings/currencies')
   );
 };
 

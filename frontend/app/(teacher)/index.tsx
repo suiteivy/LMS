@@ -7,7 +7,7 @@ import { CacheService } from "@/services/CacheService";
 import { CalendarAPI } from "@/services/CalendarService";
 import { downloadTimetablePdf } from "@/utils/timetablePdfGenerator";
 import { router } from "expo-router";
-import { ArrowRight, BookOpen, Calendar, Check, Clock, Download, GraduationCap, MessageSquare, School, Users, LogOut } from 'lucide-react-native';
+import { ArrowRight, BookOpen, Calendar, Check, Clock, ClipboardList, Download, GraduationCap, MessageSquare, School, Users, LogOut } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View, StatusBar } from 'react-native';
 import { SubscriptionBanner, SubscriptionGate } from '@/components/shared/SubscriptionComponents';
@@ -70,7 +70,7 @@ const QuickAction = ({ icon: Icon, label, color, onPress, badge }: QuickActionPr
 };
 
 export default function TeacherHome() {
-    const { profile, institutionName, institutionLogo, isInitializing, session, isDemo, logout } = useAuth();
+    const { profile, teacherId, institutionName, institutionLogo, isInitializing, session, isDemo, logout } = useAuth();
     const [stats, setStats] = useState<any>(null);
     const [schedule, setSchedule] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -79,7 +79,7 @@ export default function TeacherHome() {
     const { isDark } = useTheme();
 
     // Switcher/Role state
-    const { mode, setMode, syncRoles, canToggle, isSubjectTeacher, isClassTeacher, isLibrarian } = useTeacherRoleMode();
+    const { mode, setMode, syncRoles, canToggle, isSubjectTeacher, isClassTeacher, isHOD, isLibrarian, isFinanceAdmin } = useTeacherRoleMode();
     const [roles, setRoles] = useState<string[]>([]);
     const [classTeacherOf, setClassTeacherOf] = useState<any[]>([]);
     const [assignedSubjects, setAssignedSubjects] = useState<any[]>([]);
@@ -322,7 +322,7 @@ export default function TeacherHome() {
     };
 
     const isSelfPresent = staffPresence.some(
-        s => (s.teacher_id === profile?.id || s.name === profile?.full_name) && s.status === 'present'
+        s => (s.teacher_id === teacherId || s.teacher_id === profile?.id || s.name === profile?.full_name) && (s.status === 'present' || s.status === 'late')
     );
 
     useEffect(() => {
@@ -470,6 +470,43 @@ export default function TeacherHome() {
             ];
         }
 
+        if (mode === 'hod') {
+            return [
+                {
+                    key: 'coverage',
+                    icon: BookOpen,
+                    label: 'Dept Coverage',
+                    color: '#FF6900',
+                    route: '/(teacher)/management/coverage',
+                    gated: false,
+                },
+                {
+                    key: 'exams',
+                    icon: GraduationCap,
+                    label: 'Manage Exams',
+                    color: '#8b5cf6',
+                    route: '/(teacher)/management/exams',
+                    gated: false,
+                },
+                {
+                    key: 'record-of-work',
+                    icon: Calendar,
+                    label: 'Record of Work',
+                    color: '#16a34a',
+                    route: '/(teacher)/management/record-of-work',
+                    gated: false,
+                },
+                {
+                    key: 'messages',
+                    icon: MessageSquare,
+                    label: 'Messages',
+                    color: '#0891b2',
+                    route: '/(teacher)/management/messages',
+                    gated: true,
+                },
+            ];
+        }
+
         if (mode === 'librarian') {
             return [
                 {
@@ -507,6 +544,43 @@ export default function TeacherHome() {
             ];
         }
 
+        if (mode === 'finance') {
+            return [
+                {
+                    key: 'fees',
+                    icon: GraduationCap,
+                    label: 'Fee Summary',
+                    color: '#16a34a',
+                    route: '/(teacher)/management/fees',
+                    gated: false,
+                },
+                {
+                    key: 'classes',
+                    icon: School,
+                    label: 'Classes',
+                    color: '#8b5cf6',
+                    route: '/(teacher)/classes',
+                    gated: true,
+                },
+                {
+                    key: 'announcements',
+                    icon: ArrowRight,
+                    label: 'Announcements',
+                    color: '#f43f5e',
+                    route: '/(teacher)/management/announcements',
+                    gated: false,
+                },
+                {
+                    key: 'messages',
+                    icon: MessageSquare,
+                    label: 'Messages',
+                    color: '#0891b2',
+                    route: '/(teacher)/management/messages',
+                    gated: true,
+                },
+            ];
+        }
+
         return [
             {
                 key: 'grades',
@@ -517,19 +591,19 @@ export default function TeacherHome() {
                 gated: false,
             },
             {
-                key: 'classes',
-                icon: School,
-                label: 'Classes',
+                key: 'assignments',
+                icon: ClipboardList,
+                label: 'Assignments',
                 color: '#8b5cf6',
-                route: '/(teacher)/classes',
+                route: '/(teacher)/management/assignments',
                 gated: true,
             },
             {
-                key: 'assignments',
-                icon: ArrowRight,
-                label: 'Assignments',
+                key: 'coverage',
+                icon: BookOpen,
+                label: 'Coverage',
                 color: '#f43f5e',
-                route: '/(teacher)/management/assignments',
+                route: '/(teacher)/management/coverage',
                 gated: false,
             },
             {
@@ -664,34 +738,54 @@ export default function TeacherHome() {
                     <View className="bg-white dark:bg-[#161B22] rounded-[32px] border border-gray-100 dark:border-gray-800 p-5 mb-8 shadow-sm">
                         {/* Mode Selector - Tabs */}
                         {canToggle && (
-                            <View className="flex-row bg-gray-100 dark:bg-[#0D1117] rounded-2xl p-1 mb-5 gap-1">
+                            <View className="flex-row bg-gray-100 dark:bg-[#0D1117] rounded-2xl p-1 mb-5 gap-1 flex-wrap">
                                 {isSubjectTeacher && (
                                     <TouchableOpacity 
                                         onPress={() => setMode('subject')}
-                                        className={`flex-1 py-2.5 px-2 rounded-xl items-center justify-center ${mode === 'subject' ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
+                                        className={`flex-1 min-w-[70px] py-2.5 px-2 rounded-xl items-center justify-center ${mode === 'subject' ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
                                     >
                                         <Text numberOfLines={1} className={`font-bold text-[11px] uppercase tracking-wider ${mode === 'subject' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                                            Subject Mode
+                                            Subject
                                         </Text>
                                     </TouchableOpacity>
                                 )}
                                 {isClassTeacher && (
                                     <TouchableOpacity 
                                         onPress={() => setMode('class')}
-                                        className={`flex-1 py-2.5 px-2 rounded-xl items-center justify-center ${mode === 'class' ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
+                                        className={`flex-1 min-w-[70px] py-2.5 px-2 rounded-xl items-center justify-center ${mode === 'class' ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
                                     >
                                         <Text numberOfLines={1} className={`font-bold text-[11px] uppercase tracking-wider ${mode === 'class' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                                            Class Mode
+                                            Class
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                                {isHOD && (
+                                    <TouchableOpacity 
+                                        onPress={() => setMode('hod')}
+                                        className={`flex-1 min-w-[70px] py-2.5 px-2 rounded-xl items-center justify-center ${mode === 'hod' ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
+                                    >
+                                        <Text numberOfLines={1} className={`font-bold text-[11px] uppercase tracking-wider ${mode === 'hod' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                            HOD
                                         </Text>
                                     </TouchableOpacity>
                                 )}
                                 {isLibrarian && (
                                     <TouchableOpacity 
                                         onPress={() => setMode('librarian')}
-                                        className={`flex-1 py-2.5 px-2 rounded-xl items-center justify-center ${mode === 'librarian' ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
+                                        className={`flex-1 min-w-[70px] py-2.5 px-2 rounded-xl items-center justify-center ${mode === 'librarian' ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
                                     >
                                         <Text numberOfLines={1} className={`font-bold text-[11px] uppercase tracking-wider ${mode === 'librarian' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                                            Librarian Desk
+                                            Library
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                                {isFinanceAdmin && (
+                                    <TouchableOpacity 
+                                        onPress={() => setMode('finance')}
+                                        className={`flex-1 min-w-[70px] py-2.5 px-2 rounded-xl items-center justify-center ${mode === 'finance' ? 'bg-[#FF6900] shadow-sm' : 'bg-transparent'}`}
+                                    >
+                                        <Text numberOfLines={1} className={`font-bold text-[11px] uppercase tracking-wider ${mode === 'finance' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                            Finance
                                         </Text>
                                     </TouchableOpacity>
                                 )}
@@ -880,22 +974,30 @@ export default function TeacherHome() {
                                     {staffPresence.filter(s => s.status === 'present').length} Present &middot; Real-time status
                                 </Text>
                             </View>
-                            {isSelfPresent ? (
-                                <View className="flex-row items-center bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20">
-                                    <Check size={14} color="#10b981" />
-                                    <Text className="ml-1.5 text-emerald-600 font-bold text-xs">Checked In</Text>
-                                </View>
-                            ) : (
+                            <View className="flex-row items-center gap-2">
                                 <TouchableOpacity
-                                    onPress={handleSelfCheckIn}
-                                    disabled={checkingIn}
-                                    className="bg-[#FF6900] px-3.5 py-1.5 rounded-xl active:bg-orange-600"
+                                    onPress={() => router.push('/(teacher)/faculty-presence' as any)}
+                                    className="px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
                                 >
-                                    <Text className="text-white font-bold text-xs">
-                                        {checkingIn ? 'Checking In...' : 'Check In'}
-                                    </Text>
+                                    <Text className="text-xs font-semibold text-gray-700 dark:text-gray-300">View All</Text>
                                 </TouchableOpacity>
-                            )}
+                                {isSelfPresent ? (
+                                    <View className="flex-row items-center bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20">
+                                        <Check size={14} color="#10b981" />
+                                        <Text className="ml-1.5 text-emerald-600 font-bold text-xs">Checked In</Text>
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity
+                                        onPress={handleSelfCheckIn}
+                                        disabled={checkingIn}
+                                        className="bg-[#FF6900] px-3.5 py-1.5 rounded-xl active:bg-orange-600"
+                                    >
+                                        <Text className="text-white font-bold text-xs">
+                                            {checkingIn ? 'Checking In...' : 'Check In'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
                         </View>
 
                         {staffPresence.length === 0 ? (
@@ -911,7 +1013,7 @@ export default function TeacherHome() {
                                                 </Text>
                                             </View>
                                             <View className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-[#161B22] ${
-                                                staff.status === 'present' ? 'bg-emerald-500' : staff.status === 'late' ? 'bg-amber-500' : 'bg-gray-400'
+                                                staff.status === 'present' ? 'bg-emerald-500' : staff.status === 'pending' ? 'bg-amber-500' : 'bg-gray-400'
                                             }`} />
                                         </View>
                                         <Text numberOfLines={1} className="text-gray-800 dark:text-gray-200 text-xs font-semibold mt-1.5 text-center">
@@ -919,9 +1021,17 @@ export default function TeacherHome() {
                                         </Text>
                                         <View className="mt-0.5">
                                             <Text className={`text-[9px] font-bold ${
-                                                staff.confirmation_status === 'confirmed' ? 'text-emerald-600' : 'text-amber-500'
+                                                staff.status === 'present'
+                                                    ? (staff.confirmation_status === 'confirmed' ? 'text-emerald-600' : 'text-amber-500')
+                                                    : staff.status === 'pending'
+                                                        ? 'text-amber-500'
+                                                        : 'text-gray-400 dark:text-gray-500'
                                             }`}>
-                                                {staff.confirmation_status === 'confirmed' ? 'Confirmed' : 'Self-Reported'}
+                                                {staff.status === 'present'
+                                                    ? (staff.confirmation_status === 'confirmed' ? 'Confirmed' : 'Self-Reported')
+                                                    : staff.status === 'pending'
+                                                        ? 'Pending'
+                                                        : 'Not Present'}
                                             </Text>
                                         </View>
                                     </View>

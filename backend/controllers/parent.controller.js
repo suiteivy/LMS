@@ -79,7 +79,7 @@ async function purgeExpiredAnnouncementsAndNotifications(institutionId) {
  */
 async function verifyParentStudentLink(userId, studentId) {
     // 1. Get Parent ID from userId
-    const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).single();
+    const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).maybeSingle();
     if (!parent) return { error: "Parent profile not found", status: 404 };
 
     // 2. Check if student is linked
@@ -105,7 +105,7 @@ exports.getLinkedStudents = async (req, res) => {
         const { userId } = req;
 
         // 1. Get Parent ID
-        const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).single();
+        const { data: parent } = await supabase.from('parents').select('id').eq('user_id', userId).maybeSingle();
         if (!parent) return res.status(404).json({ error: "Parent profile not found" });
 
         // 2. Get Students with class info
@@ -418,7 +418,7 @@ exports.getStudentAnnouncements = async (req, res) => {
             .from('announcements')
             .select(`
                 id, title, description:message, created_at, updated_at,
-                subjects ( id, title, teacher_id, teachers(users(first_name, last_name, full_name)) )
+                subjects ( id, title, teacher_id, teachers:teachers!courses_new_teacher_id_fkey(users(first_name, last_name, full_name)) )
             `)
             .eq('institution_id', institution_id)
             .order('created_at', { ascending: false });
@@ -710,7 +710,7 @@ exports.getStudentExams = async (req, res) => {
             .from('exams')
             .select(`
                 id, title, description, date, max_score, weight, term, is_published, submission_deadline,
-                subjects (id, title, teachers(users(full_name)))
+                subjects (id, title, teachers:teachers!courses_new_teacher_id_fkey(users(full_name)))
             `)
             .in('subject_id', subjectIds)
             .eq('institution_id', institution_id)
@@ -743,7 +743,7 @@ exports.getStudentExamResults = async (req, res) => {
                 id, exam_id, score, competency_band, feedback, created_at,
                 exams (
                     id, title, date, max_score, weight, term, is_published,
-                    subjects (id, title, teachers(users(full_name)))
+                    subjects (id, title, teachers:teachers!courses_new_teacher_id_fkey(users(full_name)))
                 )
             `)
             .eq('student_id', studentId)

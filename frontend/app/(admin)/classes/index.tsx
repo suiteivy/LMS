@@ -1,3 +1,4 @@
+import { ActionTooltip } from '@/components/common/ActionTooltip';
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
 import { Spinner } from '@/components/ui/Spinner';
 import { CardGridSkeleton, TableRowSkeleton } from '@/components/ui/skeletons';
@@ -614,58 +615,68 @@ export default function AdminClassManagement() {
                     <View style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexDirection: 'row' }}>
                         <Text style={{ fontSize: 12, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>Active Classes</Text>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
-                            <TouchableOpacity
-                                onPress={handleRefresh}
-                                disabled={refreshing}
-                                style={{
-                                    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6',
-                                    borderWidth: 1,
-                                    borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E7EB',
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 8,
-                                    borderRadius: 12,
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                                accessibilityLabel="Refresh class data"
-                            >
-                                <Ionicons name="refresh" size={16} color={textPrimary} />
-                            </TouchableOpacity>
+                            <ActionTooltip label="Refresh Classes" description="Fetch latest enrollment counts and class assignments.">
+                                <TouchableOpacity
+                                    onPress={handleRefresh}
+                                    disabled={refreshing}
+                                    style={{
+                                        backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6',
+                                        borderWidth: 1,
+                                        borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E7EB',
+                                        paddingHorizontal: 10,
+                                        paddingVertical: 8,
+                                        borderRadius: 12,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                    accessibilityLabel="Refresh class data"
+                                >
+                                    <Ionicons name="refresh" size={16} color={textPrimary} />
+                                </TouchableOpacity>
+                            </ActionTooltip>
 
-                            <TouchableOpacity
-                                onPress={() => { setAutoAssignLevel(''); setShowAutoAssignModal(true); }}
-                                style={{ backgroundColor: '#7C3AED', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
-                            >
-                                <Ionicons name="shuffle" size={15} color="white" />
-                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Auto-Assign</Text>
-                            </TouchableOpacity>
+                            <ActionTooltip label="Auto-Assign Students" description="Balance unassigned students across class streams based on capacity.">
+                                <TouchableOpacity
+                                    onPress={() => { setAutoAssignLevel(''); setShowAutoAssignModal(true); }}
+                                    style={{ backgroundColor: '#7C3AED', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                                >
+                                    <Ionicons name="shuffle" size={15} color="white" />
+                                    <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Auto-Assign</Text>
+                                </TouchableOpacity>
+                            </ActionTooltip>
 
-                            <TouchableOpacity
-                                onPress={() => setShowDomainDrawer(true)}
-                                style={{ backgroundColor: '#0284C7', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
-                            >
-                                <Ionicons name="layers-outline" size={15} color="white" />
-                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>
-                                    Grade Levels{domainLevels.length > 0 ? ` (${domainLevels.length})` : ''}
-                                </Text>
-                            </TouchableOpacity>
+                            <ActionTooltip label="Manage Grade Levels" description="Configure levels, education stages, and domain streams.">
+                                <TouchableOpacity
+                                    onPress={() => setShowDomainDrawer(true)}
+                                    style={{ backgroundColor: '#0284C7', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                                >
+                                    <Ionicons name="layers-outline" size={15} color="white" />
+                                    <Text style={{ color: 'white', fontWeight: '700', fontSize: 12, marginLeft: 5 }}>
+                                        Grade Levels{domainLevels.length > 0 ? ` (${domainLevels.length})` : ''}
+                                    </Text>
+                                </TouchableOpacity>
+                            </ActionTooltip>
 
-                            <TouchableOpacity
-                                onPress={() => router.push('/(admin)/classes/transfers' as any)}
-                                style={{ backgroundColor: isDark ? '#21262D' : '#E5E7EB', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
-                            >
-                                <Ionicons name="swap-horizontal" size={15} color={textPrimary} />
-                                <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Transfers</Text>
-                            </TouchableOpacity>
+                            <ActionTooltip label="Student Transfers" description="Manage inter-class and inter-stream student transfer requests.">
+                                <TouchableOpacity
+                                    onPress={() => router.push('/(admin)/classes/transfers' as any)}
+                                    style={{ backgroundColor: isDark ? '#21262D' : '#E5E7EB', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                                >
+                                    <Ionicons name="swap-horizontal" size={15} color={textPrimary} />
+                                    <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 12, marginLeft: 5 }}>Transfers</Text>
+                                </TouchableOpacity>
+                            </ActionTooltip>
 
-                            <TouchableOpacity
-                                onPress={openCreateModal}
-                                style={{ backgroundColor: '#FF6B00', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
-                            >
-                                <Ionicons name="add" size={18} color="white" />
-                                <Text style={{ color: 'white', fontWeight: '700', fontSize: 13, marginLeft: 4 }}>New Class</Text>
-                            </TouchableOpacity>
+                            <ActionTooltip label="Create Class" description="Establish a new class cohort with assigned homeroom teacher and capacity.">
+                                <TouchableOpacity
+                                    onPress={openCreateModal}
+                                    style={{ backgroundColor: '#FF6B00', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}
+                                >
+                                    <Ionicons name="add" size={18} color="white" />
+                                    <Text style={{ color: 'white', fontWeight: '700', fontSize: 13, marginLeft: 4 }}>New Class</Text>
+                                </TouchableOpacity>
+                            </ActionTooltip>
                         </View>
                     </View>
 

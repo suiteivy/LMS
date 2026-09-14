@@ -587,3 +587,57 @@ test('createRevenueDeduction allows access when finance role exists in available
   assert.equal(res.state.body.amount, 100);
   assert.equal(res.state.body.reason, 'Ink');
 });
+
+test('createFund and createTransaction allow access for finance_administrator role', async () => {
+  const supabase = createSupabaseMock((state) => {
+    if (state.table === 'funds' && state.terminal === 'single') {
+      const row = state.insert?.[0] || {};
+      return {
+        data: { id: 'fund-1', name: row.name, total_amount: row.total_amount, institution_id: row.institution_id },
+        error: null,
+      };
+    }
+
+    if (state.table === 'financial_transactions' && state.terminal === 'single') {
+      const row = state.insert?.[0] || {};
+      return {
+        data: { id: 'tx-1', amount: row.amount, type: row.type, institution_id: row.institution_id },
+        error: null,
+      };
+    }
+
+    if (state.table === 'users' && state.terminal === 'maybeSingle') {
+      return {
+        data: { first_name: 'Finance', last_name: 'Admin', full_name: 'Finance Admin', email: 'finance@example.com' },
+        error: null,
+      };
+    }
+
+    throw new Error(`Unexpected query: ${JSON.stringify(state)}`);
+  });
+
+  const controller = loadControllerWithMocks({ supabaseMock: supabase });
+  const req = {
+    institution_id: 'inst-1',
+    userRole: 'finance_administrator',
+    userId: 'user-fin-1',
+    body: { name: 'Library Fund', total_amount: 5000 },
+  };
+  const res = createRes();
+
+  await controller.createFund(req, res);
+  assert.equal(res.state.statusCode, 201);
+  assert.equal(res.state.body.name, 'Library Fund');
+
+  const txReq = {
+    institution_id: 'inst-1',
+    userRole: 'finance_administrator',
+    userId: 'user-fin-1',
+    body: { amount: 250, type: 'fee_payment', direction: 'inflow' },
+  };
+  const txRes = createRes();
+
+  await controller.createTransaction(txReq, txRes);
+  assert.equal(txRes.state.statusCode, 201);
+  assert.equal(txRes.state.body.amount, 250);
+});

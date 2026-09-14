@@ -73,6 +73,7 @@ export interface SubjectFormData {
   class_ids?: string[];
   level_ids?: string[];
   teacher_ids?: string[];
+  hod_teacher_id?: string | null;
 }
 
 // ----------------------
@@ -89,7 +90,24 @@ export interface TableColumn {
 }
 
 export interface TableData {
+  id: string;
   [key: string]: any;
+}
+
+export interface TableRowProps {
+  data: TableData;
+  columns: TableColumn[];
+  onRowPress?: (row: TableData) => void;
+  className?: string;
+}
+
+export interface TableProps {
+  columns: TableColumn[];
+  data: TableData[];
+  onRowPress?: (row: TableData) => void;
+  loading?: boolean;
+  emptyMessage?: string;
+  className?: string;
 }
 
 export interface BaseComponentProps {
@@ -153,6 +171,14 @@ export interface Subject {
   isEnrolled: boolean;
   progress?: number;
   progress_percent?: number;
+  hod_teacher_id?: string | null;
+  hod_teacher?: {
+    id: string;
+    first_name?: string;
+    last_name?: string;
+    full_name?: string;
+    email?: string;
+  } | null;
   lastAccessed?: string;
   lessons: Lesson[];
   class_id?: string;

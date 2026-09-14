@@ -1,8 +1,11 @@
+import { DatePicker } from "@/components/common/DatePicker";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { ExamService } from "@/services/ExamService";
+import { GradingAPI } from "@/services/GradingService";
 import { SubjectAPI } from "@/services/SubjectService";
+import { TeacherService } from "@/services/TeacherService";
 import { router } from "expo-router";
 import {
     AlertCircle,
@@ -39,11 +42,14 @@ interface Exam {
 }
 
 export default function ExamsPage() {
-    const { teacherId, isDemo } = useAuth();
+    const { teacherId, isDemo, user } = useAuth();
+    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'principal' || user?.role === 'head_teacher';
     const [exams, setExams] = useState<Exam[]>([]);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [subjects, setSubjects] = useState<any[]>([]);
+    const [hodSubjectIds, setHodSubjectIds] = useState<Set<string>>(new Set());
+    const [availableTerms, setAvailableTerms] = useState<string[]>(['Term 1', 'Term 2', 'Term 3']);
 
     // Form
     const [title, setTitle] = useState("");
@@ -53,20 +59,37 @@ export default function ExamsPage() {
     const [maxScore, setMaxScore] = useState("100");
     const [selectedSubjectId, setSelectedSubjectId] = useState("");
     const [weight, setWeight] = useState("0");
-    const [term, setTerm] = useState("");
+    const [term, setTerm] = useState("Term 1");
+
+    const isHOD = hodSubjectIds.has(selectedSubjectId);
+    const canSchedule = isAdmin || isHOD;
 
     useEffect(() => {
         fetchExams();
-        fetchSubjects();
+        fetchSubjectsAndTerms();
     }, []);
 
-    const fetchSubjects = async () => {
+    const fetchSubjectsAndTerms = async () => {
         try {
-            const data = await SubjectAPI.getFilteredSubjects();
+            const [data, termsData, hodList] = await Promise.all([
+                SubjectAPI.getFilteredSubjects().catch(() => []),
+                GradingAPI.getTerms().catch(() => []),
+                TeacherService.getHODSubjects().catch(() => [])
+            ]);
+
             setSubjects(data || []);
             if (data && data.length > 0) {
                 setSelectedSubjectId(data[0].id);
             }
+
+            if (Array.isArray(termsData) && termsData.length > 0) {
+                const termNames = termsData.map((t: any) => t.name || `Term ${t.term_number || ''}`.trim());
+                setAvailableTerms(termNames);
+                if (termNames.length > 0) setTerm(termNames[0]);
+            }
+
+            const hodIds = new Set((hodList || []).map((s: any) => s.id));
+            setHodSubjectIds(hodIds);
         } catch (e) {
             console.error(e);
         }
@@ -85,6 +108,11 @@ export default function ExamsPage() {
     };
 
     const handleCreateExam = async () => {
+        if (!canSchedule) {
+            Alert.alert("Permission Denied", "Only the Subject Head (HOD) or Administration can schedule exam papers.");
+            return;
+        }
+
         if (!title.trim() || !selectedSubjectId || !date.trim()) {
             Alert.alert("Missing Fields", "Please provide exam title, subject, and date.");
             return;
@@ -133,8 +161,9 @@ export default function ExamsPage() {
                 text2: 'Exam assessment created successfully.'
             });
             fetchExams();
-        } catch (error) {
-            Alert.alert("Error", "Failed to create exam");
+        } catch (error: any) {
+            const msg = error?.response?.data?.error || "Failed to create exam";
+            Alert.alert("Error", msg);
         }
     };
 
@@ -168,13 +197,15 @@ export default function ExamsPage() {
                                 Scheduled Exams
                             </Text>
                         </View>
-                        <TouchableOpacity
-                            className="flex-row items-center bg-[#FF6900] px-4 py-2.5 rounded-xl shadow-sm active:bg-orange-600"
-                            onPress={() => setShowCreateModal(true)}
-                        >
-                            <Plus size={16} color="white" />
-                            <Text className="text-white font-bold text-xs ml-1.5 uppercase tracking-wider">Schedule Exam</Text>
-                        </TouchableOpacity>
+                        {canSchedule && (
+                            <TouchableOpacity
+                                className="flex-row items-center bg-[#FF6900] px-4 py-2.5 rounded-xl shadow-sm active:bg-orange-600"
+                                onPress={() => setShowCreateModal(true)}
+                            >
+                                <Plus size={16} color="white" />
+                                <Text className="text-white font-bold text-xs ml-1.5 uppercase tracking-wider">Schedule Exam</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
 
                     {loading ? (
@@ -184,7 +215,7 @@ export default function ExamsPage() {
                             <FileText size={48} color="#9CA3AF" style={{ opacity: 0.4 }} />
                             <Text className="text-gray-900 dark:text-white font-bold text-base mt-4 tracking-tight">No Exams Scheduled</Text>
                             <Text className="text-gray-400 dark:text-gray-500 text-xs text-center mt-1">
-                                Create an exam period to score student performances against CBC competency rubrics.
+                                Create an exam period to score student performances against institution grading rubrics.
                             </Text>
                         </View>
                     ) : (
@@ -287,51 +318,51 @@ export default function ExamsPage() {
                                 />
                             </View>
 
-                            <View className="flex-row gap-3 mb-4">
-                                <View className="flex-1">
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1 mb-2">Exam Date (YYYY-MM-DD) *</Text>
-                                    <TextInput
-                                        className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 text-sm"
-                                        placeholder="2026-03-20"
-                                        placeholderTextColor="#9CA3AF"
-                                        value={date}
-                                        onChangeText={setDate}
-                                    />
-                                </View>
-                                <View className="flex-1">
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1 mb-2">Submission Deadline</Text>
-                                    <TextInput
-                                        className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 text-sm"
-                                        placeholder="2026-03-27"
-                                        placeholderTextColor="#9CA3AF"
-                                        value={submissionDeadline}
-                                        onChangeText={setSubmissionDeadline}
-                                    />
-                                </View>
+                            <View className="mb-4">
+                                <DatePicker
+                                    label="Exam Date *"
+                                    value={date}
+                                    onChange={setDate}
+                                    placeholder="Select exam date"
+                                />
                             </View>
 
-                            <View className="flex-row gap-3 mb-4">
-                                <View className="flex-1">
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1 mb-2">Max Score (Points)</Text>
-                                    <TextInput
-                                        className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 text-sm"
-                                        placeholder="100"
-                                        placeholderTextColor="#9CA3AF"
-                                        keyboardType="numeric"
-                                        value={maxScore}
-                                        onChangeText={setMaxScore}
-                                    />
-                                </View>
-                                <View className="flex-1">
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1 mb-2">Term</Text>
-                                    <TextInput
-                                        className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 text-sm"
-                                        placeholder="Term 1"
-                                        placeholderTextColor="#9CA3AF"
-                                        value={term}
-                                        onChangeText={setTerm}
-                                    />
-                                </View>
+                            <View className="mb-4">
+                                <DatePicker
+                                    label="Submission Deadline"
+                                    value={submissionDeadline}
+                                    onChange={setSubmissionDeadline}
+                                    placeholder="Select submission deadline"
+                                />
+                            </View>
+
+                            <View className="mb-4">
+                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1 mb-2">Max Score (Points)</Text>
+                                <TextInput
+                                    className="bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-4 py-3 text-gray-900 dark:text-white font-medium border border-gray-200 dark:border-gray-800 text-sm"
+                                    placeholder="100"
+                                    placeholderTextColor="#9CA3AF"
+                                    keyboardType="numeric"
+                                    value={maxScore}
+                                    onChangeText={setMaxScore}
+                                />
+                            </View>
+
+                            <View className="mb-4">
+                                <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1 mb-2">Term</Text>
+                                <ScrollView horizontal className="flex-row" showsHorizontalScrollIndicator={false}>
+                                    {availableTerms.map(tOption => (
+                                        <TouchableOpacity
+                                            key={tOption}
+                                            onPress={() => setTerm(tOption)}
+                                            className={`mr-2 px-3.5 py-2 rounded-xl border ${term === tOption ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-[#F6F8FA] dark:bg-[#0D1117] border-gray-200 dark:border-gray-800'}`}
+                                        >
+                                            <Text className={`font-bold text-xs ${term === tOption ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+                                                {tOption}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
                             </View>
 
                             <TouchableOpacity

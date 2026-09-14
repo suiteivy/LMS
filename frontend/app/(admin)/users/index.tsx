@@ -1,3 +1,5 @@
+import { ActionTooltip } from '@/components/common/ActionTooltip';
+import { ConfirmationModal } from '@/components/common/ConfirmationModal';
 import { EmptyState } from '@/components/common/EmptyState';
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { UserCard } from '@/components/common/UserCard';
@@ -25,13 +27,31 @@ export default function UsersManagementScreen() {
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
 
-    const numColumns = width >= 1024 ? 3 : width >= 640 ? 2 : 1;
-    const cardWidth = numColumns === 3 ? '31.5%' : numColumns === 2 ? '48.5%' : '100%';
+    const numColumns = width >= 1200 ? 3 : width >= 768 ? 2 : 1;
+    const cardWidth = numColumns === 3 ? '31.8%' : numColumns === 2 ? '48.8%' : '100%';
 
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState<'all' | 'student' | 'teacher' | 'admin'>('all');
+
+    // System-wide standardized confirmation modal state
+    const [confirmModalConfig, setConfirmModalConfig] = useState<{
+        visible: boolean;
+        title: string;
+        message: string;
+        targetName?: string;
+        confirmText?: string;
+        isDestructive?: boolean;
+        loading?: boolean;
+        icon?: any;
+        onConfirm: () => Promise<void>;
+    }>({
+        visible: false,
+        title: '',
+        message: '',
+        onConfirm: async () => {},
+    });
 
     const [showResetModal, setShowResetModal] = useState(false);
     const [resettingUser, setResettingUser] = useState<User | null>(null);
@@ -118,61 +138,101 @@ export default function UsersManagementScreen() {
     const inputBg = isDark ? '#161B22' : '#FFFFFF';
     const inputBorder = isDark ? '#21262D' : '#D0D7DE';
 
-    const { isDemo, profile } = useAuth();
+    const { isDemo, profile, isProfileLoading, isPlatformAdmin } = useAuth();
 
-    useEffect(() => { fetchUsers(); }, [activeFilter, profile?.institution_id]);
+    useEffect(() => { 
+        if (!isProfileLoading) {
+            fetchUsers(); 
+        }
+    }, [activeFilter, profile?.institution_id, isProfileLoading]);
 
     const handleMarkLeaver = (targetUser: User) => {
         if (profile?.id && targetUser.id === profile.id) {
-            Alert.alert('Action Restricted', 'Administrators cannot change their own active status.');
+            Toast.show({
+                type: 'error',
+                text1: 'Action Restricted',
+                text2: 'Administrators cannot change their own active status.',
+            });
             return;
         }
-        Alert.alert(
-            'Confirm Leaver Status',
-            `Mark ${targetUser.name} (${targetUser.role}) as a leaver? Their historical records, grades, and logs will remain permanently preserved under institutional data retention policy.`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Mark as Leaver',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            const status = targetUser.role === 'student' ? 'withdrawn' : 'resigned';
-                            await SettingsService.markUserAsLeaver(targetUser.id, { status });
-                            Toast.show({
-                                type: 'success',
-                                text1: 'Status Updated',
-                                text2: `${targetUser.name} marked as leaver. Records preserved.`,
-                            });
-                            fetchUsers();
-                        } catch (err: any) {
-                            Alert.alert('Error', err?.response?.data?.error || err.message);
-                        }
-                    },
-                },
-            ]
-        );
+
+        setConfirmModalConfig({
+            visible: true,
+            title: 'Confirm Leaver Status',
+            targetName: `${targetUser.name} (${targetUser.role})`,
+            message: `Marking this user as a leaver deactivates active portal access and revokes current login sessions. Historical academic records, grades, transcripts, and audit trails remain permanently preserved under institutional data retention regulations.`,
+            confirmText: 'Mark as Leaver',
+            isDestructive: true,
+            icon: 'exit-outline',
+            loading: false,
+            onConfirm: async () => {
+                setConfirmModalConfig(prev => ({ ...prev, loading: true }));
+                try {
+                    const status = targetUser.role === 'student' ? 'withdrawn' : 'resigned';
+                    await SettingsService.markUserAsLeaver(targetUser.id, { status });
+                    setConfirmModalConfig(prev => ({ ...prev, visible: false, loading: false }));
+                    Toast.show({
+                        type: 'success',
+                        text1: 'Status Updated',
+                        text2: `${targetUser.name} marked as leaver. Records preserved.`,
+                    });
+                    fetchUsers();
+                } catch (err: any) {
+                    setConfirmModalConfig(prev => ({ ...prev, loading: false }));
+                    Toast.show({
+                        type: 'error',
+                        text1: 'Update Failed',
+                        text2: err?.response?.data?.error || err.message || 'Failed to update user status',
+                    });
+                }
+            },
+        });
     };
 
-    const handleReactivate = async (targetUser: User) => {
-        try {
-            await SettingsService.reactivateUser(targetUser.id);
-            Toast.show({
-                type: 'success',
-                text1: 'User Reactivated',
-                text2: `${targetUser.name} is now active.`,
-            });
-            fetchUsers();
-        } catch (err: any) {
-            Alert.alert('Error', err?.response?.data?.error || err.message);
-        }
+    const handleReactivate = (targetUser: User) => {
+        setConfirmModalConfig({
+            visible: true,
+            title: 'Reactivate Account',
+            targetName: `${targetUser.name} (${targetUser.role})`,
+            message: `Reactivating this account restores institutional login capabilities, dashboard access, and active course assignments.`,
+            confirmText: 'Reactivate Account',
+            isDestructive: false,
+            icon: 'refresh-circle',
+            loading: false,
+            onConfirm: async () => {
+                setConfirmModalConfig(prev => ({ ...prev, loading: true }));
+                try {
+                    await SettingsService.reactivateUser(targetUser.id);
+                    setConfirmModalConfig(prev => ({ ...prev, visible: false, loading: false }));
+                    Toast.show({
+                        type: 'success',
+                        text1: 'User Reactivated',
+                        text2: `${targetUser.name} is now active.`,
+                    });
+                    fetchUsers();
+                } catch (err: any) {
+                    setConfirmModalConfig(prev => ({ ...prev, loading: false }));
+                    Toast.show({
+                        type: 'error',
+                        text1: 'Reactivation Failed',
+                        text2: err?.response?.data?.error || err.message || 'Failed to reactivate user',
+                    });
+                }
+            },
+        });
     };
 
     const fetchUsers = async () => {
         try {
             setLoading(true);
 
-            if (!profile?.institution_id) {
+            // Wait if profile is still loading
+            if (isProfileLoading) return;
+
+            const instId = profile?.institution_id;
+            const isMaster = isPlatformAdmin || profile?.role === 'master_admin';
+
+            if (!instId && !isMaster) {
                 console.warn('[UsersManagement] No institution_id on session — aborting fetch');
                 setUsers([]);
                 return;
@@ -180,9 +240,13 @@ export default function UsersManagementScreen() {
 
             let query = supabase
                 .from('users')
-                .select(`id, full_name, first_name, last_name, email, role, is_active, created_at, students(id, enrollment_status), teachers(id, employment_status), admins(id), parents(id)`)
-                .eq('institution_id', profile.institution_id)
-                .order('created_at', { ascending: false });
+                .select(`id, full_name, first_name, last_name, email, role, is_active, created_at, students(id, enrollment_status), teachers(id, employment_status), admins(id), parents(id)`);
+
+            if (instId) {
+                query = query.eq('institution_id', instId);
+            }
+
+            query = query.order('created_at', { ascending: false });
 
             if (activeFilter !== 'all') query = query.eq('role', activeFilter);
 
@@ -274,20 +338,26 @@ export default function UsersManagementScreen() {
                             </TouchableOpacity>
                         )}
                     </View>
-                    <TouchableOpacity
-                        onPress={() => router.push('/(admin)/users/create')}
-                        activeOpacity={0.7}
-                        style={{
-                            width: 48,
-                            height: 48,
-                            backgroundColor: '#FF6900',
-                            borderRadius: 16,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
+                    <ActionTooltip
+                        label="Create User"
+                        description="Register a new student, teacher, admin, or parent account."
+                        learnMoreAnchor="custom-roles"
                     >
-                        <Ionicons name="add" size={28} color="white" />
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => router.push('/(admin)/users/create')}
+                            activeOpacity={0.7}
+                            style={{
+                                width: 48,
+                                height: 48,
+                                backgroundColor: '#FF6900',
+                                borderRadius: 16,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <Ionicons name="add" size={28} color="white" />
+                        </TouchableOpacity>
+                    </ActionTooltip>
                 </View>
 
                 {/* Filter tabs */}
@@ -455,6 +525,20 @@ export default function UsersManagementScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* System-Wide Standardized Confirmation Modal */}
+            <ConfirmationModal
+                visible={confirmModalConfig.visible}
+                title={confirmModalConfig.title}
+                message={confirmModalConfig.message}
+                targetName={confirmModalConfig.targetName}
+                confirmText={confirmModalConfig.confirmText}
+                isDestructive={confirmModalConfig.isDestructive}
+                icon={confirmModalConfig.icon}
+                loading={confirmModalConfig.loading}
+                onConfirm={confirmModalConfig.onConfirm}
+                onClose={() => setConfirmModalConfig(prev => ({ ...prev, visible: false }))}
+            />
         </View>
     );
 }

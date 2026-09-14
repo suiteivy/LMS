@@ -276,8 +276,8 @@ test('updateSubject syncs teacher/class links and returns enriched subject', asy
   assert.deepEqual(calls.subjectUpdatePayload.metadata.class_ids, ['class-a', 'class-b']);
 
   assert.deepEqual(calls.subjectTeachersInsert, [
-    { subject_id: 'sub-1', teacher_id: 'teach-1', institution_id: 'inst-1' },
-    { subject_id: 'sub-1', teacher_id: 'teach-2', institution_id: 'inst-1' },
+    { subject_id: 'sub-1', teacher_id: 'teach-1', institution_id: 'inst-1', is_hod: false },
+    { subject_id: 'sub-1', teacher_id: 'teach-2', institution_id: 'inst-1', is_hod: false },
   ]);
 
   assert.deepEqual(calls.subjectClassesInsert, [

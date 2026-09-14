@@ -4,6 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { api } from "@/services/api";
 import { GradingAPI } from "@/services/GradingService";
+import { ClassAPI } from "@/services/ClassService";
+import { formatClassLabel } from "@/utils/classLabel";
 import { showError, showFetchError, showSuccess } from "@/utils/toast";
 import { getPerformanceLabel, type GradingScaleRow } from "@/utils/getPerformanceLabel";
 import { useTeacherRoleMode } from "@/hooks/useTeacherRoleMode";
@@ -744,6 +746,8 @@ export default function ReportCardsPage() {
 
     // Data
     const [subjectClasses, setSubjectClasses] = useState<TeacherSubjectClass[]>([]);
+    const [designatedClasses, setDesignatedClasses] = useState<{ id: string; name: string }[]>([]);
+    const [classesLoading, setClassesLoading] = useState(true);
     const [terms, setTerms] = useState<Term[]>([]);
     const [reportCards, setReportCards] = useState<ReportCard[]>([]);
     const [loading, setLoading] = useState(true);
@@ -759,7 +763,7 @@ export default function ReportCardsPage() {
 
     // Filters
     const [selectedSubjectId, setSelectedSubjectId] = useState("all");
-    const [selectedClassId, setSelectedClassId] = useState("all");
+    const [selectedClassId, setSelectedClassId] = useState("");
     const [selectedTermId, setSelectedTermId] = useState("all");
     const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
     const [resolvedActiveTerm, setResolvedActiveTerm] = useState<Term | null>(null);
@@ -778,31 +782,35 @@ export default function ReportCardsPage() {
         return Array.from(map.values());
     }, [subjectClasses]);
 
-    const availableClasses = React.useMemo(() => {
-        let list: { id: string; name: string }[] = [];
-        if (selectedSubjectId === "all") {
-            const map = new Map<string, { id: string; name: string }>();
-            subjectClasses.forEach((sc) => {
-                if (sc && sc.class_id && !map.has(sc.class_id)) {
-                    map.set(sc.class_id, { id: sc.class_id, name: sc.class_name || "Class" });
-                }
-            });
-            list = Array.from(map.values());
-        } else {
-            list = subjectClasses
-                .filter((sc) => sc && sc.subject_id === selectedSubjectId && sc.class_id)
-                .map((sc) => ({ id: sc.class_id, name: sc.class_name || "Class" }));
-        }
-
-        // Strictly filter out invalid/undefined items to ensure clean UI
-        return list.filter(
-            (c) => Boolean(c && c.id && c.name && c.name !== "undefined" && c.name !== "null" && c.name.trim() !== "")
-        );
-    }, [subjectClasses, selectedSubjectId]);
-
     // ---------------------------------------------------------------------------
     // Fetching
     // ---------------------------------------------------------------------------
+
+    const fetchDesignatedClasses = useCallback(async () => {
+        if (!teacherId) return;
+        setClassesLoading(true);
+        try {
+            const data = await ClassAPI.getClasses({ teacher_id: teacherId } as any);
+            const myClasses = (Array.isArray(data) ? data : [])
+                .filter((c: any) => c.teacher_id === teacherId)
+                .map((c: any) => ({
+                    id: c.id,
+                    name: c.display_name || formatClassLabel(c) || c.name || "Class",
+                }));
+            setDesignatedClasses(myClasses);
+            if (myClasses.length > 0) {
+                setSelectedClassId(myClasses[0].id);
+            } else {
+                setSelectedClassId("");
+            }
+        } catch (e) {
+            console.error("Error fetching designated classes:", e);
+            setDesignatedClasses([]);
+            setSelectedClassId("");
+        } finally {
+            setClassesLoading(false);
+        }
+    }, [teacherId]);
 
     const fetchSubjectClasses = useCallback(async () => {
         try {
@@ -837,8 +845,8 @@ export default function ReportCardsPage() {
     }, []);
 
     const fetchReportCards = useCallback(async () => {
-        if (mode === "subject") {
-            // Subject teachers cannot fetch whole-class report cards (backend restricts to class teacher / admin)
+        if (mode === "subject" || !isClassTeacher || !selectedClassId || selectedClassId === "all") {
+            // Subject teachers or teachers without designated class cannot fetch whole-class report cards
             setReportCards([]);
             setLoading(false);
             return;
@@ -846,9 +854,10 @@ export default function ReportCardsPage() {
 
         setLoading(true);
         try {
-            const params: Record<string, string> = {};
+            const params: Record<string, string> = {
+                class_id: selectedClassId,
+            };
             if (selectedSubjectId !== "all") params.subject_id = selectedSubjectId;
-            if (selectedClassId !== "all") params.class_id = selectedClassId;
             if (selectedTermId !== "all") params.term_id = selectedTermId;
             if (selectedStatus !== "all") params.status = selectedStatus;
 
@@ -862,7 +871,7 @@ export default function ReportCardsPage() {
         } finally {
             setLoading(false);
         }
-    }, [mode, selectedSubjectId, selectedClassId, selectedTermId, selectedStatus]);
+    }, [mode, isClassTeacher, selectedClassId, selectedSubjectId, selectedTermId, selectedStatus]);
 
     const handleDownloadPDF = async (card: ReportCard) => {
         try {
@@ -901,8 +910,8 @@ export default function ReportCardsPage() {
     };
 
     const handleGenerateClassCards = async () => {
-        if (selectedClassId === "all") {
-            showError("Select a Class", "Please select a specific class to compile report cards.");
+        if (!selectedClassId || selectedClassId === "all") {
+            showError("Select a Class", "Please select a specific designated class to compile report cards.");
             return;
         }
         const effectiveTermId = selectedTermId !== "all" ? selectedTermId : resolvedActiveTerm?.id;
@@ -927,9 +936,14 @@ export default function ReportCardsPage() {
 
     useEffect(() => {
         if (teacherId) {
-            Promise.all([fetchSubjectClasses(), fetchTerms(), fetchGradingScales()]);
+            Promise.all([
+                fetchDesignatedClasses(),
+                fetchSubjectClasses(),
+                fetchTerms(),
+                fetchGradingScales(),
+            ]);
         }
-    }, [teacherId, fetchSubjectClasses, fetchTerms, fetchGradingScales]);
+    }, [teacherId, fetchDesignatedClasses, fetchSubjectClasses, fetchTerms, fetchGradingScales]);
 
     // Auto-select active term once after terms are loaded
     useEffect(() => {
@@ -943,21 +957,6 @@ export default function ReportCardsPage() {
             fetchReportCards();
         }
     }, [teacherId, fetchReportCards]);
-
-    // Reset class filter when subject changes
-    useEffect(() => {
-        if (selectedSubjectId !== "all") {
-            const classesForSubject = subjectClasses.filter(
-                (sc) => sc.subject_id === selectedSubjectId
-            );
-            if (
-                classesForSubject.length > 0 &&
-                !classesForSubject.some((c) => c.class_id === selectedClassId)
-            ) {
-                setSelectedClassId("all");
-            }
-        }
-    }, [selectedSubjectId, subjectClasses, selectedClassId]);
 
     // ---------------------------------------------------------------------------
     // Filtered list
@@ -1005,19 +1004,89 @@ export default function ReportCardsPage() {
                 contentContainerStyle={{ paddingBottom: 100 }}
             >
                 <View style={{ padding: 16 }}>
-                    {/* ------------------------------------------------------- */}
-                    {/* Filters                                                  */}
-                    {/* ------------------------------------------------------- */}
-                    <View
-                        style={{
-                            backgroundColor: isDark ? "#161B22" : "#ffffff",
-                            borderRadius: 24,
-                            borderWidth: 1,
-                            borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
-                            padding: 16,
-                            marginBottom: 16,
-                        }}
-                    >
+                    {classesLoading ? (
+                        <View style={{ paddingVertical: 50, alignItems: "center", justifyContent: "center" }}>
+                            <ActivityIndicator size="large" color={accentColor} />
+                            <Text style={{ fontSize: 13, color: isDark ? "#9CA3AF" : "#6B7280", marginTop: 12 }}>
+                                Checking class assignments...
+                            </Text>
+                        </View>
+                    ) : mode === "subject" || !isClassTeacher || designatedClasses.length === 0 ? (
+                        <View
+                            style={{
+                                backgroundColor: isDark ? "#161B22" : "#ffffff",
+                                borderRadius: 24,
+                                borderWidth: 1,
+                                borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
+                                padding: 32,
+                                alignItems: "center",
+                                marginTop: 16,
+                            }}
+                        >
+                            <View
+                                style={{
+                                    backgroundColor: isDark ? "rgba(255,107,0,0.12)" : "#FFF7ED",
+                                    padding: 20,
+                                    borderRadius: 32,
+                                    marginBottom: 16,
+                                }}
+                            >
+                                <Award size={40} color={accentColor} />
+                            </View>
+                            <Text
+                                style={{
+                                    fontSize: 18,
+                                    fontWeight: "800",
+                                    color: isDark ? "#FFFFFF" : "#111827",
+                                    textAlign: "center",
+                                    marginBottom: 8,
+                                }}
+                            >
+                                Class Teacher Access Only
+                            </Text>
+                            <Text
+                                style={{
+                                    fontSize: 13,
+                                    color: isDark ? "#9CA3AF" : "#6B7280",
+                                    textAlign: "center",
+                                    lineHeight: 20,
+                                    maxWidth: 360,
+                                    marginBottom: 20,
+                                }}
+                            >
+                                {mode === "subject"
+                                    ? "You are currently in Subject Teacher mode. Switch to Class Teacher mode from your dashboard profile to manage report cards for your assigned class."
+                                    : "Whole-class report card management and remarks are restricted to designated Class Teachers for their assigned homeroom class. You are not currently assigned as a Class Teacher for any class."}
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() => router.push("/(teacher)")}
+                                style={{
+                                    backgroundColor: accentColor,
+                                    paddingHorizontal: 22,
+                                    paddingVertical: 12,
+                                    borderRadius: 14,
+                                }}
+                            >
+                                <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 13 }}>
+                                    Return to Dashboard
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <>
+                            {/* ------------------------------------------------------- */}
+                            {/* Filters                                                  */}
+                            {/* ------------------------------------------------------- */}
+                            <View
+                                style={{
+                                    backgroundColor: isDark ? "#161B22" : "#ffffff",
+                                    borderRadius: 24,
+                                    borderWidth: 1,
+                                    borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
+                                    padding: 16,
+                                    marginBottom: 16,
+                                }}
+                            >
                         <View
                             style={{
                                 flexDirection: "row",
@@ -1063,7 +1132,6 @@ export default function ReportCardsPage() {
                             }
                             onSelect={(id) => {
                                 setSelectedSubjectId(id);
-                                setSelectedClassId("all");
                             }}
                             isDark={isDark}
                             accentColor={accentColor}
@@ -1071,16 +1139,11 @@ export default function ReportCardsPage() {
 
                         <Dropdown
                             label="Class"
-                            items={[
-                                { id: "all", label: "All Classes" },
-                                ...availableClasses.map((c) => ({ id: c.id, label: c.name })),
-                            ]}
+                            items={designatedClasses.map((c) => ({ id: c.id, label: c.name }))}
                             selectedId={selectedClassId}
                             selectedLabel={
-                                selectedClassId === "all"
-                                    ? "All Classes"
-                                    : availableClasses.find((c) => c.id === selectedClassId)
-                                          ?.name ?? "All Classes"
+                                designatedClasses.find((c) => c.id === selectedClassId)?.name ??
+                                (designatedClasses[0]?.name || "Select Class")
                             }
                             onSelect={setSelectedClassId}
                             isDark={isDark}
@@ -1347,69 +1410,16 @@ export default function ReportCardsPage() {
                         ) : null}
                     </View>
 
-                    {/* ------------------------------------------------------- */}
-                    {/* Role Guidance / Action Banner                             */}
-                    {/* ------------------------------------------------------- */}
-                    {mode === 'subject' && (
-                        <View style={{
-                            backgroundColor: isDark ? "rgba(59,130,246,0.12)" : "#EFF6FF",
-                            borderColor: isDark ? "rgba(59,130,246,0.3)" : "#BFDBFE",
-                            borderWidth: 1,
-                            borderRadius: 20,
-                            padding: 16,
-                            marginBottom: 20,
-                        }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
-                                <BookOpen size={18} color="#3B82F6" style={{ marginRight: 8 }} />
-                                <Text style={{ color: isDark ? "#93C5FD" : "#1E40AF", fontWeight: "800", fontSize: 14 }}>
-                                    Subject Teacher Mode Active
-                                </Text>
-                            </View>
-                            <Text style={{ color: isDark ? "#E2E8F0" : "#334155", fontSize: 13, lineHeight: 18, marginBottom: 12 }}>
-                                Whole-class report card compilation, learner conduct remarks, and final publication are managed by Class Teachers. Ensure your subject's formative & summative scores are recorded in Grade Entry.
-                            </Text>
-                            <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
-                                <TouchableOpacity
-                                    onPress={() => router.push("/(teacher)/management/grade-entry" as any)}
-                                    style={{
-                                        backgroundColor: "#3B82F6",
-                                        paddingHorizontal: 14,
-                                        paddingVertical: 8,
-                                        borderRadius: 12,
-                                    }}
-                                >
-                                    <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 12 }}>
-                                        Open Grade Entry
-                                    </Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={() => router.push("/(teacher)/students" as any)}
-                                    style={{
-                                        backgroundColor: isDark ? "#1E293B" : "#DBEAFE",
-                                        paddingHorizontal: 14,
-                                        paddingVertical: 8,
-                                        borderRadius: 12,
-                                    }}
-                                >
-                                    <Text style={{ color: isDark ? "#93C5FD" : "#1E40AF", fontWeight: "700", fontSize: 12 }}>
-                                        View Student Records
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    )}
-
-                    {mode === 'class' && (
-                        <View style={{ marginBottom: 16 }}>
-                            <TouchableOpacity
-                                onPress={handleGenerateClassCards}
-                                disabled={generatingClass || selectedClassId === "all"}
-                                style={{
-                                    backgroundColor: selectedClassId === "all" ? (isDark ? "#21262D" : "#E5E7EB") : accentColor,
-                                    paddingVertical: 12,
-                                    paddingHorizontal: 16,
-                                    borderRadius: 16,
-                                    flexDirection: "row",
+                    <View style={{ marginBottom: 16 }}>
+                        <TouchableOpacity
+                            onPress={handleGenerateClassCards}
+                            disabled={generatingClass || !selectedClassId || selectedClassId === "all"}
+                            style={{
+                                backgroundColor: (!selectedClassId || selectedClassId === "all") ? (isDark ? "#21262D" : "#E5E7EB") : accentColor,
+                                paddingVertical: 12,
+                                paddingHorizontal: 16,
+                                borderRadius: 16,
+                                flexDirection: "row",
                                     alignItems: "center",
                                     justifyContent: "center",
                                 }}
@@ -1424,7 +1434,6 @@ export default function ReportCardsPage() {
                                 </Text>
                             </TouchableOpacity>
                         </View>
-                    )}
 
                     {/* ------------------------------------------------------- */}
                     {/* Report Card List                                         */}
@@ -1508,9 +1517,7 @@ export default function ReportCardsPage() {
                                     lineHeight: 20,
                                 }}
                             >
-                                {mode === 'subject'
-                                    ? "Report card compilation is handled in Class Teacher mode."
-                                    : "No report cards match the selected filters. Use Generate to compile draft cards."}
+                                No report cards match the selected filters. Use Generate to compile draft cards.
                             </Text>
                         </View>
                     ) : (
@@ -1567,6 +1574,8 @@ export default function ReportCardsPage() {
                             </Text>
                         </View>
                     )}
+                    </>
+                )}
                 </View>
             </ScrollView>
 
