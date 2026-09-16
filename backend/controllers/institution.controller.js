@@ -236,7 +236,7 @@ exports.updateInstitution = async (req, res) => {
     const targetId = req.params.id || institution_id;
     if (!targetId) return res.status(400).json({ error: "Target institution ID required" });
 
-    const { name, location, phone, email, type, principal_name, category_id, logo_url } = req.body;
+    const { name, location, phone, email, type, principal_name, category_id, logo_url, currency_id } = req.body;
     const categoryIds = normalizeCategoryIds(req.body);
 
     // We allow name to be NOT NULL, but others are nullable.
@@ -248,6 +248,7 @@ exports.updateInstitution = async (req, res) => {
     if (type !== undefined) updates.type = type;
     if (principal_name !== undefined) updates.principal_name = principal_name;
     if (logo_url !== undefined) updates.logo_url = logo_url;
+    if (currency_id !== undefined) updates.currency_id = currency_id;
     if (category_id !== undefined) updates.category_id = category_id;
     if (req.body.category_ids !== undefined) updates.category_id = categoryIds[0] || null;
 

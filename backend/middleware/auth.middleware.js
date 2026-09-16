@@ -638,6 +638,7 @@ async function authMiddleware(req, res, next) {
     req.isLibrarian = req.user.is_librarian;
     req.isFinanceAdmin = req.user.is_finance_admin;
     req.isLeaver = req.user.is_leaver;
+    req.sessionId = sessionId;
 
     // First-login enforcement gate: force password update and security setup
     // before allowing access to broader application endpoints.

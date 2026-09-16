@@ -6,8 +6,18 @@ export class ExamService {
         return response.data;
     }
 
-    static async getExams(subjectId?: string) {
-        const response = await api.get('/exams', { params: { subject_id: subjectId } });
+    static async getExams(params?: { subject_id?: string; student_id?: string; exam_period_id?: string }) {
+        const response = await api.get('/exams', { params });
+        return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+    }
+
+    static async updateExam(examId: string, examData: any) {
+        const response = await api.put(`/exams/${examId}`, examData);
+        return response.data;
+    }
+
+    static async deleteExam(examId: string) {
+        const response = await api.delete(`/exams/${examId}`);
         return response.data;
     }
 
@@ -29,5 +39,26 @@ export class ExamService {
     static async getExamRoster(examId: string) {
         const response = await api.get(`/exams/${examId}/roster`);
         return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+    }
+
+    // Exam Periods
+    static async getExamPeriods(params?: { status?: string; term?: string; academic_year?: string; subject_id?: string; class_id?: string }) {
+        const response = await api.get('/exams/periods', { params });
+        return Array.isArray(response.data) ? response.data : (response.data?.data || []);
+    }
+
+    static async createExamPeriod(data: any) {
+        const response = await api.post('/exams/periods', data);
+        return response.data;
+    }
+
+    static async updateExamPeriod(id: string, data: any) {
+        const response = await api.put(`/exams/periods/${id}`, data);
+        return response.data;
+    }
+
+    static async deleteExamPeriod(id: string) {
+        const response = await api.delete(`/exams/periods/${id}`);
+        return response.data;
     }
 }

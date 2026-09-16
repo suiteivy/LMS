@@ -53,6 +53,7 @@ export default function ExamsPage() {
     const [subjects, setSubjects] = useState<any[]>([]);
     const [hodSubjectIds, setHodSubjectIds] = useState<Set<string>>(new Set());
     const [availableTerms, setAvailableTerms] = useState<string[]>(['Term 1', 'Term 2', 'Term 3']);
+    const [examPeriods, setExamPeriods] = useState<any[]>([]);
 
     // Form
     const [title, setTitle] = useState("");
@@ -61,12 +62,13 @@ export default function ExamsPage() {
     const [submissionDeadline, setSubmissionDeadline] = useState("");
     const [maxScore, setMaxScore] = useState("100");
     const [selectedSubjectId, setSelectedSubjectId] = useState("");
+    const [selectedPeriodId, setSelectedPeriodId] = useState("");
     const [weight, setWeight] = useState("0");
     const [term, setTerm] = useState("Term 1");
     const [creating, setCreating] = useState(false);
 
     const isHOD = hodSubjectIds.has(selectedSubjectId);
-    const canSchedule = isAdmin || isHOD;
+    const canSchedule = (isAdmin || isHOD) && examPeriods.length > 0;
 
     useEffect(() => {
         fetchExams();
@@ -75,10 +77,11 @@ export default function ExamsPage() {
 
     const fetchSubjectsAndTerms = async () => {
         try {
-            const [data, termsData, hodList] = await Promise.all([
+            const [data, termsData, hodList, periodsData] = await Promise.all([
                 SubjectAPI.getFilteredSubjects().catch(() => []),
                 GradingAPI.getTerms().catch(() => []),
-                TeacherService.getHODSubjects().catch(() => [])
+                TeacherService.getHODSubjects().catch(() => []),
+                ExamService.getExamPeriods({ status: 'active' }).catch(() => [])
             ]);
 
             setSubjects(data || []);
@@ -86,10 +89,20 @@ export default function ExamsPage() {
                 setSelectedSubjectId(data[0].id);
             }
 
+            const activePeriods = Array.isArray(periodsData) ? periodsData : [];
+            setExamPeriods(activePeriods);
+            if (activePeriods.length > 0) {
+                setSelectedPeriodId(activePeriods[0].id);
+                if (activePeriods[0].term) setTerm(activePeriods[0].term);
+                if (activePeriods[0].default_submission_deadline) {
+                    setSubmissionDeadline(activePeriods[0].default_submission_deadline.split('T')[0]);
+                }
+            }
+
             if (Array.isArray(termsData) && termsData.length > 0) {
                 const termNames = termsData.map((t: any) => t.name || `Term ${t.term_number || ''}`.trim());
                 setAvailableTerms(termNames);
-                if (termNames.length > 0) setTerm(termNames[0]);
+                if (termNames.length > 0 && !activePeriods[0]?.term) setTerm(termNames[0]);
             }
 
             const hodIds = new Set((hodList || []).map((s: any) => s.id));
@@ -113,7 +126,7 @@ export default function ExamsPage() {
 
     const handleCreateExam = async () => {
         if (!canSchedule) {
-            Alert.alert("Permission Denied", "Only the Subject Head (HOD) or Administration can schedule exam papers.");
+            Alert.alert("Permission Denied", "Only the Subject Head (HOD) or Administration can schedule exam papers within an active Exam Period.");
             return;
         }
 
@@ -154,6 +167,7 @@ export default function ExamsPage() {
                 max_score: parseInt(maxScore) || 100,
                 subject_id: selectedSubjectId,
                 teacher_id: teacherId,
+                exam_period_id: selectedPeriodId || undefined,
                 weight: parseFloat(weight) || 0,
                 term: term || "Term 1",
                 submission_deadline: submissionDeadline || null
@@ -228,6 +242,21 @@ export default function ExamsPage() {
                         )}
                     </View>
 
+                    {/* Gating Banner */}
+                    {examPeriods.length === 0 && (
+                        <View className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 p-4 rounded-2xl mb-6 flex-row items-center gap-3">
+                            <AlertCircle size={20} color="#D97706" />
+                            <View className="flex-1">
+                                <Text className="text-amber-800 dark:text-amber-300 font-bold text-xs">
+                                    Exam Scheduling Gated
+                                </Text>
+                                <Text className="text-amber-700 dark:text-amber-400 text-[11px] mt-0.5 leading-relaxed">
+                                    Administration must configure and activate an Exam Period before Subject Heads (HODs) can schedule exam papers.
+                                </Text>
+                            </View>
+                        </View>
+                    )}
+
                     {loading ? (
                         <ListItemSkeleton loading={loading} count={4} label="Loading exams..." />
                     ) : exams.length === 0 ? (
@@ -235,7 +264,10 @@ export default function ExamsPage() {
                             <FileText size={48} color="#9CA3AF" style={{ opacity: 0.4 }} />
                             <Text className="text-gray-900 dark:text-white font-bold text-base mt-4 tracking-tight">No Exams Scheduled</Text>
                             <Text className="text-gray-400 dark:text-gray-500 text-xs text-center mt-1">
-                                Create an exam period to score student performances against institution grading rubrics.
+                                {examPeriods.length === 0 
+                                    ? "Exam scheduling will be available once Administration configures an active Exam Period."
+                                    : "Create an exam period to score student performances against institution grading rubrics."
+                                }
                             </Text>
                         </View>
                     ) : (
@@ -314,6 +346,32 @@ export default function ExamsPage() {
                         </View>
 
                         <ScrollView showsVerticalScrollIndicator={false}>
+                            {/* Exam Period Selector */}
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1 mb-2">Active Exam Period *</Text>
+                            <ScrollView horizontal className="flex-row mb-4" showsHorizontalScrollIndicator={false}>
+                                {examPeriods.map(p => (
+                                    <TouchableOpacity
+                                        key={p.id}
+                                        onPress={() => {
+                                            setSelectedPeriodId(p.id);
+                                            if (p.term) setTerm(p.term);
+                                            if (p.default_submission_deadline) {
+                                                setSubmissionDeadline(p.default_submission_deadline.split('T')[0]);
+                                            }
+                                        }}
+                                        className={`mr-2.5 px-4 py-2.5 rounded-xl border ${selectedPeriodId === p.id ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-[#F6F8FA] dark:bg-[#0D1117] border-gray-200 dark:border-gray-800'}`}
+                                    >
+                                        <Text className={`font-bold text-xs ${selectedPeriodId === p.id ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+                                            {p.name}
+                                        </Text>
+                                        {p.default_submission_deadline && (
+                                            <Text className={`text-[10px] mt-0.5 ${selectedPeriodId === p.id ? 'text-white/80' : 'text-gray-400'}`}>
+                                                Deadline: {new Date(p.default_submission_deadline).toLocaleDateString()}
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
                             <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider ml-1 mb-2">Select Subject</Text>
                             <ScrollView horizontal className="flex-row mb-4" showsHorizontalScrollIndicator={false}>
                                 {subjects.map(s => (

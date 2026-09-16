@@ -51,7 +51,8 @@ const mapReportCardForClient = (rc, studentInfo, classInfo, termInfo, items) => 
   };
 };
 
-const assertTermWritable = async (res, institution_id, term_id) => {
+const assertTermWritable = async (res, institution_id, term_id, role) => {
+  if (role === 'admin' || role === 'master_admin') return true;
   if (!term_id) return true;
   try {
     const locked = await isTermLocked(institution_id, term_id);
@@ -323,7 +324,7 @@ const generateStudentReportCard = async (req, res) => {
       return res.status(400).json({ success: false, error: 'student_id, class_id, and term_id are required' });
     }
 
-    const writable = await assertTermWritable(res, institution_id, term_id);
+    const writable = await assertTermWritable(res, institution_id, term_id, role);
     if (!writable) return;
 
     const reportCard = await generateReportCard(student_id, class_id, term_id, institution_id);
@@ -356,7 +357,7 @@ const generateClassReportCards = async (req, res) => {
       return res.status(400).json({ success: false, error: 'class_id and term_id are required' });
     }
 
-    const writable = await assertTermWritable(res, institution_id, term_id);
+    const writable = await assertTermWritable(res, institution_id, term_id, role);
     if (!writable) return;
 
     const result = await generateAllReportCards(class_id, term_id, institution_id);
@@ -388,7 +389,7 @@ const updateReportCardRemarks = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Report card not found' });
     }
 
-    const writable = await assertTermWritable(res, institution_id, existing.term_id);
+    const writable = await assertTermWritable(res, institution_id, existing.term_id, role);
     if (!writable) return;
 
     const updatePayload = {};
@@ -1572,12 +1573,78 @@ const getStudentHistoricalReportCards = async (req, res) => {
   try {
     const { student_id } = req.params;
     const institution_id = req.user?.institution_id;
+    const role = req.user?.role;
+    const user_id = req.user?.id;
 
     if (!student_id) {
       return res.status(400).json({ success: false, error: 'student_id is required' });
     }
 
-    const { data: cards, error } = await supabase
+    // Role-based authorization & scoping
+    if (role === 'teacher') {
+      const reqRoleMode = req.headers['x-teacher-role-mode'] || req.query.role_mode;
+      const scope = await resolveTeacherScope(user_id, institution_id, reqRoleMode);
+      if (!scope || scope.classTeacherClassIds.length === 0) {
+        return res.status(403).json({ success: false, error: 'Access denied: Only designated class teachers can view historical student report cards' });
+      }
+
+      // Verify student is enrolled in one of this teacher's assigned classes
+      const { data: enrollment } = await supabase
+        .from('class_enrollments')
+        .select('class_id')
+        .eq('student_id', student_id)
+        .in('class_id', scope.classTeacherClassIds)
+        .maybeSingle();
+
+      if (!enrollment) {
+        // Fallback: check students table direct class_id
+        const { data: studentDirect } = await supabase
+          .from('students')
+          .select('class_id')
+          .eq('id', student_id)
+          .in('class_id', scope.classTeacherClassIds)
+          .maybeSingle();
+
+        if (!studentDirect) {
+          return res.status(403).json({ success: false, error: 'Access denied: You can only view report card history for students in your assigned class' });
+        }
+      }
+    } else if (role === 'parent') {
+      const { data: parent } = await supabase
+        .from('parents')
+        .select('id')
+        .eq('user_id', user_id)
+        .eq('institution_id', institution_id)
+        .maybeSingle();
+
+      if (!parent) {
+        return res.status(403).json({ success: false, error: 'Parent profile not found' });
+      }
+
+      const { data: link } = await supabase
+        .from('parent_students')
+        .select('id')
+        .eq('parent_id', parent.id)
+        .eq('student_id', student_id)
+        .maybeSingle();
+
+      if (!link) {
+        return res.status(403).json({ success: false, error: 'Access denied: Student is not your linked child' });
+      }
+    } else if (role === 'student') {
+      const { data: stud } = await supabase
+        .from('students')
+        .select('id')
+        .eq('user_id', user_id)
+        .eq('institution_id', institution_id)
+        .maybeSingle();
+
+      if (!stud || stud.id !== student_id) {
+        return res.status(403).json({ success: false, error: 'Access denied: You can only view your own report card history' });
+      }
+    }
+
+    let query = supabase
       .from('report_cards')
       .select(`
         *,
@@ -1588,8 +1655,14 @@ const getStudentHistoricalReportCards = async (req, res) => {
         )
       `)
       .eq('student_id', student_id)
-      .eq('institution_id', institution_id)
-      .order('created_at', { ascending: false });
+      .eq('institution_id', institution_id);
+
+    // Students and Parents only see released historical report cards
+    if (['student', 'parent'].includes(role)) {
+      query = query.eq('status', 'released');
+    }
+
+    const { data: cards, error } = await query.order('created_at', { ascending: false });
 
     if (error) throw error;
 
@@ -1599,11 +1672,66 @@ const getStudentHistoricalReportCards = async (req, res) => {
   }
 };
 
+const regenerateReportCards = async (req, res) => {
+  try {
+    const { target_type = 'individual', student_id, class_id, term_id } = req.body;
+    const institution_id = req.user?.institution_id;
+    const role = req.user?.role;
+    const user_id = req.user?.id;
+
+    if (!class_id || !term_id) {
+      return res.status(400).json({ success: false, error: 'class_id and term_id are required' });
+    }
+
+    if (target_type === 'individual' && !student_id) {
+      return res.status(400).json({ success: false, error: 'student_id is required for individual report card regeneration' });
+    }
+
+    // Role check: Only class teacher or admin
+    if (role === 'teacher') {
+      const reqRoleMode = req.headers['x-teacher-role-mode'] || req.query.role_mode;
+      const scope = await resolveTeacherScope(user_id, institution_id, reqRoleMode);
+      if (!scope || !scope.classTeacherClassIds.includes(class_id)) {
+        return res.status(403).json({ success: false, error: 'Only the designated class teacher or an admin can regenerate report cards for this class' });
+      }
+    } else if (!['admin', 'master_admin'].includes(role)) {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+
+    // Deadline lock check: locked terms block teachers; Admin is exempt per Part C7
+    const writable = await assertTermWritable(res, institution_id, term_id, role);
+    if (!writable) return;
+
+    let result;
+    if (target_type === 'individual') {
+      result = await generateReportCard(student_id, class_id, term_id, institution_id);
+    } else {
+      result = await generateAllReportCards(class_id, term_id, institution_id);
+    }
+
+    await logRecordChange({
+      institution_id,
+      user_id,
+      user_name: req.user?.email || 'User',
+      action: 'REGENERATE_REPORT_CARDS',
+      table_name: 'report_cards',
+      record_id: target_type === 'individual' ? student_id : class_id,
+      details: { target_type, student_id, class_id, term_id, role_override: ['admin', 'master_admin'].includes(role) }
+    }).catch(() => {});
+
+    return res.json({ success: true, message: 'Report cards regenerated successfully', data: result });
+  } catch (error) {
+    console.error('regenerateReportCards error:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   getReportCards,
   getReportCard,
   generateStudentReportCard,
   generateClassReportCards,
+  regenerateReportCards,
   updateReportCardRemarks,
   publishReportCard,
   releaseReportCard,

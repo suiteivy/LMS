@@ -282,17 +282,29 @@ app.use((req, res) => {
   });
 });
 
-// Global error handler - catches all errors and returns generic messages
+// Global error handler - catches all errors and returns generic messages (Part I)
 app.use((err, req, res, _next) => {
+  const statusCode = Number(err?.status || err?.statusCode || 500);
+
   logger.error('Unhandled error in request', {
     method: req.method,
-    path: req.url,
-    error: err,
-    ip: req.ip
+    path: req.originalUrl || req.url,
+    statusCode,
+    error: err?.message || String(err),
+    stack: err?.stack,
+    ip: req.ip,
+    userId: req.userId || req.user?.id || null
   });
 
+  if (statusCode >= 400 && statusCode < 500) {
+    return res.status(statusCode).json({
+      error: err.isPublic ? err.message : (err.message || "Invalid request"),
+      code: err.code || "CLIENT_ERROR"
+    });
+  }
+
   // Return generic message to client - don't expose internal details
-  res.status(500).json({
+  return res.status(500).json({
     error: "An unexpected error occurred. Please try again later.",
     code: "INTERNAL_ERROR"
   });

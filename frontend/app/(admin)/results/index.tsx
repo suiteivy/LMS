@@ -263,8 +263,9 @@ export default function AdminResults() {
                 GradingAPI.getTerms(),
             ]);
 
+            const rawClasses = Array.isArray(classData?.data) ? classData.data : Array.isArray(classData) ? classData : [];
             setClasses(
-                (Array.isArray(classData) ? classData : []).map((c: any) => ({
+                rawClasses.map((c: any) => ({
                     id: c.id,
                     name: c.name,
                     class_type: c.class_type,
@@ -274,7 +275,8 @@ export default function AdminResults() {
                 }))
             );
 
-            const mappedTerms = (Array.isArray(termData) ? termData : []).map((t: any) => ({
+            const rawTerms = Array.isArray(termData?.data) ? termData.data : Array.isArray(termData) ? termData : [];
+            const mappedTerms: TermOption[] = rawTerms.map((t: any) => ({
                 id: t.id,
                 name: t.name,
                 term_number: t.term_number,
@@ -289,7 +291,7 @@ export default function AdminResults() {
             setResolvedActiveTerm(activeTerm);
             if (activeTerm?.id) {
                 setSelectedTermId(prev => {
-                    if (prev && mappedTerms.some(t => t.id === prev)) return prev;
+                    if (prev && mappedTerms.some((t: TermOption) => t.id === prev)) return prev;
                     return activeTerm.id;
                 });
             }
@@ -315,9 +317,11 @@ export default function AdminResults() {
         }
         const loadSubjects = async () => {
             try {
-                const data = await api.get(`/subjects/class/${selectedClassId}`).then(r => r.data);
+                const res = await api.get(`/subjects/class/${selectedClassId}`);
+                const data = res?.data;
+                const rawSubjects = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
                 setSubjects(
-                    (Array.isArray(data) ? data : []).map((s: any) => ({
+                    rawSubjects.map((s: any) => ({
                         id: s.id,
                         title: s.title || s.name || 'Unknown',
                     }))
@@ -405,6 +409,69 @@ export default function AdminResults() {
         } finally {
             setProcessingStudentId(null);
         }
+    };
+
+    // ── Regenerate single with confirmation modal ──
+    const handleRegenerate = (studentId: string, studentName?: string) => {
+        Alert.alert(
+            'Confirm Regeneration',
+            `Recalculate grades and regenerate report card for ${studentName || 'this student'}? This will overwrite existing draft calculations.`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Regenerate',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setProcessingStudentId(studentId);
+                        try {
+                            await GradingAPI.regenerateReportCards({
+                                student_id: studentId,
+                                class_id: selectedClassId,
+                                term_id: selectedTermId,
+                            });
+                            showSuccess('Regenerated', 'Report card recalculated successfully');
+                            await loadReportCards();
+                        } catch (err: any) {
+                            showError('Error', err.message || 'Failed to regenerate report card');
+                        } finally {
+                            setProcessingStudentId(null);
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    // ── Bulk regenerate with confirmation modal ──
+    const [regeneratingAll, setRegeneratingAll] = useState(false);
+    const handleRegenerateAll = () => {
+        if (!hasFilters) return;
+        Alert.alert(
+            'Regenerate All Report Cards',
+            'This will recalculate grades and regenerate report cards for all students in this class. Any existing draft comments and grades will be updated. Continue?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Regenerate All',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setRegeneratingAll(true);
+                        try {
+                            await GradingAPI.regenerateReportCards({
+                                class_id: selectedClassId,
+                                term_id: selectedTermId,
+                            });
+                            showSuccess('Success', 'Report cards regenerated for all students');
+                            await loadReportCards();
+                        } catch (err: any) {
+                            showError('Error', err.message || 'Failed to regenerate report cards');
+                        } finally {
+                            setRegeneratingAll(false);
+                        }
+                    },
+                },
+            ]
+        );
     };
 
     // ── Publish single ──
@@ -670,8 +737,9 @@ export default function AdminResults() {
                             options={classes.map(c => ({ id: c.id, label: formatClassLabel(c) }))}
                             selectedId={selectedClassId}
                             onSelect={setSelectedClassId}
-                            placeholder="Select a class"
+                            placeholder={loadingFilters ? "Loading classes..." : classes.length === 0 ? "No classes available" : "Select a class"}
                             isDark={isDark}
+                            disabled={loadingFilters || classes.length === 0}
                         />
 
                         <DropdownSelector
@@ -679,8 +747,9 @@ export default function AdminResults() {
                             options={terms.map(t => ({ id: t.id, label: t.name }))}
                             selectedId={selectedTermId}
                             onSelect={setSelectedTermId}
-                            placeholder="Select a term"
+                            placeholder={loadingFilters ? "Loading terms..." : terms.length === 0 ? "No terms available" : "Select a term"}
                             isDark={isDark}
+                            disabled={loadingFilters || terms.length === 0}
                         />
 
                         <DropdownSelector
@@ -688,9 +757,9 @@ export default function AdminResults() {
                             options={[{ id: '', label: 'All Subjects' }, ...subjects.map(s => ({ id: s.id, label: s.title }))]}
                             selectedId={selectedSubjectId}
                             onSelect={setSelectedSubjectId}
-                            placeholder="All Subjects"
+                            placeholder={!selectedClassId ? "Select a class first" : subjects.length === 0 ? "No subjects found for class" : "All Subjects"}
                             isDark={isDark}
-                            disabled={!selectedClassId}
+                            disabled={!selectedClassId || subjects.length === 0}
                         />
                     </View>
 
@@ -1015,17 +1084,39 @@ export default function AdminResults() {
                                         >
                                             <TouchableOpacity
                                                 onPress={handleGenerateAll}
-                                                disabled={generatingAll}
+                                                disabled={generatingAll || regeneratingAll}
                                                 style={{
                                                     flex: 1, backgroundColor: '#8B5CF6', paddingVertical: 12, borderRadius: 14,
                                                     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
                                                 }}
-                                                accessibilityState={{ disabled: generatingAll, busy: generatingAll }}
+                                                accessibilityState={{ disabled: generatingAll || regeneratingAll, busy: generatingAll }}
                                             >
                                                 {generatingAll ? <Spinner color="#FFF" size="small" label="Generating report cards" /> : (
                                                     <>
                                                         <FileText size={14} color="#FFF" />
                                                         <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Generate All</Text>
+                                                    </>
+                                                )}
+                                            </TouchableOpacity>
+                                        </ActionTooltip>
+                                        <ActionTooltip
+                                            label="Regenerate All Reports"
+                                            description="Recalculate report cards with updated grades across all enrolled students."
+                                            learnMoreAnchor="exams-module"
+                                        >
+                                            <TouchableOpacity
+                                                onPress={handleRegenerateAll}
+                                                disabled={regeneratingAll || generatingAll}
+                                                style={{
+                                                    flex: 1, backgroundColor: '#D97706', paddingVertical: 12, borderRadius: 14,
+                                                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                                }}
+                                                accessibilityState={{ disabled: regeneratingAll || generatingAll, busy: regeneratingAll }}
+                                            >
+                                                {regeneratingAll ? <Spinner color="#FFF" size="small" label="Regenerating report cards" /> : (
+                                                    <>
+                                                        <RefreshCw size={14} color="#FFF" />
+                                                        <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Regenerate</Text>
                                                     </>
                                                 )}
                                             </TouchableOpacity>
@@ -1222,19 +1313,32 @@ export default function AdminResults() {
                                                             </TouchableOpacity>
                                                         )}
                                                         {(rc.status === 'draft' || rc.status === 'pending_review') && rc.gpa != null && (
-                                                            <TouchableOpacity
-                                                                onPress={() => handlePublish(rc.id)}
-                                                                disabled={isProcessing}
-                                                                style={{
-                                                                    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                                                                    paddingVertical: 12, borderRightWidth: (rc.status === 'draft' || rc.status === 'pending_review') && rc.gpa != null ? 1 : 0,
-                                                                    borderRightColor: border,
-                                                                    gap: 4,
-                                                                }}
-                                                            >
-                                                                <Shield size={14} color="#2563EB" />
-                                                                <Text style={{ color: '#2563EB', fontWeight: '700', fontSize: 12 }}>Publish</Text>
-                                                            </TouchableOpacity>
+                                                            <>
+                                                                <TouchableOpacity
+                                                                    onPress={() => handleRegenerate(rc.student_id, rc.student_name)}
+                                                                    disabled={isProcessing}
+                                                                    style={{
+                                                                        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                                                                        paddingVertical: 12, borderRightWidth: 1, borderRightColor: border,
+                                                                        gap: 4,
+                                                                    }}
+                                                                >
+                                                                    <RefreshCw size={14} color="#D97706" />
+                                                                    <Text style={{ color: '#D97706', fontWeight: '700', fontSize: 12 }}>Regen</Text>
+                                                                </TouchableOpacity>
+                                                                <TouchableOpacity
+                                                                    onPress={() => handlePublish(rc.id)}
+                                                                    disabled={isProcessing}
+                                                                    style={{
+                                                                        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                                                                        paddingVertical: 12, borderRightWidth: 0,
+                                                                        gap: 4,
+                                                                    }}
+                                                                >
+                                                                    <Shield size={14} color="#2563EB" />
+                                                                    <Text style={{ color: '#2563EB', fontWeight: '700', fontSize: 12 }}>Publish</Text>
+                                                                </TouchableOpacity>
+                                                            </>
                                                         )}
                                                         {rc.status === 'published' && (
                                                             <TouchableOpacity

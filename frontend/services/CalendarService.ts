@@ -43,7 +43,8 @@ export interface CreateCalendarEventDto {
   start_time?: string;
   end_time?: string;
   event_type?: string;
-  cancel_classes?: boolean;
+  cancel_classes: boolean;
+  target_audience?: 'all' | 'parents' | 'teachers' | 'students';
   announcement_expiry_days?: number;
 }
 

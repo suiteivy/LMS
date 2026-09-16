@@ -40,6 +40,9 @@ export async function safeSignOut(
     try {
       await AsyncStorage.setItem('logout_reason', reason);
       await AsyncStorage.setItem('deliberate_logout', 'true');
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try { window.localStorage.setItem('deliberate_logout', 'true'); } catch {}
+      }
     } catch {
       // storage failure is non-critical
     }

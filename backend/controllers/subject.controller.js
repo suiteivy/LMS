@@ -820,7 +820,7 @@ exports.updateSubject = async (req, res) => {
 
     const { data: existing, error: existingError } = await supabase
       .from("subjects")
-      .select("id, metadata")
+      .select("id, metadata, teacher_id, hod_teacher_id")
       .eq("id", id)
       .eq("institution_id", institution_id)
       .single();
@@ -829,8 +829,9 @@ exports.updateSubject = async (req, res) => {
       return res.status(404).json({ error: "Subject not found" });
     }
 
+    const classesSpecified = class_id !== undefined || class_ids !== undefined;
     const normalizedClassIds = normalizeClassIds(class_ids, class_id);
-    if (normalizedClassIds.length > 0) {
+    if (classesSpecified && normalizedClassIds.length > 0) {
       const { data: validClasses, error: validClassesError } = await supabase
         .from("classes")
         .select("id")
@@ -848,11 +849,12 @@ exports.updateSubject = async (req, res) => {
       }
     }
 
+    const teachersSpecified = teacher_id !== undefined || teacher_ids !== undefined;
     const allTeacherIds = Array.from(
       new Set([...(teacher_id ? [teacher_id] : []), ...((teacher_ids || []).filter(Boolean))])
     );
 
-    if (allTeacherIds.length > 0) {
+    if (teachersSpecified && allTeacherIds.length > 0) {
       const { data: validTeachers, error: validTeachersError } = await supabase
         .from("teachers")
         .select("id")
@@ -870,6 +872,18 @@ exports.updateSubject = async (req, res) => {
       }
     }
 
+    if (hod_teacher_id) {
+      const { data: validHod, error: validHodError } = await supabase
+        .from("teachers")
+        .select("id")
+        .eq("institution_id", institution_id)
+        .eq("id", hod_teacher_id)
+        .single();
+      if (validHodError || !validHod) {
+        return res.status(400).json({ error: "Invalid HOD teacher assignment for institution" });
+      }
+    }
+
     const primaryTeacherId = allTeacherIds.length > 0 ? allTeacherIds[0] : null;
     const primaryClassId = normalizedClassIds.length > 0 ? normalizedClassIds[0] : null;
     const normalizedLevelIds = level_ids !== undefined
@@ -882,7 +896,7 @@ exports.updateSubject = async (req, res) => {
     const mergedMetadata = {
       ...((existing && existing.metadata) || {}),
       ...(metadata || {}),
-      class_ids: normalizedClassIds,
+      ...(classesSpecified ? { class_ids: normalizedClassIds } : {}),
       ...(finalLevelIds !== undefined ? { level_ids: finalLevelIds } : {}),
     };
 
@@ -890,9 +904,9 @@ exports.updateSubject = async (req, res) => {
       ...(title !== undefined ? { title } : {}),
       ...(description !== undefined ? { description } : {}),
       ...(fee_amount !== undefined ? { fee_amount: Number.isFinite(Number(fee_amount)) ? Number(fee_amount) : 0 } : {}),
-      teacher_id: primaryTeacherId,
+      ...(teachersSpecified ? { teacher_id: primaryTeacherId } : {}),
       ...(hod_teacher_id !== undefined ? { hod_teacher_id: hod_teacher_id || null } : {}),
-      class_id: primaryClassId,
+      ...(classesSpecified ? { class_id: primaryClassId } : {}),
       ...(finalLevelIds !== undefined ? { level_ids: finalLevelIds } : {}),
       ...(fee_config !== undefined ? { fee_config } : {}),
       ...(materials !== undefined ? { materials } : {}),
@@ -909,58 +923,103 @@ exports.updateSubject = async (req, res) => {
       return res.status(500).json({ error: updateError.message });
     }
 
-    const { error: clearTeacherError } = await supabase
-      .from("subject_teachers")
-      .delete()
-      .eq("subject_id", id)
-      .eq("institution_id", institution_id);
-
-    if (clearTeacherError) {
-      return res.status(500).json({ error: clearTeacherError.message });
-    }
-
-    if (allTeacherIds.length > 0) {
-      const teacherRows = allTeacherIds.map((tid) => ({
-        subject_id: id,
-        teacher_id: tid,
-        institution_id,
-        is_hod: tid === (hod_teacher_id !== undefined ? hod_teacher_id : existing?.hod_teacher_id),
-      }));
-      const { error: insertTeacherError } = await supabase
+    if (teachersSpecified) {
+      const { error: clearTeacherError } = await supabase
         .from("subject_teachers")
-        .insert(teacherRows);
+        .delete()
+        .eq("subject_id", id)
+        .eq("institution_id", institution_id);
 
-      if (insertTeacherError && insertTeacherError.code !== "23505") {
-        return res.status(500).json({ error: insertTeacherError.message });
+      if (clearTeacherError) {
+        return res.status(500).json({ error: clearTeacherError.message });
+      }
+
+      if (allTeacherIds.length > 0) {
+        const effectiveHod = hod_teacher_id !== undefined ? hod_teacher_id : existing?.hod_teacher_id;
+        const teacherRows = allTeacherIds.map((tid) => ({
+          subject_id: id,
+          teacher_id: tid,
+          institution_id,
+          is_hod: tid === effectiveHod,
+        }));
+        if (effectiveHod && !allTeacherIds.includes(effectiveHod)) {
+          teacherRows.push({
+            subject_id: id,
+            teacher_id: effectiveHod,
+            institution_id,
+            is_hod: true,
+          });
+        }
+        const { error: insertTeacherError } = await supabase
+          .from("subject_teachers")
+          .insert(teacherRows);
+
+        if (insertTeacherError && insertTeacherError.code !== "23505") {
+          return res.status(500).json({ error: insertTeacherError.message });
+        }
+      }
+    } else if (hod_teacher_id !== undefined) {
+      // Reset is_hod flag for existing teachers of this subject
+      await supabase
+        .from("subject_teachers")
+        .update({ is_hod: false })
+        .eq("subject_id", id)
+        .eq("institution_id", institution_id);
+
+      if (hod_teacher_id) {
+        const { data: existingLink } = await supabase
+          .from("subject_teachers")
+          .select("id")
+          .eq("subject_id", id)
+          .eq("teacher_id", hod_teacher_id)
+          .maybeSingle();
+
+        if (existingLink) {
+          await supabase
+            .from("subject_teachers")
+            .update({ is_hod: true })
+            .eq("id", existingLink.id);
+        } else {
+          await supabase
+            .from("subject_teachers")
+            .insert({
+              subject_id: id,
+              teacher_id: hod_teacher_id,
+              institution_id,
+              is_hod: true,
+            });
+        }
       }
     }
 
-    const { error: clearClassError } = await supabase
-      .from("subject_classes")
-      .delete()
-      .eq("subject_id", id)
-      .eq("institution_id", institution_id);
-
-    if (clearClassError && !isMissingSubjectClassesTableError(clearClassError)) {
-      return res.status(500).json({ error: clearClassError.message });
-    }
-
-    if (normalizedClassIds.length > 0) {
-      const classRows = normalizedClassIds.map((cid) => ({
-        subject_id: id,
-        class_id: cid,
-        institution_id,
-      }));
-      const { error: insertClassError } = await supabase
+    if (classesSpecified) {
+      const { error: clearClassError } = await supabase
         .from("subject_classes")
-        .insert(classRows);
+        .delete()
+        .eq("subject_id", id)
+        .eq("institution_id", institution_id);
 
-      if (
-        insertClassError &&
-        insertClassError.code !== "23505" &&
-        !isMissingSubjectClassesTableError(insertClassError)
-      ) {
-        return res.status(500).json({ error: insertClassError.message });
+      if (clearClassError && !isMissingSubjectClassesTableError(clearClassError)) {
+        return res.status(500).json({ error: clearClassError.message });
+      }
+
+      if (normalizedClassIds.length > 0) {
+        const classRows = normalizedClassIds.map((cid) => ({
+          subject_id: id,
+          class_id: cid,
+          institution_id,
+        }));
+        const { error: insertClassError } = await supabase
+          .from("subject_classes")
+          .insert(classRows);
+
+        if (
+          insertClassError &&
+          insertClassError.code !== "23505" &&
+          !isMissingSubjectClassesTableError(insertClassError)
+        ) {
+          return res.status(500).json({ error: insertClassError.message });
+        }
       }
     }
 

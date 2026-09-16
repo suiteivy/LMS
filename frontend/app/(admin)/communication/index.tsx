@@ -57,6 +57,7 @@ export default function CommunicationPage() {
     const [announcementModalVisible, setAnnouncementModalVisible] = useState(false);
     const [announcementTitle, setAnnouncementTitle] = useState("");
     const [announcementMessage, setAnnouncementMessage] = useState("");
+    const [announcementAudience, setAnnouncementAudience] = useState<"all" | "teachers" | "students" | "parents">("all");
     const [postingAnnouncement, setPostingAnnouncement] = useState(false);
     const [editingAnnouncement, setEditingAnnouncement] = useState<any>(null);
 
@@ -154,10 +155,12 @@ export default function CommunicationPage() {
             setEditingAnnouncement(announcement);
             setAnnouncementTitle(announcement.title || "");
             setAnnouncementMessage(announcement.message || "");
+            setAnnouncementAudience(announcement.target_audience || "all");
         } else {
             setEditingAnnouncement(null);
             setAnnouncementTitle("");
             setAnnouncementMessage("");
+            setAnnouncementAudience("all");
         }
         setAnnouncementModalVisible(true);
     };
@@ -167,6 +170,7 @@ export default function CommunicationPage() {
         setEditingAnnouncement(null);
         setAnnouncementTitle("");
         setAnnouncementMessage("");
+        setAnnouncementAudience("all");
     };
 
     const handlePostOrUpdateAnnouncement = async () => {
@@ -184,6 +188,7 @@ export default function CommunicationPage() {
                     .update({
                         title: announcementTitle.trim(),
                         message: announcementMessage.trim(),
+                        target_audience: announcementAudience,
                         updated_at: new Date().toISOString()
                     })
                     .eq("id", editingAnnouncement.id)
@@ -195,7 +200,7 @@ export default function CommunicationPage() {
                 // Update local state immediately
                 setAnnouncements(prev => prev.map(a =>
                     a.id === editingAnnouncement.id
-                        ? { ...a, title: announcementTitle.trim(), message: announcementMessage.trim(), updated_at: new Date().toISOString() }
+                        ? { ...a, title: announcementTitle.trim(), message: announcementMessage.trim(), target_audience: announcementAudience, updated_at: new Date().toISOString() }
                         : a
                 ));
             } else {
@@ -206,6 +211,7 @@ export default function CommunicationPage() {
                         teacher_id: null,
                         title: announcementTitle.trim(),
                         message: announcementMessage.trim(),
+                        target_audience: announcementAudience,
                         institution_id: profile.institution_id
                     });
 
@@ -289,10 +295,17 @@ export default function CommunicationPage() {
                                     </View>
                                     <View className="flex-1">
                                         <Text className="text-gray-900 dark:text-white font-bold text-sm leading-tight">{item.title}</Text>
-                                        <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest mt-1">
-                                            Posted {new Date(item.created_at).toLocaleDateString()}
-                                            {item.updated_at && item.updated_at !== item.created_at ? " · Edited" : ""}
-                                        </Text>
+                                        <View className="flex-row items-center gap-2 mt-1">
+                                            <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">
+                                                Posted {new Date(item.created_at).toLocaleDateString()}
+                                                {item.updated_at && item.updated_at !== item.created_at ? " · Edited" : ""}
+                                            </Text>
+                                            <View className="bg-orange-50 dark:bg-orange-950/30 px-2 py-0.5 rounded-full border border-orange-200 dark:border-orange-800">
+                                                <Text className="text-[8px] font-black text-[#FF6B00] uppercase tracking-wider">
+                                                    {item.target_audience || "all"}
+                                                </Text>
+                                            </View>
+                                        </View>
                                     </View>
                                     <View className="flex-row items-center gap-1">
                                         <TouchableOpacity
@@ -433,7 +446,7 @@ export default function CommunicationPage() {
 
                         <Text className="text-gray-500 dark:text-gray-400 text-[9px] font-bold uppercase tracking-widest ml-1 mb-1.5">Announcement Message</Text>
                         <TextInput
-                            className="bg-gray-50 dark:bg-[#161B22] rounded-2xl px-4 py-3 text-slate-900 dark:text-white font-medium text-xs border border-gray-100 dark:border-gray-800 h-28 mb-6"
+                            className="bg-gray-50 dark:bg-[#161B22] rounded-2xl px-4 py-3 text-slate-900 dark:text-white font-medium text-xs border border-gray-100 dark:border-gray-800 h-28 mb-4"
                             placeholder="Type announcement message here..."
                             placeholderTextColor="#9CA3AF"
                             multiline
@@ -441,6 +454,29 @@ export default function CommunicationPage() {
                             value={announcementMessage}
                             onChangeText={setAnnouncementMessage}
                         />
+
+                        <Text className="text-gray-500 dark:text-gray-400 text-[9px] font-bold uppercase tracking-widest ml-1 mb-1.5">Target Audience</Text>
+                        <View className="flex-row flex-wrap gap-2 mb-6">
+                            {[
+                                { key: "all" as const, label: "All (School-Wide)" },
+                                { key: "teachers" as const, label: "Teachers Only" },
+                                { key: "students" as const, label: "Students Only" },
+                                { key: "parents" as const, label: "Parents Only" },
+                            ].map((item) => {
+                                const isSelected = announcementAudience === item.key;
+                                return (
+                                    <TouchableOpacity
+                                        key={item.key}
+                                        onPress={() => setAnnouncementAudience(item.key)}
+                                        className={`px-3 py-2 rounded-xl border ${isSelected ? "bg-[#FF6B00] border-[#FF6B00]" : "bg-gray-50 dark:bg-[#161B22] border-gray-200 dark:border-gray-800"}`}
+                                    >
+                                        <Text className={`text-xs font-bold ${isSelected ? "text-white" : "text-gray-600 dark:text-gray-300"}`}>
+                                            {item.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
 
                         <TouchableOpacity
                             className={`py-4 rounded-xl items-center justify-center flex-row shadow-md active:opacity-90 ${!announcementTitle.trim() || !announcementMessage.trim() ? 'bg-gray-400' : 'bg-[#FF6B00]'}`}

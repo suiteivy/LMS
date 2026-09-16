@@ -12,6 +12,7 @@ const {
     getStudentRankings,
     getHODSubjects,
     getCoveragePlans,
+    getCoverageOversight,
     createCoveragePlan,
     updateCoveragePlan,
     deleteCoveragePlan,
@@ -39,6 +40,7 @@ router.get("/rankings", getStudentRankings);
 
 // Coverage Plans (J1)
 router.get("/hod-subjects", getHODSubjects);
+router.get("/coverage-plans/oversight", getCoverageOversight);
 router.get("/coverage-plans", getCoveragePlans);
 router.post("/coverage-plans", createCoveragePlan);
 router.put("/coverage-plans/:id", updateCoveragePlan);

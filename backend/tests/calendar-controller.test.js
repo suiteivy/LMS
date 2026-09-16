@@ -305,3 +305,31 @@ test('getEvents falls back when start_time column is missing', async () => {
   assert.deepEqual(res.payload, { events: [] });
   assert.equal(startTimeOrderAttempts, 1);
 });
+
+test('createEvent requires explicit cancel_classes decision', async () => {
+  let fromCalled = false;
+  const mockSupabase = {
+    from() {
+      fromCalled = true;
+      return {};
+    },
+  };
+
+  const { createEvent } = loadWithSupabaseMock('../controllers/calendar.controller.js', mockSupabase);
+
+  const req = {
+    institution_id: 'inst-1',
+    userId: 'admin-1',
+    userRole: 'admin',
+    body: {
+      title: 'Science Fair',
+      event_date: '2026-10-15',
+    },
+  };
+  const res = createRes();
+  await createEvent(req, res);
+
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.payload?.code, 'EXPLICIT_CLASS_CONTINUATION_REQUIRED');
+  assert.equal(fromCalled, false);
+});

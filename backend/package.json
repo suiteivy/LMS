@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "lint:security": "eslint . --plugin security",
     "notification:retry": "node scripts/run-notification-retries.js",
-    "seed:dm-fixture": "node scripts/seed_dm_security_fixture.js"
+    "seed:dm-fixture": "node scripts/seed_dm_security_fixture.js",
+    "audit:deps": "npm audit"
   },
   "author": "",
   "license": "ISC",

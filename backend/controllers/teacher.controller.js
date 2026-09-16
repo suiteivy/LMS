@@ -794,18 +794,52 @@ exports.getSubjectClasses = async (req, res) => {
             const { data: classSubjects, error: csErr } = await query;
             if (csErr) throw csErr;
 
-            const results = (classSubjects || [])
+            const resultsMap = new Map();
+
+            (classSubjects || [])
                 .filter((s) => s && s.class_id && s.classes)
-                .map((s) => ({
-                    subject_id: s.id,
-                    subject_title: s.title || 'Untitled Subject',
-                    class_id: s.class_id,
-                    class_name: buildClassLabel(s.classes) || s.classes?.name || s.classes?.display_name || 'Class',
-                    grade_level: s.classes?.grade_level,
-                    form_level: s.classes?.form_level,
-                    stream: s.classes?.stream,
-                }));
-            return res.json({ success: true, data: results });
+                .forEach((s) => {
+                    const key = `${s.id}_${s.class_id}`;
+                    resultsMap.set(key, {
+                        subject_id: s.id,
+                        subject_title: s.title || 'Untitled Subject',
+                        class_id: s.class_id,
+                        class_name: buildClassLabel(s.classes) || s.classes?.name || s.classes?.display_name || 'Class',
+                        grade_level: s.classes?.grade_level,
+                        form_level: s.classes?.form_level,
+                        stream: s.classes?.stream,
+                    });
+                });
+
+            // Also check junction table for subjects assigned to these classes
+            try {
+                const { data: junctionRows } = await supabase
+                    .from("subject_classes")
+                    .select("subject_id, class_id, subject:subjects(id, title), classes:classes(id, display_name, grade_level, form_level, stream, class_type)")
+                    .in("class_id", scope.classTeacherClassIds)
+                    .eq("institution_id", institution_id);
+
+                (junctionRows || []).forEach((jr) => {
+                    if (jr.subject && jr.classes) {
+                        const key = `${jr.subject_id}_${jr.class_id}`;
+                        if (!resultsMap.has(key)) {
+                            resultsMap.set(key, {
+                                subject_id: jr.subject.id,
+                                subject_title: jr.subject.title || 'Untitled Subject',
+                                class_id: jr.class_id,
+                                class_name: buildClassLabel(jr.classes) || jr.classes?.name || jr.classes?.display_name || 'Class',
+                                grade_level: jr.classes?.grade_level,
+                                form_level: jr.classes?.form_level,
+                                stream: jr.classes?.stream,
+                            });
+                        }
+                    }
+                });
+            } catch (_err) {
+                // Ignore junction table query if table doesn't exist
+            }
+
+            return res.json({ success: true, data: Array.from(resultsMap.values()) });
         } else {
             // Subject mode: primary + assigned subjects
             query = query.eq("teacher_id", teacher.id);
@@ -821,19 +855,56 @@ exports.getSubjectClasses = async (req, res) => {
             (primary || []).forEach((s) => map.set(s.id, s));
             (assoc || []).map((a) => a.subject).filter(Boolean).forEach((s) => map.set(s.id, s));
 
-            const results = Array.from(map.values())
-                .filter((s) => s && s.class_id && s.classes)
-                .map((s) => ({
-                    subject_id: s.id,
-                    subject_title: s.title || 'Untitled Subject',
-                    class_id: s.class_id,
-                    class_name: buildClassLabel(s.classes) || s.classes?.name || s.classes?.display_name || 'Class',
-                    grade_level: s.classes?.grade_level,
-                    form_level: s.classes?.form_level,
-                    stream: s.classes?.stream,
-                }));
+            const resultsMap = new Map();
 
-            return res.json({ success: true, data: results });
+            Array.from(map.values())
+                .filter((s) => s && s.class_id && s.classes)
+                .forEach((s) => {
+                    const key = `${s.id}_${s.class_id}`;
+                    resultsMap.set(key, {
+                        subject_id: s.id,
+                        subject_title: s.title || 'Untitled Subject',
+                        class_id: s.class_id,
+                        class_name: buildClassLabel(s.classes) || s.classes?.name || s.classes?.display_name || 'Class',
+                        grade_level: s.classes?.grade_level,
+                        form_level: s.classes?.form_level,
+                        stream: s.classes?.stream,
+                    });
+                });
+
+            // Also check junction table for subjects assigned to this teacher without direct class_id
+            try {
+                const allSubjectIds = Array.from(map.keys());
+                if (allSubjectIds.length > 0) {
+                    const { data: junctionRows } = await supabase
+                        .from("subject_classes")
+                        .select("subject_id, class_id, classes:classes(id, display_name, grade_level, form_level, stream, class_type)")
+                        .in("subject_id", allSubjectIds)
+                        .eq("institution_id", institution_id);
+
+                    (junctionRows || []).forEach((jr) => {
+                        const subj = map.get(jr.subject_id);
+                        if (subj && jr.class_id && jr.classes) {
+                            const key = `${jr.subject_id}_${jr.class_id}`;
+                            if (!resultsMap.has(key)) {
+                                resultsMap.set(key, {
+                                    subject_id: subj.id,
+                                    subject_title: subj.title || 'Untitled Subject',
+                                    class_id: jr.class_id,
+                                    class_name: buildClassLabel(jr.classes) || jr.classes?.name || jr.classes?.display_name || 'Class',
+                                    grade_level: jr.classes?.grade_level,
+                                    form_level: jr.classes?.form_level,
+                                    stream: jr.classes?.stream,
+                                });
+                            }
+                        }
+                    });
+                }
+            } catch (_err) {
+                // Ignore junction table query if table doesn't exist
+            }
+
+            return res.json({ success: true, data: Array.from(resultsMap.values()) });
         }
     } catch (err) {
         console.error("getSubjectClasses error:", err);
@@ -1127,7 +1198,7 @@ exports.getStudentRankings = async (req, res) => {
             return res.status(403).json({ error: "Unauthorized" });
         }
 
-        const { subject_id, class_id } = req.query;
+        const { subject_id, class_id, grade_level } = req.query;
         const reqRoleMode = req.headers['x-teacher-role-mode'] || req.query.role_mode;
         const scope = userRole === 'teacher' ? await resolveTeacherScope(userId, institution_id, reqRoleMode) : null;
 
@@ -1153,7 +1224,7 @@ exports.getStudentRankings = async (req, res) => {
         // Query subjects
         let subjectsQuery = supabase
             .from('subjects')
-            .select('id, title, class_id, classes(id, grade_level, form_level, stream, class_type)');
+            .select('id, title, class_id, classes(id, name, grade_level, form_level, stream, class_type)');
         if (institution_id) subjectsQuery = subjectsQuery.eq('institution_id', institution_id);
         if (subject_id) subjectsQuery = subjectsQuery.eq('id', subject_id);
         if (class_id) subjectsQuery = subjectsQuery.eq('class_id', class_id);
@@ -1177,13 +1248,16 @@ exports.getStudentRankings = async (req, res) => {
 
         const targetSubjectIds = subjects.map(s => s.id);
         const targetClassIds = [...new Set(subjects.map(s => s.class_id).filter(Boolean))];
+        if (class_id && !targetClassIds.includes(class_id)) {
+            targetClassIds.push(class_id);
+        }
 
         // 2. Query student enrollments
         let enrollmentsQuery = supabase
             .from('enrollments')
             .select(`
                 student_id, subject_id,
-                students ( id, user_id, grade_level, users ( first_name, last_name, full_name, email, avatar_url ) )
+                students ( id, user_id, grade_level, id_number, admission_number, class_id, users ( first_name, last_name, full_name, email, avatar_url ) )
             `)
             .in('subject_id', targetSubjectIds)
             .eq('status', 'enrolled');
@@ -1197,7 +1271,7 @@ exports.getStudentRankings = async (req, res) => {
                 .from('class_enrollments')
                 .select(`
                     student_id, class_id,
-                    students ( id, user_id, grade_level, users ( first_name, last_name, full_name, email, avatar_url ) )
+                    students ( id, user_id, grade_level, id_number, admission_number, class_id, users ( first_name, last_name, full_name, email, avatar_url ) )
                 `)
                 .in('class_id', targetClassIds);
             classEnrollments = ceData || [];
@@ -1216,7 +1290,14 @@ exports.getStudentRankings = async (req, res) => {
             }
         });
 
-        const studentIds = Array.from(studentsMap.keys());
+        let studentIds = Array.from(studentsMap.keys());
+        if (grade_level) {
+            studentIds = studentIds.filter(sId => {
+                const st = studentsMap.get(sId);
+                return String(st?.grade_level || '').toLowerCase() === String(grade_level).toLowerCase();
+            });
+        }
+
         if (studentIds.length === 0) {
             return res.json({ rankings: [], cbc_distribution: { EE: 0, ME: 0, AE: 0, BE: 0 }, total_students: 0 });
         }
@@ -1305,9 +1386,11 @@ exports.getStudentRankings = async (req, res) => {
             return {
                 student_id: sId,
                 full_name: fullName,
+                admission_number: stObj?.admission_number || stObj?.id_number || "",
                 email: userObj.email || "",
                 avatar_url: userObj.avatar_url || null,
                 grade_level: stObj?.grade_level || null,
+                class_id: stObj?.class_id || null,
                 graded_tasks: validGrades.length,
                 average_score: avgScore,
                 cbc_band: assignedGrade,
@@ -1673,6 +1756,149 @@ exports.deleteCoveragePlan = async (req, res) => {
     } catch (err) {
         console.error("deleteCoveragePlan error:", err);
         res.status(500).json({ error: "Failed to delete coverage plan item" });
+    }
+};
+
+// GET /teacher/coverage-plans/oversight - Institutional Departmental Coverage Oversight (Admin / HOD)
+exports.getCoverageOversight = async (req, res) => {
+    try {
+        const { institution_id, userRole } = req;
+        const { term, academic_year } = req.query;
+
+        // Fetch all subjects in the institution with their assigned HOD and class details
+        const { data: subjects, error: subErr } = await supabase
+            .from('subjects')
+            .select(`
+                id, title, class_id, hod_teacher_id,
+                classes ( id, name, grade_level, form_level, stream, class_type ),
+                teachers:hod_teacher_id ( id, user_id, users:user_id ( full_name, email, avatar_url ) )
+            `)
+            .eq('institution_id', institution_id);
+
+        if (subErr) {
+            if (subErr.code === '42P01' || subErr.code === 'PGRST205') {
+                return res.json({
+                    total_subjects: 0,
+                    subjects_with_plans: 0,
+                    total_topics_planned: 0,
+                    total_completed: 0,
+                    overall_coverage_rate: 0,
+                    subjects: []
+                });
+            }
+            throw subErr;
+        }
+
+        if (!subjects || subjects.length === 0) {
+            return res.json({
+                total_subjects: 0,
+                subjects_with_plans: 0,
+                total_topics_planned: 0,
+                total_completed: 0,
+                overall_coverage_rate: 0,
+                subjects: []
+            });
+        }
+
+        const subjectIds = subjects.map(s => s.id);
+
+        // Fetch coverage plans for all subjects
+        let plansQuery = supabase
+            .from('subject_coverage_plans')
+            .select('id, subject_id, term, academic_year, title, week_start, week_end, status')
+            .eq('institution_id', institution_id)
+            .in('subject_id', subjectIds);
+
+        if (term) plansQuery = plansQuery.eq('term', term);
+        if (academic_year) plansQuery = plansQuery.eq('academic_year', academic_year);
+
+        const { data: plansData, error: plansErr } = await plansQuery;
+        const plans = (!plansErr && plansData) ? plansData : [];
+
+        // Fetch completed records of work
+        let rowQuery = supabase
+            .from('record_of_work')
+            .select('id, subject_id, coverage_plan_id, is_completed, status, created_at')
+            .eq('institution_id', institution_id)
+            .in('subject_id', subjectIds);
+
+        const { data: rowData, error: rowErr } = await rowQuery;
+        const recordsOfWork = (!rowErr && rowData) ? rowData : [];
+
+        // Map plans by subject
+        const plansBySubject = new Map();
+        plans.forEach(p => {
+            if (!plansBySubject.has(p.subject_id)) plansBySubject.set(p.subject_id, []);
+            plansBySubject.get(p.subject_id).push(p);
+        });
+
+        // Map records by subject
+        const rowsBySubject = new Map();
+        recordsOfWork.forEach(r => {
+            if (!rowsBySubject.has(r.subject_id)) rowsBySubject.set(r.subject_id, []);
+            rowsBySubject.get(r.subject_id).push(r);
+        });
+
+        let totalPlannedAcrossSchool = 0;
+        let totalCompletedAcrossSchool = 0;
+        let subjectsWithPlansCount = 0;
+
+        const subjectSummaries = subjects.map(s => {
+            const sPlans = plansBySubject.get(s.id) || [];
+            const sRows = rowsBySubject.get(s.id) || [];
+
+            const plannedTopicsCount = sPlans.length;
+            if (plannedTopicsCount > 0) subjectsWithPlansCount++;
+            totalPlannedAcrossSchool += plannedTopicsCount;
+
+            // Completed topics (items marked completed in record_of_work)
+            const completedRows = sRows.filter(r => r.is_completed === true || r.status === 'completed');
+            const completedCount = completedRows.length;
+            totalCompletedAcrossSchool += completedCount;
+
+            const completionRate = plannedTopicsCount > 0
+                ? Math.min(100, Math.round((completedCount / plannedTopicsCount) * 100))
+                : 0;
+
+            const hodUser = s.teachers?.users;
+            const hodName = hodUser?.full_name || null;
+
+            return {
+                subject_id: s.id,
+                subject_title: s.title,
+                class_id: s.class_id,
+                class_name: s.classes?.name || (s.classes?.grade_level ? `Grade ${s.classes.grade_level}` : null),
+                grade_level: s.classes?.grade_level || s.classes?.form_level || null,
+                stream: s.classes?.stream || null,
+                hod: hodName ? {
+                    teacher_id: s.hod_teacher_id,
+                    name: hodName,
+                    email: hodUser?.email,
+                    avatar_url: hodUser?.avatar_url
+                } : null,
+                has_plan: plannedTopicsCount > 0,
+                total_topics: plannedTopicsCount,
+                completed_topics: completedCount,
+                completion_rate: completionRate,
+                latest_activity: sRows.length > 0 ? sRows[sRows.length - 1].created_at : null
+            };
+        });
+
+        const overallRate = totalPlannedAcrossSchool > 0
+            ? Math.min(100, Math.round((totalCompletedAcrossSchool / totalPlannedAcrossSchool) * 100))
+            : 0;
+
+        res.json({
+            total_subjects: subjects.length,
+            subjects_with_plans: subjectsWithPlansCount,
+            total_topics_planned: totalPlannedAcrossSchool,
+            total_completed: totalCompletedAcrossSchool,
+            overall_coverage_rate: overallRate,
+            subjects: subjectSummaries
+        });
+    } catch (err) {
+        console.error("getCoverageOversight error:", err);
+        res.status(500).json({ error: "Failed to compute coverage oversight" });
     }
 };
 

@@ -270,6 +270,19 @@ function AuthHandler() {
       router.replace(normalizedTarget as any);
     };
 
+    const ROLE_PERMITTED_GROUPS: Record<string, string[]> = {
+      master_admin: ['(master-admin)', '(admin)', '(teacher)', '(student)', '(parent)'],
+      platform_admin: ['(master-admin)', '(admin)', '(teacher)', '(student)', '(parent)'],
+      admin: ['(admin)'],
+      school_admin: ['(admin)'],
+      teacher: ['(teacher)'],
+      student: ['(student)'],
+      parent: ['(parent)'],
+    };
+
+    const routeGroup = (segments as string[]).find((s) => typeof s === 'string' && s.startsWith('(') && s.endsWith(')'));
+    const protectedRoleGroups = ['(admin)', '(master-admin)', '(teacher)', '(student)', '(parent)'];
+
     if (!session) {
       if (isAuthPath) {
         if (currentPath === '/demo' && wasDemo) {
@@ -279,7 +292,7 @@ function AuthHandler() {
         if (wasDemo) {
           handleRedirect("/(auth)/demo");
         } else {
-          handleRedirect("/(auth)/signIn");
+          handleRedirect("/+not-found");
         }
       }
     } else if (profile) {
@@ -287,6 +300,16 @@ function AuthHandler() {
       if (requiresCredentialSetup && currentPath !== '/security-questions') {
         handleRedirect('/(auth)/security-questions');
         return;
+      }
+
+      // Check role authorization for protected route groups
+      if (!isPlatformAdmin && routeGroup && protectedRoleGroups.includes(routeGroup)) {
+        const userRole = String(profile.role || '').toLowerCase();
+        const allowedGroups = ROLE_PERMITTED_GROUPS[userRole] || [];
+        if (!allowedGroups.includes(routeGroup)) {
+          handleRedirect('/+not-found');
+          return;
+        }
       }
 
       // If at root or in auth group, redirect to role-specific dashboard

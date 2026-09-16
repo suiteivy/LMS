@@ -548,7 +548,7 @@ export default function SignIn() {
   const [showPassword, setShowPassword]     = useState(false);
   const [formData, setFormData]             = useState<FormData>({ email: "", password: "" });
   const [errors, setErrors]                 = useState<Record<string, string>>({});
-  const { signIn, loading: isGlobalLoading, maintenanceModeMessage, refreshMaintenanceStatus } = useAuth();
+  const { signIn, loading: isGlobalLoading, maintenanceModeMessage, refreshMaintenanceStatus, getRoleRedirect } = useAuth();
 
   // ── Entrance animations ──────────────────────────────────────────────
   const cardFade     = useRef(new Animated.Value(0)).current;
@@ -705,6 +705,13 @@ export default function SignIn() {
         setTimeout(() => {
           router.replace("/(auth)/security-questions" as any);
         }, 200);
+      } else {
+        const redirectPath = getRoleRedirect(userData as any, userData.role === 'master_admin');
+        if (redirectPath) {
+          setTimeout(() => {
+            router.replace(redirectPath as any);
+          }, 150);
+        }
       }
 
       // Let AuthHandler detect session change and handle the transition

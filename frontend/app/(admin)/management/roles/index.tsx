@@ -32,6 +32,11 @@ import {
     DataScope 
 } from '@/services/RoleService';
 import { LibrarianManagement } from "@/components/admin/library/LibrarianManagement";
+import { FinanceDesignationSection } from "@/components/admin/finance/FinanceDesignationSection";
+import { SubjectAPI, SubjectData } from "@/services/SubjectService";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/libs/supabase";
+import Toast from 'react-native-toast-message';
 
 interface ModulePermissionSpec {
     id: string;
@@ -802,18 +807,50 @@ const RoleBuilderModal = ({
     );
 };
 
+type RoleTab = 'roles' | 'users' | 'librarians' | 'finance' | 'hod';
+
 export default function RolesAndPermissions() {
     const router = useRouter();
     const { isDark } = useTheme();
-    const [activeTab, setActiveTab] = useState<'roles' | 'librarians'>('roles');
+    const { profile } = useAuth();
+    const [activeTab, setActiveTab] = useState<RoleTab>('roles');
     const [roles, setRoles] = useState<CustomRole[]>([]);
     const [selectedRole, setSelectedRole] = useState<CustomRole | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [loading, setLoading] = useState(true);
 
+    // Staff User Assignment State
+    const [staffList, setStaffList] = useState<any[]>([]);
+    const [userRolesMap, setUserRolesMap] = useState<Record<string, any[]>>({});
+    const [userSearch, setUserSearch] = useState('');
+    const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'teacher' | 'admin'>('all');
+    const [staffLoading, setStaffLoading] = useState(false);
+    const [assignUserModalVisible, setAssignUserModalVisible] = useState(false);
+    const [selectedStaffUser, setSelectedStaffUser] = useState<any | null>(null);
+    const [selectedRoleIdsForUser, setSelectedRoleIdsForUser] = useState<string[]>([]);
+    const [savingUserAssignment, setSavingUserAssignment] = useState(false);
+
+    // HOD Assignment State
+    const [subjectsList, setSubjectsList] = useState<SubjectData[]>([]);
+    const [teachersList, setTeachersList] = useState<{ id: string; name: string; email: string }[]>([]);
+    const [hodSearch, setHodSearch] = useState('');
+    const [hodLoading, setHodLoading] = useState(false);
+    const [hodModalVisible, setHodModalVisible] = useState(false);
+    const [selectedSubjectForHOD, setSelectedSubjectForHOD] = useState<SubjectData | null>(null);
+    const [selectedHODTeacherId, setSelectedHODTeacherId] = useState<string | null>(null);
+    const [savingHOD, setSavingHOD] = useState(false);
+
     useEffect(() => {
         loadData();
     }, []);
+
+    useEffect(() => {
+        if (activeTab === 'users') {
+            loadStaffAndRoles();
+        } else if (activeTab === 'hod') {
+            loadHODData();
+        }
+    }, [activeTab]);
 
     const loadData = async () => {
         try {
@@ -825,6 +862,59 @@ export default function RolesAndPermissions() {
             Alert.alert("Error", "Failed to load roles and permissions configurations");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadStaffAndRoles = async () => {
+        try {
+            setStaffLoading(true);
+            const { data: usersData, error: userError } = await supabase
+                .from('users')
+                .select('id, full_name, first_name, last_name, email, role, is_active')
+                .in('role', ['admin', 'teacher', 'master_admin'])
+                .order('full_name', { ascending: true });
+
+            if (userError) throw userError;
+            setStaffList(usersData || []);
+
+            const { data: urData, error: urError } = await supabase
+                .from('user_roles')
+                .select('user_id, role_id, roles(id, name, description, data_scope)');
+
+            if (urError) throw urError;
+            const map: Record<string, any[]> = {};
+            (urData || []).forEach((row: any) => {
+                if (!map[row.user_id]) map[row.user_id] = [];
+                if (row.roles) map[row.user_id].push(row.roles);
+            });
+            setUserRolesMap(map);
+        } catch (e: any) {
+            console.error("Failed to load staff role assignments:", e);
+            Alert.alert("Error", "Could not load staff users list.");
+        } finally {
+            setStaffLoading(false);
+        }
+    };
+
+    const loadHODData = async () => {
+        try {
+            setHodLoading(true);
+            const [subs, teachRes] = await Promise.all([
+                SubjectAPI.getSubjects(),
+                supabase.from('teachers').select('id, user_id, users(id, full_name, email)')
+            ]);
+            setSubjectsList(subs || []);
+            const teachers = (teachRes.data || []).map((t: any) => ({
+                id: t.id,
+                name: t.users?.full_name || 'Unnamed Teacher',
+                email: t.users?.email || ''
+            }));
+            setTeachersList(teachers);
+        } catch (e) {
+            console.error("Failed to load HOD data:", e);
+            Alert.alert("Error", "Could not load subjects and teachers for HOD assignment.");
+        } finally {
+            setHodLoading(false);
         }
     };
 
@@ -866,11 +956,127 @@ export default function RolesAndPermissions() {
         );
     };
 
+    const handleOpenAssignUserModal = (user: any) => {
+        setSelectedStaffUser(user);
+        const userAssigned = (userRolesMap[user.id] || []).map((r: any) => r.id);
+        setSelectedRoleIdsForUser(userAssigned);
+        setAssignUserModalVisible(true);
+    };
+
+    const handleToggleUserRole = (roleId: string) => {
+        setSelectedRoleIdsForUser(prev => 
+            prev.includes(roleId) ? prev.filter(id => id !== roleId) : [...prev, roleId]
+        );
+    };
+
+    const handleSaveUserRoles = async () => {
+        if (!selectedStaffUser) return;
+        setSavingUserAssignment(true);
+        try {
+            await RoleAPI.assignUserRoles(selectedStaffUser.id, selectedRoleIdsForUser);
+            Toast.show({
+                type: 'success',
+                text1: 'Roles Updated',
+                text2: `Assigned roles updated for ${selectedStaffUser.full_name || selectedStaffUser.email}`,
+            });
+            setAssignUserModalVisible(false);
+            await loadStaffAndRoles();
+        } catch (err: any) {
+            Alert.alert("Assignment Error", err?.response?.data?.error || err.message || "Failed to update user roles");
+        } finally {
+            setSavingUserAssignment(false);
+        }
+    };
+
+    const handleOpenHODModal = (subject: SubjectData) => {
+        setSelectedSubjectForHOD(subject);
+        setSelectedHODTeacherId(subject.hod_teacher_id || null);
+        setHodModalVisible(true);
+    };
+
+    const handleSaveHOD = async () => {
+        if (!selectedSubjectForHOD) return;
+        setSavingHOD(true);
+        try {
+            await SubjectAPI.updateSubject(selectedSubjectForHOD.id, {
+                hod_teacher_id: selectedHODTeacherId
+            });
+            Toast.show({
+                type: 'success',
+                text1: 'HOD Updated',
+                text2: selectedHODTeacherId ? 'Head of Department assigned successfully' : 'HOD designation removed',
+            });
+            setHodModalVisible(false);
+            await loadHODData();
+        } catch (err: any) {
+            Alert.alert("HOD Update Failed", err?.response?.data?.error || err.message || "Failed to update Head of Department");
+        } finally {
+            setSavingHOD(false);
+        }
+    };
+
+    const handleRemoveHOD = (subject: SubjectData) => {
+        Alert.alert(
+            "Remove HOD Designation",
+            `Remove Head of Department assignment for ${subject.title}?`,
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Remove",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await SubjectAPI.updateSubject(subject.id, { hod_teacher_id: null });
+                            Toast.show({
+                                type: 'success',
+                                text1: 'HOD Removed',
+                                text2: `Removed HOD for ${subject.title}`,
+                            });
+                            await loadHODData();
+                        } catch (err: any) {
+                            Alert.alert("Error", err?.message || "Failed to remove HOD");
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const subtitles: Record<RoleTab, string> = {
+        roles: 'Custom Roles & Scopes',
+        users: 'Staff Role Assignment',
+        librarians: 'Librarian Designation',
+        finance: 'Finance Administrators',
+        hod: 'Head of Department (HOD)'
+    };
+
+    // Filtered staff users
+    const filteredStaff = staffList.filter(u => {
+        const matchesRole = userRoleFilter === 'all' || u.role === userRoleFilter;
+        const needle = userSearch.trim().toLowerCase();
+        const matchesSearch = !needle 
+            || (u.full_name && u.full_name.toLowerCase().includes(needle))
+            || (u.email && u.email.toLowerCase().includes(needle));
+        return matchesRole && matchesSearch;
+    });
+
+    // Filtered subjects for HOD
+    const filteredSubjects = subjectsList.filter(s => {
+        const needle = hodSearch.trim().toLowerCase();
+        return !needle || s.title.toLowerCase().includes(needle);
+    });
+
+    const surface = isDark ? '#161B22' : '#FFFFFF';
+    const border = isDark ? '#21262D' : '#E2E8F0';
+    const textPrimary = isDark ? '#FFFFFF' : '#0F172A';
+    const textSecondary = isDark ? '#94A3B8' : '#64748B';
+    const bg = isDark ? '#0F141C' : '#F8FAFC';
+
     return (
         <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
             <UnifiedHeader
                 title="Management"
-                subtitle={activeTab === 'roles' ? "Roles & Permissions" : "Librarians"}
+                subtitle={subtitles[activeTab]}
                 role="Admin"
                 onBack={() => router.back()}
                 rightActions={
@@ -901,39 +1107,341 @@ export default function RolesAndPermissions() {
                 }
             />
 
-            {/* Segmented Tab Bar */}
-            <View className="px-5 pt-3 pb-1">
-                <View className="flex-row bg-[#F6F8FA] dark:bg-[#0F141C] p-1 rounded-2xl border border-gray-200 dark:border-gray-800">
-                    <TouchableOpacity
-                        onPress={() => setActiveTab('roles')}
-                        className={`flex-1 flex-row items-center justify-center py-2.5 rounded-xl ${
-                            activeTab === 'roles' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
-                        }`}
-                    >
-                        <Shield size={16} color={activeTab === 'roles' ? '#FF6900' : isDark ? '#9ca3af' : '#6b7280'} style={{ marginRight: 6 }} />
-                        <Text className={`font-bold text-xs ${activeTab === 'roles' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
-                            Roles & Permissions
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => setActiveTab('librarians')}
-                        className={`flex-1 flex-row items-center justify-center py-2.5 rounded-xl ${
-                            activeTab === 'librarians' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
-                        }`}
-                    >
-                        <BookOpen size={16} color={activeTab === 'librarians' ? '#FF6900' : isDark ? '#9ca3af' : '#6b7280'} style={{ marginRight: 6 }} />
-                        <Text className={`font-bold text-xs ${activeTab === 'librarians' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
-                            Librarian Assignment
-                        </Text>
-                    </TouchableOpacity>
-                </View>
+            {/* Segmented Responsive Tab Bar */}
+            <View className="px-4 pt-3 pb-1">
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+                    <View className="flex-row bg-[#F6F8FA] dark:bg-[#0F141C] p-1 rounded-2xl border border-gray-200 dark:border-gray-800">
+                        <TouchableOpacity
+                            onPress={() => setActiveTab('roles')}
+                            className={`flex-row items-center justify-center px-4 py-2.5 rounded-xl ${
+                                activeTab === 'roles' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
+                            }`}
+                        >
+                            <Shield size={15} color={activeTab === 'roles' ? '#FF6900' : textSecondary} style={{ marginRight: 6 }} />
+                            <Text className={`font-bold text-xs ${activeTab === 'roles' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
+                                Custom Roles
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => setActiveTab('users')}
+                            className={`flex-row items-center justify-center px-4 py-2.5 rounded-xl ${
+                                activeTab === 'users' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
+                            }`}
+                        >
+                            <Users size={15} color={activeTab === 'users' ? '#FF6900' : textSecondary} style={{ marginRight: 6 }} />
+                            <Text className={`font-bold text-xs ${activeTab === 'users' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
+                                User Assignment
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => setActiveTab('librarians')}
+                            className={`flex-row items-center justify-center px-4 py-2.5 rounded-xl ${
+                                activeTab === 'librarians' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
+                            }`}
+                        >
+                            <BookOpen size={15} color={activeTab === 'librarians' ? '#FF6900' : textSecondary} style={{ marginRight: 6 }} />
+                            <Text className={`font-bold text-xs ${activeTab === 'librarians' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
+                                Librarians
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => setActiveTab('finance')}
+                            className={`flex-row items-center justify-center px-4 py-2.5 rounded-xl ${
+                                activeTab === 'finance' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
+                            }`}
+                        >
+                            <Wallet size={15} color={activeTab === 'finance' ? '#FF6900' : textSecondary} style={{ marginRight: 6 }} />
+                            <Text className={`font-bold text-xs ${activeTab === 'finance' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
+                                Finance Admins
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => setActiveTab('hod')}
+                            className={`flex-row items-center justify-center px-4 py-2.5 rounded-xl ${
+                                activeTab === 'hod' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
+                            }`}
+                        >
+                            <GraduationCap size={15} color={activeTab === 'hod' ? '#FF6900' : textSecondary} style={{ marginRight: 6 }} />
+                            <Text className={`font-bold text-xs ${activeTab === 'hod' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
+                                HOD Assignment
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </ScrollView>
             </View>
 
+            {/* TAB CONTENT: LIBRARIANS */}
             {activeTab === 'librarians' ? (
                 <View className="flex-1">
                     <LibrarianManagement />
                 </View>
+            ) : activeTab === 'finance' ? (
+                /* TAB CONTENT: FINANCE ADMINS */
+                <View className="flex-1">
+                    <FinanceDesignationSection />
+                </View>
+            ) : activeTab === 'users' ? (
+                /* TAB CONTENT: USER ASSIGNMENT */
+                <View className="flex-1 p-5">
+                    {/* Search & Filter */}
+                    <View className="flex-row gap-3 mb-4 items-center">
+                        <View className="flex-1 flex-row items-center bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-3.5 py-2.5 border border-gray-200 dark:border-gray-800">
+                            <TextInput
+                                className="flex-1 text-gray-900 dark:text-white font-medium text-xs"
+                                placeholder="Search staff members by name or email..."
+                                placeholderTextColor={textSecondary}
+                                value={userSearch}
+                                onChangeText={setUserSearch}
+                            />
+                        </View>
+                        <View className="flex-row bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl p-1 border border-gray-200 dark:border-gray-800">
+                            {(['all', 'teacher', 'admin'] as const).map(flt => (
+                                <TouchableOpacity
+                                    key={flt}
+                                    onPress={() => setUserRoleFilter(flt)}
+                                    className={`px-3 py-1.5 rounded-lg ${userRoleFilter === flt ? 'bg-[#FF6900]' : 'bg-transparent'}`}
+                                >
+                                    <Text className={`text-[11px] font-bold capitalize ${userRoleFilter === flt ? 'text-white' : 'text-gray-500'}`}>
+                                        {flt === 'all' ? 'All Staff' : flt}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    {staffLoading ? (
+                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <ActivityIndicator size="large" color="#FF6900" />
+                        </View>
+                    ) : filteredStaff.length === 0 ? (
+                        <View className="bg-white dark:bg-[#161B22] p-12 rounded-[28px] items-center border border-gray-200 dark:border-gray-800 border-dashed">
+                            <Users size={44} color="#9CA3AF" style={{ opacity: 0.4 }} />
+                            <Text className="text-gray-900 dark:text-white font-bold text-base mt-4">No Staff Members Found</Text>
+                            <Text className="text-gray-400 text-xs text-center mt-1">
+                                Adjust your search term or filter criteria.
+                            </Text>
+                        </View>
+                    ) : (
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                            {filteredStaff.map((u) => {
+                                const assignedRoles = userRolesMap[u.id] || [];
+                                return (
+                                    <View 
+                                        key={u.id}
+                                        style={{
+                                            backgroundColor: surface,
+                                            padding: 16,
+                                            borderRadius: 18,
+                                            borderWidth: 1,
+                                            borderColor: border,
+                                            marginBottom: 12,
+                                        }}
+                                    >
+                                        <View className="flex-row justify-between items-start mb-2">
+                                            <View className="flex-1 mr-3">
+                                                <View className="flex-row items-center gap-2">
+                                                    <Text style={{ fontSize: 15, fontWeight: '700', color: textPrimary }}>
+                                                        {u.full_name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Staff Member'}
+                                                    </Text>
+                                                    <View style={{
+                                                        backgroundColor: u.role === 'admin' ? 'rgba(239,68,68,0.1)' : 'rgba(59,130,246,0.1)',
+                                                        paddingHorizontal: 8,
+                                                        paddingVertical: 2,
+                                                        borderRadius: 6,
+                                                    }}>
+                                                        <Text style={{
+                                                            fontSize: 10,
+                                                            fontWeight: '800',
+                                                            color: u.role === 'admin' ? '#EF4444' : '#3B82F6',
+                                                            textTransform: 'uppercase'
+                                                        }}>
+                                                            {u.role}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                                <Text style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>{u.email}</Text>
+                                            </View>
+
+                                            <TouchableOpacity
+                                                onPress={() => handleOpenAssignUserModal(u)}
+                                                style={{
+                                                    backgroundColor: isDark ? 'rgba(255,105,0,0.15)' : '#FFF7ED',
+                                                    paddingHorizontal: 12,
+                                                    paddingVertical: 6,
+                                                    borderRadius: 10,
+                                                    borderWidth: 1,
+                                                    borderColor: isDark ? 'rgba(255,105,0,0.3)' : '#FED7AA'
+                                                }}
+                                            >
+                                                <Text style={{ fontSize: 11, fontWeight: '700', color: '#FF6900' }}>
+                                                    Assign Roles
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
+
+                                        {/* Assigned custom roles chips */}
+                                        <View className="flex-row flex-wrap gap-1.5 mt-2">
+                                            {assignedRoles.length === 0 ? (
+                                                <Text style={{ fontSize: 11, color: textSecondary, fontStyle: 'italic' }}>
+                                                    No custom roles assigned
+                                                </Text>
+                                            ) : (
+                                                assignedRoles.map((r: any) => (
+                                                    <View 
+                                                        key={r.id}
+                                                        style={{
+                                                            backgroundColor: isDark ? '#1C2128' : '#F1F5F9',
+                                                            paddingHorizontal: 8,
+                                                            paddingVertical: 3,
+                                                            borderRadius: 6,
+                                                            borderWidth: 1,
+                                                            borderColor: border,
+                                                            flexDirection: 'row',
+                                                            alignItems: 'center'
+                                                        }}
+                                                    >
+                                                        <Check size={10} color="#10B981" style={{ marginRight: 4 }} />
+                                                        <Text style={{ fontSize: 10, fontWeight: '700', color: textPrimary }}>
+                                                            {r.name}
+                                                        </Text>
+                                                    </View>
+                                                ))
+                                            )}
+                                        </View>
+                                    </View>
+                                );
+                            })}
+                        </ScrollView>
+                    )}
+                </View>
+            ) : activeTab === 'hod' ? (
+                /* TAB CONTENT: HOD ASSIGNMENT */
+                <View className="flex-1 p-5">
+                    {/* Search */}
+                    <View className="flex-row items-center bg-[#F6F8FA] dark:bg-[#0D1117] rounded-xl px-3.5 py-2.5 border border-gray-200 dark:border-gray-800 mb-4">
+                        <TextInput
+                            className="flex-1 text-gray-900 dark:text-white font-medium text-xs"
+                            placeholder="Search subjects to view or assign Head of Department..."
+                            placeholderTextColor={textSecondary}
+                            value={hodSearch}
+                            onChangeText={setHodSearch}
+                        />
+                    </View>
+
+                    {hodLoading ? (
+                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <ActivityIndicator size="large" color="#FF6900" />
+                        </View>
+                    ) : filteredSubjects.length === 0 ? (
+                        <View className="bg-white dark:bg-[#161B22] p-12 rounded-[28px] items-center border border-gray-200 dark:border-gray-800 border-dashed">
+                            <GraduationCap size={44} color="#9CA3AF" style={{ opacity: 0.4 }} />
+                            <Text className="text-gray-900 dark:text-white font-bold text-base mt-4">No Subjects Found</Text>
+                            <Text className="text-gray-400 text-xs text-center mt-1">
+                                Create subjects in the Curriculum module first.
+                            </Text>
+                        </View>
+                    ) : (
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                            {filteredSubjects.map((sub) => {
+                                const hodTeacher = teachersList.find(t => t.id === sub.hod_teacher_id);
+                                return (
+                                    <View 
+                                        key={sub.id}
+                                        style={{
+                                            backgroundColor: surface,
+                                            padding: 16,
+                                            borderRadius: 18,
+                                            borderWidth: 1,
+                                            borderColor: border,
+                                            marginBottom: 12,
+                                        }}
+                                    >
+                                        <View className="flex-row justify-between items-start mb-2">
+                                            <View className="flex-1 mr-3">
+                                                <Text style={{ fontSize: 16, fontWeight: '700', color: textPrimary }}>
+                                                    {sub.title}
+                                                </Text>
+                                                {sub.description ? (
+                                                    <Text style={{ fontSize: 11, color: textSecondary, marginTop: 2 }} numberOfLines={1}>
+                                                        {sub.description}
+                                                    </Text>
+                                                ) : null}
+                                            </View>
+
+                                            <View className="flex-row items-center gap-2">
+                                                <TouchableOpacity
+                                                    onPress={() => handleOpenHODModal(sub)}
+                                                    style={{
+                                                        backgroundColor: isDark ? 'rgba(255,105,0,0.15)' : '#FFF7ED',
+                                                        paddingHorizontal: 12,
+                                                        paddingVertical: 6,
+                                                        borderRadius: 10,
+                                                        borderWidth: 1,
+                                                        borderColor: isDark ? 'rgba(255,105,0,0.3)' : '#FED7AA'
+                                                    }}
+                                                >
+                                                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#FF6900' }}>
+                                                        {sub.hod_teacher_id ? 'Change HOD' : 'Assign HOD'}
+                                                    </Text>
+                                                </TouchableOpacity>
+
+                                                {sub.hod_teacher_id && (
+                                                    <TouchableOpacity
+                                                        onPress={() => handleRemoveHOD(sub)}
+                                                        style={{
+                                                            backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#FEF2F2',
+                                                            paddingHorizontal: 10,
+                                                            paddingVertical: 6,
+                                                            borderRadius: 10,
+                                                            borderWidth: 1,
+                                                            borderColor: isDark ? 'rgba(239,68,68,0.3)' : '#FECACA'
+                                                        }}
+                                                    >
+                                                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#EF4444' }}>
+                                                            Remove
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            </View>
+                                        </View>
+
+                                        {/* Current HOD Info */}
+                                        <View style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            backgroundColor: bg,
+                                            padding: 10,
+                                            borderRadius: 12,
+                                            borderWidth: 1,
+                                            borderColor: border,
+                                            marginTop: 6
+                                        }}>
+                                            <GraduationCap size={16} color={sub.hod_teacher_id ? '#10B981' : textSecondary} style={{ marginRight: 8 }} />
+                                            {sub.hod_teacher_id && hodTeacher ? (
+                                                <View className="flex-1">
+                                                    <Text style={{ fontSize: 12, fontWeight: '700', color: textPrimary }}>
+                                                        {hodTeacher.name} <Text style={{ color: '#10B981', fontWeight: '800' }}>(HOD Active)</Text>
+                                                    </Text>
+                                                    <Text style={{ fontSize: 10, color: textSecondary }}>{hodTeacher.email}</Text>
+                                                </View>
+                                            ) : (
+                                                <Text style={{ fontSize: 12, color: textSecondary, fontStyle: 'italic' }}>
+                                                    No Head of Department assigned for this subject
+                                                </Text>
+                                            )}
+                                        </View>
+                                    </View>
+                                );
+                            })}
+                        </ScrollView>
+                    )}
+                </View>
             ) : loading ? (
+                /* TAB CONTENT: CUSTOM ROLES */
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                     <ActivityIndicator size="large" color="#FF6900" />
                 </View>
@@ -970,6 +1478,7 @@ export default function RolesAndPermissions() {
                 </ScrollView>
             )}
 
+            {/* Custom Role Builder Modal */}
             <RoleBuilderModal
                 visible={modalVisible}
                 role={selectedRole}
@@ -977,6 +1486,272 @@ export default function RolesAndPermissions() {
                 onSave={handleSaveRole}
                 isDark={isDark}
             />
+
+            {/* Assign User Custom Roles Modal */}
+            <Modal
+                visible={assignUserModalVisible}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setAssignUserModalVisible(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+                    <View style={{
+                        backgroundColor: surface,
+                        borderRadius: 24,
+                        borderWidth: 1,
+                        borderColor: border,
+                        width: '100%',
+                        maxWidth: 600,
+                        maxHeight: '85%',
+                        overflow: 'hidden',
+                    }}>
+                        <View style={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            paddingHorizontal: 20,
+                            paddingVertical: 16,
+                            borderBottomWidth: 1,
+                            borderBottomColor: border
+                        }}>
+                            <View>
+                                <Text style={{ fontSize: 17, fontWeight: '800', color: textPrimary }}>
+                                    Assign Custom Roles
+                                </Text>
+                                <Text style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>
+                                    {selectedStaffUser?.full_name || selectedStaffUser?.email}
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setAssignUserModalVisible(false)}>
+                                <X size={20} color={textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={{ padding: 20 }}>
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', marginBottom: 12 }}>
+                                Available Custom Roles
+                            </Text>
+
+                            {roles.filter(r => !r.isDefault).length === 0 ? (
+                                <Text style={{ fontSize: 13, color: textSecondary, fontStyle: 'italic', paddingVertical: 12 }}>
+                                    No custom roles created yet. Create a custom role first from the Custom Roles tab.
+                                </Text>
+                            ) : (
+                                roles.filter(r => !r.isDefault).map(r => {
+                                    const isAssigned = selectedRoleIdsForUser.includes(r.id);
+                                    return (
+                                        <TouchableOpacity
+                                            key={r.id}
+                                            onPress={() => handleToggleUserRole(r.id)}
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                padding: 14,
+                                                borderRadius: 14,
+                                                borderWidth: 1,
+                                                borderColor: isAssigned ? '#FF6900' : border,
+                                                backgroundColor: isAssigned ? (isDark ? 'rgba(255,105,0,0.1)' : '#FFF7ED') : bg,
+                                                marginBottom: 10
+                                            }}
+                                        >
+                                            <View style={{ flex: 1, marginRight: 12 }}>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                    <Text style={{ fontSize: 14, fontWeight: '700', color: textPrimary }}>{r.name}</Text>
+                                                    <View style={{ backgroundColor: isDark ? '#1C2128' : '#E2E8F0', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                                                        <Text style={{ fontSize: 9, fontWeight: '700', color: textSecondary, textTransform: 'uppercase' }}>
+                                                            {r.data_scope}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                                {r.description ? (
+                                                    <Text style={{ fontSize: 11, color: textSecondary, marginTop: 3 }}>{r.description}</Text>
+                                                ) : null}
+                                            </View>
+                                            <View style={{
+                                                width: 22,
+                                                height: 22,
+                                                borderRadius: 7,
+                                                borderWidth: isAssigned ? 0 : 2,
+                                                borderColor: border,
+                                                backgroundColor: isAssigned ? '#FF6900' : 'transparent',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}>
+                                                {isAssigned && <Check size={14} color="#FFFFFF" />}
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })
+                            )}
+                        </ScrollView>
+
+                        <View style={{
+                            flexDirection: 'row',
+                            justifyContent: 'flex-end',
+                            gap: 10,
+                            padding: 16,
+                            borderTopWidth: 1,
+                            borderTopColor: border
+                        }}>
+                            <TouchableOpacity
+                                onPress={() => setAssignUserModalVisible(false)}
+                                style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: border }}
+                            >
+                                <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={handleSaveUserRoles}
+                                disabled={savingUserAssignment}
+                                style={{
+                                    backgroundColor: '#FF6900',
+                                    paddingHorizontal: 20,
+                                    paddingVertical: 10,
+                                    borderRadius: 10,
+                                    opacity: savingUserAssignment ? 0.7 : 1
+                                }}
+                            >
+                                {savingUserAssignment ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF' }}>Save Assignment</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Assign HOD Modal */}
+            <Modal
+                visible={hodModalVisible}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setHodModalVisible(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+                    <View style={{
+                        backgroundColor: surface,
+                        borderRadius: 24,
+                        borderWidth: 1,
+                        borderColor: border,
+                        width: '100%',
+                        maxWidth: 600,
+                        maxHeight: '85%',
+                        overflow: 'hidden',
+                    }}>
+                        <View style={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            paddingHorizontal: 20,
+                            paddingVertical: 16,
+                            borderBottomWidth: 1,
+                            borderBottomColor: border
+                        }}>
+                            <View>
+                                <Text style={{ fontSize: 17, fontWeight: '800', color: textPrimary }}>
+                                    Assign Head of Department
+                                </Text>
+                                <Text style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>
+                                    Subject: {selectedSubjectForHOD?.title}
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setHodModalVisible(false)}>
+                                <X size={20} color={textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={{ padding: 20 }}>
+                            {/* Option: None / Remove */}
+                            <TouchableOpacity
+                                onPress={() => setSelectedHODTeacherId(null)}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: 14,
+                                    borderRadius: 14,
+                                    borderWidth: 1,
+                                    borderColor: selectedHODTeacherId === null ? '#FF6900' : border,
+                                    backgroundColor: selectedHODTeacherId === null ? (isDark ? 'rgba(255,105,0,0.1)' : '#FFF7ED') : bg,
+                                    marginBottom: 10
+                                }}
+                            >
+                                <View>
+                                    <Text style={{ fontSize: 14, fontWeight: '700', color: textPrimary }}>None (Unassigned)</Text>
+                                    <Text style={{ fontSize: 11, color: textSecondary, marginTop: 2 }}>No teacher acts as HOD for this subject</Text>
+                                </View>
+                                {selectedHODTeacherId === null && <Check size={18} color="#FF6900" />}
+                            </TouchableOpacity>
+
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', marginVertical: 10 }}>
+                                Select Teacher
+                            </Text>
+
+                            {teachersList.map((teach) => {
+                                const isSelected = selectedHODTeacherId === teach.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={teach.id}
+                                        onPress={() => setSelectedHODTeacherId(teach.id)}
+                                        style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            padding: 14,
+                                            borderRadius: 14,
+                                            borderWidth: 1,
+                                            borderColor: isSelected ? '#FF6900' : border,
+                                            backgroundColor: isSelected ? (isDark ? 'rgba(255,105,0,0.1)' : '#FFF7ED') : bg,
+                                            marginBottom: 8
+                                        }}
+                                    >
+                                        <View>
+                                            <Text style={{ fontSize: 14, fontWeight: '700', color: textPrimary }}>{teach.name}</Text>
+                                            <Text style={{ fontSize: 11, color: textSecondary, marginTop: 2 }}>{teach.email}</Text>
+                                        </View>
+                                        {isSelected && <Check size={18} color="#FF6900" />}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+
+                        <View style={{
+                            flexDirection: 'row',
+                            justifyContent: 'flex-end',
+                            gap: 10,
+                            padding: 16,
+                            borderTopWidth: 1,
+                            borderTopColor: border
+                        }}>
+                            <TouchableOpacity
+                                onPress={() => setHodModalVisible(false)}
+                                style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: border }}
+                            >
+                                <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={handleSaveHOD}
+                                disabled={savingHOD}
+                                style={{
+                                    backgroundColor: '#FF6900',
+                                    paddingHorizontal: 20,
+                                    paddingVertical: 10,
+                                    borderRadius: 10,
+                                    opacity: savingHOD ? 0.7 : 1
+                                }}
+                            >
+                                {savingHOD ? (
+                                    <ActivityIndicator size="small" color="#FFFFFF" />
+                                ) : (
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF' }}>Save HOD</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }

@@ -126,7 +126,8 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
   const [formStartTime, setFormStartTime] = useState('');
   const [formEndTime, setFormEndTime] = useState('');
   const [formEventType, setFormEventType] = useState('event');
-  const [formCancelClasses, setFormCancelClasses] = useState(false);
+  const [formCancelClasses, setFormCancelClasses] = useState<boolean | null>(null);
+  const [formTargetAudience, setFormTargetAudience] = useState<'all' | 'parents' | 'teachers' | 'students'>('all');
   const [formExpiryDays, setFormExpiryDays] = useState('7');
 
   const currentYear = currentDate.getFullYear();
@@ -249,7 +250,8 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
     setFormStartTime('08:00');
     setFormEndTime('10:00');
     setFormEventType('event');
-    setFormCancelClasses(false);
+    setFormCancelClasses(null);
+    setFormTargetAudience('all');
     setFormExpiryDays('7');
     setModalVisible(true);
   };
@@ -262,7 +264,8 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
     setFormStartTime(event.start_time || '');
     setFormEndTime(event.end_time || '');
     setFormEventType(event.event_type || 'event');
-    setFormCancelClasses(event.cancel_classes);
+    setFormCancelClasses(typeof event.cancel_classes === 'boolean' ? event.cancel_classes : false);
+    setFormTargetAudience((event.metadata?.target_audience as any) || 'all');
     setFormExpiryDays('7');
     setModalVisible(true);
   };
@@ -276,6 +279,10 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
       showError('Required', 'Please select an event date');
       return;
     }
+    if (formCancelClasses === null) {
+      showError('Decision Required', 'Please explicitly select whether classes continue or are cancelled.');
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -287,6 +294,7 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
         end_time: formEndTime.trim() || undefined,
         event_type: formEventType,
         cancel_classes: formCancelClasses,
+        target_audience: formTargetAudience,
         announcement_expiry_days: Number(formExpiryDays) || 7,
       };
 
@@ -759,39 +767,84 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
                       numberOfLines={3}
                       className={`px-3.5 py-2.5 rounded-xl border text-sm font-medium ${isDark ? 'bg-[#0D1117] border-[#30363D] text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
                     />
-                  </View>
-
-                  {/* Class Cancellation Choice */}
-                  <View className={`p-4 rounded-2xl border ${formCancelClasses ? 'bg-red-500/10 border-red-500/40' : isDark ? 'bg-[#0D1117] border-[#30363D]' : 'bg-gray-50 border-gray-200'}`}>
-                    <View className="flex-row justify-between items-center">
-                      <View className="flex-1 mr-3">
-                        <Text className={`text-xs font-black ${formCancelClasses ? 'text-red-500' : isDark ? 'text-white' : 'text-gray-900'}`}>
-                          Cancel All Classes on This Day
+                  </View>                  {/* Explicit Class Continuation Choice (Mandatory) */}
+                  <View className={`p-4 rounded-2xl border ${formCancelClasses === null ? (isDark ? 'bg-amber-500/10 border-amber-500/40' : 'bg-amber-50 border-amber-300') : formCancelClasses ? 'bg-red-500/10 border-red-500/40' : (isDark ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-emerald-50 border-emerald-300')}`}>
+                    <View className="mb-2">
+                      <View className="flex-row items-center justify-between">
+                        <Text className={`text-xs font-black ${formCancelClasses === true ? 'text-red-500' : formCancelClasses === false ? 'text-emerald-600 dark:text-emerald-400' : isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                          Class Schedule Decision *
                         </Text>
-                        <Text className="text-[11px] text-gray-400 mt-0.5">
-                          Timetable and attendance modules will show &quot;No classes scheduled&quot; for this date.
-                        </Text>
+                        {formCancelClasses === null && (
+                          <View className="bg-amber-500/20 px-2 py-0.5 rounded-md">
+                            <Text className="text-[10px] font-bold text-amber-600 dark:text-amber-400">Choice Required</Text>
+                          </View>
+                        )}
                       </View>
+                      <Text className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                        Specify whether regular classes continue alongside this event or if all classes are cancelled.
+                      </Text>
+                    </View>
+
+                    <View className="flex-row gap-2 mt-2">
                       <TouchableOpacity
-                        onPress={() => setFormCancelClasses(!formCancelClasses)}
-                        className={`w-12 h-6 rounded-full p-0.5 transition-all ${formCancelClasses ? 'bg-red-500 items-end' : 'bg-gray-300 dark:bg-gray-700 items-start'}`}
+                        onPress={() => setFormCancelClasses(false)}
+                        className={`flex-1 py-2.5 px-3 rounded-xl border items-center justify-center ${formCancelClasses === false ? 'bg-emerald-600 border-emerald-600 shadow-sm' : isDark ? 'bg-[#0D1117] border-[#30363D]' : 'bg-white border-gray-200'}`}
                       >
-                        <View className="w-5 h-5 rounded-full bg-white shadow-sm" />
+                        <Text className={`text-xs font-bold text-center ${formCancelClasses === false ? 'text-white' : isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+                          Classes Continue
+                        </Text>
+                        <Text className={`text-[10px] text-center mt-0.5 ${formCancelClasses === false ? 'text-emerald-100' : 'text-gray-400'}`}>
+                          Normal Schedule
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        onPress={() => setFormCancelClasses(true)}
+                        className={`flex-1 py-2.5 px-3 rounded-xl border items-center justify-center ${formCancelClasses === true ? 'bg-red-600 border-red-600 shadow-sm' : isDark ? 'bg-[#0D1117] border-[#30363D]' : 'bg-white border-gray-200'}`}
+                      >
+                        <Text className={`text-xs font-bold text-center ${formCancelClasses === true ? 'text-white' : isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+                          Cancel Classes
+                        </Text>
+                        <Text className={`text-[10px] text-center mt-0.5 ${formCancelClasses === true ? 'text-red-100' : 'text-gray-400'}`}>
+                          No Classes
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   </View>
 
-                  {/* Auto Announcement Details */}
-                  <View className="p-3.5 rounded-xl bg-orange-500/10 border border-orange-500/20">
-                    <View className="flex-row items-center mb-1">
+                  {/* Target Audience Selector */}
+                  <View className={`p-4 rounded-2xl border ${isDark ? 'bg-[#0D1117] border-[#30363D]' : 'bg-gray-50 border-gray-200'}`}>
+                    <View className="flex-row items-center mb-1.5">
                       <Bell size={13} color="#FF6900" style={{ marginRight: 6 }} />
-                      <Text className="text-xs font-bold text-[#FF6900]">
-                        Automatic Announcement
+                      <Text className={`text-xs font-bold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+                        Announcement Target Audience
                       </Text>
                     </View>
-                    <Text className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight">
-                      A school-wide announcement will be posted automatically to notify teachers, students, and parents.
+                    <Text className="text-[11px] text-gray-500 dark:text-gray-400 mb-2.5 leading-tight">
+                      Controls which roles can see the automated calendar announcement.
                     </Text>
+
+                    <View className="flex-row flex-wrap gap-1.5">
+                      {[
+                        { key: 'all' as const, label: 'All (School-Wide)' },
+                        { key: 'teachers' as const, label: 'Teachers' },
+                        { key: 'students' as const, label: 'Students' },
+                        { key: 'parents' as const, label: 'Parents' },
+                      ].map((item) => {
+                        const isSelected = formTargetAudience === item.key;
+                        return (
+                          <TouchableOpacity
+                            key={item.key}
+                            onPress={() => setFormTargetAudience(item.key)}
+                            className={`px-3 py-1.5 rounded-lg border ${isSelected ? 'bg-[#FF6900] border-[#FF6900]' : isDark ? 'bg-[#161B22] border-[#30363D]' : 'bg-white border-gray-200'}`}
+                          >
+                            <Text className={`text-xs font-bold ${isSelected ? 'text-white' : isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                              {item.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
                   </View>
                 </View>
               </ScrollView>
@@ -805,7 +858,7 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
                 </TouchableOpacity>
 
                 {(() => {
-                  const canSave = !!formTitle.trim() && !!formDate.trim() && !submitting;
+                  const canSave = !!formTitle.trim() && !!formDate.trim() && formCancelClasses !== null && !submitting;
                   return (
                     <TouchableOpacity
                       onPress={handleSaveEvent}

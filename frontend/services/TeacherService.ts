@@ -168,6 +168,16 @@ export const TeacherAPI = {
     }
   },
 
+  getCoverageOversight: async (params?: { term?: string; academic_year?: string }): Promise<any> => {
+    try {
+      const response = await api.get("/teacher/coverage-plans/oversight", { params });
+      return response.data;
+    } catch (error) {
+      console.error("Get coverage oversight error", error);
+      throw error;
+    }
+  },
+
   getCoveragePlans: async (params: { subject_id: string; term?: string; academic_year?: string }): Promise<any> => {
     try {
       const response = await api.get("/teacher/coverage-plans", { params });

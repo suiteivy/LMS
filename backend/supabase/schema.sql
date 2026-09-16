@@ -454,6 +454,7 @@ CREATE TABLE announcements (
     teacher_id TEXT REFERENCES teachers(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     message TEXT NOT NULL,
+    target_audience TEXT NOT NULL DEFAULT 'all' CHECK (target_audience IN ('all', 'teachers', 'students', 'parents')),
     expires_at TIMESTAMPTZ,
     institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),

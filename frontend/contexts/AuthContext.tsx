@@ -466,11 +466,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleSignIn = async (email: string, password: string) => {
     setLoading(true);
     try {
+      try {
+        const { setSigningOutState } = await import('@/services/api');
+        setSigningOutState(false);
+      } catch {}
       await AsyncStorage.removeItem('deliberate_logout').catch(() => {});
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try { window.localStorage.removeItem('deliberate_logout'); } catch {}
+      }
       const result = await authService.signIn(email, password);
-      if (result.data?.session) {
+      if (result.data?.session?.user) {
         await AsyncStorage.setItem('session_start_time', Date.now().toString());
         await startTimeoutTimer(false);
+        // Load profile immediately so it is ready before sign in returns
+        await loadUserProfile(result.data.session.user.id);
       }
       if (result.error) setLoading(false);
       return result;
@@ -481,6 +490,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   const handleStartDemo = async (role: string) => {
+    try {
+      const { setSigningOutState } = await import('@/services/api');
+      setSigningOutState(false);
+    } catch {}
+    await AsyncStorage.removeItem('deliberate_logout').catch(() => {});
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try { window.localStorage.removeItem('deliberate_logout'); } catch {}
+    }
     const expiry = Date.now() + 15 * 60 * 1000;
     await AsyncStorage.setItem('demo_expiry', expiry.toString());
     const result = await authService.startDemoSession(role);
@@ -726,15 +743,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     loadingUserId.current = userId;
 
-    // Add a safety timeout for the profile load itself
-    const safetyTimeout = setTimeout(() => {
+    // Add a safety timeout for the profile load itself (15 seconds)
+    const safetyTimeout = setTimeout(async () => {
       if (loadingUserId.current === userId) {
-        console.warn(`[AuthContext] Profile load for ${userId} timed out after 6s`);
+        console.warn(`[AuthContext] Profile load for ${userId} timed out after 15s, checking cache`);
+        try {
+          const cachedRaw = await AsyncStorage.getItem(`lms_cached_profile_${userId}`);
+          if (cachedRaw) {
+            const cachedData = JSON.parse(cachedRaw);
+            if (cachedData && cachedData.id === userId) {
+              console.info('[AuthContext] Restored user profile from cache on timeout for', userId);
+              applyProfileData(cachedData, userId, cachedData.is_librarian, cachedData.is_finance_admin);
+            }
+          }
+        } catch {}
         setIsProfileLoading(false);
         setLoading(false);
         loadingUserId.current = null;
       }
-    }, 6000);
+    }, 15000);
 
     try {
       setIsProfileLoading(true);
@@ -776,46 +803,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const userData = data as any;
 
+      // Parallelize auxiliary role queries so they run concurrently rather than adding serial latency
       let isLibrarianFlag = false;
+      let isFinanceAdminFlag = false;
+      let customRoles: any[] = [];
+
       try {
-        const { data: libData } = await supabase
-          .from('librarian_designations')
-          .select('id')
-          .eq('user_id', userId)
-          .maybeSingle();
-        isLibrarianFlag = !!libData;
-      } catch {
-        isLibrarianFlag = false;
+        const [libRes, finRes, urRes] = await Promise.all([
+          Promise.resolve(
+            supabase
+              .from('librarian_designations')
+              .select('id')
+              .eq('user_id', userId)
+              .maybeSingle()
+          ).catch(() => ({ data: null })),
+          Promise.resolve(
+            (supabase.from as any)('finance_admin_designations')
+              .select('id')
+              .eq('user_id', userId)
+              .eq('is_active', true)
+              .maybeSingle()
+          ).catch(() => ({ data: null })),
+          Promise.resolve(
+            supabase
+              .from('user_roles')
+              .select('roles(id, name, description)')
+              .eq('user_id', userId)
+          ).catch(() => ({ data: null })),
+        ]);
+
+        isLibrarianFlag = !!libRes?.data;
+        isFinanceAdminFlag = !!finRes?.data;
+        if (urRes?.data && Array.isArray(urRes.data)) {
+          customRoles = (urRes.data as any[]).map((ur: any) => ur.roles).filter(Boolean);
+        }
+      } catch (auxErr) {
+        console.warn('[AuthContext] Auxiliary role queries error:', auxErr);
       }
+
       setIsLibrarian(isLibrarianFlag);
       userData.is_librarian = isLibrarianFlag;
-
-      let isFinanceAdminFlag = false;
-      try {
-        const { data: finData } = await (supabase.from as any)('finance_admin_designations')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('is_active', true)
-          .maybeSingle();
-        isFinanceAdminFlag = !!finData;
-      } catch {
-        isFinanceAdminFlag = false;
-      }
       setIsFinanceAdmin(isFinanceAdminFlag);
       userData.is_finance_admin = isFinanceAdminFlag;
-
-      let customRoles: any[] = [];
-      try {
-        const { data: urData } = await supabase
-          .from('user_roles')
-          .select('roles(id, name, description)')
-          .eq('user_id', userId);
-        if (urData) {
-          customRoles = urData.map((ur: any) => ur.roles).filter(Boolean);
-        }
-      } catch (urErr) {
-        console.warn('[AuthContext] Error loading user custom roles:', urErr);
-      }
       userData.custom_roles = customRoles;
 
       // Cache profile locally for offline resilience
@@ -1037,11 +1066,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const watchdog = setTimeout(() => {
       if (isInitializing || loading) {
-        console.warn(`[AuthContext] Watchdog triggered (10s limit): clearing stuck loading states. Initializing: ${isInitializing}, Loading: ${loading}`);
+        console.warn(`[AuthContext] Watchdog triggered (20s limit): clearing stuck loading states. Initializing: ${isInitializing}, Loading: ${loading}`);
         setIsInitializing(false);
         setLoading(false);
       }
-    }, 10000);
+    }, 20000);
 
     initializeAuthSafe();
 
@@ -1052,11 +1081,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        const isDeliberatelyLoggedOut = await AsyncStorage.getItem('deliberate_logout').catch(() => null);
-        if (isDeliberatelyLoggedOut === 'true' && !isManualLogout.current) {
-          console.warn('[AuthContext] Suppressed unexpected SIGNED_IN event while marked logged out');
-          await safeSignOut('local', LogoutReason.USER_INITIATED, true);
-          return;
+        try {
+          const { setSigningOutState } = await import('@/services/api');
+          setSigningOutState(false);
+        } catch {}
+        // A valid SIGNED_IN event means the user or app actively authenticated.
+        // Clear any stale deliberate_logout marker immediately.
+        await AsyncStorage.removeItem('deliberate_logout').catch(() => {});
+        if (typeof window !== 'undefined' && window.localStorage) {
+          try { window.localStorage.removeItem('deliberate_logout'); } catch {}
         }
 
         setSession(session);
@@ -1096,10 +1129,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           .subscribe();
         realtimeChannelRef.current = channel;
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        if (isManualLogout.current) return;
         const isDeliberatelyLoggedOut = await AsyncStorage.getItem('deliberate_logout').catch(() => null);
-        if (isDeliberatelyLoggedOut === 'true' || isManualLogout.current) {
-          console.warn('[AuthContext] Suppressed TOKEN_REFRESHED due to deliberate logged out state');
-          await safeSignOut('local', LogoutReason.USER_INITIATED, true);
+        if (isDeliberatelyLoggedOut === 'true' && !currentSessionRef.current) {
+          console.warn('[AuthContext] Suppressed background TOKEN_REFRESHED due to deliberate logged out state');
           return;
         }
         setSession(session);

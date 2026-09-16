@@ -40,6 +40,7 @@ import { StudentHistoryModal } from "@/components/results/StudentHistoryModal";
 import React, { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
+    Alert,
     Modal,
     ScrollView,
     Text,
@@ -1031,21 +1032,40 @@ export default function ReportCardsPage() {
         }
     };
 
-    const handleRegenerateSingle = async (card: ReportCard) => {
-        try {
-            setRegeneratingCardId(card.id);
-            await GradingAPI.generateStudentReportCard({
-                student_id: card.student_id,
-                class_id: card.class_id,
-                term_id: card.term_id,
-            });
-            showSuccess("Report Card Updated", `Recompiled report card for ${card.student_name}.`);
-            await fetchReportCards();
-        } catch (err: any) {
-            showError(err?.message || "Failed to regenerate student report card");
-        } finally {
-            setRegeneratingCardId(null);
+    const handleRegenerateSingle = (card: ReportCard) => {
+        const targetTerm = terms.find((t) => t.id === card.term_id);
+        if (targetTerm?.locked_at) {
+            showError("Term Locked", "Report cards cannot be regenerated after the term grading deadline has passed.");
+            return;
         }
+
+        Alert.alert(
+            "Confirm Regeneration",
+            `Are you sure you want to recalculate and regenerate the report card for ${card.student_name}? Any unfinalized draft values will be updated with current gradebook scores.`,
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Regenerate",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            setRegeneratingCardId(card.id);
+                            await GradingAPI.regenerateReportCards({
+                                student_id: card.student_id,
+                                class_id: card.class_id,
+                                term_id: card.term_id,
+                            });
+                            showSuccess("Report Card Updated", `Recompiled report card for ${card.student_name}.`);
+                            await fetchReportCards();
+                        } catch (err: any) {
+                            showError(err?.message || "Failed to regenerate student report card");
+                        } finally {
+                            setRegeneratingCardId(null);
+                        }
+                    },
+                },
+            ]
+        );
     };
 
     const handleOpenEditRemarks = (card: ReportCard) => {
@@ -1070,7 +1090,7 @@ export default function ReportCardsPage() {
         }
     };
 
-    const handleGenerateClassCards = async () => {
+    const handleGenerateClassCards = () => {
         if (!selectedClassId || selectedClassId === "all") {
             showError("Select a Class", "Please select a specific designated class to compile report cards.");
             return;
@@ -1080,19 +1100,37 @@ export default function ReportCardsPage() {
             showError("Select a Term", "Please select a term before compiling report cards.");
             return;
         }
-        setGeneratingClass(true);
-        try {
-            await GradingAPI.generateClassReportCards({
-                class_id: selectedClassId,
-                term_id: effectiveTermId,
-            });
-            showSuccess("Report Cards Generated", "Class report cards have been compiled into draft status.");
-            fetchReportCards();
-        } catch (err: any) {
-            showError(err?.message || "Failed to generate class report cards");
-        } finally {
-            setGeneratingClass(false);
+        const targetTerm = terms.find((t) => t.id === effectiveTermId);
+        if (targetTerm?.locked_at) {
+            showError("Term Locked", "Report cards cannot be compiled or regenerated after the term grading deadline has passed.");
+            return;
         }
+
+        Alert.alert(
+            "Compile Class Report Cards",
+            "This will generate draft report cards for all students in your assigned class using current assessment marks. Continue?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Compile Cards",
+                    onPress: async () => {
+                        setGeneratingClass(true);
+                        try {
+                            await GradingAPI.generateClassReportCards({
+                                class_id: selectedClassId,
+                                term_id: effectiveTermId,
+                            });
+                            showSuccess("Report Cards Generated", "Class report cards have been compiled into draft status.");
+                            fetchReportCards();
+                        } catch (err: any) {
+                            showError(err?.message || "Failed to generate class report cards");
+                        } finally {
+                            setGeneratingClass(false);
+                        }
+                    },
+                },
+            ]
+        );
     };
 
     const handleSaveAssessmentSelections = async () => {

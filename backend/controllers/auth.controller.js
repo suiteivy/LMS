@@ -7,6 +7,7 @@ const { canonicalRoleFrom, withRoleAliases } = require("../utils/roleAlias.js");
 const { assignStudentToSingleClass, resolveAutoAssignClass } = require('../utils/studentClassEnrollment');
 const { clearUserCache } = require("../middleware/auth.middleware.js");
 const { logRecordChange } = require("../utils/auditLogger.js");
+const logger = require("../utils/logger.js");
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const ADMIN_DELEGATED_USER_EDIT_PERMISSIONS = new Set([
@@ -1853,9 +1854,30 @@ exports.searchUsers = async (req, res) => {
 exports.logout = async (req, res) => {
   try {
     const user = req.user;
+    const sessionId = req.sessionId;
+
+    // Revoke server-side session in user_sessions registry (Part H)
+    if (sessionId) {
+      const { error: sessionRevokeErr } = await supabase
+        .from('user_sessions')
+        .update({ is_revoked: true })
+        .eq('session_id', sessionId);
+      if (sessionRevokeErr) {
+        logger.warn('Failed to mark session revoked on logout:', { error: sessionRevokeErr?.message || sessionRevokeErr });
+      }
+    } else if (user?.id) {
+      const authHeader = req.headers?.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7).trim();
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        await supabase
+          .from('user_sessions')
+          .update({ is_revoked: true })
+          .eq('session_id', tokenHash);
+      }
+    }
 
     // Only demo users (email starts with 'demo.') have trial sessions to clean up.
-    // Regular admins, students, teachers etc. use 24-hour JWT sessions — do NOT touch them.
     if (user && user.email && user.email.startsWith('demo.')) {
       const { error } = await supabase
         .from('trial_sessions')
@@ -1863,14 +1885,13 @@ exports.logout = async (req, res) => {
         .eq('demo_user_id', user.id);
 
       if (error) {
-        console.warn("Error cleaning up trial session:", error);
-      } else {
+        logger.warn("Error cleaning up trial session:", { error: error?.message || error });
       }
     }
 
     res.status(200).json({ message: "Logged out successfully" });
   } catch (err) {
-    console.error("Logout error:", err);
+    logger.error("Logout error:", { error: err?.message || err });
     res.status(500).json({ error: "Logout error" });
   }
 };

@@ -1,5 +1,6 @@
 const supabase = require('../utils/supabaseClient.js');
 const { withSupabaseRetry } = require('../utils/supabaseRetry.js');
+const logger = require('../utils/logger.js');
 
 function isValidDateOnlyString(value) {
   if (typeof value !== 'string') return false;
@@ -289,13 +290,17 @@ exports.createEvent = async (req, res) => {
       start_time,
       end_time,
       event_type = 'event',
-      cancel_classes = false,
+      cancel_classes,
+      target_audience = 'all',
       announcement_expiry_days,
     } = req.body || {};
 
     if (!title || typeof title !== 'string' || !title.trim()) {
       return res.status(400).json({ error: 'Event title is required.' });
     }
+
+    const validAudiences = ['all', 'teachers', 'students', 'parents'];
+    const validatedAudience = validAudiences.includes(target_audience) ? target_audience : 'all';
 
     const finalStartDate = start_date || event_date;
     const finalEndDate = end_date || finalStartDate;
@@ -314,6 +319,13 @@ exports.createEvent = async (req, res) => {
 
     if (finalEndDate < finalStartDate) {
       return res.status(400).json({ error: 'End date cannot be before start date.' });
+    }
+
+    if (cancel_classes === undefined || cancel_classes === null || typeof cancel_classes !== 'boolean') {
+      return res.status(400).json({
+        error: 'You must explicitly decide whether classes continue or are cancelled for this event.',
+        code: 'EXPLICIT_CLASS_CONTINUATION_REQUIRED',
+      });
     }
 
     const isCancelClasses = Boolean(cancel_classes);
@@ -359,6 +371,7 @@ exports.createEvent = async (req, res) => {
         .insert({
           title: annTitle,
           message: annMessage,
+          target_audience: validatedAudience,
           institution_id: institutionId,
           expires_at: expiresAt,
         })
@@ -369,7 +382,7 @@ exports.createEvent = async (req, res) => {
         announcementId = annData.id;
       }
     } catch (annErr) {
-      console.warn('Auto announcement creation non-fatal error:', annErr);
+      logger.warn('Auto announcement creation non-fatal error:', { error: annErr?.message || annErr });
     }
 
     // 2. Insert calendar event
@@ -515,16 +528,21 @@ exports.updateEvent = async (req, res) => {
           annMessage += `\n\nDetails:\n${updatedEvent.description}`;
         }
 
+        const announcementUpdate = {
+          title: annTitle,
+          message: annMessage,
+          updated_at: new Date().toISOString(),
+        };
+        if (req.body?.target_audience && ['all', 'teachers', 'students', 'parents'].includes(req.body.target_audience)) {
+          announcementUpdate.target_audience = req.body.target_audience;
+        }
+
         await supabase
           .from('announcements')
-          .update({
-            title: annTitle,
-            message: annMessage,
-            updated_at: new Date().toISOString(),
-          })
+          .update(announcementUpdate)
           .eq('id', existing.announcement_id);
       } catch (annUpdateErr) {
-        console.warn('Failed to cascade update to announcement:', annUpdateErr);
+        logger.warn('Failed to cascade update to announcement:', { error: annUpdateErr?.message || annUpdateErr });
       }
     }
 

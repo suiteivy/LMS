@@ -406,12 +406,24 @@ exports.gradeSubmission = async (req, res) => {
  */
 exports.createAnnouncement = async (req, res) => {
     try {
-        const { subject_id, teacher_id, title, message } = req.body;
+        const { subject_id, teacher_id, title, message, target_audience = 'all' } = req.body;
         const { institution_id } = req;
         await purgeExpiredAnnouncements(institution_id);
+
+        const validAudiences = ['all', 'teachers', 'students', 'parents'];
+        const validatedAudience = validAudiences.includes(target_audience) ? target_audience : 'all';
+
         const { data, error } = await supabase
             .from("announcements")
-            .insert([{ subject_id, teacher_id, title, message, institution_id, expires_at: computeAnnouncementExpiryIso() }])
+            .insert([{
+                subject_id,
+                teacher_id,
+                title,
+                message,
+                target_audience: validatedAudience,
+                institution_id,
+                expires_at: computeAnnouncementExpiryIso()
+            }])
             .select()
             .single();
 
@@ -424,14 +436,25 @@ exports.createAnnouncement = async (req, res) => {
 
 exports.getAnnouncements = async (req, res) => {
     try {
-        const { subject_id } = req.query;
-        const { institution_id } = req;
+        const { subject_id, target_audience } = req.query;
+        const { institution_id, userRole } = req;
         await purgeExpiredAnnouncements(institution_id);
         let query = supabase.from("announcements")
             .select("*, teacher:teachers(user:users(first_name, last_name, full_name))")
             .eq("institution_id", institution_id)
             .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
         if (subject_id) query = query.eq("subject_id", subject_id);
+
+        // Role-based target audience scoping
+        if (userRole === 'teacher') {
+            query = query.in("target_audience", ['all', 'teachers']);
+        } else if (userRole === 'student') {
+            query = query.in("target_audience", ['all', 'students']);
+        } else if (userRole === 'parent') {
+            query = query.in("target_audience", ['all', 'parents']);
+        } else if (target_audience && ['all', 'teachers', 'students', 'parents'].includes(target_audience)) {
+            query = query.eq("target_audience", target_audience);
+        }
 
         const { data, error } = await query;
         if (error) throw error;

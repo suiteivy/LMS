@@ -281,10 +281,11 @@ exports.getMyAnnouncements = async (req, res) => {
         let query = supabase
             .from('announcements')
             .select(`
-                id, title, description:message, created_at, updated_at,
+                id, title, description:message, created_at, updated_at, target_audience,
                 subjects ( id, title, teacher_id, teachers:teachers!courses_new_teacher_id_fkey(users(first_name, last_name, full_name)) )
             `)
             .eq('institution_id', institution_id)
+            .in('target_audience', ['all', 'students'])
             .order('created_at', { ascending: false });
 
         if (subjectIds.length > 0) {

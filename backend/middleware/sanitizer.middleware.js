@@ -1,28 +1,43 @@
 /**
  * Middleware to sanitize incoming request data.
- * It recursively converts any literal string "null" into an actual null value.
- * This prevents UUID syntax errors when the frontend sends "null" for optional UUID fields.
+ * 1. Recursively converts literal string "null" / "undefined" into null.
+ * 2. Sanitizes string inputs to prevent XSS (stripping script/iframe tags, onerror/onload attributes)
+ *    while preserving sensitive credential fields (passwords, tokens).
  */
 
-function sanitizeValue(value) {
-    if (value === "null" || value === "undefined") {
-        return null;
+function sanitizeString(str) {
+    if (typeof str !== 'string') return str;
+    if (str === "null" || str === "undefined") return null;
+
+    // Remove script tags, iframes, and javascript: protocols
+    return str
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+        .replace(/javascript:[^\s"']+/gi, '')
+        .replace(/\bonerror\s*=/gi, 'noerror=')
+        .replace(/\bonload\s*=/gi, 'noload=');
+}
+
+function sanitizeValue(value, key = '') {
+    if (typeof value === 'string') {
+        if (key && /password|token|secret/i.test(key)) {
+            return (value === "null" || value === "undefined") ? null : value;
+        }
+        return sanitizeString(value);
     }
-    
-    // Also handle cases where "null" might be inside an array
+
     if (Array.isArray(value)) {
-        return value.map(item => sanitizeValue(item));
+        return value.map(item => sanitizeValue(item, key));
     }
-    
-    // Recursively sanitize objects
+
     if (value !== null && typeof value === 'object' && !(value instanceof Date)) {
-        for (const key in value) {
-            if (Object.prototype.hasOwnProperty.call(value, key)) {
-                value[key] = sanitizeValue(value[key]);
+        for (const k in value) {
+            if (Object.prototype.hasOwnProperty.call(value, k)) {
+                value[k] = sanitizeValue(value[k], k);
             }
         }
     }
-    
+
     return value;
 }
 
@@ -40,3 +55,4 @@ const nullStringSanitizer = (req, res, next) => {
 };
 
 module.exports = { nullStringSanitizer };
+

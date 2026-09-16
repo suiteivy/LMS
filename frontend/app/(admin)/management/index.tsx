@@ -15,6 +15,9 @@ import {
     DoorClosedLocked,
     FileCheck2,
     GraduationCap,
+    Layers,
+    Award,
+    Shield,
 } from 'lucide-react-native';
 import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -110,6 +113,46 @@ export default function AdminManagement() {
             darkBgColor: "#2e1065",
             route: "/(admin)/management/subjects",
             tooltipId: 'admin.manage.subjects'
+        },
+        {
+            icon: Layers,
+            title: "Curriculum Coverage Planner",
+            description: "Setup termly coverage plans, assign HODs, and track departmental progress",
+            color: "#3b82f6",
+            bgColor: "#dbeafe",
+            darkBgColor: "#1e3a5f",
+            route: "/(admin)/management/coverage",
+            tooltipId: 'admin.manage.coverage'
+        },
+        {
+            icon: Calendar,
+            title: "Exam Periods & Papers",
+            description: "Define exam periods, set submission deadlines, and monitor paper status",
+            color: "#ec4899",
+            bgColor: "#fce7f3",
+            darkBgColor: "#500724",
+            route: "/(admin)/management/exams",
+            tooltipId: 'admin.manage.exams'
+        },
+        {
+            icon: Award,
+            title: "Student Rankings & Leaderboards",
+            description: "School-wide, cohort, and subject performance rankings and CBC bands",
+            color: "#eab308",
+            bgColor: "#fef9c3",
+            darkBgColor: "#3d3000",
+            route: "/(admin)/results/rankings",
+            tooltipId: 'admin.manage.rankings'
+        },
+        {
+            icon: Shield,
+            title: "Roles, Permissions & Designations",
+            description: "Manage custom roles, user assignment, Librarians, Finance Admins & HODs",
+            color: "#FF6900",
+            bgColor: "#fff0e6",
+            darkBgColor: "#3d1a00",
+            route: "/(admin)/management/roles",
+            tooltipId: 'admin.manage.roles'
         },
         {
             icon: CalendarCheck,

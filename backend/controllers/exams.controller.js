@@ -120,7 +120,7 @@ const getTeacherSubjectIds = async (userId, institutionId) => {
 exports.createExam = async (req, res) => {
     try {
         const { institution_id, userId, userRole } = req;
-        const { subject_id, teacher_id, title, description, date, max_score, weight, term, is_published, submission_deadline } = req.body;
+        const { subject_id, teacher_id, title, description, date, max_score, weight, term, is_published, submission_deadline, exam_period_id } = req.body;
 
         if (!subject_id || !title || !date) {
             return res.status(400).json({ error: "subject_id, title, and date are required" });
@@ -151,6 +151,24 @@ exports.createExam = async (req, res) => {
             return res.status(403).json({ error: "Unauthorized" });
         }
 
+        let effectiveExamPeriodId = exam_period_id || null;
+        let effectiveDeadline = submission_deadline || null;
+
+        if (effectiveExamPeriodId) {
+            const { data: period, error: periodErr } = await supabase
+                .from('exam_periods')
+                .select('*')
+                .eq('id', effectiveExamPeriodId)
+                .eq('institution_id', institution_id)
+                .maybeSingle();
+
+            if (!periodErr && period) {
+                if (!effectiveDeadline && period.submission_deadline) {
+                    effectiveDeadline = period.submission_deadline;
+                }
+            }
+        }
+
         const effectiveTerm = term || activeTerm.name || "Term 1";
 
         const { data, error } = await supabase
@@ -166,7 +184,8 @@ exports.createExam = async (req, res) => {
                 weight: weight || 0,
                 term: effectiveTerm,
                 is_published: is_published !== undefined ? is_published : true,
-                submission_deadline: submission_deadline || null
+                submission_deadline: effectiveDeadline,
+                exam_period_id: effectiveExamPeriodId
             }])
             .select()
             .single();
@@ -180,10 +199,20 @@ exports.createExam = async (req, res) => {
 
 exports.getExams = async (req, res) => {
     try {
-        const { subject_id, student_id } = req.query;
+        const { subject_id, student_id, exam_period_id } = req.query;
         const { institution_id, userRole, userId } = req;
-        let query = supabase.from("exams").select("*, subjects(id, title, class_id)").eq("institution_id", institution_id);
-        if (subject_id) query = query.eq("subject_id", subject_id);
+
+        const buildQuery = (withPeriod = true) => {
+            const selectStr = withPeriod
+                ? "*, subjects(id, title, class_id), exam_periods(id, name, start_date, end_date, submission_deadline, status)"
+                : "*, subjects(id, title, class_id)";
+            let q = supabase.from("exams").select(selectStr).eq("institution_id", institution_id);
+            if (subject_id) q = q.eq("subject_id", subject_id);
+            if (exam_period_id) q = q.eq("exam_period_id", exam_period_id);
+            return q;
+        };
+
+        let query = buildQuery(true);
 
         if (userRole === 'teacher') {
             const allowedSubjectIds = await getTeacherSubjectIds(userId, institution_id);
@@ -227,7 +256,21 @@ exports.getExams = async (req, res) => {
             query = query.in('subject_id', parentSubjectIds).eq('is_published', true);
         }
 
-        const { data, error } = await query.order('date', { ascending: false });
+        let { data, error } = await query.order('date', { ascending: false });
+
+        if (error && (error.code === '42P01' || error.code === 'PGRST200' || error.code === 'PGRST205' || error.code === '42703')) {
+            // Fallback without exam_periods join
+            let fallbackQuery = buildQuery(false);
+            if (userRole === 'teacher') {
+                const allowedSubjectIds = await getTeacherSubjectIds(userId, institution_id);
+                if (allowedSubjectIds.length === 0) return res.json([]);
+                fallbackQuery = fallbackQuery.in('subject_id', allowedSubjectIds);
+            }
+            const fbResult = await fallbackQuery.order('date', { ascending: false });
+            if (fbResult.error) throw fbResult.error;
+            return res.json(fbResult.data || []);
+        }
+
         if (error) throw error;
         res.json(data || []);
     } catch (err) {
@@ -580,5 +623,291 @@ exports.getExamRoster = async (req, res) => {
         return res.json(roster);
     } catch (err) {
         return res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Exam Periods Management (Admin)
+ */
+exports.getExamPeriods = async (req, res) => {
+    try {
+        const { institution_id } = req;
+        const { status, term, academic_year, subject_id, class_id } = req.query;
+
+        let query = supabase
+            .from("exam_periods")
+            .select("*, exams(id, title, is_published)")
+            .eq("institution_id", institution_id);
+
+        if (status) query = query.eq("status", status);
+        if (term) query = query.eq("term", term);
+        if (academic_year) query = query.eq("academic_year", academic_year);
+
+        const { data, error } = await query.order("start_date", { ascending: false });
+        if (error) {
+            if (error.code === '42P01' || error.code === 'PGRST205') {
+                return res.json([]);
+            }
+            throw error;
+        }
+
+        let filtered = data || [];
+        if (subject_id) {
+            filtered = filtered.filter(p => {
+                const subIds = p.applicable_subject_ids;
+                return !Array.isArray(subIds) || subIds.length === 0 || subIds.includes(subject_id);
+            });
+        }
+        if (class_id) {
+            filtered = filtered.filter(p => {
+                const classIds = p.applicable_class_ids;
+                return !Array.isArray(classIds) || classIds.length === 0 || classIds.includes(class_id);
+            });
+        }
+
+        const enriched = filtered.map(p => ({
+            ...p,
+            total_papers: Array.isArray(p.exams) ? p.exams.length : 0
+        }));
+
+        res.json(enriched);
+    } catch (err) {
+        console.error("getExamPeriods error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.createExamPeriod = async (req, res) => {
+    try {
+        const { institution_id, userId, userRole } = req;
+        if (userRole !== 'admin' && userRole !== 'master_admin') {
+            return res.status(403).json({ error: "Unauthorized: Admin access required" });
+        }
+
+        const {
+            name,
+            academic_year,
+            term,
+            start_date,
+            end_date,
+            submission_deadline,
+            applicable_class_ids,
+            applicable_subject_ids,
+            status
+        } = req.body;
+
+        if (!name || !academic_year || !term || !start_date || !end_date) {
+            return res.status(400).json({ error: "name, academic_year, term, start_date, and end_date are required" });
+        }
+
+        const { data, error } = await supabase
+            .from("exam_periods")
+            .insert([{
+                institution_id,
+                name: name.trim(),
+                academic_year: academic_year.trim(),
+                term: term.trim(),
+                start_date,
+                end_date,
+                submission_deadline: submission_deadline || null,
+                applicable_class_ids: Array.isArray(applicable_class_ids) ? applicable_class_ids : [],
+                applicable_subject_ids: Array.isArray(applicable_subject_ids) ? applicable_subject_ids : [],
+                status: status || 'active',
+                created_by: userId
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.status(201).json(data);
+    } catch (err) {
+        console.error("createExamPeriod error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.updateExamPeriod = async (req, res) => {
+    try {
+        const { institution_id, userRole } = req;
+        const { id } = req.params;
+        if (userRole !== 'admin' && userRole !== 'master_admin') {
+            return res.status(403).json({ error: "Unauthorized: Admin access required" });
+        }
+
+        const {
+            name,
+            academic_year,
+            term,
+            start_date,
+            end_date,
+            submission_deadline,
+            applicable_class_ids,
+            applicable_subject_ids,
+            status
+        } = req.body;
+
+        const updates = {};
+        if (name !== undefined) updates.name = name.trim();
+        if (academic_year !== undefined) updates.academic_year = academic_year.trim();
+        if (term !== undefined) updates.term = term.trim();
+        if (start_date !== undefined) updates.start_date = start_date;
+        if (end_date !== undefined) updates.end_date = end_date;
+        if (submission_deadline !== undefined) updates.submission_deadline = submission_deadline;
+        if (applicable_class_ids !== undefined) updates.applicable_class_ids = applicable_class_ids;
+        if (applicable_subject_ids !== undefined) updates.applicable_subject_ids = applicable_subject_ids;
+        if (status !== undefined) updates.status = status;
+        updates.updated_at = new Date().toISOString();
+
+        const { data, error } = await supabase
+            .from("exam_periods")
+            .update(updates)
+            .eq("id", id)
+            .eq("institution_id", institution_id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error("updateExamPeriod error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.deleteExamPeriod = async (req, res) => {
+    try {
+        const { institution_id, userRole } = req;
+        const { id } = req.params;
+        if (userRole !== 'admin' && userRole !== 'master_admin') {
+            return res.status(403).json({ error: "Unauthorized: Admin access required" });
+        }
+
+        // Unlink exams that belong to this period
+        await supabase
+            .from("exams")
+            .update({ exam_period_id: null })
+            .eq("exam_period_id", id)
+            .eq("institution_id", institution_id);
+
+        const { error } = await supabase
+            .from("exam_periods")
+            .delete()
+            .eq("id", id)
+            .eq("institution_id", institution_id);
+
+        if (error) throw error;
+        res.json({ message: "Exam period deleted successfully" });
+    } catch (err) {
+        console.error("deleteExamPeriod error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.updateExam = async (req, res) => {
+    try {
+        const { institution_id, userRole, userId } = req;
+        const { id } = req.params;
+        const {
+            title,
+            description,
+            date,
+            max_score,
+            weight,
+            term,
+            is_published,
+            submission_deadline,
+            exam_period_id
+        } = req.body;
+
+        const { data: existing, error: fetchErr } = await supabase
+            .from("exams")
+            .select("*")
+            .eq("id", id)
+            .eq("institution_id", institution_id)
+            .single();
+
+        if (fetchErr || !existing) {
+            return res.status(404).json({ error: "Exam not found" });
+        }
+
+        if (userRole === 'teacher') {
+            const { resolveTeacherScope } = require("../middleware/teacherScope.js");
+            const scope = await resolveTeacherScope(userId, institution_id);
+            const isHOD = scope?.isHOD && (scope.hodSubjectIds || []).includes(existing.subject_id);
+            if (!isHOD) {
+                return res.status(403).json({ error: "Access denied: Only Admin or HOD can modify this exam" });
+            }
+        } else if (userRole !== 'admin') {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        const updates = {};
+        if (title !== undefined) updates.title = title;
+        if (description !== undefined) updates.description = description;
+        if (date !== undefined) updates.date = date;
+        if (max_score !== undefined) updates.max_score = max_score;
+        if (weight !== undefined) updates.weight = weight;
+        if (term !== undefined) updates.term = term;
+        if (is_published !== undefined) updates.is_published = is_published;
+        if (submission_deadline !== undefined) updates.submission_deadline = submission_deadline;
+        if (exam_period_id !== undefined) updates.exam_period_id = exam_period_id;
+
+        const { data, error } = await supabase
+            .from("exams")
+            .update(updates)
+            .eq("id", id)
+            .eq("institution_id", institution_id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error("updateExam error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.deleteExam = async (req, res) => {
+    try {
+        const { institution_id, userRole, userId } = req;
+        const { id } = req.params;
+
+        const { data: existing, error: fetchErr } = await supabase
+            .from("exams")
+            .select("subject_id")
+            .eq("id", id)
+            .eq("institution_id", institution_id)
+            .single();
+
+        if (fetchErr || !existing) {
+            return res.status(404).json({ error: "Exam not found" });
+        }
+
+        if (userRole === 'teacher') {
+            const { resolveTeacherScope } = require("../middleware/teacherScope.js");
+            const scope = await resolveTeacherScope(userId, institution_id);
+            const isHOD = scope?.isHOD && (scope.hodSubjectIds || []).includes(existing.subject_id);
+            if (!isHOD) {
+                return res.status(403).json({ error: "Access denied: Only Admin or HOD can delete this exam" });
+            }
+        } else if (userRole !== 'admin') {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        // Delete associated exam results first
+        await supabase.from("exam_results").delete().eq("exam_id", id);
+
+        const { error } = await supabase
+            .from("exams")
+            .delete()
+            .eq("id", id)
+            .eq("institution_id", institution_id);
+
+        if (error) throw error;
+        res.json({ message: "Exam and associated results deleted successfully" });
+    } catch (err) {
+        console.error("deleteExam error:", err);
+        res.status(500).json({ error: err.message });
     }
 };

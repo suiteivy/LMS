@@ -48,7 +48,7 @@ function authorizeRoles(roles = []) {
         expandRoleAliases(role).forEach((alias) => allowedRoles.add(alias));
       });
 
-      const explicitActiveRole = req.headers['x-active-role'] || user.active_role;
+      const explicitActiveRole = req.headers?.['x-active-role'] || user.active_role;
       let isAllowed = false;
 
       if (explicitActiveRole) {
@@ -57,7 +57,7 @@ function authorizeRoles(roles = []) {
       }
 
       // If active_role is not explicit or didn't match, check user profile role and available roles
-      if (!isAllowed && !req.headers['x-active-role']) {
+      if (!isAllowed && !req.headers?.['x-active-role']) {
         const userRoles = new Set();
         const addUserRole = (role) => {
           expandRoleAliases(role).forEach((alias) => userRoles.add(alias));

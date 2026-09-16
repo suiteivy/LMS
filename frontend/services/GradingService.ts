@@ -268,4 +268,13 @@ export const GradingAPI = {
     const res = await api.get(`/report-cards/student-history/${studentId}`);
     return res.data.data;
   },
+  regenerateReportCards: async (data: {
+    target_type?: 'individual' | 'class';
+    student_id?: string;
+    class_id: string;
+    term_id: string;
+  }) => {
+    const res = await api.post('/report-cards/regenerate', data);
+    return res.data;
+  },
 };

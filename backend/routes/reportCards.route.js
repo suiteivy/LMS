@@ -19,7 +19,8 @@ const {
     updateAssessmentWeights,
     getSubjectAssessments,
     updateSubjectAssessmentSelection,
-    getStudentHistoricalReportCards
+    getStudentHistoricalReportCards,
+    regenerateReportCards
 } = require("../controllers/reportCards.controller.js");
 
 router.use(authMiddleware);
@@ -32,11 +33,12 @@ router.get("/assessment-weights", authorizeRoles(["admin", "teacher"]), getAsses
 router.put("/assessment-weights", authorizeRoles(["admin"]), updateAssessmentWeights);
 router.get("/assessments", authorizeRoles(["admin", "teacher"]), getSubjectAssessments);
 router.put("/assessments/selection", authorizeRoles(["admin", "teacher"]), updateSubjectAssessmentSelection);
-router.get("/student-history/:student_id", authorizeRoles(["admin", "teacher", "parent"]), getStudentHistoricalReportCards);
+router.get("/student-history/:student_id", authorizeRoles(["admin", "teacher", "parent", "student"]), getStudentHistoricalReportCards);
 router.get("/:id", authorizeRoles(["admin", "teacher", "student", "parent"]), getReportCard);
 
 router.post("/generate", authorizeRoles(["admin", "teacher"]), generateStudentReportCard);
 router.post("/generate-class", authorizeRoles(["admin", "teacher"]), generateClassReportCards);
+router.post("/regenerate", authorizeRoles(["admin", "teacher"]), regenerateReportCards);
 router.put("/:id/remarks", authorizeRoles(["admin", "teacher"]), updateReportCardRemarks);
 router.put("/:id/publish", authorizeRoles(["admin"]), publishReportCard);
 router.post("/bulk-publish", authorizeRoles(["admin"]), bulkPublishReportCards);
