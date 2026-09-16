@@ -6,6 +6,8 @@ import { ExamService } from "@/services/ExamService";
 import { GradingAPI } from "@/services/GradingService";
 import { SubjectAPI } from "@/services/SubjectService";
 import { TeacherService } from "@/services/TeacherService";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { router } from "expo-router";
 import {
     AlertCircle,
@@ -43,6 +45,7 @@ interface Exam {
 
 export default function ExamsPage() {
     const { teacherId, isDemo, user } = useAuth();
+    const tier = useSubscriptionTier();
     const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'principal' || user?.role === 'head_teacher';
     const [exams, setExams] = useState<Exam[]>([]);
     const [loading, setLoading] = useState(true);
@@ -60,6 +63,7 @@ export default function ExamsPage() {
     const [selectedSubjectId, setSelectedSubjectId] = useState("");
     const [weight, setWeight] = useState("0");
     const [term, setTerm] = useState("Term 1");
+    const [creating, setCreating] = useState(false);
 
     const isHOD = hodSubjectIds.has(selectedSubjectId);
     const canSchedule = isAdmin || isHOD;
@@ -142,6 +146,7 @@ export default function ExamsPage() {
         }
 
         try {
+            setCreating(true);
             await ExamService.createExam({
                 title,
                 description,
@@ -164,6 +169,8 @@ export default function ExamsPage() {
         } catch (error: any) {
             const msg = error?.response?.data?.error || "Failed to create exam";
             Alert.alert("Error", msg);
+        } finally {
+            setCreating(false);
         }
     };
 
@@ -184,6 +191,19 @@ export default function ExamsPage() {
                 subtitle="Exams Module"
                 role="Teacher"
                 fallbackPath="/(teacher)/management"
+                rightActions={
+                    <HelpTooltip
+                        id="teacher.manage.exams"
+                        role="teacher"
+                        tier={tier}
+                        onLearnMore={(anchor) =>
+                            router.push({
+                                pathname: "/(teacher)/accessibility/settings" as any,
+                                params: { manual: "1", anchor: anchor || "exams-module" },
+                            } as any)
+                        }
+                    />
+                }
             />
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
                 <View className="p-4 md:p-8">
@@ -365,12 +385,22 @@ export default function ExamsPage() {
                                 </ScrollView>
                             </View>
 
-                            <TouchableOpacity
-                                onPress={handleCreateExam}
-                                className="bg-[#FF6900] py-4 rounded-xl items-center shadow-md active:bg-orange-600 mb-6"
-                            >
-                                <Text className="text-white font-bold text-base">Schedule Exam</Text>
-                            </TouchableOpacity>
+                            {(() => {
+                                const canCreate = !!title.trim() && !!selectedSubjectId && !!date.trim() && canSchedule && !creating;
+                                return (
+                                    <TouchableOpacity
+                                        onPress={handleCreateExam}
+                                        disabled={!canCreate}
+                                        style={{ opacity: canCreate ? 1 : 0.5 }}
+                                        className="bg-[#FF6900] py-4 rounded-xl items-center shadow-md active:bg-orange-600 mb-6"
+                                        accessibilityState={{ disabled: !canCreate, busy: creating }}
+                                    >
+                                        <Text className="text-white font-bold text-base">
+                                            {creating ? "Scheduling..." : "Schedule Exam"}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })()}
                         </ScrollView>
                     </View>
                 </View>

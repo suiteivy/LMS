@@ -12,6 +12,7 @@ import {
     ChevronRight,
     FileText,
     Filter,
+    History,
     RefreshCw,
     Send,
     Shield,
@@ -19,6 +20,7 @@ import {
     XCircle,
 } from 'lucide-react-native';
 import { GradingScaleModal } from '@/components/results/GradingScaleModal';
+import { StudentHistoryModal } from '@/components/results/StudentHistoryModal';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -249,6 +251,9 @@ export default function AdminResults() {
     const [completenessFilter, setCompletenessFilter] = useState<'all' | 'incomplete'>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [showScaleModal, setShowScaleModal] = useState(false);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [historyStudentId, setHistoryStudentId] = useState<string | null>(null);
+    const [historyStudentName, setHistoryStudentName] = useState<string>('');
 
     const loadFilters = useCallback(async () => {
         setLoadingFilters(true);
@@ -1187,6 +1192,21 @@ export default function AdminResults() {
                                                     <View style={{
                                                         flexDirection: 'row', borderTopWidth: 1, borderTopColor: border,
                                                     }}>
+                                                        <TouchableOpacity
+                                                            onPress={() => {
+                                                                setHistoryStudentId(rc.student_id);
+                                                                setHistoryStudentName(rc.student_name);
+                                                                setShowHistoryModal(true);
+                                                            }}
+                                                            style={{
+                                                                flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                                                                paddingVertical: 12, borderRightWidth: 1, borderRightColor: border,
+                                                                gap: 4,
+                                                            }}
+                                                        >
+                                                            <History size={14} color="#FF6900" />
+                                                            <Text style={{ color: '#FF6900', fontWeight: '700', fontSize: 12 }}>History</Text>
+                                                        </TouchableOpacity>
                                                         {(rc.status === 'draft' || !rc.gpa) && (
                                                             <TouchableOpacity
                                                                 onPress={() => handleGenerate(rc.student_id)}
@@ -1268,6 +1288,14 @@ export default function AdminResults() {
             <GradingScaleModal
                 visible={showScaleModal}
                 onClose={() => setShowScaleModal(false)}
+            />
+
+            {/* ── Student History Modal ── */}
+            <StudentHistoryModal
+                visible={showHistoryModal}
+                onClose={() => setShowHistoryModal(false)}
+                studentId={historyStudentId}
+                studentName={historyStudentName}
             />
         </View>
     );

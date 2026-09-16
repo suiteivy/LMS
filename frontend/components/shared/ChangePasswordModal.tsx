@@ -291,22 +291,28 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ visibl
                             </View>
 
                             {/* Submit */}
-                            <TouchableOpacity
-                                onPress={handlePasswordChange}
-                                disabled={loading || (newPassword.length > 0 && !isPasswordValid)}
-                                accessibilityState={{ disabled: loading, busy: loading }}
-                                activeOpacity={0.8}
-                                style={{
-                                    backgroundColor: (newPassword.length > 0 && !isPasswordValid) ? (isDark ? '#21262D' : '#E5E7EB') : tokens.primary,
-                                    paddingVertical: 14, borderRadius: 14,
-                                    alignItems: 'center', flexDirection: 'row', justifyContent: 'center',
-                                }}
-                            >
-                                {loading
-                                    ? <ActivityIndicator color="#fff" />
-                                    : <Text style={{ color: (newPassword.length > 0 && !isPasswordValid) ? tokens.textSecondary : '#fff', fontSize: 15, fontWeight: '800', letterSpacing: 0.5 }}>Confirm Password Change</Text>
-                                }
-                            </TouchableOpacity>
+                            {(() => {
+                                const canSubmit = !!currentPassword && isPasswordValid && newPassword === confirmPassword && !loading;
+                                return (
+                                    <TouchableOpacity
+                                        onPress={handlePasswordChange}
+                                        disabled={!canSubmit}
+                                        accessibilityState={{ disabled: !canSubmit, busy: loading }}
+                                        activeOpacity={0.8}
+                                        style={{
+                                            backgroundColor: canSubmit ? tokens.primary : (isDark ? '#21262D' : '#E5E7EB'),
+                                            opacity: canSubmit ? 1 : 0.5,
+                                            paddingVertical: 14, borderRadius: 14,
+                                            alignItems: 'center', flexDirection: 'row', justifyContent: 'center',
+                                        }}
+                                    >
+                                        {loading
+                                            ? <ActivityIndicator color="#fff" />
+                                            : <Text style={{ color: canSubmit ? '#fff' : tokens.textSecondary, fontSize: 15, fontWeight: '800', letterSpacing: 0.5 }}>Confirm Password Change</Text>
+                                        }
+                                    </TouchableOpacity>
+                                );
+                            })()}
                         </ScrollView>
                     </View>
                 </View>

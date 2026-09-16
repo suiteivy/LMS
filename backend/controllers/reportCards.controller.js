@@ -1381,6 +1381,224 @@ const exportReportCardPDF = async (req, res) => {
   }
 };
 
+// Configurable Assessment Weights (Category split: Exam vs Continuous Assessment)
+const getAssessmentWeights = async (req, res) => {
+  try {
+    const institution_id = req.user?.institution_id;
+    const { subject_id } = req.query;
+    const { resolveAssessmentWeights } = require('../services/gradeCalculation.service');
+    const weights = await resolveAssessmentWeights(institution_id, subject_id || null);
+    return res.json({ success: true, data: weights });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const updateAssessmentWeights = async (req, res) => {
+  try {
+    const institution_id = req.user?.institution_id;
+    const { subject_id, exam_weight, continuous_assessment_weight } = req.body;
+
+    const examW = Number(exam_weight !== undefined ? exam_weight : 60);
+    const caW = Number(continuous_assessment_weight !== undefined ? continuous_assessment_weight : 40);
+
+    if (isNaN(examW) || isNaN(caW) || examW < 0 || caW < 0) {
+      return res.status(400).json({ success: false, error: 'Exam weight and continuous assessment weight must be non-negative numbers' });
+    }
+
+    const payload = {
+      institution_id,
+      subject_id: subject_id || null,
+      exam_weight: examW,
+      continuous_assessment_weight: caW,
+      updated_at: new Date().toISOString(),
+    };
+
+    let existingQuery = supabase
+      .from('institution_assessment_weights')
+      .select('id')
+      .eq('institution_id', institution_id);
+
+    if (subject_id) {
+      existingQuery = existingQuery.eq('subject_id', subject_id);
+    } else {
+      existingQuery = existingQuery.is('subject_id', null);
+    }
+
+    const { data: existing } = await existingQuery.maybeSingle();
+
+    let result;
+    if (existing) {
+      const { data, error } = await supabase
+        .from('institution_assessment_weights')
+        .update(payload)
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      result = data;
+    } else {
+      const { data, error } = await supabase
+        .from('institution_assessment_weights')
+        .insert(payload)
+        .select()
+        .single();
+      if (error) throw error;
+      result = data;
+    }
+
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// Subject Teacher Assessment Selection (Exams mandatory, assignments toggleable)
+const getSubjectAssessments = async (req, res) => {
+  try {
+    const { subject_id, class_id, term_id } = req.query;
+    const institution_id = req.user?.institution_id;
+
+    if (!subject_id) {
+      return res.status(400).json({ success: false, error: 'subject_id is required' });
+    }
+
+    // 1. Mandatory Exams
+    let examQuery = supabase
+      .from('exams')
+      .select('id, title, max_score, weight, term_id, term, date')
+      .eq('subject_id', subject_id)
+      .eq('institution_id', institution_id);
+
+    const { data: examsList } = await examQuery;
+    const exams = (examsList || []).map((e) => ({
+      id: e.id,
+      title: e.title || 'Exam',
+      max_score: e.max_score || 100,
+      weight: e.weight || null,
+      is_mandatory: true,
+      is_included: true,
+      type: 'exam',
+    }));
+
+    // 2. Coursework Assignments
+    let assignmentQuery = supabase
+      .from('assignments')
+      .select('id, title, total_points, weight, due_date, status')
+      .eq('subject_id', subject_id)
+      .eq('institution_id', institution_id);
+
+    if (class_id) assignmentQuery = assignmentQuery.eq('class_id', class_id);
+    const { data: assignmentsList } = await assignmentQuery;
+
+    // 3. Selection state
+    const selectionsMap = new Map();
+    if (class_id && term_id) {
+      const { data: selectionRows } = await supabase
+        .from('subject_report_card_assessments')
+        .select('assessment_id, is_included')
+        .eq('institution_id', institution_id)
+        .eq('subject_id', subject_id)
+        .eq('class_id', class_id)
+        .eq('term_id', term_id);
+
+      (selectionRows || []).forEach((r) => selectionsMap.set(r.assessment_id, r.is_included));
+    }
+
+    const assignments = (assignmentsList || []).map((a) => ({
+      id: a.id,
+      title: a.title || 'Assignment',
+      max_score: a.total_points || 100,
+      weight: a.weight || null,
+      is_mandatory: false,
+      is_included: selectionsMap.has(a.id) ? selectionsMap.get(a.id) : true,
+      type: 'assignment',
+    }));
+
+    const { resolveAssessmentWeights } = require('../services/gradeCalculation.service');
+    const weights = await resolveAssessmentWeights(institution_id, subject_id);
+
+    return res.json({
+      success: true,
+      data: {
+        exams,
+        assignments,
+        weights,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const updateSubjectAssessmentSelection = async (req, res) => {
+  try {
+    const { subject_id, class_id, term_id, selections } = req.body;
+    const institution_id = req.user?.institution_id;
+    const teacher_id = req.user?.id;
+
+    if (!subject_id || !class_id || !term_id || !Array.isArray(selections)) {
+      return res.status(400).json({ success: false, error: 'subject_id, class_id, term_id, and selections array are required' });
+    }
+
+    for (const sel of selections) {
+      if (!sel.assessment_id) continue;
+      if (sel.type === 'exam' && sel.is_included === false) {
+        return res.status(400).json({ success: false, error: 'Exams are mandatory inclusions and cannot be excluded from report card compilation' });
+      }
+
+      await supabase
+        .from('subject_report_card_assessments')
+        .upsert({
+          institution_id,
+          subject_id,
+          class_id,
+          term_id,
+          assessment_id: sel.assessment_id,
+          assessment_type: sel.type || 'assignment',
+          is_included: sel.is_included !== false,
+          selected_by: teacher_id,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'institution_id, subject_id, class_id, term_id, assessment_id' });
+    }
+
+    return res.json({ success: true, message: 'Assessment selection updated successfully' });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const getStudentHistoricalReportCards = async (req, res) => {
+  try {
+    const { student_id } = req.params;
+    const institution_id = req.user?.institution_id;
+
+    if (!student_id) {
+      return res.status(400).json({ success: false, error: 'student_id is required' });
+    }
+
+    const { data: cards, error } = await supabase
+      .from('report_cards')
+      .select(`
+        *,
+        classes (id, name, grade_level, form_level, stream),
+        terms (id, name, start_date, end_date),
+        report_card_items (
+          id, subject_id, subject_name, total_score, average_percentage, letter_grade, gpa_points
+        )
+      `)
+      .eq('student_id', student_id)
+      .eq('institution_id', institution_id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return res.json({ success: true, data: cards || [] });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   getReportCards,
   getReportCard,
@@ -1394,4 +1612,9 @@ module.exports = {
   checkCompleteness,
   getReportCardSummary,
   exportReportCardPDF,
+  getAssessmentWeights,
+  updateAssessmentWeights,
+  getSubjectAssessments,
+  updateSubjectAssessmentSelection,
+  getStudentHistoricalReportCards,
 };

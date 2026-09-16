@@ -332,26 +332,33 @@ export const AdminPasswordResetModal: React.FC<AdminPasswordResetModalProps> = (
                                 <Text style={{ color: textSecondary, fontWeight: '700' }}>Cancel</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity
-                                onPress={handleConfirm}
-                                disabled={loading}
-                                style={{
-                                    borderWidth: 1,
-                                    borderColor: '#DC2626',
-                                    borderRadius: 10,
-                                    paddingHorizontal: 18,
-                                    paddingVertical: 10,
-                                    backgroundColor: '#DC2626',
-                                    minWidth: 130,
-                                    alignItems: 'center',
-                                }}
-                            >
-                                {loading ? (
-                                    <ActivityIndicator size="small" color="#FFF" />
-                                ) : (
-                                    <Text style={{ color: '#FFF', fontWeight: '800' }}>Confirm Reset</Text>
-                                )}
-                            </TouchableOpacity>
+                            {(() => {
+                                const canConfirm = !loading && (selectedMethod !== 'custom' || !!customMethodText.trim());
+                                return (
+                                    <TouchableOpacity
+                                        onPress={handleConfirm}
+                                        disabled={!canConfirm}
+                                        style={{
+                                            borderWidth: 1,
+                                            borderColor: '#DC2626',
+                                            borderRadius: 10,
+                                            paddingHorizontal: 18,
+                                            paddingVertical: 10,
+                                            backgroundColor: '#DC2626',
+                                            minWidth: 130,
+                                            alignItems: 'center',
+                                            opacity: canConfirm ? 1 : 0.5,
+                                        }}
+                                        accessibilityState={{ disabled: !canConfirm, busy: loading }}
+                                    >
+                                        {loading ? (
+                                            <ActivityIndicator size="small" color="#FFF" />
+                                        ) : (
+                                            <Text style={{ color: '#FFF', fontWeight: '800' }}>Confirm Reset</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })()}
                         </View>
                     </ScrollView>
                 </View>

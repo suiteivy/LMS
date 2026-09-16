@@ -242,4 +242,30 @@ export const GradingAPI = {
     const res = await api.get('/report-cards/export/pdf', { params });
     return res.data.data;
   },
+  getAssessmentWeights: async (subjectId?: string) => {
+    const params = subjectId ? { subject_id: subjectId } : {};
+    const res = await api.get('/report-cards/assessment-weights', { params });
+    return res.data.data;
+  },
+  updateAssessmentWeights: async (data: { subject_id?: string; exam_weight: number; continuous_assessment_weight: number }) => {
+    const res = await api.put('/report-cards/assessment-weights', data);
+    return res.data.data;
+  },
+  getSubjectAssessments: async (params: { subject_id: string; class_id?: string; term_id?: string }) => {
+    const res = await api.get('/report-cards/assessments', { params });
+    return res.data.data;
+  },
+  updateSubjectAssessmentSelection: async (data: {
+    subject_id: string;
+    class_id: string;
+    term_id: string;
+    selections: { assessment_id: string; type?: string; is_included: boolean }[];
+  }) => {
+    const res = await api.put('/report-cards/assessments/selection', data);
+    return res.data;
+  },
+  getStudentHistoricalReportCards: async (studentId: string) => {
+    const res = await api.get(`/report-cards/student-history/${studentId}`);
+    return res.data.data;
+  },
 };

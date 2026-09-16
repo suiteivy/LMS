@@ -10,11 +10,15 @@ import { showError, showFetchError, showSuccess } from "@/utils/toast";
 import { getPerformanceLabel, type GradingScaleRow } from "@/utils/getPerformanceLabel";
 import { useTeacherRoleMode } from "@/hooks/useTeacherRoleMode";
 import { usePrint } from "@/hooks/usePrint";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { router } from "expo-router";
 import {
     AlertCircle,
     Award,
     BookOpen,
+    Check,
+    CheckCircle2,
     ChevronDown,
     ChevronRight,
     Download,
@@ -22,11 +26,17 @@ import {
     ExternalLink,
     FileText,
     Filter,
+    History,
+    Layers,
+    Lock,
+    RefreshCw,
     Search,
+    Shield,
     Sparkles,
     TrendingUp,
     User,
 } from "lucide-react-native";
+import { StudentHistoryModal } from "@/components/results/StudentHistoryModal";
 import React, { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -52,8 +62,8 @@ interface TeacherSubjectClass {
 interface Term {
     id: string;
     name: string;
-    academic_year_id: string;
-    is_current: boolean;
+    academic_year_id?: string;
+    is_current?: boolean;
     locked_at?: string | null;
 }
 
@@ -87,6 +97,7 @@ interface ReportCard {
 }
 
 type StatusFilter = "all" | "draft" | "pending_review" | "published" | "released";
+type TabMode = "class_cards" | "assessment_selection";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -103,7 +114,7 @@ const STATUS_CONFIG: Record<
 };
 
 const formatNumber = (n: number | null, fallback = "--") =>
-    n !== null ? n.toFixed(1) : fallback;
+    n !== null && !isNaN(n) ? n.toFixed(1) : fallback;
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -117,6 +128,8 @@ const Dropdown = ({
     onSelect,
     isDark,
     accentColor,
+    disabled = false,
+    emptyMessage,
 }: {
     label: string;
     items: { id: string; label: string }[];
@@ -125,6 +138,8 @@ const Dropdown = ({
     onSelect: (id: string) => void;
     isDark: boolean;
     accentColor: string;
+    disabled?: boolean;
+    emptyMessage?: string;
 }) => {
     const [open, setOpen] = useState(false);
 
@@ -144,7 +159,8 @@ const Dropdown = ({
                 {label}
             </Text>
             <TouchableOpacity
-                onPress={() => setOpen((o) => !o)}
+                onPress={() => !disabled && setOpen((o) => !o)}
+                disabled={disabled}
                 style={{
                     backgroundColor: isDark ? "#161B22" : "#ffffff",
                     borderRadius: 16,
@@ -155,25 +171,28 @@ const Dropdown = ({
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "space-between",
+                    opacity: disabled ? 0.5 : 1,
                 }}
                 activeOpacity={0.7}
             >
                 <Text
                     style={{
-                        color: isDark ? "#E5E5E5" : "#111827",
+                        color: disabled ? (isDark ? "#6B7280" : "#9CA3AF") : (isDark ? "#E5E5E5" : "#111827"),
                         fontWeight: "600",
                         fontSize: 14,
                         flex: 1,
                     }}
                     numberOfLines={1}
                 >
-                    {selectedLabel}
+                    {items.length === 0 && emptyMessage ? emptyMessage : selectedLabel}
                 </Text>
-                <ChevronDown
-                    size={16}
-                    color={isDark ? "#9CA3AF" : "#6B7280"}
-                    style={{ transform: [{ rotate: open ? "180deg" : "0deg" }] }}
-                />
+                {!disabled && (
+                    <ChevronDown
+                        size={16}
+                        color={isDark ? "#9CA3AF" : "#6B7280"}
+                        style={{ transform: [{ rotate: open ? "180deg" : "0deg" }] }}
+                    />
+                )}
             </TouchableOpacity>
 
             {open && items.length > 0 && (
@@ -243,7 +262,7 @@ const StatusPill = ({
     status: ReportCard["status"];
     isDark: boolean;
 }) => {
-    const cfg = STATUS_CONFIG[status];
+    const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
     return (
         <View
             style={{
@@ -279,6 +298,9 @@ const ReportCardRow = ({
     isDownloading,
     onEditRemarks,
     onViewStudentRecord,
+    onRegenerate,
+    isRegenerating,
+    onViewHistory,
 }: {
     card: ReportCard;
     isDark: boolean;
@@ -290,6 +312,9 @@ const ReportCardRow = ({
     isDownloading?: boolean;
     onEditRemarks?: (card: ReportCard) => void;
     onViewStudentRecord?: (studentId: string) => void;
+    onRegenerate?: (card: ReportCard) => void;
+    isRegenerating?: boolean;
+    onViewHistory?: (card: ReportCard) => void;
 }) => {
     return (
         <View
@@ -392,7 +417,7 @@ const ReportCardRow = ({
                                 fontSize: 18,
                             }}
                         >
-                            {formatNumber(card.overall_average)}
+                            {formatNumber(card.overall_average)}%
                         </Text>
                         {card.gpa !== null && (
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -485,7 +510,7 @@ const ReportCardRow = ({
                     }}
                 >
                     {/* Subject breakdown */}
-                    {card.subject_breakdown && card.subject_breakdown.length > 0 && (
+                    {card.subject_breakdown && card.subject_breakdown.length > 0 ? (
                         <View style={{ marginTop: 14, marginBottom: 14 }}>
                             <Text
                                 style={{
@@ -497,7 +522,7 @@ const ReportCardRow = ({
                                     marginBottom: 8,
                                 }}
                             >
-                                Subject Breakdown
+                                Subject Performance Breakdown
                             </Text>
                             {card.subject_breakdown.map((sb, idx) => (
                                 <View
@@ -550,69 +575,40 @@ const ReportCardRow = ({
                                         >
                                             /{sb.max_score}
                                         </Text>
-                                        {sb.grade && (() => {
-                                            const sbPct = sb.max_score > 0 && sb.score !== null
-                                                ? (sb.score / sb.max_score) * 100
-                                                : 0;
-                                            const sbPerf = getPerformanceLabel(sbPct, gradingScales);
-                                            return (
-                                                <View
+                                        {sb.grade && (
+                                            <View
+                                                style={{
+                                                    backgroundColor: isDark
+                                                        ? "rgba(255,107,0,0.12)"
+                                                        : "#FFF7ED",
+                                                    paddingHorizontal: 7,
+                                                    paddingVertical: 2,
+                                                    borderRadius: 8,
+                                                    marginLeft: 8,
+                                                }}
+                                            >
+                                                <Text
                                                     style={{
-                                                        backgroundColor: isDark
-                                                            ? "rgba(255,107,0,0.12)"
-                                                            : "#FFF7ED",
-                                                        paddingHorizontal: 7,
-                                                        paddingVertical: 2,
-                                                        borderRadius: 8,
-                                                        marginLeft: 8,
+                                                        color: accentColor,
+                                                        fontSize: 10,
+                                                        fontWeight: "800",
                                                     }}
                                                 >
-                                                    <Text
-                                                        style={{
-                                                            color: accentColor,
-                                                            fontSize: 10,
-                                                            fontWeight: "800",
-                                                        }}
-                                                    >
-                                                        {sb.grade}
-                                                    </Text>
-                                                </View>
-                                            );
-                                        })()}
-                                        {sb.score !== null && sb.max_score > 0 && (() => {
-                                            const sbPct = (sb.score / sb.max_score) * 100;
-                                            const sbPerf = getPerformanceLabel(sbPct, gradingScales);
-                                            return (
-                                                <View
-                                                    style={{
-                                                        backgroundColor: isDark
-                                                            ? "rgba(255,255,255,0.06)"
-                                                            : "rgba(0,0,0,0.04)",
-                                                        paddingHorizontal: 6,
-                                                        paddingVertical: 2,
-                                                        borderRadius: 6,
-                                                        marginLeft: 6,
-                                                    }}
-                                                >
-                                                    <Text
-                                                        style={{
-                                                            color: isDark ? "#9CA3AF" : "#6B7280",
-                                                            fontSize: 9,
-                                                            fontWeight: "700",
-                                                        }}
-                                                    >
-                                                        {sbPerf.label}
-                                                    </Text>
-                                                </View>
-                                            );
-                                        })()}
+                                                    {sb.grade}
+                                                </Text>
+                                            </View>
+                                        )}
                                     </View>
                                 </View>
                             ))}
                         </View>
+                    ) : (
+                        <Text style={{ color: isDark ? "#6B7280" : "#9CA3AF", fontSize: 12, marginVertical: 12, fontStyle: "italic" }}>
+                            No individual subject records compiled yet. Click regenerate to recalculate.
+                        </Text>
                     )}
 
-                    {/* Teacher remarks (read-only) */}
+                    {/* Teacher remarks */}
                     {card.teacher_remarks ? (
                         <View
                             style={{
@@ -662,7 +658,7 @@ const ReportCardRow = ({
                                     fontStyle: "italic",
                                 }}
                             >
-                                No teacher remarks yet.
+                                No teacher remarks recorded yet.
                             </Text>
                         </View>
                     )}
@@ -710,6 +706,49 @@ const ReportCardRow = ({
                             </Text>
                         </TouchableOpacity>
 
+                        {onRegenerate && (
+                            <TouchableOpacity
+                                onPress={() => onRegenerate(card)}
+                                disabled={isRegenerating}
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    backgroundColor: isDark ? "#21262D" : "#F3F4F6",
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 8,
+                                    borderRadius: 12,
+                                }}
+                            >
+                                {isRegenerating ? (
+                                    <ActivityIndicator size="small" color={accentColor} style={{ marginRight: 6 }} />
+                                ) : (
+                                    <RefreshCw size={13} color={isDark ? "#9CA3AF" : "#6B7280"} style={{ marginRight: 6 }} />
+                                )}
+                                <Text style={{ color: isDark ? "#9CA3AF" : "#6B7280", fontWeight: "700", fontSize: 11 }}>
+                                    Regenerate Card
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {onViewHistory && (
+                            <TouchableOpacity
+                                onPress={() => onViewHistory(card)}
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    backgroundColor: isDark ? "#21262D" : "#F3F4F6",
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 8,
+                                    borderRadius: 12,
+                                }}
+                            >
+                                <History size={13} color="#FF6900" style={{ marginRight: 6 }} />
+                                <Text style={{ color: "#FF6900", fontWeight: "700", fontSize: 11 }}>
+                                    Past Cards
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+
                         <TouchableOpacity
                             onPress={() => onViewStudentRecord?.(card.student_id)}
                             style={{
@@ -742,36 +781,54 @@ export default function ReportCardsPage() {
     const { isDark } = useTheme();
     const { mode, isClassTeacher } = useTeacherRoleMode();
     const { printHtml } = usePrint();
+    const tier = useSubscriptionTier();
     const accentColor = "#FF6B00";
 
-    // Data
+    // Active tab
+    const [activeTab, setActiveTab] = useState<TabMode>("class_cards");
+
+    // Common Data
     const [subjectClasses, setSubjectClasses] = useState<TeacherSubjectClass[]>([]);
     const [designatedClasses, setDesignatedClasses] = useState<{ id: string; name: string }[]>([]);
     const [classesLoading, setClassesLoading] = useState(true);
     const [terms, setTerms] = useState<Term[]>([]);
+    const [resolvedActiveTerm, setResolvedActiveTerm] = useState<Term | null>(null);
+    const [gradingScales, setGradingScales] = useState<GradingScaleRow[]>([]);
+
+    // Class Report Cards State
     const [reportCards, setReportCards] = useState<ReportCard[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
-    const [gradingScales, setGradingScales] = useState<GradingScaleRow[]>([]);
-
-    // Action state
+    const [selectedClassId, setSelectedClassId] = useState("");
+    const [selectedTermId, setSelectedTermId] = useState("all");
+    const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
     const [downloadingCardId, setDownloadingCardId] = useState<string | null>(null);
+    const [regeneratingCardId, setRegeneratingCardId] = useState<string | null>(null);
     const [editingCard, setEditingCard] = useState<ReportCard | null>(null);
     const [remarksInput, setRemarksInput] = useState("");
     const [savingRemarks, setSavingRemarks] = useState(false);
     const [generatingClass, setGeneratingClass] = useState(false);
-
-    // Filters
-    const [selectedSubjectId, setSelectedSubjectId] = useState("all");
-    const [selectedClassId, setSelectedClassId] = useState("");
-    const [selectedTermId, setSelectedTermId] = useState("all");
-    const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
-    const [resolvedActiveTerm, setResolvedActiveTerm] = useState<Term | null>(null);
-
-    // UI
     const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
-    // Derived filter options
+    // Subject Assessment Selection State (Part D)
+    const [selectedSubjSubjectId, setSelectedSubjSubjectId] = useState("");
+    const [selectedSubjClassId, setSelectedSubjClassId] = useState("");
+    const [selectedSubjTermId, setSelectedSubjTermId] = useState("");
+    const [subjectAssessments, setSubjectAssessments] = useState<{
+        exams: any[];
+        assignments: any[];
+        weights: { exam_weight: number; continuous_assessment_weight: number };
+    } | null>(null);
+    const [loadingAssessments, setLoadingAssessments] = useState(false);
+    const [savingSelections, setSavingSelections] = useState(false);
+    const [toggledSelections, setToggledSelections] = useState<Record<string, boolean>>({});
+
+    // History Modal State
+    const [historyModalVisible, setHistoryModalVisible] = useState(false);
+    const [historyStudentId, setHistoryStudentId] = useState<string | null>(null);
+    const [historyStudentName, setHistoryStudentName] = useState<string>("");
+
+    // Derived subject options
     const uniqueSubjects = React.useMemo(() => {
         const map = new Map<string, { id: string; title: string }>();
         subjectClasses.forEach((sc) => {
@@ -781,6 +838,14 @@ export default function ReportCardsPage() {
         });
         return Array.from(map.values());
     }, [subjectClasses]);
+
+    // Derived classes for currently selected subject in Assessment Selection
+    const classesForSelectedSubject = React.useMemo(() => {
+        if (!selectedSubjSubjectId) return [];
+        return subjectClasses
+            .filter((sc) => sc.subject_id === selectedSubjSubjectId)
+            .map((sc) => ({ id: sc.class_id, label: sc.class_name }));
+    }, [subjectClasses, selectedSubjSubjectId]);
 
     // ---------------------------------------------------------------------------
     // Fetching
@@ -816,7 +881,12 @@ export default function ReportCardsPage() {
         try {
             const res = await api.get("/teacher/subject-classes");
             const data = res.data?.data ?? res.data;
-            setSubjectClasses(Array.isArray(data) ? data : []);
+            const list = Array.isArray(data) ? data : [];
+            setSubjectClasses(list);
+            if (list.length > 0) {
+                setSelectedSubjSubjectId(list[0].subject_id);
+                setSelectedSubjClassId(list[0].class_id);
+            }
         } catch {
             setSubjectClasses([]);
         }
@@ -825,10 +895,18 @@ export default function ReportCardsPage() {
     const fetchTerms = useCallback(async () => {
         try {
             const termsData = await GradingAPI.getTerms();
-            setTerms(Array.isArray(termsData) ? termsData : []);
+            const termList = Array.isArray(termsData) ? termsData : [];
+            setTerms(termList);
             const activeTermData = await GradingAPI.getActiveTerm().catch(() => null);
             const active = activeTermData?.active_term || null;
             setResolvedActiveTerm(active);
+            if (active?.id) {
+                setSelectedTermId(active.id);
+                setSelectedSubjTermId(active.id);
+            } else if (termList.length > 0) {
+                setSelectedTermId(termList[0].id);
+                setSelectedSubjTermId(termList[0].id);
+            }
         } catch {
             setTerms([]);
             setResolvedActiveTerm(null);
@@ -845,8 +923,7 @@ export default function ReportCardsPage() {
     }, []);
 
     const fetchReportCards = useCallback(async () => {
-        if (mode === "subject" || !isClassTeacher || !selectedClassId || selectedClassId === "all") {
-            // Subject teachers or teachers without designated class cannot fetch whole-class report cards
+        if (!selectedClassId || selectedClassId === "all") {
             setReportCards([]);
             setLoading(false);
             return;
@@ -857,7 +934,6 @@ export default function ReportCardsPage() {
             const params: Record<string, string> = {
                 class_id: selectedClassId,
             };
-            if (selectedSubjectId !== "all") params.subject_id = selectedSubjectId;
             if (selectedTermId !== "all") params.term_id = selectedTermId;
             if (selectedStatus !== "all") params.status = selectedStatus;
 
@@ -871,7 +947,75 @@ export default function ReportCardsPage() {
         } finally {
             setLoading(false);
         }
-    }, [mode, isClassTeacher, selectedClassId, selectedSubjectId, selectedTermId, selectedStatus]);
+    }, [selectedClassId, selectedTermId, selectedStatus]);
+
+    // Fetch assessments for Subject Teacher Selection
+    const fetchSubjectAssessments = useCallback(async () => {
+        if (!selectedSubjSubjectId || !selectedSubjClassId) {
+            setSubjectAssessments(null);
+            return;
+        }
+
+        setLoadingAssessments(true);
+        try {
+            const data = await GradingAPI.getSubjectAssessments({
+                subject_id: selectedSubjSubjectId,
+                class_id: selectedSubjClassId,
+                term_id: selectedSubjTermId || undefined,
+            });
+
+            setSubjectAssessments(data);
+            const initialMap: Record<string, boolean> = {};
+            (data?.assignments || []).forEach((a: any) => {
+                initialMap[a.id] = a.is_included !== false;
+            });
+            setToggledSelections(initialMap);
+        } catch (err: any) {
+            console.error("Error fetching subject assessments:", err);
+            setSubjectAssessments(null);
+        } finally {
+            setLoadingAssessments(false);
+        }
+    }, [selectedSubjSubjectId, selectedSubjClassId, selectedSubjTermId]);
+
+    useEffect(() => {
+        if (activeTab === "assessment_selection") {
+            fetchSubjectAssessments();
+        }
+    }, [activeTab, fetchSubjectAssessments]);
+
+    // Initial load
+    useEffect(() => {
+        if (teacherId) {
+            Promise.all([
+                fetchDesignatedClasses(),
+                fetchSubjectClasses(),
+                fetchTerms(),
+                fetchGradingScales(),
+            ]);
+        }
+    }, [teacherId, fetchDesignatedClasses, fetchSubjectClasses, fetchTerms, fetchGradingScales]);
+
+    // Determine initial tab mode based on role
+    useEffect(() => {
+        if (!classesLoading) {
+            if (!isClassTeacher || designatedClasses.length === 0) {
+                setActiveTab("assessment_selection");
+            } else {
+                setActiveTab("class_cards");
+            }
+        }
+    }, [isClassTeacher, designatedClasses.length, classesLoading]);
+
+    useEffect(() => {
+        if (teacherId && activeTab === "class_cards") {
+            fetchReportCards();
+        }
+    }, [teacherId, activeTab, fetchReportCards]);
+
+    // ---------------------------------------------------------------------------
+    // Actions
+    // ---------------------------------------------------------------------------
 
     const handleDownloadPDF = async (card: ReportCard) => {
         try {
@@ -887,6 +1031,23 @@ export default function ReportCardsPage() {
         }
     };
 
+    const handleRegenerateSingle = async (card: ReportCard) => {
+        try {
+            setRegeneratingCardId(card.id);
+            await GradingAPI.generateStudentReportCard({
+                student_id: card.student_id,
+                class_id: card.class_id,
+                term_id: card.term_id,
+            });
+            showSuccess("Report Card Updated", `Recompiled report card for ${card.student_name}.`);
+            await fetchReportCards();
+        } catch (err: any) {
+            showError(err?.message || "Failed to regenerate student report card");
+        } finally {
+            setRegeneratingCardId(null);
+        }
+    };
+
     const handleOpenEditRemarks = (card: ReportCard) => {
         setEditingCard(card);
         setRemarksInput(card.teacher_remarks || "");
@@ -896,9 +1057,9 @@ export default function ReportCardsPage() {
         if (!editingCard) return;
         setSavingRemarks(true);
         try {
-            await GradingAPI.updateReportCardRemarks(editingCard.id, { teacher_remarks: remarksInput });
+            await GradingAPI.updateReportCardRemarks(editingCard.id, { teacher_remarks: remarksInput.trim() });
             setReportCards((prev) =>
-                prev.map((c) => (c.id === editingCard.id ? { ...c, teacher_remarks: remarksInput } : c))
+                prev.map((c) => (c.id === editingCard.id ? { ...c, teacher_remarks: remarksInput.trim() } : c))
             );
             showSuccess("Remarks Updated", "Teacher remarks have been recorded.");
             setEditingCard(null);
@@ -934,34 +1095,33 @@ export default function ReportCardsPage() {
         }
     };
 
-    useEffect(() => {
-        if (teacherId) {
-            Promise.all([
-                fetchDesignatedClasses(),
-                fetchSubjectClasses(),
-                fetchTerms(),
-                fetchGradingScales(),
-            ]);
+    const handleSaveAssessmentSelections = async () => {
+        if (!selectedSubjSubjectId || !selectedSubjClassId || !selectedSubjTermId) return;
+        setSavingSelections(true);
+        try {
+            const payload = Object.entries(toggledSelections).map(([assessment_id, is_included]) => ({
+                assessment_id,
+                type: "assignment",
+                is_included,
+            }));
+
+            await GradingAPI.updateSubjectAssessmentSelection({
+                subject_id: selectedSubjSubjectId,
+                class_id: selectedSubjClassId,
+                term_id: selectedSubjTermId,
+                selections: payload,
+            });
+
+            showSuccess("Selections Saved", "Subject assessment compilation preferences have been updated.");
+            await fetchSubjectAssessments();
+        } catch (err: any) {
+            showError(err?.message || "Failed to save assessment selections");
+        } finally {
+            setSavingSelections(false);
         }
-    }, [teacherId, fetchDesignatedClasses, fetchSubjectClasses, fetchTerms, fetchGradingScales]);
+    };
 
-    // Auto-select active term once after terms are loaded
-    useEffect(() => {
-        if (resolvedActiveTerm && selectedTermId === "all" && terms.length > 0) {
-            setSelectedTermId(resolvedActiveTerm.id);
-        }
-    }, [resolvedActiveTerm, terms.length]);
-
-    useEffect(() => {
-        if (teacherId) {
-            fetchReportCards();
-        }
-    }, [teacherId, fetchReportCards]);
-
-    // ---------------------------------------------------------------------------
-    // Filtered list
-    // ---------------------------------------------------------------------------
-
+    // Filtered report cards
     const filteredCards = React.useMemo(() => {
         if (!searchQuery.trim()) return reportCards;
         const q = searchQuery.toLowerCase();
@@ -973,10 +1133,6 @@ export default function ReportCardsPage() {
         );
     }, [reportCards, searchQuery]);
 
-    // ---------------------------------------------------------------------------
-    // Status chips
-    // ---------------------------------------------------------------------------
-
     const statusFilters: { key: StatusFilter; label: string }[] = [
         { key: "all", label: "All" },
         { key: "draft", label: "Draft" },
@@ -985,18 +1141,117 @@ export default function ReportCardsPage() {
         { key: "released", label: "Released" },
     ];
 
-    // ---------------------------------------------------------------------------
-    // Render
-    // ---------------------------------------------------------------------------
+    // Validation checks for action buttons (Rule A1)
+    const canGenerateClass = Boolean(
+        selectedClassId &&
+        selectedClassId !== "all" &&
+        (selectedTermId !== "all" || resolvedActiveTerm?.id) &&
+        terms.length > 0 &&
+        !generatingClass
+    );
+
+    const canSaveRemarks = Boolean(
+        remarksInput.trim().length > 0 &&
+        remarksInput.trim() !== (editingCard?.teacher_remarks || "").trim() &&
+        !savingRemarks
+    );
+
+    const canSaveAssessmentSelections = Boolean(
+        selectedSubjSubjectId &&
+        selectedSubjClassId &&
+        selectedSubjTermId &&
+        !savingSelections
+    );
 
     return (
         <View style={{ flex: 1, backgroundColor: isDark ? "#161B22" : "#f9fafb" }}>
             <UnifiedHeader
                 title="Report Cards"
-                subtitle="Management"
+                subtitle="Academic Evaluation"
                 role="Teacher"
                 fallbackPath="/(teacher)/management"
+                rightActions={
+                    <HelpTooltip
+                        id="teacher.manage.report_cards"
+                        role="teacher"
+                        tier={tier}
+                        onLearnMore={(anchor) =>
+                            router.push({
+                                pathname: "/(teacher)/accessibility/settings" as any,
+                                params: { manual: "1", anchor: anchor || "reports-ops" },
+                            } as any)
+                        }
+                    />
+                }
             />
+
+            {/* Mode Switcher Tabs */}
+            <View
+                style={{
+                    flexDirection: "row",
+                    paddingHorizontal: 16,
+                    paddingTop: 12,
+                    paddingBottom: 4,
+                    backgroundColor: isDark ? "#161B22" : "#ffffff",
+                    borderBottomWidth: 1,
+                    borderBottomColor: isDark ? "rgba(255,255,255,0.08)" : "#E5E7EB",
+                    gap: 8,
+                }}
+            >
+                {designatedClasses.length > 0 && isClassTeacher && (
+                    <TouchableOpacity
+                        onPress={() => setActiveTab("class_cards")}
+                        style={{
+                            paddingVertical: 10,
+                            paddingHorizontal: 16,
+                            borderRadius: 14,
+                            backgroundColor: activeTab === "class_cards" ? accentColor : "transparent",
+                            borderWidth: activeTab === "class_cards" ? 0 : 1,
+                            borderColor: isDark ? "#30363D" : "#E5E7EB",
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                        }}
+                    >
+                        <Award size={15} color={activeTab === "class_cards" ? "#FFFFFF" : isDark ? "#9CA3AF" : "#6B7280"} />
+                        <Text
+                            style={{
+                                color: activeTab === "class_cards" ? "#FFFFFF" : isDark ? "#9CA3AF" : "#6B7280",
+                                fontWeight: "700",
+                                fontSize: 13,
+                            }}
+                        >
+                            Class Report Cards
+                        </Text>
+                    </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                    onPress={() => setActiveTab("assessment_selection")}
+                    style={{
+                        paddingVertical: 10,
+                        paddingHorizontal: 16,
+                        borderRadius: 14,
+                        backgroundColor: activeTab === "assessment_selection" ? accentColor : "transparent",
+                        borderWidth: activeTab === "assessment_selection" ? 0 : 1,
+                        borderColor: isDark ? "#30363D" : "#E5E7EB",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                    }}
+                >
+                    <Layers size={15} color={activeTab === "assessment_selection" ? "#FFFFFF" : isDark ? "#9CA3AF" : "#6B7280"} />
+                    <Text
+                        style={{
+                            color: activeTab === "assessment_selection" ? "#FFFFFF" : isDark ? "#9CA3AF" : "#6B7280",
+                            fontWeight: "700",
+                            fontSize: 13,
+                        }}
+                    >
+                        Subject Assessment Contribution
+                    </Text>
+                </TouchableOpacity>
+            </View>
 
             <ScrollView
                 style={{ flex: 1 }}
@@ -1008,75 +1263,15 @@ export default function ReportCardsPage() {
                         <View style={{ paddingVertical: 50, alignItems: "center", justifyContent: "center" }}>
                             <ActivityIndicator size="large" color={accentColor} />
                             <Text style={{ fontSize: 13, color: isDark ? "#9CA3AF" : "#6B7280", marginTop: 12 }}>
-                                Checking class assignments...
+                                Resolving institutional scopes...
                             </Text>
                         </View>
-                    ) : mode === "subject" || !isClassTeacher || designatedClasses.length === 0 ? (
-                        <View
-                            style={{
-                                backgroundColor: isDark ? "#161B22" : "#ffffff",
-                                borderRadius: 24,
-                                borderWidth: 1,
-                                borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
-                                padding: 32,
-                                alignItems: "center",
-                                marginTop: 16,
-                            }}
-                        >
-                            <View
-                                style={{
-                                    backgroundColor: isDark ? "rgba(255,107,0,0.12)" : "#FFF7ED",
-                                    padding: 20,
-                                    borderRadius: 32,
-                                    marginBottom: 16,
-                                }}
-                            >
-                                <Award size={40} color={accentColor} />
-                            </View>
-                            <Text
-                                style={{
-                                    fontSize: 18,
-                                    fontWeight: "800",
-                                    color: isDark ? "#FFFFFF" : "#111827",
-                                    textAlign: "center",
-                                    marginBottom: 8,
-                                }}
-                            >
-                                Class Teacher Access Only
-                            </Text>
-                            <Text
-                                style={{
-                                    fontSize: 13,
-                                    color: isDark ? "#9CA3AF" : "#6B7280",
-                                    textAlign: "center",
-                                    lineHeight: 20,
-                                    maxWidth: 360,
-                                    marginBottom: 20,
-                                }}
-                            >
-                                {mode === "subject"
-                                    ? "You are currently in Subject Teacher mode. Switch to Class Teacher mode from your dashboard profile to manage report cards for your assigned class."
-                                    : "Whole-class report card management and remarks are restricted to designated Class Teachers for their assigned homeroom class. You are not currently assigned as a Class Teacher for any class."}
-                            </Text>
-                            <TouchableOpacity
-                                onPress={() => router.push("/(teacher)")}
-                                style={{
-                                    backgroundColor: accentColor,
-                                    paddingHorizontal: 22,
-                                    paddingVertical: 12,
-                                    borderRadius: 14,
-                                }}
-                            >
-                                <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 13 }}>
-                                    Return to Dashboard
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                        <>
-                            {/* ------------------------------------------------------- */}
-                            {/* Filters                                                  */}
-                            {/* ------------------------------------------------------- */}
+                    ) : activeTab === "assessment_selection" ? (
+                        /* ========================================================================= */
+                        /* PART D: Subject Teacher Assessment Selection View                          */
+                        /* ========================================================================= */
+                        <View>
+                            {/* Selection Controls */}
                             <View
                                 style={{
                                     backgroundColor: isDark ? "#161B22" : "#ffffff",
@@ -1087,515 +1282,537 @@ export default function ReportCardsPage() {
                                     marginBottom: 16,
                                 }}
                             >
-                        <View
-                            style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                marginBottom: 14,
-                            }}
-                        >
-                            <View
-                                style={{
-                                    backgroundColor: isDark
-                                        ? "rgba(255,107,0,0.12)"
-                                        : "#FFF7ED",
-                                    padding: 8,
-                                    borderRadius: 12,
-                                    marginRight: 10,
-                                }}
-                            >
-                                <Filter size={16} color={accentColor} />
-                            </View>
-                            <Text
-                                style={{
-                                    color: isDark ? "#F1F1F1" : "#111827",
-                                    fontWeight: "700",
-                                    fontSize: 15,
-                                }}
-                            >
-                                Filters
-                            </Text>
-                        </View>
-
-                        <Dropdown
-                            label="Subject"
-                            items={[
-                                { id: "all", label: "All Subjects" },
-                                ...uniqueSubjects.map((s) => ({ id: s.id, label: s.title })),
-                            ]}
-                            selectedId={selectedSubjectId}
-                            selectedLabel={
-                                selectedSubjectId === "all"
-                                    ? "All Subjects"
-                                    : uniqueSubjects.find((s) => s.id === selectedSubjectId)
-                                          ?.title ?? "All Subjects"
-                            }
-                            onSelect={(id) => {
-                                setSelectedSubjectId(id);
-                            }}
-                            isDark={isDark}
-                            accentColor={accentColor}
-                        />
-
-                        <Dropdown
-                            label="Class"
-                            items={designatedClasses.map((c) => ({ id: c.id, label: c.name }))}
-                            selectedId={selectedClassId}
-                            selectedLabel={
-                                designatedClasses.find((c) => c.id === selectedClassId)?.name ??
-                                (designatedClasses[0]?.name || "Select Class")
-                            }
-                            onSelect={setSelectedClassId}
-                            isDark={isDark}
-                            accentColor={accentColor}
-                        />
-
-                        <Dropdown
-                            label="Term"
-                            items={[
-                                { id: "all", label: "All Terms" },
-                                ...terms.map((t) => ({
-                                    id: t.id,
-                                    label: t.name + (t.is_current ? " (Current)" : ""),
-                                })),
-                            ]}
-                            selectedId={selectedTermId}
-                            selectedLabel={
-                                selectedTermId === "all"
-                                    ? "All Terms"
-                                    : terms.find((t) => t.id === selectedTermId)?.name ??
-                                      "All Terms"
-                            }
-                            onSelect={setSelectedTermId}
-                            isDark={isDark}
-                            accentColor={accentColor}
-                        />
-
-                        {/* Status filter chips */}
-                        <Text
-                            style={{
-                                fontSize: 10,
-                                fontWeight: "700",
-                                color: isDark ? "#9CA3AF" : "#6B7280",
-                                textTransform: "uppercase",
-                                letterSpacing: 1.2,
-                                marginBottom: 8,
-                                marginLeft: 4,
-                            }}
-                        >
-                            Status
-                        </Text>
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            style={{ marginBottom: 4 }}
-                        >
-                            {statusFilters.map((sf) => (
-                                <TouchableOpacity
-                                    key={sf.key}
-                                    onPress={() => setSelectedStatus(sf.key)}
-                                    style={{
-                                        backgroundColor:
-                                            selectedStatus === sf.key
-                                                ? accentColor
-                                                : isDark
-                                                ? "#1A1650"
-                                                : "#F9FAFB",
-                                        borderRadius: 20,
-                                        borderWidth: 1,
-                                        borderColor:
-                                            selectedStatus === sf.key
-                                                ? accentColor
-                                                : isDark
-                                                ? "rgba(255,255,255,0.08)"
-                                                : "#F3F4F6",
-                                        paddingHorizontal: 16,
-                                        paddingVertical: 8,
-                                        marginRight: 8,
-                                    }}
-                                >
-                                    <Text
+                                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
+                                    <View
                                         style={{
-                                            color:
-                                                selectedStatus === sf.key
-                                                    ? "#ffffff"
-                                                    : isDark
-                                                    ? "#9CA3AF"
-                                                    : "#6B7280",
-                                            fontWeight: "700",
-                                            fontSize: 12,
+                                            backgroundColor: isDark ? "rgba(255,107,0,0.12)" : "#FFF7ED",
+                                            padding: 8,
+                                            borderRadius: 12,
+                                            marginRight: 10,
                                         }}
                                     >
-                                        {sf.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
+                                        <Filter size={16} color={accentColor} />
+                                    </View>
+                                    <View>
+                                        <Text style={{ color: isDark ? "#F1F1F1" : "#111827", fontWeight: "700", fontSize: 15 }}>
+                                            Subject Teacher Compilation Scope
+                                        </Text>
+                                        <Text style={{ color: isDark ? "#9CA3AF" : "#6B7280", fontSize: 12 }}>
+                                            Select which coursework assessments compile into report cards for your subject.
+                                        </Text>
+                                    </View>
+                                </View>
 
-                        {/* No Active Term Banner */}
-                        {!resolvedActiveTerm && !loading && terms.length > 0 && (
-                        <View style={{
-                            backgroundColor: isDark ? '#2D1F00' : '#FFFBEB',
-                            borderRadius: 14, padding: 14, marginBottom: 16,
-                            borderWidth: 1, borderColor: isDark ? '#92400E' : '#FCD34D',
-                            flexDirection: 'row', alignItems: 'center', gap: 10,
-                        }}>
-                            <AlertCircle size={18} color="#D97706" />
-                            <Text style={{ color: isDark ? '#FCD34D' : '#92400E', fontSize: 13, flex: 1 }}>
-                                No active term for today. Select a term to view report cards.
-                            </Text>
-                        </View>
-                    )}
+                                <Dropdown
+                                    label="Subject"
+                                    items={uniqueSubjects.map((s) => ({ id: s.id, label: s.title }))}
+                                    selectedId={selectedSubjSubjectId}
+                                    selectedLabel={uniqueSubjects.find((s) => s.id === selectedSubjSubjectId)?.title || "Select Subject"}
+                                    onSelect={(id) => {
+                                        setSelectedSubjSubjectId(id);
+                                        const classes = subjectClasses.filter((sc) => sc.subject_id === id);
+                                        if (classes.length > 0) setSelectedSubjClassId(classes[0].class_id);
+                                    }}
+                                    isDark={isDark}
+                                    accentColor={accentColor}
+                                    emptyMessage="No subjects assigned"
+                                    disabled={uniqueSubjects.length === 0}
+                                />
 
-                    {/* ------------------------------------------------------- */}
-                    {/* Summary Stats                                            */}
-                    {/* ------------------------------------------------------- */}
-                    <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
-                        <View
-                            style={{
-                                flex: 1,
-                                backgroundColor: isDark ? "#161B22" : "#ffffff",
-                                borderRadius: 20,
-                                borderWidth: 1,
-                                borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
-                                padding: 14,
-                            }}
-                        >
-                            <Text
-                                style={{
-                                    color: isDark ? "#6B7280" : "#9CA3AF",
-                                    fontSize: 10,
-                                    fontWeight: "700",
-                                    textTransform: "uppercase",
-                                    letterSpacing: 1,
-                                }}
-                            >
-                                Total
-                            </Text>
-                            <Text
-                                style={{
-                                    color: isDark ? "#F1F1F1" : "#111827",
-                                    fontWeight: "800",
-                                    fontSize: 22,
-                                    marginTop: 4,
-                                }}
-                            >
-                                {filteredCards.length}
-                            </Text>
-                        </View>
-                        <View
-                            style={{
-                                flex: 1,
-                                backgroundColor: isDark ? "#161B22" : "#ffffff",
-                                borderRadius: 20,
-                                borderWidth: 1,
-                                borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
-                                padding: 14,
-                            }}
-                        >
-                            <Text
-                                style={{
-                                    color: isDark ? "#6B7280" : "#9CA3AF",
-                                    fontSize: 10,
-                                    fontWeight: "700",
-                                    textTransform: "uppercase",
-                                    letterSpacing: 1,
-                                }}
-                            >
-                                Published
-                            </Text>
-                            <Text
-                                style={{
-                                    color: "#3B82F6",
-                                    fontWeight: "800",
-                                    fontSize: 22,
-                                    marginTop: 4,
-                                }}
-                            >
-                                {filteredCards.filter((c) => c.status === "published").length}
-                            </Text>
-                        </View>
-                        <View
-                            style={{
-                                flex: 1,
-                                backgroundColor: isDark ? "#161B22" : "#ffffff",
-                                borderRadius: 20,
-                                borderWidth: 1,
-                                borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
-                                padding: 14,
-                            }}
-                        >
-                            <Text
-                                style={{
-                                    color: isDark ? "#6B7280" : "#9CA3AF",
-                                    fontSize: 10,
-                                    fontWeight: "700",
-                                    textTransform: "uppercase",
-                                    letterSpacing: 1,
-                                }}
-                            >
-                                Released
-                            </Text>
-                            <Text
-                                style={{
-                                    color: "#22C55E",
-                                    fontWeight: "800",
-                                    fontSize: 22,
-                                    marginTop: 4,
-                                }}
-                            >
-                                {filteredCards.filter((c) => c.status === "released").length}
-                            </Text>
-                        </View>
-                    </View>
+                                <Dropdown
+                                    label="Class"
+                                    items={classesForSelectedSubject}
+                                    selectedId={selectedSubjClassId}
+                                    selectedLabel={classesForSelectedSubject.find((c) => c.id === selectedSubjClassId)?.label || "Select Class"}
+                                    onSelect={setSelectedSubjClassId}
+                                    isDark={isDark}
+                                    accentColor={accentColor}
+                                    emptyMessage="No classes assigned for this subject"
+                                    disabled={classesForSelectedSubject.length === 0}
+                                />
 
-                    {/* ------------------------------------------------------- */}
-                    {/* Search                                                   */}
-                    {/* ------------------------------------------------------- */}
-                    <View
-                        style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            backgroundColor: isDark ? "#161B22" : "#ffffff",
-                            borderRadius: 16,
-                            borderWidth: 1,
-                            borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
-                            paddingHorizontal: 14,
-                            paddingVertical: 12,
-                            marginBottom: 16,
-                        }}
-                    >
-                        <Search size={16} color={isDark ? "#6B7280" : "#9CA3AF"} />
-                        <TextInput
-                            style={{
-                                flex: 1,
-                                marginLeft: 10,
-                                color: isDark ? "#E5E5E5" : "#111827",
-                                fontWeight: "500",
-                                fontSize: 14,
-                            }}
-                            placeholder="Search by name, admission #, or class..."
-                            placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                        />
-                        {searchQuery.length > 0 && (
-                            <TouchableOpacity onPress={() => setSearchQuery("")}>
-                                <Text
+                                <Dropdown
+                                    label="Term"
+                                    items={terms.map((t) => ({ id: t.id, label: t.name + (t.is_current ? " (Current)" : "") }))}
+                                    selectedId={selectedSubjTermId}
+                                    selectedLabel={terms.find((t) => t.id === selectedSubjTermId)?.name || "Select Term"}
+                                    onSelect={setSelectedSubjTermId}
+                                    isDark={isDark}
+                                    accentColor={accentColor}
+                                    emptyMessage="No terms configured in system"
+                                    disabled={terms.length === 0}
+                                />
+                            </View>
+
+                            {/* Weighting Ratio Info Banner */}
+                            {subjectAssessments?.weights && (
+                                <View
                                     style={{
-                                        color: accentColor,
-                                        fontWeight: "700",
-                                        fontSize: 12,
+                                        backgroundColor: isDark ? "rgba(255,107,0,0.08)" : "#FFF7ED",
+                                        borderRadius: 16,
+                                        borderWidth: 1,
+                                        borderColor: isDark ? "rgba(255,107,0,0.2)" : "#FED7AA",
+                                        padding: 14,
+                                        marginBottom: 16,
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        gap: 12,
                                     }}
                                 >
-                                    Clear
-                                </Text>
-                            </TouchableOpacity>
-                        )}
+                                    <Shield size={20} color={accentColor} />
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={{ color: isDark ? "#FFFFFF" : "#111827", fontWeight: "700", fontSize: 13 }}>
+                                            Institution Split: {subjectAssessments.weights.exam_weight}% Exam / {subjectAssessments.weights.continuous_assessment_weight}% Coursework
+                                        </Text>
+                                        <Text style={{ color: isDark ? "#9CA3AF" : "#6B7280", fontSize: 11, marginTop: 2, lineHeight: 16 }}>
+                                            Exam results are mandatory and cannot be excluded. Selected continuous assessments will share the {subjectAssessments.weights.continuous_assessment_weight}% coursework allocation.
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
 
-                        {/* Locked Term Notice */}
-                        {selectedTermId !== "all" && terms.find((t) => t.id === selectedTermId)?.locked_at ? (
-                            <View style={{
-                                backgroundColor: isDark ? '#3A1010' : '#FEF2F2',
-                                borderRadius: 14, padding: 14, marginBottom: 16,
-                                borderWidth: 1, borderColor: isDark ? '#991B1B' : '#FCA5A5',
-                                flexDirection: 'row', alignItems: 'center', gap: 10,
-                            }}>
-                                <AlertCircle size={18} color="#DC2626" />
-                                <Text style={{ color: isDark ? '#FCA5A5' : '#991B1B', fontSize: 13, flex: 1 }}>
-                                    Selected term is locked. Report cards are view-only for this term.
-                                </Text>
-                            </View>
-                        ) : null}
-                    </View>
+                            {loadingAssessments ? (
+                                <View style={{ paddingVertical: 40, alignItems: "center" }}>
+                                    <ActivityIndicator size="large" color={accentColor} />
+                                    <Text style={{ color: isDark ? "#9CA3AF" : "#6B7280", fontSize: 13, marginTop: 8 }}>
+                                        Loading subject assessments and exams...
+                                    </Text>
+                                </View>
+                            ) : (
+                                <View>
+                                    {/* Mandatory Exams Section */}
+                                    <View style={{ marginBottom: 20 }}>
+                                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10, gap: 8 }}>
+                                            <Lock size={16} color={accentColor} />
+                                            <Text style={{ color: isDark ? "#FFFFFF" : "#111827", fontWeight: "800", fontSize: 14, textTransform: "uppercase", letterSpacing: 0.8 }}>
+                                                Mandatory Academic Examinations
+                                            </Text>
+                                        </View>
 
-                    <View style={{ marginBottom: 16 }}>
-                        <TouchableOpacity
-                            onPress={handleGenerateClassCards}
-                            disabled={generatingClass || !selectedClassId || selectedClassId === "all"}
-                            style={{
-                                backgroundColor: (!selectedClassId || selectedClassId === "all") ? (isDark ? "#21262D" : "#E5E7EB") : accentColor,
-                                paddingVertical: 12,
-                                paddingHorizontal: 16,
-                                borderRadius: 16,
-                                flexDirection: "row",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                }}
-                            >
-                                {generatingClass ? (
-                                    <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 8 }} />
-                                ) : (
-                                    <Sparkles size={16} color={selectedClassId === "all" ? (isDark ? "#6B7280" : "#9CA3AF") : "#ffffff"} style={{ marginRight: 8 }} />
-                                )}
-                                <Text style={{ color: selectedClassId === "all" ? (isDark ? "#6B7280" : "#9CA3AF") : "#ffffff", fontWeight: "700", fontSize: 13 }}>
-                                    {generatingClass ? "Compiling Class Report Cards..." : selectedClassId === "all" ? "Select a Class to Compile Report Cards" : "Generate / Compile Class Report Cards"}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
+                                        {(subjectAssessments?.exams || []).length > 0 ? (
+                                            subjectAssessments!.exams.map((exam) => (
+                                                <View
+                                                    key={exam.id}
+                                                    style={{
+                                                        backgroundColor: isDark ? "#161B22" : "#ffffff",
+                                                        borderRadius: 18,
+                                                        padding: 16,
+                                                        borderWidth: 1.5,
+                                                        borderColor: isDark ? "#30363D" : "#E5E7EB",
+                                                        marginBottom: 10,
+                                                        flexDirection: "row",
+                                                        alignItems: "center",
+                                                        justifyContent: "space-between",
+                                                    }}
+                                                >
+                                                    <View style={{ flex: 1, marginRight: 12 }}>
+                                                        <Text style={{ color: isDark ? "#FFFFFF" : "#111827", fontWeight: "700", fontSize: 14 }}>
+                                                            {exam.title}
+                                                        </Text>
+                                                        <Text style={{ color: isDark ? "#9CA3AF" : "#6B7280", fontSize: 12, marginTop: 2 }}>
+                                                            Max Mark: {exam.max_score} pts &bull; Exam Results Module
+                                                        </Text>
+                                                    </View>
+                                                    <View
+                                                        style={{
+                                                            flexDirection: "row",
+                                                            alignItems: "center",
+                                                            backgroundColor: isDark ? "rgba(34,197,94,0.15)" : "#DCFCE7",
+                                                            paddingHorizontal: 10,
+                                                            paddingVertical: 5,
+                                                            borderRadius: 12,
+                                                            gap: 5,
+                                                        }}
+                                                    >
+                                                        <Lock size={12} color="#16A34A" />
+                                                        <Text style={{ color: "#16A34A", fontSize: 11, fontWeight: "700" }}>
+                                                            Mandatory (Locked)
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                            ))
+                                        ) : (
+                                            <View style={{ backgroundColor: isDark ? "#161B22" : "#ffffff", padding: 16, borderRadius: 16, borderWidth: 1, borderColor: isDark ? "#30363D" : "#E5E7EB" }}>
+                                                <Text style={{ color: isDark ? "#9CA3AF" : "#6B7280", fontSize: 13, fontStyle: "italic" }}>
+                                                    No examinations scheduled for this subject and term. Continuous assessment will represent 100% of the report card score.
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
 
-                    {/* ------------------------------------------------------- */}
-                    {/* Report Card List                                         */}
-                    {/* ------------------------------------------------------- */}
-                    <View
-                        style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            marginBottom: 14,
-                        }}
-                    >
-                        <Award size={18} color={accentColor} />
-                        <Text
-                            style={{
-                                color: isDark ? "#F1F1F1" : "#111827",
-                                fontWeight: "700",
-                                fontSize: 17,
-                                marginLeft: 8,
-                            }}
-                        >
-                            Report Cards
-                        </Text>
-                        <Text
-                            style={{
-                                color: isDark ? "#6B7280" : "#9CA3AF",
-                                fontSize: 12,
-                                fontWeight: "600",
-                                marginLeft: 8,
-                            }}
-                        >
-                            ({filteredCards.length})
-                        </Text>
-                    </View>
+                                    {/* Continuous Assessment Coursework Section */}
+                                    <View style={{ marginBottom: 24 }}>
+                                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10, gap: 8 }}>
+                                            <Layers size={16} color={accentColor} />
+                                            <Text style={{ color: isDark ? "#FFFFFF" : "#111827", fontWeight: "800", fontSize: 14, textTransform: "uppercase", letterSpacing: 0.8 }}>
+                                                Continuous Coursework Assessments
+                                            </Text>
+                                        </View>
 
-                    {loading ? (
-                        <View style={{ marginTop: 12 }}>
-                            <ListItemSkeleton loading={loading} count={4} label="Loading report cards..." />
-                        </View>
-                    ) : filteredCards.length === 0 ? (
-                        <View
-                            style={{
-                                backgroundColor: isDark ? "#161B22" : "#ffffff",
-                                borderRadius: 24,
-                                borderWidth: 1,
-                                borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
-                                borderStyle: "dashed",
-                                padding: 48,
-                                alignItems: "center",
-                            }}
-                        >
-                            <View
-                                style={{
-                                    backgroundColor: isDark
-                                        ? "rgba(255,107,0,0.12)"
-                                        : "#FFF7ED",
-                                    width: 56,
-                                    height: 56,
-                                    borderRadius: 20,
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    marginBottom: 16,
-                                }}
-                            >
-                                <FileText size={24} color={accentColor} />
-                            </View>
-                            <Text
-                                style={{
-                                    color: isDark ? "#E5E5E5" : "#111827",
-                                    fontWeight: "700",
-                                    fontSize: 16,
-                                    marginBottom: 6,
-                                }}
-                            >
-                                No report cards found
-                            </Text>
-                            <Text
-                                style={{
-                                    color: isDark ? "#6B7280" : "#9CA3AF",
-                                    fontSize: 13,
-                                    textAlign: "center",
-                                    lineHeight: 20,
-                                }}
-                            >
-                                No report cards match the selected filters. Use Generate to compile draft cards.
-                            </Text>
+                                        {(subjectAssessments?.assignments || []).length > 0 ? (
+                                            subjectAssessments!.assignments.map((assign) => {
+                                                const isIncluded = toggledSelections[assign.id] ?? true;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={assign.id}
+                                                        onPress={() => {
+                                                            setToggledSelections((prev) => ({
+                                                                ...prev,
+                                                                [assign.id]: !isIncluded,
+                                                            }));
+                                                        }}
+                                                        activeOpacity={0.7}
+                                                        style={{
+                                                            backgroundColor: isDark ? "#161B22" : "#ffffff",
+                                                            borderRadius: 18,
+                                                            padding: 16,
+                                                            borderWidth: 1.5,
+                                                            borderColor: isIncluded
+                                                                ? accentColor
+                                                                : isDark
+                                                                ? "#30363D"
+                                                                : "#E5E7EB",
+                                                            marginBottom: 10,
+                                                            flexDirection: "row",
+                                                            alignItems: "center",
+                                                            justifyContent: "space-between",
+                                                        }}
+                                                    >
+                                                        <View style={{ flex: 1, marginRight: 12 }}>
+                                                            <Text style={{ color: isDark ? "#FFFFFF" : "#111827", fontWeight: "700", fontSize: 14 }}>
+                                                                {assign.title}
+                                                            </Text>
+                                                            <Text style={{ color: isDark ? "#9CA3AF" : "#6B7280", fontSize: 12, marginTop: 2 }}>
+                                                                Points: {assign.max_score} pts {assign.weight ? `\u2022 Weight: ${assign.weight}%` : ""}
+                                                            </Text>
+                                                        </View>
+                                                        <View
+                                                            style={{
+                                                                width: 24,
+                                                                height: 24,
+                                                                borderRadius: 8,
+                                                                borderWidth: 2,
+                                                                borderColor: isIncluded ? accentColor : isDark ? "#6B7280" : "#D1D5DB",
+                                                                backgroundColor: isIncluded ? accentColor : "transparent",
+                                                                alignItems: "center",
+                                                                justifyContent: "center",
+                                                            }}
+                                                        >
+                                                            {isIncluded && <Check size={14} color="#FFFFFF" />}
+                                                        </View>
+                                                    </TouchableOpacity>
+                                                );
+                                            })
+                                        ) : (
+                                            <View style={{ backgroundColor: isDark ? "#161B22" : "#ffffff", padding: 16, borderRadius: 16, borderWidth: 1, borderColor: isDark ? "#30363D" : "#E5E7EB" }}>
+                                                <Text style={{ color: isDark ? "#9CA3AF" : "#6B7280", fontSize: 13, fontStyle: "italic" }}>
+                                                    No coursework assignments found for this subject and class.
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+
+                                    {/* Save Selection Button (Rule A1) */}
+                                    <TouchableOpacity
+                                        onPress={handleSaveAssessmentSelections}
+                                        disabled={!canSaveAssessmentSelections}
+                                        style={{
+                                            backgroundColor: canSaveAssessmentSelections ? accentColor : isDark ? "#21262D" : "#E5E7EB",
+                                            paddingVertical: 14,
+                                            paddingHorizontal: 20,
+                                            borderRadius: 16,
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            gap: 8,
+                                        }}
+                                    >
+                                        {savingSelections ? (
+                                            <ActivityIndicator size="small" color="#FFFFFF" />
+                                        ) : (
+                                            <CheckCircle2 size={18} color={canSaveAssessmentSelections ? "#FFFFFF" : isDark ? "#6B7280" : "#9CA3AF"} />
+                                        )}
+                                        <Text
+                                            style={{
+                                                color: canSaveAssessmentSelections ? "#FFFFFF" : isDark ? "#6B7280" : "#9CA3AF",
+                                                fontWeight: "700",
+                                                fontSize: 14,
+                                            }}
+                                        >
+                                            {savingSelections ? "Saving Selection..." : "Save Assessment Selection"}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
                         </View>
                     ) : (
-                        filteredCards.map((card) => (
-                            <ReportCardRow
-                                key={card.id}
-                                card={card}
-                                isDark={isDark}
-                                accentColor={accentColor}
-                                expanded={expandedCardId === card.id}
-                                onToggle={() =>
-                                    setExpandedCardId((prev) =>
-                                        prev === card.id ? null : card.id
-                                    )
-                                }
-                                gradingScales={gradingScales}
-                                onDownloadPDF={handleDownloadPDF}
-                                isDownloading={downloadingCardId === card.id}
-                                onEditRemarks={handleOpenEditRemarks}
-                                onViewStudentRecord={() => router.push("/(teacher)/students" as any)}
-                            />
-                        ))
-                    )}
+                        /* ========================================================================= */
+                        /* PART C: Class Teacher Report Card Generation & Review View                */
+                        /* ========================================================================= */
+                        <>
+                            {designatedClasses.length === 0 ? (
+                                <View
+                                    style={{
+                                        backgroundColor: isDark ? "#161B22" : "#ffffff",
+                                        borderRadius: 24,
+                                        borderWidth: 1,
+                                        borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
+                                        padding: 32,
+                                        alignItems: "center",
+                                        marginTop: 16,
+                                    }}
+                                >
+                                    <Award size={40} color={accentColor} />
+                                    <Text style={{ fontSize: 18, fontWeight: "800", color: isDark ? "#FFFFFF" : "#111827", textAlign: "center", marginTop: 12 }}>
+                                        No Designated Class Assigned
+                                    </Text>
+                                    <Text style={{ fontSize: 13, color: isDark ? "#9CA3AF" : "#6B7280", textAlign: "center", lineHeight: 20, marginTop: 8, maxWidth: 360 }}>
+                                        You are currently not designated as a Class Teacher for any homeroom class. Use the Subject Assessment Contribution tab to manage evaluations for subjects you teach.
+                                    </Text>
+                                </View>
+                            ) : (
+                                <>
+                                    {/* Class Filters */}
+                                    <View
+                                        style={{
+                                            backgroundColor: isDark ? "#161B22" : "#ffffff",
+                                            borderRadius: 24,
+                                            borderWidth: 1,
+                                            borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
+                                            padding: 16,
+                                            marginBottom: 16,
+                                        }}
+                                    >
+                                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
+                                            <View
+                                                style={{
+                                                    backgroundColor: isDark ? "rgba(255,107,0,0.12)" : "#FFF7ED",
+                                                    padding: 8,
+                                                    borderRadius: 12,
+                                                    marginRight: 10,
+                                                }}
+                                            >
+                                                <Filter size={16} color={accentColor} />
+                                            </View>
+                                            <Text style={{ color: isDark ? "#F1F1F1" : "#111827", fontWeight: "700", fontSize: 15 }}>
+                                                Class Teacher Filters
+                                            </Text>
+                                        </View>
 
-                    {/* Class Teacher Workflow Notice */}
-                    {!loading && filteredCards.length > 0 && (
-                        <View
-                            style={{
-                                backgroundColor: isDark
-                                    ? "rgba(255,107,0,0.08)"
-                                    : "rgba(255,107,0,0.05)",
-                                borderRadius: 16,
-                                borderWidth: 1,
-                                borderColor: isDark
-                                    ? "rgba(255,107,0,0.15)"
-                                    : "rgba(255,107,0,0.12)",
-                                padding: 14,
-                                marginTop: 8,
-                                flexDirection: "row",
-                                alignItems: "center",
-                            }}
-                        >
-                            <TrendingUp size={16} color={accentColor} />
-                            <Text
-                                style={{
-                                    color: isDark ? "#D1D5DB" : "#4B5563",
-                                    fontSize: 12,
-                                    marginLeft: 10,
-                                    flex: 1,
-                                    lineHeight: 18,
-                                }}
-                            >
-                                Class Teachers can compile draft report cards and record teacher remarks for their assigned class. Final completeness review, official publication, and release to guardians are signed off by school administration.
-                            </Text>
-                        </View>
+                                        <Dropdown
+                                            label="Class"
+                                            items={designatedClasses.map((c) => ({ id: c.id, label: c.name }))}
+                                            selectedId={selectedClassId}
+                                            selectedLabel={designatedClasses.find((c) => c.id === selectedClassId)?.name || "Select Designated Class"}
+                                            onSelect={setSelectedClassId}
+                                            isDark={isDark}
+                                            accentColor={accentColor}
+                                            emptyMessage="No assigned classes"
+                                        />
+
+                                        <Dropdown
+                                            label="Term"
+                                            items={[
+                                                { id: "all", label: "All Terms" },
+                                                ...terms.map((t) => ({ id: t.id, label: t.name + (t.is_current ? " (Current)" : "") })),
+                                            ]}
+                                            selectedId={selectedTermId}
+                                            selectedLabel={selectedTermId === "all" ? "All Terms" : terms.find((t) => t.id === selectedTermId)?.name || "Select Term"}
+                                            onSelect={setSelectedTermId}
+                                            isDark={isDark}
+                                            accentColor={accentColor}
+                                            emptyMessage="No terms configured in system"
+                                            disabled={terms.length === 0}
+                                        />
+
+                                        {/* Status filter chips */}
+                                        <Text
+                                            style={{
+                                                fontSize: 10,
+                                                fontWeight: "700",
+                                                color: isDark ? "#9CA3AF" : "#6B7280",
+                                                textTransform: "uppercase",
+                                                letterSpacing: 1.2,
+                                                marginBottom: 8,
+                                                marginLeft: 4,
+                                            }}
+                                        >
+                                            Status
+                                        </Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+                                            {statusFilters.map((sf) => (
+                                                <TouchableOpacity
+                                                    key={sf.key}
+                                                    onPress={() => setSelectedStatus(sf.key)}
+                                                    style={{
+                                                        backgroundColor: selectedStatus === sf.key ? accentColor : isDark ? "#1A1650" : "#F9FAFB",
+                                                        borderRadius: 20,
+                                                        borderWidth: 1,
+                                                        borderColor: selectedStatus === sf.key ? accentColor : isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
+                                                        paddingHorizontal: 16,
+                                                        paddingVertical: 8,
+                                                        marginRight: 8,
+                                                    }}
+                                                >
+                                                    <Text
+                                                        style={{
+                                                            color: selectedStatus === sf.key ? "#ffffff" : isDark ? "#9CA3AF" : "#6B7280",
+                                                            fontWeight: "700",
+                                                            fontSize: 12,
+                                                        }}
+                                                    >
+                                                        {sf.label}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
+                                    </View>
+
+                                    {/* Action Button: Generate / Compile Class Report Cards */}
+                                    <View style={{ marginBottom: 16 }}>
+                                        <TouchableOpacity
+                                            onPress={handleGenerateClassCards}
+                                            disabled={!canGenerateClass}
+                                            style={{
+                                                backgroundColor: canGenerateClass ? accentColor : isDark ? "#21262D" : "#E5E7EB",
+                                                paddingVertical: 14,
+                                                paddingHorizontal: 16,
+                                                borderRadius: 16,
+                                                flexDirection: "row",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                gap: 8,
+                                            }}
+                                        >
+                                            {generatingClass ? (
+                                                <ActivityIndicator size="small" color="#FFFFFF" />
+                                            ) : (
+                                                <Sparkles size={16} color={canGenerateClass ? "#FFFFFF" : isDark ? "#6B7280" : "#9CA3AF"} />
+                                            )}
+                                            <Text
+                                                style={{
+                                                    color: canGenerateClass ? "#FFFFFF" : isDark ? "#6B7280" : "#9CA3AF",
+                                                    fontWeight: "700",
+                                                    fontSize: 13,
+                                                }}
+                                            >
+                                                {generatingClass
+                                                    ? "Compiling Class Report Cards..."
+                                                    : !selectedClassId
+                                                    ? "Select a Designated Class First"
+                                                    : terms.length === 0
+                                                    ? "Terms Not Configured in System"
+                                                    : "Generate / Compile Class Report Cards"}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    {/* Search Input */}
+                                    <View
+                                        style={{
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                            backgroundColor: isDark ? "#161B22" : "#ffffff",
+                                            borderRadius: 16,
+                                            borderWidth: 1,
+                                            borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
+                                            paddingHorizontal: 14,
+                                            paddingVertical: 12,
+                                            marginBottom: 16,
+                                        }}
+                                    >
+                                        <Search size={16} color={isDark ? "#6B7280" : "#9CA3AF"} />
+                                        <TextInput
+                                            style={{
+                                                flex: 1,
+                                                marginLeft: 10,
+                                                color: isDark ? "#E5E5E5" : "#111827",
+                                                fontWeight: "500",
+                                                fontSize: 14,
+                                            }}
+                                            placeholder="Search by student name or admission #..."
+                                            placeholderTextColor={isDark ? "#4B5563" : "#9CA3AF"}
+                                            value={searchQuery}
+                                            onChangeText={setSearchQuery}
+                                        />
+                                        {searchQuery.length > 0 && (
+                                            <TouchableOpacity onPress={() => setSearchQuery("")}>
+                                                <Text style={{ color: accentColor, fontWeight: "700", fontSize: 12 }}>
+                                                    Clear
+                                                </Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+
+                                    {/* Report Cards List */}
+                                    {loading ? (
+                                        <View style={{ paddingVertical: 30 }}>
+                                            <ListItemSkeleton count={3} />
+                                        </View>
+                                    ) : filteredCards.length === 0 ? (
+                                        <View
+                                            style={{
+                                                backgroundColor: isDark ? "#161B22" : "#ffffff",
+                                                borderRadius: 24,
+                                                borderWidth: 1,
+                                                borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
+                                                padding: 32,
+                                                alignItems: "center",
+                                            }}
+                                        >
+                                            <FileText size={32} color={accentColor} />
+                                            <Text style={{ color: isDark ? "#E5E5E5" : "#111827", fontWeight: "700", fontSize: 16, marginTop: 10 }}>
+                                                No report cards found
+                                            </Text>
+                                            <Text style={{ color: isDark ? "#6B7280" : "#9CA3AF", fontSize: 13, textAlign: "center", marginTop: 6, maxWidth: 300 }}>
+                                                No compiled cards match the current selection. Click "Generate / Compile Class Report Cards" above to compile grades from exams and assessments.
+                                            </Text>
+                                        </View>
+                                    ) : (
+                                        filteredCards.map((card) => (
+                                            <ReportCardRow
+                                                key={card.id}
+                                                card={card}
+                                                isDark={isDark}
+                                                accentColor={accentColor}
+                                                expanded={expandedCardId === card.id}
+                                                onToggle={() => setExpandedCardId((prev) => (prev === card.id ? null : card.id))}
+                                                gradingScales={gradingScales}
+                                                onDownloadPDF={handleDownloadPDF}
+                                                isDownloading={downloadingCardId === card.id}
+                                                onEditRemarks={handleOpenEditRemarks}
+                                                onRegenerate={handleRegenerateSingle}
+                                                isRegenerating={regeneratingCardId === card.id}
+                                                onViewStudentRecord={() => router.push("/(teacher)/students" as any)}
+                                                onViewHistory={(c) => {
+                                                    setHistoryStudentId(c.student_id);
+                                                    setHistoryStudentName(c.student_name);
+                                                    setHistoryModalVisible(true);
+                                                }}
+                                            />
+                                        ))
+                                    )}
+                                </>
+                            )}
+                        </>
                     )}
-                    </>
-                )}
                 </View>
             </ScrollView>
 
             {/* Remarks Modal */}
-            <Modal
-                visible={!!editingCard}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setEditingCard(null)}
-            >
+            <Modal visible={!!editingCard} transparent animationType="fade" onRequestClose={() => setEditingCard(null)}>
                 <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 20 }}>
-                    <View style={{
-                        backgroundColor: isDark ? "#161B22" : "#ffffff",
-                        borderRadius: 24,
-                        padding: 24,
-                        width: "100%",
-                        maxWidth: 480,
-                        borderWidth: 1,
-                        borderColor: isDark ? "#30363D" : "#E5E7EB",
-                    }}>
+                    <View
+                        style={{
+                            backgroundColor: isDark ? "#161B22" : "#ffffff",
+                            borderRadius: 24,
+                            padding: 24,
+                            width: "100%",
+                            maxWidth: 480,
+                            borderWidth: 1,
+                            borderColor: isDark ? "#30363D" : "#E5E7EB",
+                        }}
+                    >
                         <Text style={{ fontSize: 18, fontWeight: "800", color: isDark ? "#FFFFFF" : "#111827", marginBottom: 4 }}>
                             Edit Teacher Remarks
                         </Text>
@@ -1607,7 +1824,7 @@ export default function ReportCardsPage() {
                             numberOfLines={4}
                             value={remarksInput}
                             onChangeText={setRemarksInput}
-                            placeholder="Enter learner development remarks and competencies..."
+                            placeholder="Enter learner development remarks and evaluations..."
                             placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
                             style={{
                                 backgroundColor: isDark ? "#0D1117" : "#F9FAFB",
@@ -1636,18 +1853,18 @@ export default function ReportCardsPage() {
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={handleSaveRemarks}
-                                disabled={savingRemarks}
+                                disabled={!canSaveRemarks}
                                 style={{
                                     paddingHorizontal: 18,
                                     paddingVertical: 10,
                                     borderRadius: 12,
-                                    backgroundColor: accentColor,
+                                    backgroundColor: canSaveRemarks ? accentColor : isDark ? "#21262D" : "#D1D5DB",
                                     flexDirection: "row",
                                     alignItems: "center",
                                 }}
                             >
                                 {savingRemarks && <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 6 }} />}
-                                <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>
+                                <Text style={{ color: canSaveRemarks ? "#FFFFFF" : isDark ? "#6B7280" : "#9CA3AF", fontWeight: "700" }}>
                                     {savingRemarks ? "Saving..." : "Save Remarks"}
                                 </Text>
                             </TouchableOpacity>
@@ -1655,6 +1872,14 @@ export default function ReportCardsPage() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Student History Modal */}
+            <StudentHistoryModal
+                visible={historyModalVisible}
+                onClose={() => setHistoryModalVisible(false)}
+                studentId={historyStudentId}
+                studentName={historyStudentName}
+            />
         </View>
     );
 }

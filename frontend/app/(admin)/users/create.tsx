@@ -1436,7 +1436,7 @@ export default function CreateUserScreen() {
                             paddingVertical: 16, 
                             borderRadius: 12, 
                             alignItems: 'center',
-                            opacity: canGoNext() && !loading ? 1 : 0.6,
+                            opacity: canGoNext() && !loading ? 1 : 0.5,
                             cursor: (Platform.OS === 'web' ? (canGoNext() && !loading ? 'pointer' : 'not-allowed') : undefined) as any
                         }}>
                         {loading

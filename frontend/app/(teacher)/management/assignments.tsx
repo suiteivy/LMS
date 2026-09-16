@@ -1265,34 +1265,54 @@ export default function AssignmentsPage() {
                                 <View />
                             )}
 
-                            {modalStep < 5 ? (
-                                <TouchableOpacity
-                                    onPress={goToNextStep}
-                                    activeOpacity={0.7}
-                                    className="flex-row items-center px-6 py-3 bg-[#FF6900] rounded-xl"
-                                >
-                                    <Text className="text-white font-bold text-xs mr-1.5 uppercase tracking-wider">Continue</Text>
-                                    <ArrowRight size={16} color="white" />
-                                </TouchableOpacity>
-                            ) : (
-                                <TouchableOpacity
-                                    onPress={saveAssignment}
-                                    disabled={uploading}
-                                    activeOpacity={0.7}
-                                    className={`flex-row items-center px-6 py-3 bg-green-600 rounded-xl ${uploading ? 'opacity-70' : ''}`}
-                                >
-                                    {uploading ? (
-                                        <ActivityIndicator color="white" size="small" />
-                                    ) : (
-                                        <>
-                                            <CheckCircle2 size={16} color="white" />
-                                            <Text className="text-white font-bold text-xs ml-2 uppercase tracking-wider">
-                                                {editingAssignment ? "Update Assignment" : "Publish Assignment"}
-                                            </Text>
-                                        </>
-                                    )}
-                                </TouchableOpacity>
-                            )}
+                            {modalStep < 5 ? (() => {
+                                const canContinue = (() => {
+                                    if (modalStep === 1) return !!title.trim();
+                                    if (modalStep === 2) return !!selectedSubjectId && (!!termName.trim() || !!selectedTermId);
+                                    if (modalStep === 3) {
+                                        const pointsVal = parseInt(points, 10);
+                                        return gradingStyle !== 'points' || (!isNaN(pointsVal) && pointsVal > 0);
+                                    }
+                                    if (modalStep === 4) return !!dueDate;
+                                    return true;
+                                })();
+                                return (
+                                    <TouchableOpacity
+                                        onPress={goToNextStep}
+                                        disabled={!canContinue}
+                                        activeOpacity={0.7}
+                                        style={{ opacity: canContinue ? 1 : 0.5 }}
+                                        className="flex-row items-center px-6 py-3 bg-[#FF6900] rounded-xl"
+                                        accessibilityState={{ disabled: !canContinue }}
+                                    >
+                                        <Text className="text-white font-bold text-xs mr-1.5 uppercase tracking-wider">Continue</Text>
+                                        <ArrowRight size={16} color="white" />
+                                    </TouchableOpacity>
+                                );
+                            })() : (() => {
+                                const canPublish = !uploading && !!title.trim() && !!selectedSubjectId && (!!termName.trim() || !!selectedTermId) && !!dueDate;
+                                return (
+                                    <TouchableOpacity
+                                        onPress={saveAssignment}
+                                        disabled={!canPublish}
+                                        activeOpacity={0.7}
+                                        style={{ opacity: canPublish ? 1 : 0.5 }}
+                                        className="flex-row items-center px-6 py-3 bg-green-600 rounded-xl"
+                                        accessibilityState={{ disabled: !canPublish, busy: uploading }}
+                                    >
+                                        {uploading ? (
+                                            <ActivityIndicator color="white" size="small" />
+                                        ) : (
+                                            <>
+                                                <CheckCircle2 size={16} color="white" />
+                                                <Text className="text-white font-bold text-xs ml-2 uppercase tracking-wider">
+                                                    {editingAssignment ? "Update Assignment" : "Publish Assignment"}
+                                                </Text>
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })()}
                         </View>
                     </View>
                 </View>

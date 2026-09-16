@@ -23,6 +23,7 @@ import {
 import {
   getPerformanceLabel,
   getPerformanceFromGpa,
+  colorFromLetter,
   type GradingScaleRow,
 } from "@/utils/getPerformanceLabel";
 import { showFetchError } from "@/utils/toast";
@@ -126,29 +127,12 @@ const getLetterFromScore = (score: number, scales: GradingScale[]): { letter: st
   return { letter: "F", gpa: 0 };
 };
 
-const getGradeColors = (letter: string, isDark: boolean) => {
-  if (letter.startsWith("A"))
-    return {
-      text: "text-green-600 dark:text-green-400",
-      bg: "bg-green-50 dark:bg-green-950/20",
-      border: "border-green-200 dark:border-green-800",
-    };
-  if (letter.startsWith("B"))
-    return {
-      text: "text-blue-600 dark:text-blue-400",
-      bg: "bg-blue-50 dark:bg-blue-950/20",
-      border: "border-blue-200 dark:border-blue-800",
-    };
-  if (letter.startsWith("C"))
-    return {
-      text: "text-yellow-600 dark:text-yellow-400",
-      bg: "bg-yellow-50 dark:bg-yellow-950/20",
-      border: "border-yellow-200 dark:border-yellow-800",
-    };
+const getGradeColors = (letter: string, _isDark?: boolean) => {
+  const c = colorFromLetter(letter);
   return {
-    text: "text-red-600 dark:text-red-400",
-    bg: "bg-red-50 dark:bg-red-950/20",
-    border: "border-red-200 dark:border-red-800",
+    text: c.color,
+    bg: c.bg,
+    border: c.borderColor,
   };
 };
 

@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
+import { HelpTooltip } from '@/components/settings/HelpTooltip';
+import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ClassService, ClassTransfer } from '@/services/ClassService';
 import {
@@ -29,6 +31,7 @@ import {
 export default function AdminClassTransfersScreen() {
     const router = useRouter();
     const { isDark } = useTheme();
+    const tier = useSubscriptionTier();
     const [transfers, setTransfers] = useState<ClassTransfer[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -132,6 +135,19 @@ export default function AdminClassTransfersScreen() {
                 role="Admin"
                 onBack={() => router.back()}
                 showNotification={false}
+                rightActions={
+                    <HelpTooltip
+                        id="admin.manage.transfers"
+                        role="admin"
+                        tier={tier}
+                        onLearnMore={(anchor) =>
+                            router.push({
+                                pathname: '/(admin)/accessibility/settings' as any,
+                                params: { manual: '1', anchor: anchor || 'promotion-engine' },
+                            } as any)
+                        }
+                    />
+                }
             />
 
             {/* Status Filter Tabs */}

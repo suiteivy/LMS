@@ -14,6 +14,8 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Printer } from 'lucide-react-native';
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 const DiaryCard = ({ entry, onDelete, onEdit }: { entry: DiaryEntry; onDelete: (id: string) => void; onEdit: (entry: DiaryEntry) => void }) => {
     return (
@@ -63,6 +65,7 @@ const DiaryCard = ({ entry, onDelete, onEdit }: { entry: DiaryEntry; onDelete: (
 
 export default function TeacherDiaryPage() {
     const { teacherId, isDemo } = useAuth();
+    const tier = useSubscriptionTier();
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [entries, setEntries] = useState<DiaryEntry[]>([]);
@@ -306,6 +309,19 @@ export default function TeacherDiaryPage() {
                 subtitle="Virtual Diary"
                 role="Teacher"
                 fallbackPath="/(teacher)/management"
+                rightActions={
+                    <HelpTooltip
+                        id="teacher.manage.diary"
+                        role="teacher"
+                        tier={tier}
+                        onLearnMore={(anchor) =>
+                            router.push({
+                                pathname: "/(teacher)/accessibility/settings" as any,
+                                params: { manual: "1", anchor: anchor || "coverage-planner" },
+                            } as any)
+                        }
+                    />
+                }
             />
 
             <SubscriptionGate
@@ -476,20 +492,27 @@ export default function TeacherDiaryPage() {
                                 />
                             </View>
 
-                            <TouchableOpacity
-                                className={`py-5 rounded-lg items-center shadow-lg flex-row justify-center ${saving ? 'bg-orange-300' : 'bg-[#FF6900] active:bg-orange-600'}`}
-                                onPress={handleSaveEntry}
-                                disabled={saving}
-                            >
-                                {saving ? (
-                                    <ActivityIndicator size="small" color="white" />
-                                ) : (
-                                    <Send size={18} color="white" />
-                                )}
-                                <Text className="text-white font-bold text-lg ml-3">
-                                    {saving ? "Saving..." : (editingEntryId ? "Update" : "Save Entry")}
-                                </Text>
-                            </TouchableOpacity>
+                            {(() => {
+                                const canSave = !!title.trim() && !!content.trim() && !!selectedClassId && !saving;
+                                return (
+                                    <TouchableOpacity
+                                        className={`py-5 rounded-lg items-center shadow-lg flex-row justify-center ${saving ? 'bg-orange-300' : 'bg-[#FF6900] active:bg-orange-600'}`}
+                                        onPress={handleSaveEntry}
+                                        disabled={!canSave}
+                                        style={{ opacity: canSave ? 1 : 0.5 }}
+                                        accessibilityState={{ disabled: !canSave, busy: saving }}
+                                    >
+                                        {saving ? (
+                                            <ActivityIndicator size="small" color="white" />
+                                        ) : (
+                                            <Send size={18} color="white" />
+                                        )}
+                                        <Text className="text-white font-bold text-lg ml-3">
+                                            {saving ? "Saving..." : (editingEntryId ? "Update" : "Save Entry")}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })()}
                         </View>
                     </View>
                 </Modal>

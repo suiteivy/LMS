@@ -804,19 +804,26 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
                   <Text className={`text-xs font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Cancel</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={handleSaveEvent}
-                  disabled={submitting}
-                  className="bg-[#FF6900] px-5 py-2.5 rounded-xl shadow-sm flex-row items-center"
-                >
-                  {submitting ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  ) : (
-                    <Text className="text-white text-xs font-bold">
-                      {editingEvent ? 'Save Changes' : 'Create Event'}
-                    </Text>
-                  )}
-                </TouchableOpacity>
+                {(() => {
+                  const canSave = !!formTitle.trim() && !!formDate.trim() && !submitting;
+                  return (
+                    <TouchableOpacity
+                      onPress={handleSaveEvent}
+                      disabled={!canSave}
+                      style={{ opacity: canSave ? 1 : 0.5 }}
+                      className="bg-[#FF6900] px-5 py-2.5 rounded-xl shadow-sm flex-row items-center"
+                      accessibilityState={{ disabled: !canSave, busy: submitting }}
+                    >
+                      {submitting ? (
+                        <ActivityIndicator size="small" color="#ffffff" />
+                      ) : (
+                        <Text className="text-white text-xs font-bold">
+                          {editingEvent ? 'Save Changes' : 'Create Event'}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })()}
               </View>
             </View>
           </View>

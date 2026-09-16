@@ -9,6 +9,8 @@ import { GradingAPI } from "@/services/GradingService";
 import { SubjectAPI } from "@/services/SubjectService";
 import { TeacherService } from "@/services/TeacherService";
 import { AcademicTermItem, calculateWeeksForTerm, CalendarEventItem, InstructionalWeek } from "@/utils/academicWeekEngine";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { router } from "expo-router";
 import {
     AlertCircle,
@@ -54,6 +56,7 @@ interface CoveragePlanItem {
 
 export default function ContentCoveragePage() {
     const { teacherId, isDemo, user } = useAuth();
+    const tier = useSubscriptionTier();
     const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'principal' || user?.role === 'head_teacher';
     const [subjects, setSubjects] = useState<any[]>([]);
     const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
@@ -402,6 +405,19 @@ export default function ContentCoveragePage() {
                 subtitle="Coverage Planner"
                 role="Teacher"
                 fallbackPath="/(teacher)/management"
+                rightActions={
+                    <HelpTooltip
+                        id="teacher.manage.coverage"
+                        role="teacher"
+                        tier={tier}
+                        onLearnMore={(anchor) =>
+                            router.push({
+                                pathname: "/(teacher)/accessibility/settings" as any,
+                                params: { manual: "1", anchor: anchor || "coverage-planner" },
+                            } as any)
+                        }
+                    />
+                }
             />
 
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
@@ -782,19 +798,26 @@ export default function ContentCoveragePage() {
                                 />
                             </View>
 
-                            <ActionTooltip text="Save coverage plan item">
-                                <TouchableOpacity
-                                    onPress={handleCreatePlanItem}
-                                    disabled={saving}
-                                    className="bg-[#FF6900] py-4 rounded-xl items-center shadow-md active:bg-orange-600 mb-6"
-                                >
-                                    {saving ? (
-                                        <ActivityIndicator size="small" color="white" />
-                                    ) : (
-                                        <Text className="text-white font-bold text-base">Save Coverage Item</Text>
-                                    )}
-                                </TouchableOpacity>
-                            </ActionTooltip>
+                            {(() => {
+                                const canSave = !!title.trim() && !!selectedSubjectId && !!selectedTerm && !saving;
+                                return (
+                                    <ActionTooltip text={canSave ? "Save coverage plan item" : "Fill required fields to save"}>
+                                        <TouchableOpacity
+                                            onPress={handleCreatePlanItem}
+                                            disabled={!canSave}
+                                            style={{ opacity: canSave ? 1 : 0.5 }}
+                                            className="bg-[#FF6900] py-4 rounded-xl items-center shadow-md active:bg-orange-600 mb-6"
+                                            accessibilityState={{ disabled: !canSave, busy: saving }}
+                                        >
+                                            {saving ? (
+                                                <ActivityIndicator size="small" color="white" />
+                                            ) : (
+                                                <Text className="text-white font-bold text-base">Save Coverage Item</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    </ActionTooltip>
+                                );
+                            })()}
                         </ScrollView>
                     </View>
                 </View>

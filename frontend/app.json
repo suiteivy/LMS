@@ -1,23 +1,36 @@
 {
   "expo": {
-    "name": "Cloudora",
+    "name": "Cloudora LMS",
     "slug": "CloudoraLMS",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/Cloudora-logo.png",
-    "scheme": "lms",
+    "scheme": ["cloudora", "lms"],
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.CloudoraLMS"
+      "bundleIdentifier": "com.cloudora.lms",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Cloudora LMS requires camera access to capture assignment submissions, scan documents, and update profile photos.",
+        "NSPhotoLibraryUsageDescription": "Cloudora LMS requires photo library access to upload educational resources, coursework files, and profile images.",
+        "NSMicrophoneUsageDescription": "Cloudora LMS requires microphone access for recording educational audio and classroom voice notes."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/Cloudora-logo.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.CloudoraLMS"
+      "package": "com.cloudora.lms",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "androidStatusBar": {
       "backgroundColor": "#ffffff",
@@ -43,6 +56,13 @@
             "backgroundColor": "#000000",
             "image": "./assets/images/Cloudora-logo.png"
           }
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Cloudora LMS to access your photos to upload coursework, profile images, and educational materials.",
+          "cameraPermission": "Allow Cloudora LMS to access your camera to capture assignment submissions and profile photos."
         }
       ],
       "@react-native-community/datetimepicker",

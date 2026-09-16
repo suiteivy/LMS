@@ -269,7 +269,7 @@ export const StudentTransferModal: React.FC<StudentTransferModalProps> = ({
                                 paddingVertical: 14,
                                 borderRadius: 14,
                                 alignItems: 'center',
-                                opacity: submitting || !selectedClassId ? 0.6 : 1,
+                                opacity: submitting || !selectedClassId ? 0.5 : 1,
                             }}
                         >
                             {submitting ? (

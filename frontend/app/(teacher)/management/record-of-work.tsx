@@ -17,6 +17,8 @@ import {
     findWeekForDate,
     InstructionalWeek
 } from "@/utils/academicWeekEngine";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { router } from "expo-router";
 import {
     AlertTriangle,
@@ -73,6 +75,7 @@ interface RecordOfWorkItem {
 
 export default function RecordOfWorkPage() {
     const { teacherId, isDemo, user } = useAuth();
+    const tier = useSubscriptionTier();
     const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'principal' || user?.role === 'head_teacher';
     const [subjects, setSubjects] = useState<any[]>([]);
     const [classes, setClasses] = useState<any[]>([]);
@@ -528,6 +531,19 @@ export default function RecordOfWorkPage() {
                 subtitle="Record of Work"
                 role="Teacher"
                 fallbackPath="/(teacher)/management"
+                rightActions={
+                    <HelpTooltip
+                        id="teacher.manage.record_of_work"
+                        role="teacher"
+                        tier={tier}
+                        onLearnMore={(anchor) =>
+                            router.push({
+                                pathname: "/(teacher)/accessibility/settings" as any,
+                                params: { manual: "1", anchor: anchor || "coverage-planner" },
+                            } as any)
+                        }
+                    />
+                }
             />
 
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
@@ -1075,17 +1091,24 @@ export default function RecordOfWorkPage() {
                                 />
                             </View>
 
-                            <TouchableOpacity
-                                onPress={handleCreateEntry}
-                                disabled={saving}
-                                className="bg-[#FF6900] py-4 rounded-xl items-center shadow-md active:bg-orange-600 mb-6"
-                            >
-                                {saving ? (
-                                    <ActivityIndicator size="small" color="white" />
-                                ) : (
-                                    <Text className="text-white font-bold text-base">Save Lesson Plan</Text>
-                                )}
-                            </TouchableOpacity>
+                            {(() => {
+                                const canSave = !!formTopic.trim() && !!selectedSubjectId && !!formWeek.trim() && !saving;
+                                return (
+                                    <TouchableOpacity
+                                        onPress={handleCreateEntry}
+                                        disabled={!canSave}
+                                        style={{ opacity: canSave ? 1 : 0.5 }}
+                                        className="bg-[#FF6900] py-4 rounded-xl items-center shadow-md active:bg-orange-600 mb-6"
+                                        accessibilityState={{ disabled: !canSave, busy: saving }}
+                                    >
+                                        {saving ? (
+                                            <ActivityIndicator size="small" color="white" />
+                                        ) : (
+                                            <Text className="text-white font-bold text-base">Save Lesson Plan</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })()}
                         </ScrollView>
                     </View>
                 </View>
@@ -1120,12 +1143,20 @@ export default function RecordOfWorkPage() {
                             >
                                 <Text className="text-gray-600 dark:text-gray-400 font-bold text-sm">Cancel</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={handleSaveReflection}
-                                className="flex-1 py-3 bg-[#FF6900] rounded-xl items-center shadow-sm"
-                            >
-                                <Text className="text-white font-bold text-sm">Confirm & Save</Text>
-                            </TouchableOpacity>
+                            {(() => {
+                                const canSaveReflection = !!reflectionText.trim();
+                                return (
+                                    <TouchableOpacity
+                                        onPress={handleSaveReflection}
+                                        disabled={!canSaveReflection}
+                                        style={{ opacity: canSaveReflection ? 1 : 0.5 }}
+                                        className="flex-1 py-3 bg-[#FF6900] rounded-xl items-center shadow-sm"
+                                        accessibilityState={{ disabled: !canSaveReflection }}
+                                    >
+                                        <Text className="text-white font-bold text-sm">Confirm & Save</Text>
+                                    </TouchableOpacity>
+                                );
+                            })()}
                         </View>
                     </View>
                 </View>

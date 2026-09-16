@@ -67,15 +67,15 @@ export function getPerformanceLabel(
 // ---------------------------------------------------------------------------
 
 function deriveFromScaleRow(row: GradingScaleRow): PerformanceResult {
-  const letter = row.letter_grade;
+  const letter = (row.letter_grade || "").trim();
   const gpa = Number(row.points ?? row.gpa_points ?? 0);
-  const isPassing = gpa > 0;
+  const isPassing = gpa > 0 || !isFailingGrade(letter);
 
-  // Prioritize institution-defined description if present
+  // Prioritize institution-defined description; if missing and letter is already a word/phrase, use it directly
   const label = (row.description && row.description.trim().length > 0)
     ? row.description.trim()
-    : labelFromLetter(letter, gpa);
-  const colors = colorFromLetter(letter);
+    : (letter.length > 2 ? letter : labelFromLetter(letter, gpa));
+  const colors = colorFromLetter(letter, gpa);
 
   return {
     label,
@@ -86,58 +86,192 @@ function deriveFromScaleRow(row: GradingScaleRow): PerformanceResult {
   };
 }
 
-/** Map a letter grade to a human-readable performance label. */
+function isFailingGrade(letter: string): boolean {
+  const l = letter.toUpperCase().trim();
+  return l === "F" || l === "E" || l.includes("FAIL") || l.includes("BELOW") || l.includes("UNSATISFACTORY");
+}
+
+/** Map a letter grade or achievement word to a human-readable performance label. */
 function labelFromLetter(letter: string, gpa: number): string {
   const l = letter.toUpperCase().trim();
-  if (l.startsWith("A")) return "Excellent";
-  if (l.startsWith("B")) return "Good";
-  if (l.startsWith("C")) return "Satisfactory";
-  if (l.startsWith("D")) return "Needs Improvement";
-  if (l === "F" || gpa === 0) return "Failing";
-  // Unknown letter — derive from gpa instead
+
+  // 1. Direct letter or semantic word matches
+  if (
+    l.startsWith("A") ||
+    l.includes("EXCELLENT") ||
+    l.includes("EXCEEDING") ||
+    l.includes("DISTINCTION") ||
+    l.includes("OUTSTANDING") ||
+    l.includes("MASTERY")
+  ) return "Excellent";
+
+  if (
+    l.startsWith("B") ||
+    l.includes("GOOD") ||
+    l.includes("MEETING") ||
+    l.includes("PROFICIENT") ||
+    l.includes("MERIT") ||
+    l.includes("VERY GOOD") ||
+    l.includes("CREDIT")
+  ) return "Good";
+
+  if (
+    l.startsWith("C") ||
+    l.includes("SATISFACTORY") ||
+    l.includes("AVERAGE") ||
+    l.includes("APPROACHING") ||
+    l.includes("DEVELOPING") ||
+    l.includes("BASIC") ||
+    l.includes("FAIR") ||
+    l === "PASS"
+  ) return "Satisfactory";
+
+  if (
+    l.startsWith("D") ||
+    l.includes("IMPROVEMENT") ||
+    l.includes("EMERGING")
+  ) return "Needs Improvement";
+
+  if (
+    l === "F" ||
+    l === "E" ||
+    l.includes("FAIL") ||
+    l.includes("BELOW") ||
+    l.includes("UNSATISFACTORY")
+  ) return "Failing";
+
+  // Unknown label — derive from gpa if available
   if (gpa >= 3.5) return "Excellent";
   if (gpa >= 2.5) return "Good";
   if (gpa >= 1.5) return "Satisfactory";
   if (gpa > 0) return "Needs Improvement";
-  return "Failing";
+  return letter || "Failing";
 }
 
-/** Map a letter grade to tailwind classes. */
-function colorFromLetter(letter: string): {
+/** Map a letter grade, achievement word, or GPA to tailwind color classes. */
+export function colorFromLetter(letter: string, gpa?: number): {
   color: string;
   bg: string;
   borderColor: string;
 } {
   const l = letter.toUpperCase().trim();
-  if (l.startsWith("A"))
+
+  // Top / Excellent / Exceeding Expectation
+  if (
+    l.startsWith("A") ||
+    l.includes("EXCELLENT") ||
+    l.includes("EXCEEDING") ||
+    l.includes("DISTINCTION") ||
+    l.includes("OUTSTANDING") ||
+    l.includes("MASTERY")
+  ) {
     return {
       color: "text-green-600 dark:text-green-400",
       bg: "bg-green-50 dark:bg-green-950/30",
       borderColor: "border-green-200 dark:border-green-800",
     };
-  if (l.startsWith("B"))
+  }
+
+  // Good / Meeting Expectation / Proficient / Merit
+  if (
+    l.startsWith("B") ||
+    l.includes("GOOD") ||
+    l.includes("MEETING") ||
+    l.includes("PROFICIENT") ||
+    l.includes("MERIT") ||
+    l.includes("VERY GOOD") ||
+    l.includes("CREDIT")
+  ) {
     return {
       color: "text-blue-600 dark:text-blue-400",
       bg: "bg-blue-50 dark:bg-blue-950/30",
       borderColor: "border-blue-200 dark:border-blue-800",
     };
-  if (l.startsWith("C"))
+  }
+
+  // Satisfactory / Approaching Expectation / Average / Pass
+  if (
+    l.startsWith("C") ||
+    l.includes("SATISFACTORY") ||
+    l.includes("AVERAGE") ||
+    l.includes("APPROACHING") ||
+    l.includes("DEVELOPING") ||
+    l.includes("BASIC") ||
+    l.includes("FAIR") ||
+    l === "PASS"
+  ) {
     return {
       color: "text-amber-600 dark:text-amber-400",
       bg: "bg-amber-50 dark:bg-amber-950/30",
       borderColor: "border-amber-200 dark:border-amber-800",
     };
-  if (l.startsWith("D"))
+  }
+
+  // Needs Improvement / Below Average
+  if (
+    l.startsWith("D") ||
+    l.includes("IMPROVEMENT") ||
+    l.includes("EMERGING")
+  ) {
     return {
       color: "text-orange-600 dark:text-orange-400",
       bg: "bg-orange-50 dark:bg-orange-950/30",
       borderColor: "border-orange-200 dark:border-orange-800",
     };
-  // F or unknown
+  }
+
+  // Failing / Below Expectation / Unsatisfactory
+  if (
+    l === "F" ||
+    l === "E" ||
+    l.includes("FAIL") ||
+    l.includes("BELOW") ||
+    l.includes("UNSATISFACTORY")
+  ) {
+    return {
+      color: "text-red-600 dark:text-red-400",
+      bg: "bg-red-50 dark:bg-red-950/30",
+      borderColor: "border-red-200 dark:border-red-800",
+    };
+  }
+
+  // Fallback to GPA points if available
+  if (typeof gpa === "number") {
+    if (gpa >= 3.5) {
+      return {
+        color: "text-green-600 dark:text-green-400",
+        bg: "bg-green-50 dark:bg-green-950/30",
+        borderColor: "border-green-200 dark:border-green-800",
+      };
+    }
+    if (gpa >= 2.5) {
+      return {
+        color: "text-blue-600 dark:text-blue-400",
+        bg: "bg-blue-50 dark:bg-blue-950/30",
+        borderColor: "border-blue-200 dark:border-blue-800",
+      };
+    }
+    if (gpa >= 1.5) {
+      return {
+        color: "text-amber-600 dark:text-amber-400",
+        bg: "bg-amber-50 dark:bg-amber-950/30",
+        borderColor: "border-amber-200 dark:border-amber-800",
+      };
+    }
+    if (gpa > 0) {
+      return {
+        color: "text-orange-600 dark:text-orange-400",
+        bg: "bg-orange-50 dark:bg-orange-950/30",
+        borderColor: "border-orange-200 dark:border-orange-800",
+      };
+    }
+  }
+
+  // Default neutral/muted fallback
   return {
-    color: "text-red-600 dark:text-red-400",
-    bg: "bg-red-50 dark:bg-red-950/30",
-    borderColor: "border-red-200 dark:border-red-800",
+    color: "text-gray-600 dark:text-gray-400",
+    bg: "bg-gray-100 dark:bg-gray-800/40",
+    borderColor: "border-gray-300 dark:border-gray-700",
   };
 }
 

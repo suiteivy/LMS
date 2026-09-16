@@ -155,6 +155,11 @@ export default function AcademicSetupPage() {
     const [scaleFormDesc, setScaleFormDesc] = useState('');
     const [editingScale, setEditingScale] = useState<GradingScale | null>(null);
 
+    // Assessment Weighting Split (Exam vs Continuous Assessment)
+    const [examWeight, setExamWeight] = useState('60');
+    const [caWeight, setCaWeight] = useState('40');
+    const [savingWeights, setSavingWeights] = useState(false);
+
     // Assessment Types
     const [assessmentTypes, setAssessmentTypes] = useState<AssessmentType[]>([]);
     const [showTypeModal, setShowTypeModal] = useState(false);
@@ -195,6 +200,18 @@ export default function AcademicSetupPage() {
         }
     }, []);
 
+    const loadAssessmentWeights = useCallback(async () => {
+        try {
+            const weights = await GradingAPI.getAssessmentWeights();
+            if (weights) {
+                setExamWeight(String(weights.exam_weight ?? 60));
+                setCaWeight(String(weights.continuous_assessment_weight ?? 40));
+            }
+        } catch (err: any) {
+            console.warn('loadAssessmentWeights error, using 60/40 defaults:', err);
+        }
+    }, []);
+
     const loadAssessmentTypes = useCallback(async () => {
         try {
             const data = await GradingAPI.getAssessmentTypes();
@@ -224,11 +241,12 @@ export default function AcademicSetupPage() {
             loadAcademicYears(),
             loadTerms(),
             loadGradingScales(),
+            loadAssessmentWeights(),
             loadAssessmentTypes(),
             loadActiveTerm(),
         ]);
         setLoading(false);
-    }, [loadAcademicYears, loadTerms, loadGradingScales, loadAssessmentTypes, loadActiveTerm]);
+    }, [loadAcademicYears, loadTerms, loadGradingScales, loadAssessmentWeights, loadAssessmentTypes, loadActiveTerm]);
 
     useEffect(() => {
         loadAllData();
@@ -558,6 +576,28 @@ export default function AcademicSetupPage() {
                 },
             ]
         );
+    };
+
+    const handleSaveWeights = async () => {
+        const ew = parseInt(examWeight, 10);
+        const cw = parseInt(caWeight, 10);
+        if (isNaN(ew) || isNaN(cw) || ew < 0 || cw < 0 || ew + cw !== 100) {
+            Alert.alert('Validation Error', 'Exam and Continuous Assessment weights must sum exactly to 100%.');
+            return;
+        }
+        setSavingWeights(true);
+        try {
+            await GradingAPI.updateAssessmentWeights({
+                exam_weight: ew,
+                continuous_assessment_weight: cw,
+            });
+            showSuccess('Assessment compilation weights updated');
+            await loadAssessmentWeights();
+        } catch (err: any) {
+            showError(err.response?.data?.error || err.message);
+        } finally {
+            setSavingWeights(false);
+        }
     };
 
     // ─── Assessment Type CRUD ──────────────────────────────
@@ -1040,6 +1080,154 @@ export default function AcademicSetupPage() {
                 ════════════════════════════════════════════════ */}
                 {activeTab === 'grading_scales' && (
                     <View>
+                        {/* ── Institutional Assessment Weighting Configuration ── */}
+                        <View
+                            style={{
+                                backgroundColor: card,
+                                borderRadius: 20,
+                                borderWidth: 1.5,
+                                borderColor: border,
+                                padding: 18,
+                                marginBottom: 20,
+                            }}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 }}>
+                                <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Award size={18} color={accent} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 15, fontWeight: '800', color: textPrimary }}>
+                                        Report Card Assessment Weighting Split
+                                    </Text>
+                                    <Text style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>
+                                        Configure the institutional ratio between Examinations and Continuous Assessment.
+                                    </Text>
+                                </View>
+                            </View>
+
+                            <View style={{ flexDirection: 'row', gap: 12, marginTop: 8, marginBottom: 14 }}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', marginBottom: 6 }}>
+                                        Exam Weight (%) *
+                                    </Text>
+                                    <TextInput
+                                        style={{
+                                            backgroundColor: inputBg,
+                                            borderWidth: 1.5,
+                                            borderColor: inputBorder,
+                                            borderRadius: 14,
+                                            paddingHorizontal: 14,
+                                            paddingVertical: 12,
+                                            color: textPrimary,
+                                            fontSize: 15,
+                                            fontWeight: '700',
+                                        }}
+                                        value={examWeight}
+                                        onChangeText={(val) => {
+                                            setExamWeight(val);
+                                            const n = parseInt(val, 10);
+                                            if (!isNaN(n) && n >= 0 && n <= 100) {
+                                                setCaWeight(String(100 - n));
+                                            }
+                                        }}
+                                        keyboardType="numeric"
+                                        placeholder="60"
+                                        placeholderTextColor={textMuted}
+                                    />
+                                </View>
+
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', marginBottom: 6 }}>
+                                        Continuous Assessment (%) *
+                                    </Text>
+                                    <TextInput
+                                        style={{
+                                            backgroundColor: inputBg,
+                                            borderWidth: 1.5,
+                                            borderColor: inputBorder,
+                                            borderRadius: 14,
+                                            paddingHorizontal: 14,
+                                            paddingVertical: 12,
+                                            color: textPrimary,
+                                            fontSize: 15,
+                                            fontWeight: '700',
+                                        }}
+                                        value={caWeight}
+                                        onChangeText={(val) => {
+                                            setCaWeight(val);
+                                            const n = parseInt(val, 10);
+                                            if (!isNaN(n) && n >= 0 && n <= 100) {
+                                                setExamWeight(String(100 - n));
+                                            }
+                                        }}
+                                        keyboardType="numeric"
+                                        placeholder="40"
+                                        placeholderTextColor={textMuted}
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Preset chips */}
+                            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14, alignItems: 'center' }}>
+                                <Text style={{ fontSize: 11, fontWeight: '600', color: textMuted }}>Presets:</Text>
+                                {[
+                                    { label: '60 / 40 (Default)', exam: '60', ca: '40' },
+                                    { label: '70 / 30', exam: '70', ca: '30' },
+                                    { label: '50 / 50', exam: '50', ca: '50' },
+                                ].map((preset) => (
+                                    <TouchableOpacity
+                                        key={preset.label}
+                                        onPress={() => {
+                                            setExamWeight(preset.exam);
+                                            setCaWeight(preset.ca);
+                                        }}
+                                        style={{
+                                            backgroundColor: examWeight === preset.exam && caWeight === preset.ca ? accent : (isDark ? '#21262D' : '#EAEEF2'),
+                                            paddingHorizontal: 10,
+                                            paddingVertical: 4,
+                                            borderRadius: 8,
+                                        }}
+                                    >
+                                        <Text style={{ color: examWeight === preset.exam && caWeight === preset.ca ? 'white' : textSecondary, fontSize: 11, fontWeight: '700' }}>
+                                            {preset.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {/* Save Weighting Button */}
+                            {(() => {
+                                const ew = parseInt(examWeight, 10);
+                                const cw = parseInt(caWeight, 10);
+                                const canSaveW = !isNaN(ew) && !isNaN(cw) && ew >= 0 && cw >= 0 && ew + cw === 100 && !savingWeights;
+
+                                return (
+                                    <TouchableOpacity
+                                        onPress={handleSaveWeights}
+                                        disabled={!canSaveW}
+                                        style={{
+                                            backgroundColor: canSaveW ? accent : (isDark ? '#21262D' : '#D0D7DE'),
+                                            paddingVertical: 12,
+                                            borderRadius: 14,
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flexDirection: 'row',
+                                            gap: 6,
+                                            opacity: canSaveW ? 1 : 0.5,
+                                        }}
+                                    >
+                                        {savingWeights ? (
+                                            <Spinner color="white" size="small" label="Saving weights" />
+                                        ) : (
+                                            <Text style={{ color: canSaveW ? 'white' : textMuted, fontWeight: '700', fontSize: 13 }}>
+                                                Save Assessment Weighting
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })()}
+                        </View>
+
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                             <Text style={{ fontSize: 12, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>
                                 {gradingScales.length} Scale{gradingScales.length !== 1 ? 's' : ''}
@@ -1103,9 +1291,9 @@ export default function AcademicSetupPage() {
                                         flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 8,
                                         backgroundColor: sectionBg, borderRadius: 12, marginBottom: 4,
                                     }}>
-                                        <Text style={{ flex: 1.2, fontSize: 11, fontWeight: '700', color: textMuted, textTransform: 'uppercase' }}>Range</Text>
-                                        <Text style={{ flex: 1, fontSize: 11, fontWeight: '700', color: textMuted, textTransform: 'uppercase' }}>Grade</Text>
-                                        <Text style={{ flex: 0.8, fontSize: 11, fontWeight: '700', color: textMuted, textTransform: 'uppercase' }}>GPA</Text>
+                                        <Text style={{ flex: 1, fontSize: 11, fontWeight: '700', color: textMuted, textTransform: 'uppercase' }}>Range</Text>
+                                        <Text style={{ flex: 1.4, fontSize: 11, fontWeight: '700', color: textMuted, textTransform: 'uppercase' }}>Grade / Level</Text>
+                                        <Text style={{ flex: 0.6, fontSize: 11, fontWeight: '700', color: textMuted, textTransform: 'uppercase' }}>GPA</Text>
                                         <Text style={{ flex: 1.5, fontSize: 11, fontWeight: '700', color: textMuted, textTransform: 'uppercase' }}>Description</Text>
                                         <View style={{ width: 32 }} />
                                     </View>
@@ -1125,23 +1313,23 @@ export default function AcademicSetupPage() {
                                                 marginBottom: 4,
                                             }}
                                         >
-                                            <Text style={{ flex: 1.2, fontSize: 13, fontWeight: '600', color: textPrimary }}>
-                                                {scale.min_score}–{scale.max_score}
+                                            <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: textPrimary }}>
+                                                {scale.min_score}–{scale.max_score}%
                                             </Text>
-                                            <View style={{ flex: 1 }}>
+                                            <View style={{ flex: 1.4 }}>
                                                 <View style={{
                                                     backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8',
-                                                    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8,
+                                                    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
                                                     alignSelf: 'flex-start',
                                                 }}>
-                                                    <Text style={{ fontSize: 14, fontWeight: '800', color: accent }}>{scale.letter_grade}</Text>
+                                                    <Text style={{ fontSize: 13, fontWeight: '800', color: accent }}>{scale.letter_grade}</Text>
                                                 </View>
                                             </View>
-                                            <Text style={{ flex: 0.8, fontSize: 13, fontWeight: '600', color: textPrimary }}>
-                                                {scale.gpa_points.toFixed(1)}
+                                            <Text style={{ flex: 0.6, fontSize: 13, fontWeight: '600', color: textPrimary }}>
+                                                {scale.gpa_points != null ? Number(scale.gpa_points).toFixed(1) : '-'}
                                             </Text>
                                             <Text style={{ flex: 1.5, fontSize: 12, color: textSecondary }}>
-                                                {scale.description}
+                                                {scale.description || '—'}
                                             </Text>
                                             <TouchableOpacity onPress={() => openEditScale(scale)} style={{ padding: 4, marginRight: 4 }}>
                                                 <Pencil size={16} color={textSecondary} />
@@ -1354,22 +1542,29 @@ export default function AcademicSetupPage() {
                                 </View>
                             </TouchableOpacity>
 
-                            <TouchableOpacity
-                                onPress={handleSaveYear}
-                                disabled={saving}
-                                style={{
-                                    backgroundColor: accent, paddingVertical: 16,
-                                    borderRadius: 16, alignItems: 'center',
-                                    opacity: saving ? 0.75 : 1,
-                                }}
-                                accessibilityState={{ disabled: saving, busy: saving }}
-                            >
-                                {saving ? (
-                                    <Spinner color="white" label="Saving academic year" />
-                                ) : (
-                                    <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>Create Year</Text>
-                                )}
-                            </TouchableOpacity>
+                            {(() => {
+                                const canSaveYear = !!yearFormName.trim() && !!yearFormStart && !!yearFormEnd && !saving;
+                                return (
+                                    <TouchableOpacity
+                                        onPress={handleSaveYear}
+                                        disabled={!canSaveYear}
+                                        style={{
+                                            backgroundColor: canSaveYear ? accent : (isDark ? '#21262D' : '#D0D7DE'),
+                                            paddingVertical: 16,
+                                            borderRadius: 16,
+                                            alignItems: 'center',
+                                            opacity: canSaveYear ? 1 : 0.5,
+                                        }}
+                                        accessibilityState={{ disabled: !canSaveYear, busy: saving }}
+                                    >
+                                        {saving ? (
+                                            <Spinner color="white" label="Saving academic year" />
+                                        ) : (
+                                            <Text style={{ color: canSaveYear ? 'white' : textMuted, fontWeight: '800', fontSize: 16 }}>Create Year</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })()}
                         </ScrollView>
                     </View>
                 </View>
@@ -1422,22 +1617,29 @@ export default function AcademicSetupPage() {
                                 isDark={isDark}
                             />
 
-                            <TouchableOpacity
-                                onPress={handleSaveTerm}
-                                disabled={saving}
-                                style={{
-                                    backgroundColor: accent, paddingVertical: 16,
-                                    borderRadius: 16, alignItems: 'center',
-                                    opacity: saving ? 0.75 : 1,
-                                }}
-                                accessibilityState={{ disabled: saving, busy: saving }}
-                            >
-                                {saving ? (
-                                    <Spinner color="white" label="Saving term" />
-                                ) : (
-                                    <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>{editingTerm ? 'Save Changes' : 'Create Term'}</Text>
-                                )}
-                            </TouchableOpacity>
+                            {(() => {
+                                const canSaveTerm = !!termFormName.trim() && !!termFormStart && !!termFormEnd && termFormStart < termFormEnd && !saving;
+                                return (
+                                    <TouchableOpacity
+                                        onPress={handleSaveTerm}
+                                        disabled={!canSaveTerm}
+                                        style={{
+                                            backgroundColor: canSaveTerm ? accent : (isDark ? '#21262D' : '#D0D7DE'),
+                                            paddingVertical: 16,
+                                            borderRadius: 16,
+                                            alignItems: 'center',
+                                            opacity: canSaveTerm ? 1 : 0.5,
+                                        }}
+                                        accessibilityState={{ disabled: !canSaveTerm, busy: saving }}
+                                    >
+                                        {saving ? (
+                                            <Spinner color="white" label="Saving term" />
+                                        ) : (
+                                            <Text style={{ color: canSaveTerm ? 'white' : textMuted, fontWeight: '800', fontSize: 16 }}>{editingTerm ? 'Save Changes' : 'Create Term'}</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })()}
                         </ScrollView>
                     </View>
                 </View>
@@ -1517,27 +1719,30 @@ export default function AcademicSetupPage() {
                                 </View>
                             </View>
 
-                            {/* Letter Grade / GPA */}
+                            {/* Grade / Achievement Level & GPA */}
                             <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                        Letter Grade *
+                                <View style={{ flex: 1.3 }}>
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Grade / Achievement Level *
                                     </Text>
                                     <TextInput
                                         style={{
                                             backgroundColor: inputBg, borderWidth: 1.5, borderColor: inputBorder,
                                             borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
-                                            color: textPrimary, fontSize: 15, fontWeight: '500',
+                                            color: textPrimary, fontSize: 14, fontWeight: '600',
                                         }}
-                                        placeholder="A"
+                                        placeholder="e.g. A, Excellent, Needs Improvement"
                                         value={scaleFormGrade}
                                         onChangeText={setScaleFormGrade}
                                         placeholderTextColor={textMuted}
                                     />
+                                    <Text style={{ fontSize: 11, color: textMuted, marginTop: 4 }}>
+                                        Letter (A, B) or qualitative word (Excellent, Needs Improvement)
+                                    </Text>
                                 </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                        GPA Points
+                                <View style={{ flex: 0.7 }}>
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        GPA / Points
                                     </Text>
                                     <TextInput
                                         style={{
@@ -1545,19 +1750,22 @@ export default function AcademicSetupPage() {
                                             borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
                                             color: textPrimary, fontSize: 15, fontWeight: '500',
                                         }}
-                                        placeholder="4.0"
+                                        placeholder="4.0 (optional)"
                                         value={scaleFormGpa}
                                         onChangeText={setScaleFormGpa}
                                         keyboardType="numeric"
                                         placeholderTextColor={textMuted}
                                     />
+                                    <Text style={{ fontSize: 11, color: textMuted, marginTop: 4 }}>
+                                        Leave blank if non-GPA scale
+                                    </Text>
                                 </View>
                             </View>
 
                             {/* Description */}
                             <View style={{ marginBottom: 24 }}>
                                 <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                    Description
+                                    Description / Remarks (Optional)
                                 </Text>
                                 <TextInput
                                     style={{
@@ -1565,31 +1773,48 @@ export default function AcademicSetupPage() {
                                         borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
                                         color: textPrimary, fontSize: 15, fontWeight: '500',
                                     }}
-                                    placeholder="e.g. Excellent"
+                                    placeholder="e.g. Demonstrates thorough understanding of curriculum objectives"
                                     value={scaleFormDesc}
                                     onChangeText={setScaleFormDesc}
                                     placeholderTextColor={textMuted}
                                 />
                             </View>
 
-                            <TouchableOpacity
-                                onPress={handleSaveScale}
-                                disabled={saving}
-                                style={{
-                                    backgroundColor: accent, paddingVertical: 16,
-                                    borderRadius: 16, alignItems: 'center',
-                                    opacity: saving ? 0.75 : 1,
-                                }}
-                                accessibilityState={{ disabled: saving, busy: saving }}
-                            >
-                                {saving ? (
-                                    <Spinner color="white" label="Saving grading scale" />
-                                ) : (
-                                    <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>
-                                        {editingScale ? 'Save Changes' : 'Add Entry'}
-                                    </Text>
-                                )}
-                            </TouchableOpacity>
+                            {(() => {
+                                const minN = parseFloat(scaleFormMin);
+                                const maxN = parseFloat(scaleFormMax);
+                                const canSaveScale =
+                                    !!scaleFormName.trim() &&
+                                    !!scaleFormGrade.trim() &&
+                                    scaleFormMin.trim() !== '' &&
+                                    scaleFormMax.trim() !== '' &&
+                                    !isNaN(minN) &&
+                                    !isNaN(maxN) &&
+                                    minN <= maxN &&
+                                    !saving;
+                                return (
+                                    <TouchableOpacity
+                                        onPress={handleSaveScale}
+                                        disabled={!canSaveScale}
+                                        style={{
+                                            backgroundColor: canSaveScale ? accent : (isDark ? '#21262D' : '#D0D7DE'),
+                                            paddingVertical: 16,
+                                            borderRadius: 16,
+                                            alignItems: 'center',
+                                            opacity: canSaveScale ? 1 : 0.5,
+                                        }}
+                                        accessibilityState={{ disabled: !canSaveScale, busy: saving }}
+                                    >
+                                        {saving ? (
+                                            <Spinner color="white" label="Saving grading scale" />
+                                        ) : (
+                                            <Text style={{ color: canSaveScale ? 'white' : textMuted, fontWeight: '800', fontSize: 16 }}>
+                                                {editingScale ? 'Save Changes' : 'Add Entry'}
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })()}
                         </ScrollView>
                     </View>
                 </View>
@@ -1719,24 +1944,38 @@ export default function AcademicSetupPage() {
                                 </View>
                             </View>
 
-                            <TouchableOpacity
-                                onPress={handleSaveType}
-                                disabled={saving}
-                                style={{
-                                    backgroundColor: accent, paddingVertical: 16,
-                                    borderRadius: 16, alignItems: 'center',
-                                    opacity: saving ? 0.75 : 1,
-                                }}
-                                accessibilityState={{ disabled: saving, busy: saving }}
-                            >
-                                {saving ? (
-                                    <Spinner color="white" label="Saving assessment type" />
-                                ) : (
-                                    <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>
-                                        {editingType ? 'Save Changes' : 'Create Type'}
-                                    </Text>
-                                )}
-                            </TouchableOpacity>
+                            {(() => {
+                                const weightN = parseFloat(typeFormWeight);
+                                const orderN = parseInt(typeFormOrder, 10);
+                                const canSaveType =
+                                    !!typeFormName.trim() &&
+                                    !!typeFormCode.trim() &&
+                                    (typeFormWeight.trim() === '' || (!isNaN(weightN) && weightN >= 0)) &&
+                                    (typeFormOrder.trim() === '' || !isNaN(orderN)) &&
+                                    !saving;
+                                return (
+                                    <TouchableOpacity
+                                        onPress={handleSaveType}
+                                        disabled={!canSaveType}
+                                        style={{
+                                            backgroundColor: canSaveType ? accent : (isDark ? '#21262D' : '#D0D7DE'),
+                                            paddingVertical: 16,
+                                            borderRadius: 16,
+                                            alignItems: 'center',
+                                            opacity: canSaveType ? 1 : 0.5,
+                                        }}
+                                        accessibilityState={{ disabled: !canSaveType, busy: saving }}
+                                    >
+                                        {saving ? (
+                                            <Spinner color="white" label="Saving assessment type" />
+                                        ) : (
+                                            <Text style={{ color: canSaveType ? 'white' : textMuted, fontWeight: '800', fontSize: 16 }}>
+                                                {editingType ? 'Save Changes' : 'Create Type'}
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })()}
                         </ScrollView>
                     </View>
                 </View>

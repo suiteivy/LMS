@@ -198,7 +198,11 @@ export default function FinanceDashboard() {
                                         ? 'admin.finance.fee_structures'
                                         : key === 'bursaries'
                                           ? 'admin.finance.bursaries'
-                                          : null;
+                                          : key === 'records'
+                                            ? 'admin.finance.records'
+                                            : key === 'administrators'
+                                              ? 'admin.finance.administrators'
+                                              : null;
 
                             return (
                                 <View key={key} style={{ marginRight: 12, flexDirection: 'row', alignItems: 'center' }}>

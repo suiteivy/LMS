@@ -78,13 +78,35 @@ const MODULES: ManualSection[] = [
   },
   {
     id: 'grading-ops',
-    title: 'Grading',
+    title: 'Grading & Academic Rankings',
     feature: 'grading',
     roles: ['admin', 'teacher'],
-    shortBlurb: 'Controls score capture, weighted assessment rules, and final term outcomes.',
-    whatItDoes: 'Defines how raw scores become reportable grades and term-level outputs.',
-    whatChanges: 'Assessment weights and scales directly alter reported averages and ranks.',
-    crossLinks: ['Management → Subjects', 'Results → Report Cards'],
+    shortBlurb: 'Controls score capture, assessment weighting ratios, grading scales, and academic rankings.',
+    whatItDoes:
+      'Defines how raw scores become reportable grades, student rankings, and term-level academic evaluations according to the institution’s configured grading scale.',
+    whatChanges:
+      'Configured assessment category weights (Exam vs. Continuous Assessment ratio) and scale thresholds directly alter student scores, ranks, and performance classifications.',
+    crossLinks: ['Management → Subjects', 'Academic Setup → Grading Scales', 'Results → Report Cards'],
+    deepDive: {
+      title: 'Grading and weighting mechanics',
+      steps: [
+        '1) Admin configures grading scales (numeric ranges and letter grades) and assessment types in Academic Setup.',
+        '2) Admin sets the institutional assessment weighting ratio (e.g., 60% Exam / 40% Continuous Assessment).',
+        '3) Teachers input raw assessment marks for coursework and scheduled exams.',
+        '4) System scales raw marks against assessment maximums, weights categories, and resolves the final letter grade.',
+        '5) Academic rankings compute class and subject leaderboards based on composite weighted performance.',
+      ],
+      workedExample: [
+        'Student scores 45/50 in Assignment (90%) and 80/100 in Final Exam (80%).',
+        'Under 60/40 weighting: Continuous Assessment (40%) = 36 pts; Exam (60%) = 48 pts. Composite = 84%.',
+        'System assigns Grade A and updates student standing in class rankings.',
+      ],
+      edgeCases: [
+        'Missing assessments default to excluded or failing per institution policy.',
+        'When only exams exist with no coursework, exams contribute 100% of the calculated score.',
+        'Editing a grading scale recalibrates unfinalized grade distributions upon recalculation.',
+      ],
+    },
   },
   {
     id: 'attendance-ops',
@@ -98,13 +120,35 @@ const MODULES: ManualSection[] = [
   },
   {
     id: 'reports-ops',
-    title: 'Reports',
+    title: 'Reports & Report Cards',
     feature: 'reports',
     roles: ['admin', 'teacher'],
     shortBlurb: 'Aggregates institution and classroom outputs for operational and academic review.',
-    whatItDoes: 'Provides printable/exportable snapshots of grades, attendance, and status.',
-    whatChanges: 'Date range, term scope, and filters alter who appears in generated reports.',
-    crossLinks: ['Results → Report Cards', 'Management → Analytics'],
+    whatItDoes:
+      'Provides printable snapshots of grades, attendance, and compiled report cards. Class Teachers compile class-wide drafts, while Subject Teachers select which assessments contribute alongside mandatory exams.',
+    whatChanges:
+      'Assessment selection and the institution assessment weighting ratio (e.g. 60% Exam / 40% Continuous Assessment) directly govern compiled student grades.',
+    crossLinks: ['Results → Report Cards', 'Management → Analytics', 'Academic Setup → Grading Scales'],
+    deepDive: {
+      title: 'Report card compilation & assessment selection lifecycle',
+      steps: [
+        '1) Subject Teachers open Subject Assessment Contribution to select which coursework assessments count towards the term score (exams are mandatory and locked).',
+        '2) System computes composite subject scores using the institution-configured weighting ratio (default 60% Exam / 40% Continuous Assessment).',
+        '3) Class Teachers generate and review report card drafts for their designated class only (Admins have universal class access).',
+        '4) Teachers record personalized conduct and academic remarks for each student.',
+        '5) Report cards are published and released to student and parent portals, with cross-term student history preserved.',
+      ],
+      workedExample: [
+        'Subject: Grade 8 Science. Exam score: 80% (weighted 60% = 48 pts). Selected Continuous Assessment: 70% (weighted 40% = 28 pts).',
+        'Composite score: 76% (Grade B on a standard scale).',
+        'Class Teacher compiles class batch and exports official PDF report cards.',
+      ],
+      edgeCases: [
+        'If a subject has no continuous assessments or none are selected, the mandatory exam contributes 100% of the grade.',
+        'Class Teachers only see dropdowns and students for classes they are officially designated to teach.',
+        'Historical cross-term performance is inspectable across all enrolled terms via the student history modal.',
+      ],
+    },
   },
   {
     id: 'student-workflow',

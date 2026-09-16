@@ -158,24 +158,69 @@ const STATUS_CONFIG: Record<
 };
 
 const getLetterGradeColor = (grade: string): string => {
-  switch (grade) {
-    case 'A+':
-    case 'A':
-      return '#10B981';
-    case 'B+':
-    case 'B':
-      return '#3B82F6';
-    case 'C+':
-    case 'C':
-      return '#F59E0B';
-    case 'D+':
-    case 'D':
-      return '#F97316';
-    case 'F':
-      return '#EF4444';
-    default:
-      return '#9CA3AF';
+  if (!grade) return '#9CA3AF';
+  const g = grade.toUpperCase().trim();
+
+  // Green: Excellent / Exceeding Expectation / A
+  if (
+    g.startsWith('A') ||
+    g.includes('EXCELLENT') ||
+    g.includes('EXCEEDING') ||
+    g.includes('DISTINCTION') ||
+    g.includes('OUTSTANDING') ||
+    g.includes('MASTERY')
+  ) {
+    return '#10B981';
   }
+
+  // Blue: Good / Meeting Expectation / B / Proficient
+  if (
+    g.startsWith('B') ||
+    g.includes('GOOD') ||
+    g.includes('MEETING') ||
+    g.includes('PROFICIENT') ||
+    g.includes('MERIT') ||
+    g.includes('VERY GOOD') ||
+    g.includes('CREDIT')
+  ) {
+    return '#3B82F6';
+  }
+
+  // Amber: Satisfactory / Approaching Expectation / C / Average / Pass
+  if (
+    g.startsWith('C') ||
+    g.includes('SATISFACTORY') ||
+    g.includes('AVERAGE') ||
+    g.includes('APPROACHING') ||
+    g.includes('DEVELOPING') ||
+    g.includes('BASIC') ||
+    g.includes('FAIR') ||
+    g === 'PASS'
+  ) {
+    return '#F59E0B';
+  }
+
+  // Orange: Needs Improvement / D / Emerging
+  if (
+    g.startsWith('D') ||
+    g.includes('IMPROVEMENT') ||
+    g.includes('EMERGING')
+  ) {
+    return '#F97316';
+  }
+
+  // Red: Fail / Below Expectation / Unsatisfactory / F / E
+  if (
+    g === 'F' ||
+    g === 'E' ||
+    g.includes('FAIL') ||
+    g.includes('BELOW') ||
+    g.includes('UNSATISFACTORY')
+  ) {
+    return '#EF4444';
+  }
+
+  return '#9CA3AF';
 };
 
 const getGpaBarColor = (gpa: number): string => {

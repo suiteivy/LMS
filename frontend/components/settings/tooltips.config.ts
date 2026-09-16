@@ -23,6 +23,7 @@ export type TooltipTargetId =
   | 'admin.manage.reports'
   | 'admin.manage.attendance'
   | 'admin.manage.classes'
+  | 'admin.manage.transfers'
   | 'admin.manage.timetable'
   | 'admin.manage.resources'
   | 'admin.manage.academic_setup'
@@ -36,10 +37,16 @@ export type TooltipTargetId =
   | 'teacher.analytics.overview_metrics'
   | 'teacher.analytics.performance_trends'
   | 'teacher.manage.resources'
+  | 'teacher.manage.coverage'
+  | 'teacher.manage.record_of_work'
+  | 'teacher.manage.exams'
   | 'teacher.manage.grade_entry'
   | 'teacher.manage.report_cards'
+  | 'teacher.manage.rankings'
   | 'teacher.manage.messages'
   | 'teacher.manage.diary'
+  | 'teacher.manage.library'
+  | 'teacher.manage.finance'
   | 'student.dashboard.metrics'
   | 'student.dashboard.schedule'
   | 'student.dashboard.tools'
@@ -69,6 +76,8 @@ export type TooltipTargetId =
   | 'admin.finance.revenue'
   | 'admin.finance.fee_structures'
   | 'admin.finance.bursaries'
+  | 'admin.finance.records'
+  | 'admin.finance.administrators'
   | 'student.finance.overview'
   | 'student.finance.ledger'
   | 'parent.finance.overview'
@@ -215,7 +224,7 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     id: 'admin.manage.analytics',
     title: 'System Analytics',
     text: 'Institution-level trends for academics, engagement, and operations over time.',
-    learnMoreAnchor: 'promotion-engine',
+    learnMoreAnchor: 'reports-ops',
     feature: 'analytics',
     roles: ['admin'],
   },
@@ -223,7 +232,7 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     id: 'admin.analytics.core_metrics',
     title: 'Core metrics',
     text: 'Top-line institution indicators for learners, attendance, class activity, and revenue visibility in one snapshot.',
-    learnMoreAnchor: 'promotion-engine',
+    learnMoreAnchor: 'reports-ops',
     feature: 'analytics',
     roles: ['admin'],
   },
@@ -239,7 +248,7 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     id: 'admin.manage.library',
     title: 'Library Management',
     text: 'Catalog and control learning resources, circulation, and availability rules.',
-    learnMoreAnchor: 'reports-ops',
+    learnMoreAnchor: 'librarian-ops',
     feature: 'library',
     roles: ['admin'],
   },
@@ -255,7 +264,7 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     id: 'admin.manage.roles',
     title: 'Roles & Permissions',
     text: 'Controls who can access sensitive workflows and institution-level operations.',
-    learnMoreAnchor: 'reports-ops',
+    learnMoreAnchor: 'custom-roles',
     roles: ['admin'],
   },
   'admin.manage.reports': {
@@ -281,18 +290,25 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     learnMoreAnchor: 'promotion-engine',
     roles: ['admin'],
   },
+  'admin.manage.transfers': {
+    id: 'admin.manage.transfers',
+    title: 'Class Transfers',
+    text: 'Review, approve, and track student transfer requests between classes and streams.',
+    learnMoreAnchor: 'promotion-engine',
+    roles: ['admin'],
+  },
   'admin.manage.timetable': {
     id: 'admin.manage.timetable',
     title: 'Timetable Builder',
     text: 'Schedules classes and avoids conflicts across teachers, rooms, and subjects.',
-    learnMoreAnchor: 'reports-ops',
+    learnMoreAnchor: 'timetable-builder',
     roles: ['admin'],
   },
   'admin.manage.resources': {
     id: 'admin.manage.resources',
-    title: 'Resource Approvals',
-    text: 'Moderates uploaded content before it becomes visible to learners and staff.',
-    learnMoreAnchor: 'reports-ops',
+    title: 'Learning Resources',
+    text: 'Moderates and organizes uploaded materials across subjects and classes.',
+    learnMoreAnchor: 'academic-vault',
     roles: ['admin'],
   },
   'admin.manage.academic_setup': {
@@ -375,8 +391,30 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     id: 'teacher.manage.resources',
     title: 'Academic Vault',
     text: 'Store, organize, and publish teaching resources with institution moderation controls.',
-    learnMoreAnchor: 'reports-ops',
+    learnMoreAnchor: 'academic-vault',
     roles: ['teacher'],
+  },
+  'teacher.manage.coverage': {
+    id: 'teacher.manage.coverage',
+    title: 'Coverage Planner',
+    text: 'Map out curriculum topic strands by week and track pacing against term milestones.',
+    learnMoreAnchor: 'coverage-planner',
+    roles: ['teacher', 'admin'],
+  },
+  'teacher.manage.record_of_work': {
+    id: 'teacher.manage.record_of_work',
+    title: 'Record of Work',
+    text: 'Log completed lessons, learning objectives, and student reflections to verify teaching progress.',
+    learnMoreAnchor: 'coverage-planner',
+    roles: ['teacher', 'admin'],
+  },
+  'teacher.manage.exams': {
+    id: 'teacher.manage.exams',
+    title: 'Exams Module',
+    text: 'Schedule exams and record graded assessments according to institution assessment rules.',
+    learnMoreAnchor: 'exams-module',
+    feature: 'grading',
+    roles: ['teacher', 'admin'],
   },
   'teacher.manage.grade_entry': {
     id: 'teacher.manage.grade_entry',
@@ -393,6 +431,14 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     feature: 'reports',
     roles: ['teacher'],
   },
+  'teacher.manage.rankings': {
+    id: 'teacher.manage.rankings',
+    title: 'Student Rankings',
+    text: 'View student academic leaderboards, subject rankings, and performance distributions.',
+    learnMoreAnchor: 'grading-ops',
+    feature: 'grading',
+    roles: ['teacher', 'admin'],
+  },
   'teacher.manage.messages': {
     id: 'teacher.manage.messages',
     title: 'Direct Connect',
@@ -405,8 +451,24 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     id: 'teacher.manage.diary',
     title: 'Virtual Diary',
     text: 'Maintain a daily instructional log for continuity, handoffs, and classroom evidence.',
-    learnMoreAnchor: 'reports-ops',
+    learnMoreAnchor: 'coverage-planner',
     roles: ['teacher'],
+  },
+  'teacher.manage.library': {
+    id: 'teacher.manage.library',
+    title: 'Library Circulation',
+    text: 'Issue, return, and track catalog books and physical learning resources at the librarian desk.',
+    learnMoreAnchor: 'librarian-ops',
+    feature: 'library',
+    roles: ['teacher', 'admin'],
+  },
+  'teacher.manage.finance': {
+    id: 'teacher.manage.finance',
+    title: 'Finance Operations',
+    text: 'Record fee payments, verify student balances, and issue official payment receipts.',
+    learnMoreAnchor: 'finance-admin-role',
+    feature: 'billing',
+    roles: ['teacher', 'admin'],
   },
   'student.dashboard.metrics': {
     id: 'student.dashboard.metrics',
@@ -612,6 +674,22 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     title: 'Bursary management',
     text: 'Manages bursary allocations, approvals, and adjustments that affect outstanding balances.',
     learnMoreAnchor: 'billing-ops',
+    feature: 'billing',
+    roles: ['admin'],
+  },
+  'admin.finance.records': {
+    id: 'admin.finance.records',
+    title: 'Individual Records',
+    text: 'Inspect complete fee ledgers, payment transactions, and bursary adjustments per student.',
+    learnMoreAnchor: 'billing-ops',
+    feature: 'billing',
+    roles: ['admin'],
+  },
+  'admin.finance.administrators': {
+    id: 'admin.finance.administrators',
+    title: 'Finance Admins',
+    text: 'Designate authorized staff members to manage fees, payments, and bursaries.',
+    learnMoreAnchor: 'finance-admin-role',
     feature: 'billing',
     roles: ['admin'],
   },
