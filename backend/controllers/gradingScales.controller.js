@@ -203,6 +203,19 @@ const deleteGradingScale = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Grading scale not found' });
     }
 
+    // Check if grading scale is in active use
+    const { count: studentProfileCount } = await supabase
+      .from('student_profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('grading_scale_id', id);
+
+    if (studentProfileCount && studentProfileCount > 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot delete grading scale while it is in active use by ${studentProfileCount} student(s). Reassign them first.`
+      });
+    }
+
     const { error } = await supabase
       .from('grading_scales')
       .update({ is_active: false })
@@ -213,7 +226,7 @@ const deleteGradingScale = async (req, res) => {
       return res.status(500).json({ success: false, error: error.message });
     }
 
-    return res.status(200).json({ success: true, data: { message: 'Grading scale deleted' } });
+    return res.status(200).json({ success: true, data: { message: 'Grading scale deleted successfully' } });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }

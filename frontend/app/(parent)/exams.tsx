@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ParentChildSelector, LinkedChild } from "@/components/parent/ParentChildSelector";
 import { ParentService } from "@/services/ParentService";
+import { GradingAPI } from "@/services/GradingService";
 import { useParentStudentContext } from "@/hooks/useParentStudentContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
@@ -75,6 +76,8 @@ export default function ParentExamsPage() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [results, setResults] = useState<ExamResult[]>([]);
 
+  const [gradingScales, setGradingScales] = useState<any[]>([]);
+
   const fetchData = async () => {
     if (!resolvedStudentId) {
       setExams([]);
@@ -86,13 +89,15 @@ export default function ParentExamsPage() {
 
     try {
       setLoading(true);
-      const [examsData, resultsData] = await Promise.all([
+      const [examsData, resultsData, scalesData] = await Promise.all([
         ParentService.getStudentExams(resolvedStudentId).catch(() => []),
         ParentService.getStudentExamResults(resolvedStudentId).catch(() => []),
+        GradingAPI.getGradingScales().catch(() => []),
       ]);
 
       setExams(Array.isArray(examsData) ? examsData : []);
       setResults(Array.isArray(resultsData) ? resultsData : []);
+      setGradingScales(Array.isArray(scalesData) ? scalesData : []);
     } catch (err) {
       console.error("[ParentExams] Error fetching exams/results:", err);
       setExams([]);
@@ -113,45 +118,53 @@ export default function ParentExamsPage() {
     fetchData();
   };
 
-  const getCompetencyBadge = (band?: string) => {
-    const b = (band || "").toUpperCase();
-    switch (b) {
-      case "EE":
+  const getCompetencyBadge = (band?: string, score?: number, maxScore?: number) => {
+    const b = (band || "").trim();
+    const pct = (score !== undefined && maxScore && maxScore > 0)
+      ? Math.round((score / maxScore) * 100)
+      : undefined;
+
+    // Check institution configured grading scales first
+    if (gradingScales && gradingScales.length > 0) {
+      let match = gradingScales.find((s: any) =>
+        b && (
+          (s.letter_grade && s.letter_grade.toLowerCase() === b.toLowerCase()) ||
+          (s.name && s.name.toLowerCase() === b.toLowerCase())
+        )
+      );
+
+      if (!match && pct !== undefined) {
+        match = gradingScales.find((s: any) => pct >= s.min_score && pct <= s.max_score);
+      }
+
+      if (match) {
+        const gradeStr = match.letter_grade || match.name;
+        const descStr = match.description || match.name || gradeStr;
+        const color = match.color || (
+          pct !== undefined
+            ? (pct >= 80 ? "#059669" : pct >= 60 ? "#0284C7" : pct >= 40 ? "#D97706" : "#DC2626")
+            : "#0284C7"
+        );
         return {
-          label: "Exceeding Expectations (EE)",
-          bg: isDark ? "rgba(16, 185, 129, 0.15)" : "#ECFDF5",
-          text: "#059669",
-          border: "#10B981",
+          label: `${descStr}${gradeStr && descStr !== gradeStr ? ` (${gradeStr})` : ''}`,
+          bg: isDark ? `${color}25` : `${color}15`,
+          text: color,
+          border: color,
         };
-      case "ME":
-        return {
-          label: "Meeting Expectations (ME)",
-          bg: isDark ? "rgba(2, 132, 199, 0.15)" : "#F0F9FF",
-          text: "#0284C7",
-          border: "#0EA5E9",
-        };
-      case "AE":
-        return {
-          label: "Approaching Expectations (AE)",
-          bg: isDark ? "rgba(245, 158, 11, 0.15)" : "#FFFBEB",
-          text: "#D97706",
-          border: "#F59E0B",
-        };
-      case "BE":
-        return {
-          label: "Below Expectations (BE)",
-          bg: isDark ? "rgba(239, 68, 68, 0.15)" : "#FEF2F2",
-          text: "#DC2626",
-          border: "#EF4444",
-        };
-      default:
-        return {
-          label: band || "Competency Assessed",
-          bg: isDark ? "rgba(156, 163, 175, 0.15)" : "#F3F4F6",
-          text: "#6B7280",
-          border: "#9CA3AF",
-        };
+      }
     }
+
+    // Dynamic resolution based on percentage or band string
+    const color = pct !== undefined
+      ? (pct >= 80 ? "#059669" : pct >= 60 ? "#0284C7" : pct >= 40 ? "#D97706" : "#DC2626")
+      : "#0284C7";
+
+    return {
+      label: b ? b : (pct !== undefined ? `Score ${pct}%` : "Assessed"),
+      bg: isDark ? `${color}25` : `${color}15`,
+      text: color,
+      border: color,
+    };
   };
 
   const formatDate = (dateStr?: string) => {
@@ -305,7 +318,7 @@ export default function ParentExamsPage() {
               results.map((res) => {
                 const max = res.exams?.max_score || 100;
                 const percentage = Math.round((res.score / max) * 100);
-                const badge = getCompetencyBadge(res.competency_band);
+                const badge = getCompetencyBadge(res.competency_band, res.score, max);
                 const subjectName = res.exams?.subjects?.title || "Subject";
                 const teacherName = res.exams?.subjects?.teachers?.users?.full_name;
 

@@ -72,7 +72,11 @@ export const ActionTooltip: React.FC<ActionTooltipProps> = ({
 
     return (
         <View
-            style={[styles.container, style]}
+            style={[
+                styles.container,
+                visible && { zIndex: 999999, elevation: 999999 },
+                style
+            ]}
             // @ts-ignore - Web DOM event props supported by react-native-web
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
@@ -96,15 +100,17 @@ export const ActionTooltip: React.FC<ActionTooltipProps> = ({
                         },
                     ]}
                 >
-                    <View style={{ flexDirection: 'column', maxWidth: 260 }}>
+                    <View style={{ flexDirection: 'column', maxWidth: 260, minWidth: 60 }}>
                         {label ? (
-                            <Text style={[styles.tooltipText, { fontWeight: '700', fontSize: 12 }]} numberOfLines={1}>
+                            <Text style={[styles.tooltipText, { fontWeight: '700', fontSize: 12, marginBottom: description || text ? 2 : 0 }]}>
                                 {label}
                             </Text>
                         ) : null}
-                        <Text style={[styles.tooltipText, { fontSize: label ? 11 : 12, opacity: label ? 0.9 : 1 }]} numberOfLines={3}>
-                            {description || text || ''}
-                        </Text>
+                        {(description || text) ? (
+                            <Text style={[styles.tooltipText, { fontSize: label ? 11 : 12, opacity: label ? 0.9 : 1 }]}>
+                                {description || text}
+                            </Text>
+                        ) : null}
                     </View>
                     {learnMoreAnchor ? (
                         <TouchableOpacity
@@ -131,29 +137,28 @@ const styles = StyleSheet.create({
     },
     tooltipBubble: {
         position: 'absolute',
-        paddingHorizontal: 8,
-        paddingVertical: 5,
-        borderRadius: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
         borderWidth: 1,
-        zIndex: 99999,
+        zIndex: 999999,
         // @ts-ignore - web-specific
-        whiteSpace: 'nowrap',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 10,
+        boxShadow: '0 4px 14px rgba(0, 0, 0, 0.3)',
+        elevation: 100,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        left: '50%',
+        // @ts-ignore - web-specific transform
+        transform: [{ translateX: '-50%' }],
     },
     positionTop: {
         bottom: '100%',
-        marginBottom: 6,
+        marginBottom: 8,
     },
     positionBottom: {
         top: '100%',
-        marginTop: 6,
+        marginTop: 8,
     },
     tooltipText: {
         color: '#FFFFFF',

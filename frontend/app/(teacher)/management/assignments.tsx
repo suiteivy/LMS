@@ -14,7 +14,7 @@ import { router } from "expo-router";
 import { 
     AlignLeft, Calendar, Edit2, Eye, FileText, Plus, Target, Trophy, 
     Trash2, Type, Upload, Users, X, BookOpen, Download, CheckCircle2, 
-    ArrowRight, ArrowLeft, Award, Layers, Check, ShieldCheck
+    ArrowRight, ArrowLeft, Award, Layers, Check, ShieldCheck, AlertTriangle
 } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, Platform, Linking } from 'react-native';
@@ -238,6 +238,7 @@ export default function AssignmentsPage() {
     const [loading, setLoading] = useState(true);
     const [Subjects, setSubjects] = useState<SubjectOption[]>([]);
     const [terms, setTerms] = useState<TermOption[]>([]);
+    const [loadingTerms, setLoadingTerms] = useState(true);
     const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
 
     // Form State
@@ -301,6 +302,7 @@ export default function AssignmentsPage() {
     }, [teacherId]);
 
     const fetchTerms = async () => {
+        setLoadingTerms(true);
         try {
             const data = await GradingAPI.getTerms();
             if (Array.isArray(data) && data.length > 0) {
@@ -316,19 +318,13 @@ export default function AssignmentsPage() {
                     setTermName(active.name);
                 }
             } else {
-                setTerms([
-                    { id: 'term-1', name: 'Term 1' },
-                    { id: 'term-2', name: 'Term 2' },
-                    { id: 'term-3', name: 'Term 3' }
-                ]);
+                setTerms([]);
             }
         } catch (err) {
             console.error("Error fetching terms from DB:", err);
-            setTerms([
-                { id: 'term-1', name: 'Term 1' },
-                { id: 'term-2', name: 'Term 2' },
-                { id: 'term-3', name: 'Term 3' }
-            ]);
+            setTerms([]);
+        } finally {
+            setLoadingTerms(false);
         }
     };
 
@@ -827,7 +823,17 @@ export default function AssignmentsPage() {
                         <View className="flex-row gap-2">
                             <TouchableOpacity
                                 className="flex-row items-center bg-[#FF6900] px-4 py-2 rounded-lg shadow-sm"
-                                onPress={() => { resetForm(); setShowModal(true); }}
+                                onPress={() => {
+                                    if (terms.length === 0) {
+                                        Alert.alert(
+                                            "Academic Terms Missing",
+                                            "No academic terms are configured for your institution. Please contact your administrator to set up terms before creating coursework."
+                                        );
+                                        return;
+                                    }
+                                    resetForm();
+                                    setShowModal(true);
+                                }}
                                 activeOpacity={0.7}
                             >
                                 <Plus size={16} color="white" />
@@ -835,6 +841,19 @@ export default function AssignmentsPage() {
                             </TouchableOpacity>
                         </View>
                     </View>
+
+                    {/* Missing Upstream Terms Warning */}
+                    {!loadingTerms && terms.length === 0 && (
+                        <View className="mb-6 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-4 rounded-2xl flex-row items-center gap-3">
+                            <View className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 items-center justify-center">
+                                <AlertTriangle size={18} color="#F59E0B" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-amber-800 dark:text-amber-300 font-bold text-sm">Academic terms not configured</Text>
+                                <Text className="text-amber-600 dark:text-amber-400 text-xs mt-0.5">No active academic terms found. Please contact your administrator to set up academic terms before assigning coursework.</Text>
+                            </View>
+                        </View>
+                    )}
 
                     {/* Stats */}
                     <View className="flex-row gap-4 mb-6">

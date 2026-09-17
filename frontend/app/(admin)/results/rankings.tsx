@@ -143,12 +143,16 @@ export default function AdminStudentRankingsScreen() {
                 count: dist[d.letter_grade || d.name] || 0,
             }));
         }
-        return [
-            { key: "EE", label: "EE", description: "Exceeding", count: dist["EE"] || 0 },
-            { key: "ME", label: "ME", description: "Meeting", count: dist["ME"] || 0 },
-            { key: "AE", label: "AE", description: "Approaching", count: dist["AE"] || 0 },
-            { key: "BE", label: "BE", description: "Below", count: dist["BE"] || 0 },
-        ];
+        const distKeys = Object.keys(dist);
+        if (distKeys.length > 0) {
+            return distKeys.map((k) => ({
+                key: k,
+                label: k,
+                description: k,
+                count: dist[k] || 0,
+            }));
+        }
+        return [];
     }, [data]);
 
     // Filtered rankings

@@ -371,6 +371,15 @@ async function authMiddleware(req, res, next) {
         return res.status(401).json({ error: "Invalid session or user profile not found", code: "SESSION_INVALID" });
       }
 
+      // Check if account is disabled (Item 12)
+      if (profileData.is_active === false) {
+        if (isLogoutPath) return res.status(200).json({ message: "Already logged out" });
+        return res.status(403).json({
+          error: "Your account has been disabled. Please contact your administrator.",
+          code: "ACCOUNT_DISABLED"
+        });
+      }
+
       // Check account data retention period expiration
       if (profileData.retention_until) {
         const retentionTime = new Date(profileData.retention_until).getTime();
@@ -732,8 +741,6 @@ async function authMiddleware(req, res, next) {
     return res.status(500).json({ error: "Authorization failed" });
   }
 }
-
-module.exports = { authMiddleware };
 
 function clearUserCache(userId) {
   profileCache.delete(userId);

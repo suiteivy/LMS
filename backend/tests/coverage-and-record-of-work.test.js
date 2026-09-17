@@ -85,3 +85,24 @@ test('recordExamResult enforces submission deadline lockout for teachers', async
     // If exam not found, 404. If deadline passed, 403. Either way, fails safely without crash.
     assert.ok(res.state.statusCode === 404 || res.state.statusCode === 403);
 });
+
+test('getCoverageOversight executes successfully and returns expected oversight structure', async () => {
+    const req = {
+        institution_id: '5c543f07-75d7-4ed5-941f-295ef0274700',
+        userId: 'user-1',
+        userRole: 'admin',
+        query: {}
+    };
+    const res = createMockRes();
+    await teacherController.getCoverageOversight(req, res);
+    assert.equal(res.state.statusCode, 200);
+    assert.ok(typeof res.state.body.total_subjects === 'number');
+    assert.ok(typeof res.state.body.overall_coverage_rate === 'number');
+    assert.ok(Array.isArray(res.state.body.subjects));
+    if (res.state.body.subjects.length > 0) {
+        const first = res.state.body.subjects[0];
+        assert.ok(first.subject_id);
+        assert.ok(first.subject_title);
+    }
+});
+

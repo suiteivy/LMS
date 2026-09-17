@@ -103,29 +103,38 @@ export default function ContentCoveragePage() {
                         activeYearName = activeYear.name;
                         activeYearId = activeYear.id;
                         setAcademicYear(activeYearName);
+                    } else {
+                        setAcademicYear("");
                     }
                 } catch (e) {
                     console.error("fetchAcademicYears error:", e);
+                    setAcademicYear("");
                 }
 
                 // 2. Fetch live terms scoped to institution & active year
-                try {
-                    const termsData = await GradingAPI.getTerms(activeYearId || undefined).catch(() => []);
-                    if (Array.isArray(termsData) && termsData.length > 0) {
-                        const sorted = [...termsData].sort((a, b) => (a.start_date || '').localeCompare(b.start_date || ''));
-                        setTermsObjects(sorted);
-                        const termNames = sorted.map((t: any) => t.name || `Term ${t.term_number || ''}`.trim());
-                        setAvailableTerms(termNames);
-                        const currentTerm = sorted.find((t: any) => t.is_current) || sorted[0];
-                        setSelectedTerm(prev => (prev && termNames.includes(prev) ? prev : (currentTerm?.name || termNames[0])));
-                    } else {
-                        // Explicit empty state - NO fallback to fabricated terms
+                if (activeYearId) {
+                    try {
+                        const termsData = await GradingAPI.getTerms(activeYearId).catch(() => []);
+                        if (Array.isArray(termsData) && termsData.length > 0) {
+                            const sorted = [...termsData].sort((a, b) => (a.start_date || '').localeCompare(b.start_date || ''));
+                            setTermsObjects(sorted);
+                            const termNames = sorted.map((t: any) => t.name || `Term ${t.term_number || ''}`.trim());
+                            setAvailableTerms(termNames);
+                            const currentTerm = sorted.find((t: any) => t.is_current) || sorted[0];
+                            setSelectedTerm(prev => (prev && termNames.includes(prev) ? prev : (currentTerm?.name || termNames[0])));
+                        } else {
+                            // Explicit empty state - NO fallback to fabricated terms
+                            setTermsObjects([]);
+                            setAvailableTerms([]);
+                            setSelectedTerm("");
+                        }
+                    } catch (e) {
+                        console.error("fetchTerms error:", e);
                         setTermsObjects([]);
                         setAvailableTerms([]);
                         setSelectedTerm("");
                     }
-                } catch (e) {
-                    console.error("fetchTerms error:", e);
+                } else {
                     setTermsObjects([]);
                     setAvailableTerms([]);
                     setSelectedTerm("");
@@ -145,9 +154,10 @@ export default function ContentCoveragePage() {
                     setIsHOD(hodIds.has(selectedSubjectId));
                 }
             } else {
-                setAvailableTerms(['Term 1', 'Term 2', 'Term 3']);
-                setSelectedTerm('Term 1');
-                setAcademicYear('2026');
+                setTermsObjects([]);
+                setAvailableTerms([]);
+                setSelectedTerm("");
+                setAcademicYear("");
                 setIsHOD(true);
             }
         } catch (err) {
@@ -254,6 +264,15 @@ export default function ContentCoveragePage() {
     }, [selectedSubjectId, selectedTerm, academicYear, fetchCoveragePlans]);
 
     const handleCreatePlanItem = async () => {
+        if (!selectedTerm) {
+            Toast.show({
+                type: 'error',
+                text1: 'Academic Period Required',
+                text2: 'Please configure academic terms before creating coverage plan items.'
+            });
+            return;
+        }
+
         if (!title.trim() || !selectedSubjectId) {
             Toast.show({
                 type: 'error',
@@ -452,12 +471,12 @@ export default function ContentCoveragePage() {
                                 <Calendar size={32} color="#FF6900" />
                             </View>
                             <Text className="text-gray-900 dark:text-white font-bold text-lg text-center tracking-tight">
-                                {isAdmin ? "No Academic Periods Configured" : "Academic Periods Not Configured"}
+                                No Terms Available
                             </Text>
                             <Text className="text-gray-500 dark:text-gray-400 text-xs text-center mt-2 max-w-md leading-relaxed">
                                 {isAdmin
-                                    ? "Academic periods haven't been set up for this year yet — add terms and dates in Academic Setup to begin."
-                                    : "Academic periods haven't been set up for this year yet — contact your school admin to add terms and dates."}
+                                    ? "No academic periods or terms have been configured for this academic year yet — add terms and dates in Academic Setup to begin."
+                                    : "No academic periods or terms have been configured for this academic year yet — please contact your school administrator to configure academic terms."}
                             </Text>
                             {isAdmin && (
                                 <ActionTooltip text="Open Academic Setup to create academic years and terms">

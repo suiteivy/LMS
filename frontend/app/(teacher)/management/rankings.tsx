@@ -117,12 +117,7 @@ export default function StudentRankingsScreen() {
         color: defaultColors[k] || "#3B82F6",
       }));
     }
-    return [
-      { band: "EE", label: "Exceeding", count: 0, color: "#10B981" },
-      { band: "ME", label: "Meeting", count: 0, color: "#3B82F6" },
-      { band: "AE", label: "Approaching", count: 0, color: "#F59E0B" },
-      { band: "BE", label: "Below", count: 0, color: "#EF4444" },
-    ];
+    return [];
   }, [data]);
 
   const filteredRankings = useMemo(() => {

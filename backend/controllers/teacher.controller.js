@@ -1224,7 +1224,7 @@ exports.getStudentRankings = async (req, res) => {
         // Query subjects
         let subjectsQuery = supabase
             .from('subjects')
-            .select('id, title, class_id, classes(id, name, grade_level, form_level, stream, class_type)');
+            .select('id, title, class_id, classes(id, display_name, grade_level, form_level, stream, class_type)');
         if (institution_id) subjectsQuery = subjectsQuery.eq('institution_id', institution_id);
         if (subject_id) subjectsQuery = subjectsQuery.eq('id', subject_id);
         if (class_id) subjectsQuery = subjectsQuery.eq('class_id', class_id);
@@ -1332,8 +1332,8 @@ exports.getStudentRankings = async (req, res) => {
                 gradeDistribution[key] = 0;
             });
         } else {
-            // Default fallback if no scales are configured
-            ['EE', 'ME', 'AE', 'BE'].forEach(k => { gradeDistribution[k] = 0; });
+            // Standard letter grade bands if no institution scale is configured
+            ['A', 'B', 'C', 'D', 'E'].forEach(k => { gradeDistribution[k] = 0; });
         }
 
         const studentRankings = studentIds.map(sId => {
@@ -1348,8 +1348,8 @@ exports.getStudentRankings = async (req, res) => {
                 ? Math.round(validGrades.reduce((a, b) => a + b, 0) / validGrades.length)
                 : 0;
 
-            let assignedGrade = "BE";
-            let assignedLabel = "Below Expectation";
+            let assignedGrade = "E";
+            let assignedLabel = "Grade E";
 
             if (activeScales.length > 0) {
                 const match = activeScales.find(s => avgScore >= s.min_score && avgScore <= s.max_score);
@@ -1367,17 +1367,20 @@ exports.getStudentRankings = async (req, res) => {
                 }
             } else {
                 if (avgScore >= 80) {
-                    assignedGrade = "EE";
-                    assignedLabel = "Exceeding Expectation";
+                    assignedGrade = "A";
+                    assignedLabel = "Grade A (80-100%)";
+                } else if (avgScore >= 70) {
+                    assignedGrade = "B";
+                    assignedLabel = "Grade B (70-79%)";
                 } else if (avgScore >= 60) {
-                    assignedGrade = "ME";
-                    assignedLabel = "Meeting Expectation";
-                } else if (avgScore >= 40) {
-                    assignedGrade = "AE";
-                    assignedLabel = "Approaching Expectation";
+                    assignedGrade = "C";
+                    assignedLabel = "Grade C (60-69%)";
+                } else if (avgScore >= 50) {
+                    assignedGrade = "D";
+                    assignedLabel = "Grade D (50-59%)";
                 } else {
-                    assignedGrade = "BE";
-                    assignedLabel = "Below Expectation";
+                    assignedGrade = "E";
+                    assignedLabel = "Grade E (Below 50%)";
                 }
             }
 
@@ -1770,7 +1773,7 @@ exports.getCoverageOversight = async (req, res) => {
             .from('subjects')
             .select(`
                 id, title, class_id, hod_teacher_id,
-                classes ( id, name, grade_level, form_level, stream, class_type ),
+                classes ( id, display_name, grade_level, form_level, stream, class_type ),
                 teachers:hod_teacher_id ( id, user_id, users:user_id ( full_name, email, avatar_url ) )
             `)
             .eq('institution_id', institution_id);
@@ -1867,7 +1870,7 @@ exports.getCoverageOversight = async (req, res) => {
                 subject_id: s.id,
                 subject_title: s.title,
                 class_id: s.class_id,
-                class_name: s.classes?.name || (s.classes?.grade_level ? `Grade ${s.classes.grade_level}` : null),
+                class_name: s.classes?.display_name || (s.classes?.grade_level ? `Grade ${s.classes.grade_level}` : null),
                 grade_level: s.classes?.grade_level || s.classes?.form_level || null,
                 stream: s.classes?.stream || null,
                 hod: hodName ? {

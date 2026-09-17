@@ -344,6 +344,8 @@ export default function GradeEntryPage() {
     const [showQuickFill, setShowQuickFill] = useState(false);
     const [quickFillValue, setQuickFillValue] = useState("");
     const [gradingScales, setGradingScales] = useState<GradingScaleRow[]>([]);
+    const [loadingScales, setLoadingScales] = useState(true);
+    const [loadingTerms, setLoadingTerms] = useState(true);
 
     // ──────────────────────────────────────────────────────────────────────────
     // Fetch filter options
@@ -354,11 +356,17 @@ export default function GradeEntryPage() {
         fetchSubjects();
         fetchTerms();
         fetchAssessmentTypes();
+        setLoadingScales(true);
         GradingAPI.getGradingScales()
             .then((scales: any) => {
                 if (Array.isArray(scales)) setGradingScales(scales);
+                else setGradingScales([]);
             })
-            .catch((err: any) => console.warn("Failed to load grading scales", err));
+            .catch((err: any) => {
+                console.warn("Failed to load grading scales", err);
+                setGradingScales([]);
+            })
+            .finally(() => setLoadingScales(false));
     }, [teacherId]);
 
     useEffect(() => {
@@ -400,6 +408,7 @@ export default function GradeEntryPage() {
     };
 
     const fetchTerms = async () => {
+        setLoadingTerms(true);
         try {
             const data = await GradingAPI.getTerms();
             if (data && Array.isArray(data)) {
@@ -451,9 +460,14 @@ export default function GradeEntryPage() {
                     setSelectedTermId(data[0].id);
                     setAutoSelectedActiveTerm(false);
                 }
+            } else {
+                setTerms([]);
             }
         } catch (error) {
             console.error("Error fetching terms:", error);
+            setTerms([]);
+        } finally {
+            setLoadingTerms(false);
         }
     };
 
@@ -620,6 +634,10 @@ export default function GradeEntryPage() {
     // ── Bulk quick fill scores ──
     const handleQuickFill = (target: "empty" | "all") => {
         if (!ensureWritableTerm("Bulk grade fill")) return;
+        if (gradingScales.length === 0) {
+            showError("Configuration Missing", "Grading scale not configured — contact your administrator");
+            return;
+        }
         const val = parseFloat(quickFillValue);
         if (isNaN(val) || val < 0) {
             showError("Invalid score", "Please enter a valid numeric score (e.g. 75)");
@@ -722,6 +740,14 @@ export default function GradeEntryPage() {
 
     const saveAllGrades = async (statusOverride?: "draft" | "final") => {
         if (!ensureWritableTerm("Grade saving")) return;
+        if (gradingScales.length === 0) {
+            showError("Configuration Missing", "Grading scale not configured — contact your administrator");
+            return;
+        }
+        if (terms.length === 0) {
+            showError("Configuration Missing", "No academic terms configured — contact your administrator");
+            return;
+        }
         if (!selectedClassId || !selectedTermId) {
             showError("Missing filters", "Please select a class and term first");
             return;
@@ -1015,6 +1041,31 @@ export default function GradeEntryPage() {
                             <Text className="text-xs font-bold text-gray-900 dark:text-gray-100">Save</Text>
                         </View>
                     </View>
+
+                    {/* ── Missing Upstream Setup Warnings ── */}
+                    {!loadingScales && gradingScales.length === 0 && (
+                        <View className="mb-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 p-4 rounded-2xl flex-row items-center gap-3">
+                            <View className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/40 items-center justify-center">
+                                <Award size={18} color="#EF4444" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-red-800 dark:text-red-300 font-bold text-sm">Grading scale not configured</Text>
+                                <Text className="text-red-600 dark:text-red-400 text-xs mt-0.5">Please contact your administrator to configure school grading scales before recording grades.</Text>
+                            </View>
+                        </View>
+                    )}
+
+                    {!loadingTerms && terms.length === 0 && (
+                        <View className="mb-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-4 rounded-2xl flex-row items-center gap-3">
+                            <View className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 items-center justify-center">
+                                <SlidersHorizontal size={18} color="#F59E0B" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-amber-800 dark:text-amber-300 font-bold text-sm">Academic terms not configured</Text>
+                                <Text className="text-amber-600 dark:text-amber-400 text-xs mt-0.5">No active academic terms found. Please contact your administrator to configure academic terms.</Text>
+                            </View>
+                        </View>
+                    )}
 
                     {/* ── Summary Stats ── */}
                     <View className="flex-row items-center justify-between mb-2 px-1">

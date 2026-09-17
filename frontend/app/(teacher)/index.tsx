@@ -617,6 +617,14 @@ export default function TeacherHome() {
         ];
     }, [mode, isDark]);
 
+    const teacherRoleLabel = useMemo(() => {
+        const heldRoles: string[] = [];
+        if (isSubjectTeacher) heldRoles.push('Subject Teacher');
+        if (isClassTeacher) heldRoles.push('Class Teacher');
+        if (isHOD) heldRoles.push('Head of Department');
+        return heldRoles.length > 0 ? heldRoles.join(' · ') : 'Teacher';
+    }, [isSubjectTeacher, isClassTeacher, isHOD]);
+
     return (
         <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
@@ -624,7 +632,7 @@ export default function TeacherHome() {
             <UnifiedHeader
                 title="Welcome back,"
                 subtitle={profile?.full_name || 'Teacher Portal'}
-                role="Teacher"
+                role={teacherRoleLabel}
                 showNotification={true}
             />
 

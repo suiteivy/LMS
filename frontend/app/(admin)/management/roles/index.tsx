@@ -37,6 +37,7 @@ import { SubjectAPI, SubjectData } from "@/services/SubjectService";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import Toast from 'react-native-toast-message';
+import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 
 interface ModulePermissionSpec {
     id: string;
@@ -169,7 +170,7 @@ const RoleCard = ({
 }: { 
     role: CustomRole; 
     onEdit: (role: CustomRole) => void; 
-    onDelete: (id: string) => void; 
+    onDelete: (role: CustomRole) => void; 
     isDark: boolean 
 }) => {
     const surface = isDark ? '#161B22' : '#FFFFFF';
@@ -252,7 +253,7 @@ const RoleCard = ({
                         learnMoreAnchor="custom-roles"
                     >
                         <TouchableOpacity 
-                            onPress={() => onDelete(role.id)} 
+                            onPress={() => onDelete(role)} 
                             style={{ padding: 6, borderRadius: 8, backgroundColor: isDark ? 'rgba(239,68,68,0.1)' : '#FEF2F2' }}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
@@ -918,6 +919,9 @@ export default function RolesAndPermissions() {
         }
     };
 
+    const [roleToDelete, setRoleToDelete] = useState<CustomRole | null>(null);
+    const [deleteRoleLoading, setDeleteRoleLoading] = useState(false);
+
     const handleSaveRole = async (
         id: string | undefined, 
         name: string, 
@@ -931,29 +935,44 @@ export default function RolesAndPermissions() {
         } else {
             await RoleAPI.createRole(name, description, permissionNames, dataScope, metadata);
         }
+        Toast.show({
+            type: 'success',
+            text1: id ? 'Role Updated' : 'Role Created',
+            text2: `Role "${name}" has been saved successfully.`,
+        });
         await loadData();
     };
 
-    const handleDeleteRole = (id: string) => {
-        Alert.alert(
-            "Delete Custom Role",
-            "Are you sure you want to delete this custom role? Assigned users will lose its permissions.",
-            [
-                { text: "Cancel", style: "cancel" },
-                { 
-                    text: "Delete", 
-                    style: "destructive", 
-                    onPress: async () => {
-                        try {
-                            await RoleAPI.deleteRole(id);
-                            await loadData();
-                        } catch {
-                            Alert.alert("Error", "Failed to delete custom role");
-                        }
-                    }
-                }
-            ]
-        );
+    const confirmDeleteRole = async () => {
+        if (!roleToDelete) return;
+        setDeleteRoleLoading(true);
+        try {
+            await RoleAPI.deleteRole(roleToDelete.id);
+            const deletedRoleName = roleToDelete.name;
+            setRoleToDelete(null);
+            Toast.show({
+                type: 'success',
+                text1: 'Role Deleted',
+                text2: `Custom role "${deletedRoleName}" was deleted successfully.`,
+            });
+            await loadData();
+        } catch (err: any) {
+            console.error('Delete role error:', err);
+            const errData = err?.response?.data;
+            const errorMsg = errData?.error || err.message || 'Failed to delete custom role';
+            Toast.show({
+                type: 'error',
+                text1: errData?.code === 'ROLE_IN_USE' ? 'Role In Use' : 'Delete Failed',
+                text2: errorMsg,
+                visibilityTime: 5000,
+            });
+            Alert.alert(
+                errData?.code === 'ROLE_IN_USE' ? 'Cannot Delete Role' : 'Error',
+                errorMsg
+            );
+        } finally {
+            setDeleteRoleLoading(false);
+        }
     };
 
     const handleOpenAssignUserModal = (user: any) => {
@@ -1470,7 +1489,7 @@ export default function RolesAndPermissions() {
                                 setSelectedRole(r);
                                 setModalVisible(true);
                             }}
-                            onDelete={handleDeleteRole}
+                            onDelete={(r) => setRoleToDelete(r)}
                         />
                     ))}
 
@@ -1752,6 +1771,20 @@ export default function RolesAndPermissions() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Custom Role Delete Confirmation Modal */}
+            <ConfirmationModal
+                visible={!!roleToDelete}
+                title="Delete Custom Role"
+                targetName={roleToDelete?.name}
+                message="Are you sure you want to delete this custom role? This action cannot be undone."
+                confirmText="Delete Role"
+                isDestructive={true}
+                icon="trash-outline"
+                loading={deleteRoleLoading}
+                onConfirm={confirmDeleteRole}
+                onClose={() => !deleteRoleLoading && setRoleToDelete(null)}
+            />
         </View>
     );
 }

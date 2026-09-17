@@ -631,6 +631,7 @@ exports.enrollUser = async (req, res) => {
     first_name,
     last_name,
     phone,
+    phone_numbers,
     role,
     gender,
     address,
@@ -837,7 +838,33 @@ exports.enrollUser = async (req, res) => {
     if (authError) throw authError;
     const uid = authData.user.id;
 
-    // 3. Insert into users table
+    // 3. Normalize phone numbers and insert into users table
+    let finalPhoneNumbers = [];
+    if (Array.isArray(phone_numbers) && phone_numbers.length > 0) {
+      let hasPrimary = false;
+      finalPhoneNumbers = phone_numbers
+        .filter(p => p && p.number && String(p.number).trim())
+        .map((p, idx) => {
+          const isPrimary = Boolean(p.is_primary) && !hasPrimary;
+          if (isPrimary) hasPrimary = true;
+          return {
+            number: String(p.number).trim(),
+            label: (p.label && String(p.label).trim()) || (idx === 0 ? 'Primary' : 'Secondary'),
+            is_primary: isPrimary,
+          };
+        });
+      if (finalPhoneNumbers.length > 0 && !hasPrimary) {
+        finalPhoneNumbers[0].is_primary = true;
+      }
+    } else if (phone && String(phone).trim()) {
+      finalPhoneNumbers = [{
+        number: String(phone).trim(),
+        label: 'Primary',
+        is_primary: true,
+      }];
+    }
+    const primaryPhone = finalPhoneNumbers.find(p => p.is_primary)?.number || (phone ? String(phone).trim() : null);
+
     const { error: userInsertError } = await supabase.from("users").insert({
       id: uid,
       email: finalEmail,
@@ -847,7 +874,8 @@ exports.enrollUser = async (req, res) => {
       role,
       must_change_password: true,
       requires_security_questions_setup: true,
-      phone: phone || null,
+      phone: primaryPhone || null,
+      phone_numbers: finalPhoneNumbers,
       gender: gender || null,
       date_of_birth: date_of_birth || null,
       address: address || null,
@@ -1238,6 +1266,8 @@ exports.adminUpdateUser = async (req, res) => {
     full_name,
     email,
     phone,
+    phone_numbers,
+    is_active,
     gender,
     date_of_birth,
     address,
@@ -1315,7 +1345,47 @@ exports.adminUpdateUser = async (req, res) => {
     if (last_name !== undefined) userUpdates.last_name = String(last_name || '').trim();
     if (full_name !== undefined) userUpdates.full_name = String(full_name || '').trim();
     if (email !== undefined) userUpdates.email = String(email || '').trim().toLowerCase();
-    if (phone !== undefined) userUpdates.phone = phone || null;
+    if (phone_numbers !== undefined) {
+      let finalPhoneNumbers = [];
+      if (Array.isArray(phone_numbers)) {
+        let hasPrimary = false;
+        finalPhoneNumbers = phone_numbers
+          .filter(p => p && p.number && String(p.number).trim())
+          .map((p, idx) => {
+            const isPrimary = Boolean(p.is_primary) && !hasPrimary;
+            if (isPrimary) hasPrimary = true;
+            return {
+              number: String(p.number).trim(),
+              label: (p.label && String(p.label).trim()) || (idx === 0 ? 'Primary' : 'Secondary'),
+              is_primary: isPrimary,
+            };
+          });
+        if (finalPhoneNumbers.length > 0 && !hasPrimary) {
+          finalPhoneNumbers[0].is_primary = true;
+        }
+      }
+      userUpdates.phone_numbers = finalPhoneNumbers;
+      const primaryNumber = finalPhoneNumbers.find(p => p.is_primary)?.number || null;
+      userUpdates.phone = primaryNumber;
+    } else if (phone !== undefined) {
+      userUpdates.phone = phone || null;
+    }
+
+    if (is_active !== undefined) {
+      const activeBool = Boolean(is_active);
+      userUpdates.is_active = activeBool;
+      if (!activeBool) {
+        // Immediately revoke all active sessions across all devices for this disabled user (Item 12)
+        await supabase
+          .from('user_sessions')
+          .update({ is_revoked: true })
+          .eq('user_id', id);
+      }
+      try {
+        const { clearUserCache } = require('../middleware/auth.middleware.js');
+        clearUserCache(id);
+      } catch (_) {}
+    }
     if (gender !== undefined) userUpdates.gender = gender || null;
     if (date_of_birth !== undefined) userUpdates.date_of_birth = date_of_birth || null;
     if (address !== undefined) userUpdates.address = address || null;
@@ -1611,6 +1681,11 @@ exports.adminUpdateUser = async (req, res) => {
         },
       });
     }
+
+    try {
+      const { clearUserCache } = require('../middleware/auth.middleware.js');
+      clearUserCache(id);
+    } catch (_) {}
 
     res.status(200).json({ message: "User updated successfully" });
   } catch (err) {

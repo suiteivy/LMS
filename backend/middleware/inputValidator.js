@@ -218,7 +218,8 @@ const schemas = {
         parent_info: { type: 'object', required: false },
         existing_parent_id: { ...commonRules.uuid, required: false },
         parent_relationship: { type: 'string', required: false },
-        linked_parents: { type: 'array', required: false }
+        linked_parents: { type: 'array', required: false },
+        phone_numbers: { type: 'array', required: false }
     },
 
     createInstitution: {
@@ -232,6 +233,8 @@ const schemas = {
         first_name: { ...commonRules.name, required: false },
         last_name: { ...commonRules.name, required: false },
         phone: { ...commonRules.phone, required: false },
+        phone_numbers: { type: 'array', required: false },
+        is_active: { type: 'boolean', required: false },
         gender: { type: 'string', enum: ['male', 'female', 'other'], required: false },
         address: { type: 'string', maxLength: 500, required: false },
         teacher_role_enabled: { type: 'boolean', required: false },

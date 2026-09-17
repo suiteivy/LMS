@@ -83,6 +83,8 @@ interface OversightSubject {
 }
 
 export default function AdminCoveragePlanner() {
+    const { user } = useAuth();
+    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'principal' || user?.role === 'head_teacher';
     const { isDark } = useTheme();
     const tier = useSubscriptionTier();
     const params = useLocalSearchParams<{ subject_id?: string; tab?: string }>();
@@ -178,28 +180,40 @@ export default function AdminCoveragePlanner() {
                         activeYearName = activeYear.name;
                         activeYearId = activeYear.id;
                         setAcademicYear(activeYearName);
+                    } else {
+                        setAcademicYear("");
                     }
                 } catch (e) {
                     console.error("fetchAcademicYears error:", e);
+                    setAcademicYear("");
                 }
 
-                // 2. Fetch live terms
-                try {
-                    const termsData = await GradingAPI.getTerms(activeYearId || undefined).catch(() => []);
-                    if (Array.isArray(termsData) && termsData.length > 0) {
-                        const sorted = [...termsData].sort((a, b) => (a.start_date || '').localeCompare(b.start_date || ''));
-                        setTermsObjects(sorted);
-                        const termNames = sorted.map((t: any) => t.name || `Term ${t.term_number || ''}`.trim());
-                        setAvailableTerms(termNames);
-                        const currentTerm = sorted.find((t: any) => t.is_current) || sorted[0];
-                        setSelectedTerm(currentTerm?.name || termNames[0] || "Term 1");
-                    } else {
-                        setAvailableTerms(["Term 1", "Term 2", "Term 3"]);
-                        setSelectedTerm("Term 1");
+                // 2. Fetch live terms strictly from active academic year
+                if (activeYearId) {
+                    try {
+                        const termsData = await GradingAPI.getTerms(activeYearId).catch(() => []);
+                        if (Array.isArray(termsData) && termsData.length > 0) {
+                            const sorted = [...termsData].sort((a, b) => (a.start_date || '').localeCompare(b.start_date || ''));
+                            setTermsObjects(sorted);
+                            const termNames = sorted.map((t: any) => t.name || `Term ${t.term_number || ''}`.trim());
+                            setAvailableTerms(termNames);
+                            const currentTerm = sorted.find((t: any) => t.is_current) || sorted[0];
+                            setSelectedTerm(currentTerm?.name || termNames[0] || "");
+                        } else {
+                            setTermsObjects([]);
+                            setAvailableTerms([]);
+                            setSelectedTerm("");
+                        }
+                    } catch (e) {
+                        console.error("fetchTerms error:", e);
+                        setTermsObjects([]);
+                        setAvailableTerms([]);
+                        setSelectedTerm("");
                     }
-                } catch {
-                    setAvailableTerms(["Term 1", "Term 2", "Term 3"]);
-                    setSelectedTerm("Term 1");
+                } else {
+                    setTermsObjects([]);
+                    setAvailableTerms([]);
+                    setSelectedTerm("");
                 }
 
                 // 3. Fetch subjects
@@ -271,6 +285,10 @@ export default function AdminCoveragePlanner() {
 
     // Create plan item
     const handleCreatePlan = async () => {
+        if (!selectedTerm) {
+            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'No academic term available. Configure terms in Academic Setup first.' });
+            return;
+        }
         if (!title.trim()) {
             Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Topic title is required' });
             return;
@@ -536,36 +554,99 @@ export default function AdminCoveragePlanner() {
                         </View>
 
                         {/* Term selector dropdown pills */}
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={{ gap: 6 }}
-                        >
-                            {availableTerms.map(t => (
+                        {availableTerms.length > 0 ? (
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={{ gap: 6 }}
+                            >
+                                {availableTerms.map(t => (
+                                    <TouchableOpacity
+                                        key={t}
+                                        onPress={() => setSelectedTerm(t)}
+                                        style={{
+                                            paddingHorizontal: 12,
+                                            height: 44,
+                                            justifyContent: 'center',
+                                            borderRadius: 12,
+                                            backgroundColor: selectedTerm === t ? '#FF6900' : (isDark ? '#161b22' : '#ffffff'),
+                                            borderWidth: 1,
+                                            borderColor: selectedTerm === t ? '#FF6900' : (isDark ? '#30363d' : '#e2e8f0')
+                                        }}
+                                    >
+                                        <Text style={{
+                                            fontSize: 12,
+                                            fontWeight: '600',
+                                            color: selectedTerm === t ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b')
+                                        }}>
+                                            {t}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        ) : (
+                            <View style={{
+                                paddingHorizontal: 12,
+                                height: 44,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                borderRadius: 12,
+                                backgroundColor: isDark ? '#161b22' : '#f8fafc',
+                                borderWidth: 1,
+                                borderColor: isDark ? '#30363d' : '#e2e8f0',
+                                alignSelf: 'flex-start'
+                            }}>
+                                <Text style={{
+                                    fontSize: 12,
+                                    fontWeight: '500',
+                                    color: isDark ? '#8b949e' : '#64748b'
+                                }}>
+                                    No terms available
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {availableTerms.length === 0 && (
+                        <View style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            backgroundColor: isDark ? 'rgba(255,105,0,0.08)' : '#fff7ed',
+                            borderWidth: 1,
+                            borderColor: isDark ? 'rgba(255,105,0,0.25)' : '#fed7aa',
+                            borderRadius: 14,
+                            padding: 14,
+                            marginBottom: 16
+                        }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 10 }}>
+                                <Calendar size={20} color="#FF6900" />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#f0f6fc' : '#0f172a' }}>
+                                        No Academic Periods Configured
+                                    </Text>
+                                    <Text style={{ fontSize: 11, color: isDark ? '#94a3b8' : '#64748b', marginTop: 2 }}>
+                                        {isAdmin
+                                            ? "Set up terms and dates in Academic Setup to enable termly coverage tracking."
+                                            : "No academic periods or terms have been configured yet. Please contact your school administrator to configure academic terms."}
+                                    </Text>
+                                </View>
+                            </View>
+                            {isAdmin && (
                                 <TouchableOpacity
-                                    key={t}
-                                    onPress={() => setSelectedTerm(t)}
+                                    onPress={() => router.push('/(admin)/academic-setup')}
                                     style={{
+                                        backgroundColor: '#FF6900',
                                         paddingHorizontal: 12,
-                                        height: 44,
-                                        justifyContent: 'center',
-                                        borderRadius: 12,
-                                        backgroundColor: selectedTerm === t ? '#FF6900' : (isDark ? '#161b22' : '#ffffff'),
-                                        borderWidth: 1,
-                                        borderColor: selectedTerm === t ? '#FF6900' : (isDark ? '#30363d' : '#e2e8f0')
+                                        paddingVertical: 7,
+                                        borderRadius: 8
                                     }}
                                 >
-                                    <Text style={{
-                                        fontSize: 12,
-                                        fontWeight: '600',
-                                        color: selectedTerm === t ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b')
-                                    }}>
-                                        {t}
-                                    </Text>
+                                    <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '700' }}>Setup</Text>
                                 </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
+                            )}
+                        </View>
+                    )}
 
                     {/* Department / Subject Oversight List */}
                     <View style={{ marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -774,37 +855,43 @@ export default function AdminCoveragePlanner() {
                                         fontWeight: '600',
                                         color: selectedSubjectId === s.id ? '#ffffff' : (isDark ? '#f0f6fc' : '#0f172a')
                                     }}>
-                                        {s.title} {s.class_id ? `(${s.classes?.name || 'Class'})` : ''}
+                                        {s.title} {s.class_id ? `(${s.classes?.display_name || s.classes?.name || 'Class'})` : ''}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
 
                         {/* Term & Year row */}
-                        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, alignItems: 'center' }}>
+                        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                             <Text style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b' }}>Term:</Text>
-                            {availableTerms.map(t => (
-                                <TouchableOpacity
-                                    key={t}
-                                    onPress={() => setSelectedTerm(t)}
-                                    style={{
-                                        paddingHorizontal: 10,
-                                        paddingVertical: 4,
-                                        borderRadius: 8,
-                                        backgroundColor: selectedTerm === t ? (isDark ? '#30363d' : '#e2e8f0') : 'transparent',
-                                        borderWidth: 1,
-                                        borderColor: selectedTerm === t ? '#FF6900' : 'transparent'
-                                    }}
-                                >
-                                    <Text style={{
-                                        fontSize: 12,
-                                        fontWeight: selectedTerm === t ? '700' : '500',
-                                        color: selectedTerm === t ? '#FF6900' : (isDark ? '#94a3b8' : '#64748b')
-                                    }}>
-                                        {t}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                            {availableTerms.length > 0 ? (
+                                availableTerms.map(t => (
+                                    <TouchableOpacity
+                                        key={t}
+                                        onPress={() => setSelectedTerm(t)}
+                                        style={{
+                                            paddingHorizontal: 10,
+                                            paddingVertical: 4,
+                                            borderRadius: 8,
+                                            backgroundColor: selectedTerm === t ? (isDark ? '#30363d' : '#e2e8f0') : 'transparent',
+                                            borderWidth: 1,
+                                            borderColor: selectedTerm === t ? '#FF6900' : 'transparent'
+                                        }}
+                                    >
+                                        <Text style={{
+                                            fontSize: 12,
+                                            fontWeight: selectedTerm === t ? '700' : '500',
+                                            color: selectedTerm === t ? '#FF6900' : (isDark ? '#94a3b8' : '#64748b')
+                                        }}>
+                                            {t}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))
+                            ) : (
+                                <Text style={{ fontSize: 12, fontStyle: 'italic', color: isDark ? '#8b949e' : '#64748b' }}>
+                                    No terms available
+                                </Text>
+                            )}
                             {academicYear ? (
                                 <View style={{ marginLeft: 'auto', backgroundColor: isDark ? '#21262d' : '#f1f5f9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
                                     <Text style={{ fontSize: 11, color: isDark ? '#94a3b8' : '#64748b' }}>
@@ -822,12 +909,24 @@ export default function AdminCoveragePlanner() {
                                 {activeSubject?.title || 'Subject'} Syllabus Plan
                             </Text>
                             <Text style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b' }}>
-                                {plans.length} topics scheduled for {selectedTerm}
+                                {availableTerms.length > 0
+                                    ? `${plans.length} topics scheduled for ${selectedTerm || 'selected term'}`
+                                    : 'No terms configured for this academic year'}
                             </Text>
                         </View>
 
                         <TouchableOpacity
-                            onPress={() => setShowCreateModal(true)}
+                            onPress={() => {
+                                if (availableTerms.length === 0) {
+                                    Toast.show({
+                                        type: 'info',
+                                        text1: 'No terms available',
+                                        text2: 'Configure academic periods in Academic Setup before creating coverage plans.'
+                                    });
+                                    return;
+                                }
+                                setShowCreateModal(true);
+                            }}
                             style={{
                                 flexDirection: 'row',
                                 alignItems: 'center',
@@ -835,7 +934,8 @@ export default function AdminCoveragePlanner() {
                                 backgroundColor: '#FF6900',
                                 paddingHorizontal: 14,
                                 paddingVertical: 8,
-                                borderRadius: 10
+                                borderRadius: 10,
+                                opacity: availableTerms.length === 0 ? 0.6 : 1
                             }}
                         >
                             <Plus size={16} color="#ffffff" />
@@ -849,6 +949,57 @@ export default function AdminCoveragePlanner() {
                     {builderLoading ? (
                         <View style={{ padding: 40, alignItems: 'center' }}>
                             <ActivityIndicator size="large" color="#FF6900" />
+                        </View>
+                    ) : availableTerms.length === 0 ? (
+                        <View style={{
+                            padding: 36,
+                            borderRadius: 16,
+                            backgroundColor: isDark ? '#161b22' : '#ffffff',
+                            alignItems: 'center',
+                            borderWidth: 1,
+                            borderColor: isDark ? '#30363d' : '#e2e8f0'
+                        }}>
+                            <View style={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: 28,
+                                backgroundColor: isDark ? '#2a1a0a' : '#fff7ed',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                marginBottom: 14,
+                                borderWidth: 1,
+                                borderColor: isDark ? '#7c2d12' : '#ffedd5'
+                            }}>
+                                <Calendar size={28} color="#FF6900" />
+                            </View>
+                            <Text style={{ fontSize: 16, fontWeight: 'bold', color: isDark ? '#f0f6fc' : '#0f172a' }}>
+                                No Terms Available
+                            </Text>
+                            <Text style={{ fontSize: 13, color: isDark ? '#94a3b8' : '#64748b', textAlign: 'center', marginTop: 6, maxWidth: 340, lineHeight: 18 }}>
+                                {isAdmin
+                                    ? "No academic period info has been configured yet. Set up academic years and terms in Academic Setup to begin creating curriculum coverage plans."
+                                    : "No academic periods or terms have been configured for this academic year yet. Please contact your school administrator to configure academic terms."}
+                            </Text>
+                            {isAdmin && (
+                                <TouchableOpacity
+                                    onPress={() => router.push('/(admin)/academic-setup')}
+                                    style={{
+                                        marginTop: 18,
+                                        backgroundColor: '#FF6900',
+                                        paddingHorizontal: 18,
+                                        paddingVertical: 10,
+                                        borderRadius: 12,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 6
+                                    }}
+                                >
+                                    <Plus size={16} color="#ffffff" />
+                                    <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13 }}>
+                                        Configure Academic Periods
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     ) : plans.length === 0 ? (
                         <View style={{

@@ -61,16 +61,20 @@ export default function ExamResultsPage() {
     const fetchInitialData = async () => {
         try {
             setLoading(true);
-            const [currentExam, studentList, existingResults, defaultScale, hodList] = await Promise.all([
+            const [currentExam, studentList, existingResults, customScales, defaultScale, hodList] = await Promise.all([
                 ExamService.getExamById(examId as string),
                 ExamService.getExamRoster(examId as string).catch(() => []),
                 ExamService.getExamResults(examId as string).catch(() => []),
+                GradingAPI.getGradingScales().catch(() => []),
                 GradingAPI.getDefaultScale().catch(() => null),
                 TeacherService.getHODSubjects().catch(() => [])
             ]);
 
             setExam(currentExam);
-            setGradingScale(defaultScale);
+            const activeScales = (Array.isArray(customScales) && customScales.length > 0)
+                ? customScales
+                : defaultScale;
+            setGradingScale(activeScales);
 
             if (currentExam && Array.isArray(hodList)) {
                 const isSubjectHod = hodList.some((s: any) => s.id === currentExam.subject_id);
@@ -103,17 +107,26 @@ export default function ExamResultsPage() {
         }
     };
 
+    const getScalesList = () => {
+        if (Array.isArray(gradingScale)) return gradingScale;
+        if (Array.isArray(gradingScale?.scales)) return gradingScale.scales;
+        if (Array.isArray(gradingScale?.descriptors)) return gradingScale.descriptors;
+        return null;
+    };
+
     const calculateBand = (scoreNum: number, max: number) => {
         if (isNaN(scoreNum)) return undefined;
         const pct = (scoreNum / max) * 100;
-        if (gradingScale?.descriptors && Array.isArray(gradingScale.descriptors)) {
-            const found = gradingScale.descriptors.find((d: any) => pct >= d.min_score && pct <= d.max_score);
-            if (found) return found.grade || found.label;
+        const scalesList = getScalesList();
+        if (scalesList && scalesList.length > 0) {
+            const found = scalesList.find((d: any) => pct >= Number(d.min_score) && pct <= Number(d.max_score));
+            if (found) return found.letter_grade || found.grade || found.label || found.name;
         }
-        if (pct >= 80) return 'EE';
-        if (pct >= 60) return 'ME';
-        if (pct >= 40) return 'AE';
-        return 'BE';
+        if (pct >= 80) return 'A';
+        if (pct >= 70) return 'B';
+        if (pct >= 60) return 'C';
+        if (pct >= 50) return 'D';
+        return 'E';
     };
 
     const handleUpdateScore = (studentId: string, field: 'score' | 'feedback', value: string) => {
@@ -176,52 +189,42 @@ export default function ExamResultsPage() {
         const b = band || calculateBand(numScore, max);
         if (!b) return null;
 
-        if (gradingScale?.descriptors && Array.isArray(gradingScale.descriptors)) {
-            const desc = gradingScale.descriptors.find((d: any) => d.grade === b || d.label === b);
+        const scalesList = getScalesList();
+        if (scalesList && scalesList.length > 0) {
+            const desc = scalesList.find((d: any) =>
+                (d.letter_grade && d.letter_grade.toLowerCase() === b.toLowerCase()) ||
+                (d.grade && d.grade.toLowerCase() === b.toLowerCase()) ||
+                (d.label && d.label.toLowerCase() === b.toLowerCase()) ||
+                (d.name && d.name.toLowerCase() === b.toLowerCase())
+            );
             if (desc) {
+                const badgeLabel = desc.letter_grade || desc.grade || b;
+                const badgeDesc = desc.description || desc.label || '';
+                const color = desc.color || (
+                    badgeLabel === 'A' || badgeLabel === 'EE' ? '#059669' :
+                    badgeLabel === 'B' || badgeLabel === 'ME' ? '#2563EB' :
+                    badgeLabel === 'C' || badgeLabel === 'AE' ? '#D97706' : '#DC2626'
+                );
                 return (
                     <View
-                        style={{ borderColor: desc.color || '#FF6900' }}
+                        style={{ borderColor: color }}
                         className="bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-md border flex-row items-center"
                     >
-                        <Award size={10} color={desc.color || '#FF6900'} />
-                        <Text style={{ color: desc.color || '#FF6900' }} className="font-bold text-[9px] uppercase ml-1">
-                            {desc.grade || b} • {desc.label || desc.description || ''}
+                        <Award size={10} color={color} />
+                        <Text style={{ color }} className="font-bold text-[9px] uppercase ml-1">
+                            {badgeLabel}{badgeDesc ? ` • ${badgeDesc}` : ''}
                         </Text>
                     </View>
                 );
             }
         }
 
-        switch (b) {
-            case 'EE':
-                return (
-                    <View className="bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/40 flex-row items-center">
-                        <Award size={10} color="#059669" />
-                        <Text className="text-emerald-700 dark:text-emerald-400 font-bold text-[9px] uppercase ml-1">EE • Exceeding</Text>
-                    </View>
-                );
-            case 'ME':
-                return (
-                    <View className="bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800/40 flex-row items-center">
-                        <CheckCircle2 size={10} color="#2563EB" />
-                        <Text className="text-blue-700 dark:text-blue-400 font-bold text-[9px] uppercase ml-1">ME • Meeting</Text>
-                    </View>
-                );
-            case 'AE':
-                return (
-                    <View className="bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/40 flex-row items-center">
-                        <Text className="text-amber-700 dark:text-amber-400 font-bold text-[9px] uppercase">AE • Approaching</Text>
-                    </View>
-                );
-            case 'BE':
-            default:
-                return (
-                    <View className="bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-md border border-rose-200 dark:border-rose-800/40 flex-row items-center">
-                        <Text className="text-rose-700 dark:text-rose-400 font-bold text-[9px] uppercase">{b}</Text>
-                    </View>
-                );
-        }
+        const color = b === 'A' || b === 'EE' ? '#059669' : b === 'B' || b === 'ME' ? '#2563EB' : b === 'C' || b === 'AE' ? '#D97706' : '#DC2626';
+        return (
+            <View style={{ borderColor: color }} className="px-2 py-0.5 rounded-md border flex-row items-center">
+                <Text style={{ color }} className="font-bold text-[9px] uppercase">{b}</Text>
+            </View>
+        );
     };
 
     const filteredStudents = studentScores.filter(s =>

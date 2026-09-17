@@ -130,6 +130,13 @@ export default function UserDetailsScreen() {
     const [assignedCustomRoleIds, setAssignedCustomRoleIds] = useState<string[]>([]);
     const [savedCustomRoleIds, setSavedCustomRoleIds] = useState<string[]>([]);
 
+    // Multi-phone numbers state
+    const [phoneNumbers, setPhoneNumbers] = useState<Array<{ number: string; label: string; is_primary: boolean }>>([]);
+
+    // Account status state
+    const [showStatusConfirm, setShowStatusConfirm] = useState(false);
+    const [statusLoading, setStatusLoading] = useState(false);
+
     // Standardized Delete Confirmation state
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
@@ -145,7 +152,8 @@ export default function UserDetailsScreen() {
         role: user.role, 
         joinDate: user.created_at || new Date().toISOString(),
         displayId: roleData?.id || undefined, 
-        avatar: user.avatar_url || undefined
+        avatar: user.avatar_url || undefined,
+        is_active: (user as any).is_active !== false,
     } : null;
 
     const isSelf = !!(user && profile && user.id === profile.id);
@@ -390,6 +398,22 @@ export default function UserDetailsScreen() {
     const populateUserFields = (u: any) => {
         setFirstName(u.first_name || ''); setLastName(u.last_name || ''); setEmail(u.email || ''); setPhone(u.phone || '');
         setGender(u.gender || ''); setDob(u.date_of_birth || ''); setAddress(u.address || '');
+
+        const rawPhones = u.phone_numbers;
+        let initialPhones: Array<{ number: string; label: string; is_primary: boolean }> = [];
+        if (Array.isArray(rawPhones) && rawPhones.length > 0) {
+            initialPhones = rawPhones.map((p: any) => ({
+                number: p.number || '',
+                label: p.label || 'Primary',
+                is_primary: Boolean(p.is_primary)
+            }));
+        } else if (u.phone) {
+            initialPhones = [{ number: u.phone, label: 'Primary', is_primary: true }];
+        }
+        if (initialPhones.length > 0 && !initialPhones.some(p => p.is_primary)) {
+            initialPhones[0].is_primary = true;
+        }
+        setPhoneNumbers(initialPhones);
     };
 
     const populateRoleFields = (role: string, rd: any) => {
@@ -537,6 +561,33 @@ export default function UserDetailsScreen() {
         }
     };
 
+    const confirmToggleStatus = async () => {
+        if (!user) return;
+        setStatusLoading(true);
+        const nextActive = (user as any).is_active === false;
+        try {
+            await api.put(`/auth/admin-update-user/${id}`, { is_active: nextActive });
+            setShowStatusConfirm(false);
+            Toast.show({
+                type: 'success',
+                text1: nextActive ? 'Account Enabled' : 'Account Disabled',
+                text2: nextActive 
+                    ? 'The user account is now active and can sign in.' 
+                    : 'The user account has been disabled and all active sessions were revoked.',
+            });
+            await fetchUserDetails();
+        } catch (err: any) {
+            console.error('Toggle status error:', err);
+            Toast.show({
+                type: 'error',
+                text1: 'Action Failed',
+                text2: err?.response?.data?.error || err.message || 'Failed to update account status',
+            });
+        } finally {
+            setStatusLoading(false);
+        }
+    };
+
     const handleDelete = () => {
         setShowDeleteConfirm(true);
     };
@@ -589,12 +640,16 @@ export default function UserDetailsScreen() {
         if (!firstName.trim()) { Alert.alert('Validation', 'First name is required'); return; }
         setSaving(true);
         try {
+            const validPhones = phoneNumbers.filter(p => p.number && p.number.trim().length > 0);
+            const primaryPhoneObj = validPhones.find(p => p.is_primary) || validPhones[0];
+            const primaryPhone = primaryPhoneObj ? primaryPhoneObj.number : (phone || null);
 
             const body: any = {
                 first_name: firstName,
                 last_name: lastName,
                 email,
-                phone: phone || null,
+                phone: primaryPhone,
+                phone_numbers: validPhones,
                 gender: gender || null,
                 date_of_birth: dob || null,
                 address: address || null,
@@ -714,6 +769,131 @@ export default function UserDetailsScreen() {
         );
     };
 
+    const renderPhoneNumbers = () => {
+        if (!isEditing) {
+            return (
+                <View style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: border }}>
+                    <Text style={{ color: textSecondary, fontWeight: '500', fontSize: 13, marginBottom: 8 }}>Phone Numbers</Text>
+                    {phoneNumbers.length === 0 ? (
+                        <Text style={{ color: textSecondary, fontStyle: 'italic', fontSize: 13, textAlign: 'right' }}>
+                            {phone || 'Not set'}
+                        </Text>
+                    ) : (
+                        <View style={{ gap: 8 }}>
+                            {phoneNumbers.map((p, idx) => (
+                                <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <Text style={{ fontSize: 12, color: textSecondary, fontWeight: '600' }}>
+                                            {p.label || 'Phone'}:
+                                        </Text>
+                                        {p.is_primary && (
+                                            <View style={{ backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: isDark ? 'rgba(16, 185, 129, 0.4)' : '#a7f3d0' }}>
+                                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#10b981' }}>PRIMARY</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                    <Text style={{ color: textPrimary, fontWeight: '600', fontSize: 13 }}>
+                                        {p.number}
+                                    </Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                </View>
+            );
+        }
+
+        return (
+            <View style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: border }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <Text style={{ color: textSecondary, fontWeight: '500', fontSize: 13 }}>Phone Numbers</Text>
+                    <TouchableOpacity
+                        onPress={() => {
+                            setPhoneNumbers([
+                                ...phoneNumbers,
+                                { number: '', label: 'Secondary', is_primary: phoneNumbers.length === 0 }
+                            ]);
+                        }}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isDark ? '#1e293b' : '#f1f5f9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: border }}
+                    >
+                        <Ionicons name="add" size={14} color="#FF6900" />
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#FF6900' }}>Add Phone</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {phoneNumbers.length === 0 ? (
+                    <TouchableOpacity
+                        onPress={() => setPhoneNumbers([{ number: phone || '', label: 'Primary', is_primary: true }])}
+                        style={{ paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: border, borderStyle: 'dashed', borderRadius: 8 }}
+                    >
+                        <Text style={{ fontSize: 12, color: textSecondary }}>+ Add primary phone number</Text>
+                    </TouchableOpacity>
+                ) : (
+                    <View style={{ gap: 10 }}>
+                        {phoneNumbers.map((p, idx) => (
+                            <View key={idx} style={{ backgroundColor: inputBg, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: inputBorder, gap: 8 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <TextInput
+                                        value={p.label}
+                                        onChangeText={txt => {
+                                            const updated = [...phoneNumbers];
+                                            updated[idx].label = sanitize(txt);
+                                            setPhoneNumbers(updated);
+                                        }}
+                                        placeholder="Label (e.g. Mobile, Work)"
+                                        placeholderTextColor={textSecondary}
+                                        style={{ flex: 1, color: textPrimary, fontSize: 12, fontWeight: '600', paddingVertical: 4 }}
+                                    />
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                const updated = phoneNumbers.map((item, i) => ({
+                                                    ...item,
+                                                    is_primary: i === idx
+                                                }));
+                                                setPhoneNumbers(updated);
+                                            }}
+                                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: p.is_primary ? (isDark ? 'rgba(16, 185, 129, 0.2)' : '#ecfdf5') : 'transparent', borderWidth: 1, borderColor: p.is_primary ? '#10b981' : border }}
+                                        >
+                                            <Ionicons name={p.is_primary ? "star" : "star-outline"} size={14} color={p.is_primary ? "#10b981" : textSecondary} />
+                                            <Text style={{ fontSize: 11, fontWeight: '700', color: p.is_primary ? "#10b981" : textSecondary }}>
+                                                {p.is_primary ? "Primary" : "Set Primary"}
+                                            </Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                const updated = phoneNumbers.filter((_, i) => i !== idx);
+                                                if (p.is_primary && updated.length > 0) {
+                                                    updated[0].is_primary = true;
+                                                }
+                                                setPhoneNumbers(updated);
+                                            }}
+                                            style={{ padding: 4 }}
+                                        >
+                                            <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                                <TextInput
+                                    value={p.number}
+                                    onChangeText={txt => {
+                                        const updated = [...phoneNumbers];
+                                        updated[idx].number = sanitizePhone(txt);
+                                        setPhoneNumbers(updated);
+                                    }}
+                                    placeholder="+254 7..."
+                                    placeholderTextColor={textSecondary}
+                                    keyboardType="phone-pad"
+                                    style={{ color: textPrimary, fontSize: 13, fontWeight: '500', backgroundColor: card, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: border }}
+                                />
+                            </View>
+                        ))}
+                    </View>
+                )}
+            </View>
+        );
+    };
+
     const renderChipList = (label: string, items: any[], selectedIds: string[], setSelected: (ids: string[]) => void, displayFn: (item: any) => string, accentColor: string, maxSelect?: number, disableFn?: (item: any) => boolean) => {
         return (
             <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: border }}>
@@ -813,6 +993,30 @@ export default function UserDetailsScreen() {
                             )}
 
                             {!isSelf && (
+                                <TouchableOpacity
+                                    onPress={() => setShowStatusConfirm(true)}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        backgroundColor: (user as any).is_active !== false ? (isDark ? '#2d2214' : '#fffbeb') : (isDark ? '#142d1f' : '#f0fdf4'),
+                                        paddingVertical: 14,
+                                        borderRadius: 12,
+                                        borderWidth: 1,
+                                        borderColor: (user as any).is_active !== false ? (isDark ? '#78350f' : '#fde68a') : (isDark ? '#14532d' : '#bbf7d0')
+                                    }}>
+                                    <Ionicons
+                                        name={(user as any).is_active !== false ? "ban-outline" : "checkmark-circle-outline"}
+                                        size={18}
+                                        color={(user as any).is_active !== false ? "#d97706" : "#16a34a"}
+                                    />
+                                    <Text style={{ color: (user as any).is_active !== false ? "#d97706" : "#16a34a", fontWeight: '700', marginLeft: 8 }}>
+                                        {(user as any).is_active !== false ? "Disable Account" : "Enable Account"}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+
+                            {!isSelf && (
                                 <TouchableOpacity onPress={handleDelete}
                                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#2c1a1a' : '#fef2f2', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#7f1d1d' : '#fecaca' }}>
                                     <Ionicons name="trash-outline" size={18} color="#ef4444" />
@@ -839,11 +1043,12 @@ export default function UserDetailsScreen() {
                     <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Profile Information</Text>
                     {renderReadOnly('User ID', roleData?.id || 'N/A')}
                     {renderReadOnly('Role', user.role)}
+                    {renderReadOnly('Account Status', (user as any).is_active === false ? 'Disabled' : 'Active')}
                     {renderReadOnly('Joined', user.created_at ? format(new Date(user.created_at), 'MMM dd, yyyy') : 'N/A')}
                     {renderField('First Name', firstName, setFirstName)}
                     {renderField('Last Name', lastName, setLastName)}
                     {renderField('Email', email, setEmail, { type: 'email' })}
-                    {renderField('Phone', phone, setPhone, { type: 'phone' })}
+                    {renderPhoneNumbers()}
                     {renderGenderPicker()}
                     <DatePicker label="Date of Birth" value={dob} onChange={setDob} isDark={isDark} inline />
                     {renderReadOnly('Age', computedAge !== null ? `${computedAge} years` : 'Not set')}
@@ -1394,6 +1599,22 @@ export default function UserDetailsScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Account Status Toggle Confirmation Modal */}
+            <ConfirmationModal
+                visible={showStatusConfirm}
+                title={(user as any).is_active !== false ? "Disable User Account" : "Enable User Account"}
+                targetName={mappedUser ? `${mappedUser.name} (${user.email || user.role})` : undefined}
+                message={(user as any).is_active !== false
+                    ? "Are you sure you want to disable this user account? The user will be immediately logged out of all active sessions across all devices and prevented from signing in until re-enabled."
+                    : "Are you sure you want to re-enable this user account? The user will be permitted to log in and access their portal."}
+                confirmText={(user as any).is_active !== false ? "Disable Account" : "Enable Account"}
+                isDestructive={(user as any).is_active !== false}
+                icon={(user as any).is_active !== false ? "ban-outline" : "checkmark-circle-outline"}
+                loading={statusLoading}
+                onConfirm={confirmToggleStatus}
+                onClose={() => !statusLoading && setShowStatusConfirm(false)}
+            />
 
             {/* Standardized Delete User Confirmation Modal */}
             <ConfirmationModal

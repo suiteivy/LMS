@@ -29,6 +29,7 @@ interface FormData {
     full_name: string;
     email: string;
     phone: string;
+    secondary_phone?: string;
     gender: string;
     date_of_birth: string;
     address: string;
@@ -113,7 +114,7 @@ const calculateAgeFromDob = (dob: string): number | null => {
 };
 
 const initialFormData: FormData = {
-    role: null, first_name: '', last_name: '', full_name: '', email: '', phone: '', gender: '',
+    role: null, first_name: '', last_name: '', full_name: '', email: '', phone: '', secondary_phone: '', gender: '',
     date_of_birth: '', address: '', institution_id: '',
     grade_level: '', form_level: '', academic_year: '',
     parent_contact: '', emergency_contact_name: '', emergency_contact_phone: '',
@@ -485,8 +486,19 @@ export default function CreateUserScreen() {
             const numLevel = levelStr ? parseInt(levelStr.replace(/[^0-9]/g, ''), 10) : null;
             
             const isAutoAssign = !!(form.auto_assign_class || form.class_id === 'auto');
+
+            const phoneNumbersList: Array<{ number: string; label: string; is_primary: boolean }> = [];
+            if (form.phone && form.phone.trim()) {
+                phoneNumbersList.push({ number: form.phone.trim(), label: 'Primary', is_primary: true });
+            }
+            if (form.secondary_phone && form.secondary_phone.trim()) {
+                phoneNumbersList.push({ number: form.secondary_phone.trim(), label: 'Secondary', is_primary: phoneNumbersList.length === 0 });
+            }
+
             const payload: any = {
                 ...form,
+                phone: phoneNumbersList[0]?.number || form.phone || null,
+                phone_numbers: phoneNumbersList,
                 institution_id: profile?.institution_id || form.institution_id,
                 grade_level: !isSecondary ? numLevel : null,
                 form_level: isSecondary ? numLevel : null,
@@ -779,7 +791,10 @@ export default function CreateUserScreen() {
                 </View>
             )}
             {form.role !== 'student' && (
-                <RenderInput label="Phone" value={form.phone} onChangeText={(v: string) => updateFormSanitized('phone', v, 'phone')} placeholder="+254 7XX XXX XXX" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+                <>
+                    <RenderInput label="Primary Phone" value={form.phone} onChangeText={(v: string) => updateFormSanitized('phone', v, 'phone')} placeholder="+254 7XX XXX XXX" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+                    <RenderInput label="Secondary Phone (Optional)" value={form.secondary_phone || ''} onChangeText={(v: string) => updateFormSanitized('secondary_phone', v, 'phone')} placeholder="+254 7XX XXX XXX" keyboardType="phone-pad" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
+                </>
             )}
             <RenderPicker label="Gender" options={resolvedGenderOptions} selected={form.gender} onSelect={(v: string) => updateForm('gender', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
             <DatePicker label="Date of Birth (Optional)" value={form.date_of_birth} onChange={(v: string) => updateForm('date_of_birth', v)} isDark={isDark} />

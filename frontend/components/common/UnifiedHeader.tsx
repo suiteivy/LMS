@@ -14,7 +14,7 @@ import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 interface UnifiedHeaderProps {
   title: string;
   subtitle?: string;
-  role: "Student" | "Teacher" | "Admin" | "Parent/Guardian" | "Master Admin";
+  role: "Student" | "Teacher" | "Admin" | "Parent/Guardian" | "Master Admin" | string;
   showNotification?: boolean;
   onNotificationPress?: () => void;
   onBack?: () => void;
@@ -191,7 +191,7 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                   <Ionicons
                     name={
                       role === "Student" ? "school-outline" :
-                        role === "Teacher" ? "briefcase-outline" :
+                        role.includes("Teacher") ? "briefcase-outline" :
                           role === "Admin" ? "shield-checkmark-outline" :
                             role === "Master Admin" ? "globe-outline" : 
                               "people-outline"
@@ -332,7 +332,7 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                 <Ionicons
                   name={
                     role === "Student" ? "school-outline" :
-                      role === "Teacher" ? "briefcase-outline" :
+                      role.includes("Teacher") ? "briefcase-outline" :
                         role === "Admin" ? "shield-checkmark-outline" :
                           role === "Master Admin" ? "globe-outline" : 
                             "people-outline"

@@ -1,6 +1,7 @@
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
 import { ActionTooltip } from '@/components/common/ActionTooltip';
 import { DatePicker } from '@/components/common/DatePicker';
+import { ConfirmationModal } from '@/components/common/ConfirmationModal';
 import { Spinner } from '@/components/ui/Spinner';
 import { useTheme } from '@/contexts/ThemeContext';
 import { GradingAPI } from '@/services/GradingService';
@@ -154,8 +155,11 @@ export default function AcademicSetupPage() {
     const [scaleFormGpa, setScaleFormGpa] = useState('');
     const [scaleFormDesc, setScaleFormDesc] = useState('');
     const [editingScale, setEditingScale] = useState<GradingScale | null>(null);
+    const [scaleToDelete, setScaleToDelete] = useState<GradingScale | null>(null);
+    const [deleteScaleLoading, setDeleteScaleLoading] = useState(false);
 
     // Assessment Weighting Split (Exam vs Continuous Assessment)
+    const [gradingMode, setGradingMode] = useState<'mixed' | 'exam_only'>('mixed');
     const [examWeight, setExamWeight] = useState('60');
     const [caWeight, setCaWeight] = useState('40');
     const [savingWeights, setSavingWeights] = useState(false);
@@ -204,8 +208,15 @@ export default function AcademicSetupPage() {
         try {
             const weights = await GradingAPI.getAssessmentWeights();
             if (weights) {
-                setExamWeight(String(weights.exam_weight ?? 60));
-                setCaWeight(String(weights.continuous_assessment_weight ?? 40));
+                const ew = weights.exam_weight ?? 60;
+                const cw = weights.continuous_assessment_weight ?? 40;
+                setExamWeight(String(ew));
+                setCaWeight(String(cw));
+                if (ew === 100 && cw === 0) {
+                    setGradingMode('exam_only');
+                } else {
+                    setGradingMode('mixed');
+                }
             }
         } catch (err: any) {
             console.warn('loadAssessmentWeights error, using 60/40 defaults:', err);
@@ -556,31 +567,27 @@ export default function AcademicSetupPage() {
     };
 
     const handleDeleteScale = (scale: GradingScale) => {
-        Alert.alert(
-            'Delete Scale Entry',
-            `Delete ${scale.letter_grade} (${scale.min_score}-${scale.max_score})?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await GradingAPI.deleteGradingScale(scale.id);
-                            showSuccess('Scale entry deleted');
-                            await loadGradingScales();
-                        } catch (err: any) {
-                            showError(err.response?.data?.error || err.message);
-                        }
-                    },
-                },
-            ]
-        );
+        setScaleToDelete(scale);
+    };
+
+    const confirmDeleteScale = async () => {
+        if (!scaleToDelete) return;
+        setDeleteScaleLoading(true);
+        try {
+            await GradingAPI.deleteGradingScale(scaleToDelete.id);
+            showSuccess('Scale entry deleted successfully');
+            setScaleToDelete(null);
+            await loadGradingScales();
+        } catch (err: any) {
+            showError(err.response?.data?.error || err.message);
+        } finally {
+            setDeleteScaleLoading(false);
+        }
     };
 
     const handleSaveWeights = async () => {
-        const ew = parseInt(examWeight, 10);
-        const cw = parseInt(caWeight, 10);
+        const ew = gradingMode === 'exam_only' ? 100 : parseInt(examWeight, 10);
+        const cw = gradingMode === 'exam_only' ? 0 : parseInt(caWeight, 10);
         if (isNaN(ew) || isNaN(cw) || ew < 0 || cw < 0 || ew + cw !== 100) {
             Alert.alert('Validation Error', 'Exam and Continuous Assessment weights must sum exactly to 100%.');
             return;
@@ -591,7 +598,7 @@ export default function AcademicSetupPage() {
                 exam_weight: ew,
                 continuous_assessment_weight: cw,
             });
-            showSuccess('Assessment compilation weights updated');
+            showSuccess(gradingMode === 'exam_only' ? 'Exam-only grading configuration saved' : 'Assessment compilation weights updated');
             await loadAssessmentWeights();
         } catch (err: any) {
             showError(err.response?.data?.error || err.message);
@@ -1100,105 +1107,180 @@ export default function AcademicSetupPage() {
                                         Report Card Assessment Weighting Split
                                     </Text>
                                     <Text style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>
-                                        Configure the institutional ratio between Examinations and Continuous Assessment.
+                                        Configure whether your institution uses Continuous Assessment with Exams or Exam-Only grading.
                                     </Text>
                                 </View>
                             </View>
 
-                            <View style={{ flexDirection: 'row', gap: 12, marginTop: 8, marginBottom: 14 }}>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', marginBottom: 6 }}>
-                                        Exam Weight (%) *
-                                    </Text>
-                                    <TextInput
-                                        style={{
-                                            backgroundColor: inputBg,
-                                            borderWidth: 1.5,
-                                            borderColor: inputBorder,
-                                            borderRadius: 14,
-                                            paddingHorizontal: 14,
-                                            paddingVertical: 12,
-                                            color: textPrimary,
-                                            fontSize: 15,
-                                            fontWeight: '700',
-                                        }}
-                                        value={examWeight}
-                                        onChangeText={(val) => {
-                                            setExamWeight(val);
-                                            const n = parseInt(val, 10);
-                                            if (!isNaN(n) && n >= 0 && n <= 100) {
-                                                setCaWeight(String(100 - n));
-                                            }
-                                        }}
-                                        keyboardType="numeric"
-                                        placeholder="60"
-                                        placeholderTextColor={textMuted}
-                                    />
-                                </View>
-
-                                <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', marginBottom: 6 }}>
-                                        Continuous Assessment (%) *
-                                    </Text>
-                                    <TextInput
-                                        style={{
-                                            backgroundColor: inputBg,
-                                            borderWidth: 1.5,
-                                            borderColor: inputBorder,
-                                            borderRadius: 14,
-                                            paddingHorizontal: 14,
-                                            paddingVertical: 12,
-                                            color: textPrimary,
-                                            fontSize: 15,
-                                            fontWeight: '700',
-                                        }}
-                                        value={caWeight}
-                                        onChangeText={(val) => {
-                                            setCaWeight(val);
-                                            const n = parseInt(val, 10);
-                                            if (!isNaN(n) && n >= 0 && n <= 100) {
-                                                setExamWeight(String(100 - n));
-                                            }
-                                        }}
-                                        keyboardType="numeric"
-                                        placeholder="40"
-                                        placeholderTextColor={textMuted}
-                                    />
-                                </View>
-                            </View>
-
-                            {/* Preset chips */}
-                            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14, alignItems: 'center' }}>
-                                <Text style={{ fontSize: 11, fontWeight: '600', color: textMuted }}>Presets:</Text>
-                                {[
-                                    { label: '60 / 40 (Default)', exam: '60', ca: '40' },
-                                    { label: '70 / 30', exam: '70', ca: '30' },
-                                    { label: '50 / 50', exam: '50', ca: '50' },
-                                ].map((preset) => (
+                            {/* Grading Model Mode Toggle */}
+                            <View style={{ marginBottom: 12 }}>
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', marginBottom: 6 }}>
+                                    Grading Model
+                                </Text>
+                                <View style={{ flexDirection: 'row', gap: 8 }}>
                                     <TouchableOpacity
-                                        key={preset.label}
                                         onPress={() => {
-                                            setExamWeight(preset.exam);
-                                            setCaWeight(preset.ca);
+                                            setGradingMode('mixed');
+                                            if (examWeight === '100' && caWeight === '0') {
+                                                setExamWeight('60');
+                                                setCaWeight('40');
+                                            }
                                         }}
                                         style={{
-                                            backgroundColor: examWeight === preset.exam && caWeight === preset.ca ? accent : (isDark ? '#21262D' : '#EAEEF2'),
-                                            paddingHorizontal: 10,
-                                            paddingVertical: 4,
-                                            borderRadius: 8,
+                                            flex: 1,
+                                            paddingVertical: 8,
+                                            paddingHorizontal: 12,
+                                            borderRadius: 10,
+                                            borderWidth: 1,
+                                            alignItems: 'center',
+                                            backgroundColor: gradingMode === 'mixed' ? accent : (isDark ? '#21262D' : '#F3F4F6'),
+                                            borderColor: gradingMode === 'mixed' ? accent : border,
                                         }}
                                     >
-                                        <Text style={{ color: examWeight === preset.exam && caWeight === preset.ca ? 'white' : textSecondary, fontSize: 11, fontWeight: '700' }}>
-                                            {preset.label}
+                                        <Text style={{ fontSize: 12, fontWeight: '700', color: gradingMode === 'mixed' ? 'white' : textSecondary }}>
+                                            Mixed (Exams + CA)
                                         </Text>
                                     </TouchableOpacity>
-                                ))}
+
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            setGradingMode('exam_only');
+                                            setExamWeight('100');
+                                            setCaWeight('0');
+                                        }}
+                                        style={{
+                                            flex: 1,
+                                            paddingVertical: 8,
+                                            paddingHorizontal: 12,
+                                            borderRadius: 10,
+                                            borderWidth: 1,
+                                            alignItems: 'center',
+                                            backgroundColor: gradingMode === 'exam_only' ? accent : (isDark ? '#21262D' : '#F3F4F6'),
+                                            borderColor: gradingMode === 'exam_only' ? accent : border,
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 12, fontWeight: '700', color: gradingMode === 'exam_only' ? 'white' : textSecondary }}>
+                                            Exam-Only (100% Exams)
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
+
+                            {/* Conditional Display: Exam-Only Mode Banner vs Weighting Inputs */}
+                            {gradingMode === 'exam_only' ? (
+                                <View style={{
+                                    backgroundColor: isDark ? 'rgba(56, 139, 253, 0.12)' : '#F0F9FF',
+                                    borderWidth: 1,
+                                    borderColor: isDark ? 'rgba(56, 139, 253, 0.3)' : '#BAE6FD',
+                                    borderRadius: 12,
+                                    padding: 12,
+                                    marginBottom: 14,
+                                }}>
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#58A6FF' : '#0369A1', marginBottom: 3 }}>
+                                        Exam-Only Grading Active
+                                    </Text>
+                                    <Text style={{ fontSize: 11, color: textSecondary, lineHeight: 16 }}>
+                                        100% of final student marks will be compiled directly from the standalone Exams module. Continuous assessment (CATs/quizzes) weighting is suppressed.
+                                    </Text>
+                                </View>
+                            ) : (
+                                <>
+                                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 4, marginBottom: 14 }}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', marginBottom: 6 }}>
+                                                Exam Weight (%) *
+                                            </Text>
+                                            <TextInput
+                                                style={{
+                                                    backgroundColor: inputBg,
+                                                    borderWidth: 1.5,
+                                                    borderColor: inputBorder,
+                                                    borderRadius: 14,
+                                                    paddingHorizontal: 14,
+                                                    paddingVertical: 12,
+                                                    color: textPrimary,
+                                                    fontSize: 15,
+                                                    fontWeight: '700',
+                                                }}
+                                                value={examWeight}
+                                                onChangeText={(val) => {
+                                                    setExamWeight(val);
+                                                    const n = parseInt(val, 10);
+                                                    if (!isNaN(n) && n >= 0 && n <= 100) {
+                                                        setCaWeight(String(100 - n));
+                                                    }
+                                                }}
+                                                keyboardType="numeric"
+                                                placeholder="60"
+                                                placeholderTextColor={textMuted}
+                                            />
+                                        </View>
+
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', marginBottom: 6 }}>
+                                                Continuous Assessment (%) *
+                                            </Text>
+                                            <TextInput
+                                                style={{
+                                                    backgroundColor: inputBg,
+                                                    borderWidth: 1.5,
+                                                    borderColor: inputBorder,
+                                                    borderRadius: 14,
+                                                    paddingHorizontal: 14,
+                                                    paddingVertical: 12,
+                                                    color: textPrimary,
+                                                    fontSize: 15,
+                                                    fontWeight: '700',
+                                                }}
+                                                value={caWeight}
+                                                onChangeText={(val) => {
+                                                    setCaWeight(val);
+                                                    const n = parseInt(val, 10);
+                                                    if (!isNaN(n) && n >= 0 && n <= 100) {
+                                                        setExamWeight(String(100 - n));
+                                                    }
+                                                }}
+                                                keyboardType="numeric"
+                                                placeholder="40"
+                                                placeholderTextColor={textMuted}
+                                            />
+                                        </View>
+                                    </View>
+
+                                    {/* Preset chips */}
+                                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14, alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 11, fontWeight: '600', color: textMuted }}>Presets:</Text>
+                                        {[
+                                            { label: '60 / 40 (Default)', exam: '60', ca: '40' },
+                                            { label: '70 / 30', exam: '70', ca: '30' },
+                                            { label: '50 / 50', exam: '50', ca: '50' },
+                                        ].map((preset) => (
+                                            <TouchableOpacity
+                                                key={preset.label}
+                                                onPress={() => {
+                                                    setExamWeight(preset.exam);
+                                                    setCaWeight(preset.ca);
+                                                }}
+                                                style={{
+                                                    backgroundColor: examWeight === preset.exam && caWeight === preset.ca ? accent : (isDark ? '#21262D' : '#EAEEF2'),
+                                                    paddingHorizontal: 10,
+                                                    paddingVertical: 4,
+                                                    borderRadius: 8,
+                                                }}
+                                            >
+                                                <Text style={{ color: examWeight === preset.exam && caWeight === preset.ca ? 'white' : textSecondary, fontSize: 11, fontWeight: '700' }}>
+                                                    {preset.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </>
+                            )}
 
                             {/* Save Weighting Button */}
                             {(() => {
-                                const ew = parseInt(examWeight, 10);
-                                const cw = parseInt(caWeight, 10);
+                                const ew = gradingMode === 'exam_only' ? 100 : parseInt(examWeight, 10);
+                                const cw = gradingMode === 'exam_only' ? 0 : parseInt(caWeight, 10);
                                 const canSaveW = !isNaN(ew) && !isNaN(cw) && ew >= 0 && cw >= 0 && ew + cw === 100 && !savingWeights;
 
                                 return (
@@ -1220,7 +1302,7 @@ export default function AcademicSetupPage() {
                                             <Spinner color="white" size="small" label="Saving weights" />
                                         ) : (
                                             <Text style={{ color: canSaveW ? 'white' : textMuted, fontWeight: '700', fontSize: 13 }}>
-                                                Save Assessment Weighting
+                                                {gradingMode === 'exam_only' ? 'Save Exam-Only Configuration' : 'Save Assessment Weighting'}
                                             </Text>
                                         )}
                                     </TouchableOpacity>
@@ -1877,13 +1959,17 @@ export default function AcademicSetupPage() {
 
                             {/* Category */}
                             <View style={{ marginBottom: 20 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                    Category *
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                    Category (Continuous Assessment Only) *
+                                </Text>
+                                <Text style={{ fontSize: 11, color: textMuted, marginBottom: 10 }}>
+                                    Note: Standalone examination scheduling and papers are managed in the Exams module.
                                 </Text>
                                 <View style={{ flexDirection: 'row', gap: 10 }}>
                                     {[
-                                        { value: 'continuous_assessment', label: 'Continuous Assessment' },
-                                        { value: 'examination', label: 'Examination' },
+                                        { value: 'continuous_assessment', label: 'Continuous Assessment (CAT)' },
+                                        { value: 'assignment', label: 'Assignment / Project' },
+                                        { value: 'quiz', label: 'Quiz / Test' },
                                     ].map(cat => (
                                         <TouchableOpacity
                                             key={cat.value}
@@ -1980,6 +2066,19 @@ export default function AcademicSetupPage() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Scale Delete Confirmation Modal */}
+            <ConfirmationModal
+                visible={!!scaleToDelete}
+                title="Delete Grading Scale Entry"
+                message={`Are you sure you want to delete ${scaleToDelete?.letter_grade} (${scaleToDelete?.min_score}–${scaleToDelete?.max_score}%)? If student records or grades currently depend on this scale, deletion will be blocked.`}
+                targetName={scaleToDelete ? `${scaleToDelete.letter_grade} (${scaleToDelete.name})` : undefined}
+                confirmText="Delete Scale"
+                isDestructive={true}
+                loading={deleteScaleLoading}
+                onConfirm={confirmDeleteScale}
+                onClose={() => setScaleToDelete(null)}
+            />
         </View>
     );
 }

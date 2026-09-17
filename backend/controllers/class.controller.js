@@ -1912,8 +1912,8 @@ exports.getStudentTransfers = async (req, res) => {
                 created_at,
                 updated_at,
                 student:students(id, admission_number, user:users(full_name, email, avatar_url)),
-                from_class:classes!student_class_transfers_from_class_id_fkey(id, display_name, name, grade_level),
-                to_class:classes!student_class_transfers_to_class_id_fkey(id, display_name, name, grade_level),
+                from_class:classes!student_class_transfers_from_class_id_fkey(id, display_name, grade_level),
+                to_class:classes!student_class_transfers_to_class_id_fkey(id, display_name, grade_level),
                 requester:users!student_class_transfers_requested_by_fkey(id, full_name, email, role),
                 approver:users!student_class_transfers_approved_by_fkey(id, full_name, email)
             `)

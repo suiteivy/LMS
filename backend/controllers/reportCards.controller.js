@@ -1304,54 +1304,20 @@ const exportReportCardPDF = async (req, res) => {
     <div class="remarks-text">${reportCard.admin_remarks}</div>
   </div>` : ''}
 
-  <div class="section-title">${isCBC ? 'CBC Competency Descriptors' : 'Grading Scale'}</div>
-  ${isCBC ? `
-  <table style="width:85%;margin:0 auto;">
+  <div class="section-title">${isCBC ? 'Competency & Grading Scale' : 'Grading Scale'}</div>
+  <table style="width:80%;margin:0 auto;">
     <thead>
       <tr>
-        <th style="text-align:left;">Competency Level</th>
+        <th style="text-align:center;">${isCBC ? 'Grade / Level' : 'Grade'}</th>
         <th style="text-align:center;">Score Range</th>
-        <th style="text-align:left;">Assessment Descriptor</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td style="padding:6px 10px;border:1px solid #ddd;font-weight:700;color:#10B981;">Exceeding Expectation</td>
-        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;font-weight:600;">80% – 100%</td>
-        <td style="padding:6px 10px;border:1px solid #ddd;color:#555;">Consistently exceeds expected competency indicators with high autonomy.</td>
-      </tr>
-      <tr>
-        <td style="padding:6px 10px;border:1px solid #ddd;font-weight:700;color:#3B82F6;">Meeting Expectation</td>
-        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;font-weight:600;">60% – 79%</td>
-        <td style="padding:6px 10px;border:1px solid #ddd;color:#555;">Accurately and independently meets the required curriculum standards.</td>
-      </tr>
-      <tr>
-        <td style="padding:6px 10px;border:1px solid #ddd;font-weight:700;color:#F59E0B;">Approaching Expectation</td>
-        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;font-weight:600;">40% – 59%</td>
-        <td style="padding:6px 10px;border:1px solid #ddd;color:#555;">Demonstrates foundational understanding with occasional guidance.</td>
-      </tr>
-      <tr>
-        <td style="padding:6px 10px;border:1px solid #ddd;font-weight:700;color:#EF4444;">Below Expectation</td>
-        <td style="padding:6px 10px;border:1px solid #ddd;text-align:center;font-weight:600;">Below 40%</td>
-        <td style="padding:6px 10px;border:1px solid #ddd;color:#555;">Requires targeted individualized support and structured remedial intervention.</td>
-      </tr>
-    </tbody>
-  </table>
-  ` : `
-  <table style="width:75%;margin:0 auto;">
-    <thead>
-      <tr>
-        <th style="text-align:center;">Grade</th>
-        <th style="text-align:center;">Percentage Range</th>
         <th style="text-align:center;">${pointsColName}</th>
-        <th style="text-align:center;">Standing</th>
+        <th style="text-align:center;">${isCBC ? 'Descriptor' : 'Standing'}</th>
       </tr>
     </thead>
     <tbody>
       ${gradingScaleRows}
     </tbody>
   </table>
-  `}
 
   <div class="signatures">
     <div class="signature-block">
@@ -1648,7 +1614,7 @@ const getStudentHistoricalReportCards = async (req, res) => {
       .from('report_cards')
       .select(`
         *,
-        classes (id, name, grade_level, form_level, stream),
+        classes (id, display_name, grade_level, form_level, stream),
         terms (id, name, start_date, end_date),
         report_card_items (
           id, subject_id, subject_name, total_score, average_percentage, letter_grade, gpa_points

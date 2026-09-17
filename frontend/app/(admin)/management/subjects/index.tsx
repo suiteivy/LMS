@@ -5,10 +5,12 @@ import { Subject } from '@/types/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, TextInput, TouchableOpacity, View, ScrollView, Modal, Alert } from 'react-native';
+import { ActivityIndicator, Text, TextInput, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
 import { useRealtimeQuery } from '@/hooks/useRealtimeQuery';
 import { SubjectList } from '@/components/SubjectList';
 import { SubjectAPI } from '@/services/SubjectService';
+import { ConfirmationModal } from '@/components/common/ConfirmationModal';
+import Toast from 'react-native-toast-message';
 
 export default function SubjectsIndex() {
     const { isDark } = useTheme();
@@ -106,9 +108,15 @@ export default function SubjectsIndex() {
 
         try {
             setDeletingId(subjectToDelete.id);
+            const deletedTitle = subjectToDelete.title;
             await SubjectAPI.deleteSubject(subjectToDelete.id);
             setShowDeleteModal(false);
             setSubjectToDelete(null);
+            Toast.show({
+                type: 'success',
+                text1: 'Subject Deleted',
+                text2: `Subject "${deletedTitle}" was deleted successfully.`,
+            });
             await fetchSubjects();
         } catch (error: any) {
             console.error('Error deleting subject:', error);
@@ -181,53 +189,22 @@ export default function SubjectsIndex() {
                     deletingId={deletingId}
                 />
 
-                <Modal
+                <ConfirmationModal
                     visible={showDeleteModal}
-                    transparent
-                    animationType="fade"
-                    onRequestClose={() => {
+                    title="Delete Subject"
+                    targetName={subjectToDelete?.title}
+                    message={`Are you sure you want to delete "${subjectToDelete?.title || 'this subject'}"? This removes linked enrollments and teacher assignments.`}
+                    confirmText="Delete Subject"
+                    isDestructive={true}
+                    loading={!!deletingId}
+                    onConfirm={confirmDeleteSubject}
+                    onClose={() => {
                         if (!deletingId) {
                             setShowDeleteModal(false);
                             setSubjectToDelete(null);
                         }
                     }}
-                >
-                    <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                        <View style={{ width: '100%', maxWidth: 480, backgroundColor: isDark ? '#161B22' : '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: border, padding: 20 }}>
-                            <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 8 }}>
-                                Delete Subject
-                            </Text>
-                            <Text style={{ color: textMuted, fontSize: 14, lineHeight: 20, marginBottom: 18 }}>
-                                {`Are you sure you want to delete "${subjectToDelete?.title || 'this subject'}"? This removes linked enrollments and teacher assignments.`}
-                            </Text>
-
-                            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
-                                <TouchableOpacity
-                                    onPress={() => {
-                                        if (!deletingId) {
-                                            setShowDeleteModal(false);
-                                            setSubjectToDelete(null);
-                                        }
-                                    }}
-                                    disabled={!!deletingId}
-                                    style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: border, backgroundColor: inputBg }}
-                                >
-                                    <Text style={{ color: textPrimary, fontWeight: '600' }}>Cancel</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    onPress={confirmDeleteSubject}
-                                    disabled={!!deletingId}
-                                    style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: deletingId ? '#9ca3af' : '#ef4444' }}
-                                >
-                                    <Text style={{ color: 'white', fontWeight: '700' }}>
-                                        {deletingId ? 'Deleting...' : 'Delete'}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </View>
-                </Modal>
+                />
             </View>
         </ScrollView>
     );

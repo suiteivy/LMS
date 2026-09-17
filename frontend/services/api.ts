@@ -402,8 +402,15 @@ api.interceptors.response.use(
           return Promise.reject({ ...error, isAuthError: true });
         }
         case 403:
+          if (data?.code === 'ACCOUNT_DISABLED') {
+            title = "Account Disabled";
+            message = data?.error || "Your account has been disabled. Please contact your administrator.";
+            showError(message, title);
+            safeSignOut('local', LogoutReason.SESSION_TIMEOUT, true).catch(e => console.warn("safeSignOut error:", e));
+            return Promise.reject({ ...error, isAuthError: true });
+          }
           title = "Permission Denied";
-          message = "You don't have access to this resource.";
+          message = data?.error || data?.message || "You don't have access to this resource.";
           severity = 'info';
           break;
         case 404:

@@ -284,8 +284,24 @@ exports.deleteRole = async (req, res) => {
       return res.status(403).json({ error: "System default roles cannot be deleted" });
     }
 
-    // Delete role assignments and role
-    await supabase.from("user_roles").delete().eq("role_id", id);
+    // Check if any users are currently assigned this role (Item 4 protection)
+    const { count: assignedCount, error: countErr } = await supabase
+      .from("user_roles")
+      .select("*", { count: 'exact', head: true })
+      .eq("role_id", id);
+
+    if (countErr) throw countErr;
+
+    if (assignedCount && assignedCount > 0) {
+      return res.status(400).json({
+        error: `Cannot delete role "${role.name}" because it is currently assigned to ${assignedCount} user${assignedCount > 1 ? 's' : ''}. Please reassign or unassign these users before deleting the role.`,
+        code: 'ROLE_IN_USE',
+        assignedCount,
+      });
+    }
+
+    // Delete role permissions and role
+    await supabase.from("role_permissions").delete().eq("role_id", id);
     const { error: deleteErr } = await supabase
       .from("roles")
       .delete()
