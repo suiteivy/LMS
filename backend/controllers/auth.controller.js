@@ -560,6 +560,19 @@ exports.login = async (req, res) => {
           await revokeAllUserSessions(userProfile.id);
           invalidateAuthCacheForUser(userProfile.id);
 
+          // Automatically trigger password reset flow on lockout (log request & dispatch reset)
+          try {
+            await supabase.from('password_reset_requests').insert({
+              email: normalizedEmail,
+              ip_address: ipAddress,
+            });
+            await scopedClient.auth.resetPasswordForEmail(normalizedEmail, {
+              redirectTo: process.env.PASSWORD_RESET_REDIRECT_URL || undefined,
+            });
+          } catch (resetErr) {
+            console.warn('[AuthController] Failed to automatically dispatch reset password on lockout:', resetErr?.message || resetErr);
+          }
+
           await writePasswordAuditLog({
             action: 'account_lockout',
             actorUserId: userProfile.id,
@@ -569,7 +582,7 @@ exports.login = async (req, res) => {
             reason: 'failed_login_lockout_4_attempts',
             ipAddress,
             userAgent,
-            metadata: { attempts: currentFailed },
+            metadata: { attempts: currentFailed, resetDispatched: true },
           });
 
           return res.status(403).json({

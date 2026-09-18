@@ -52,6 +52,8 @@ function mockResponse() {
 test('login enforces lockout at 4 consecutive failed attempts and revokes sessions', async () => {
   let updatedUsers = [];
   let updatedSessions = [];
+  let insertedPasswordResetRequests = [];
+  let resetDispatchedForEmail = null;
 
   const mockUser = {
     id: 'user-lockout-1',
@@ -67,6 +69,10 @@ test('login enforces lockout at 4 consecutive failed attempts and revokes sessio
         data: { user: null, session: null },
         error: { message: 'Invalid login credentials' },
       };
+    },
+    async resetPasswordForEmail(email) {
+      resetDispatchedForEmail = email;
+      return { data: {}, error: null };
     },
   };
 
@@ -114,21 +120,28 @@ test('login enforces lockout at 4 consecutive failed attempts and revokes sessio
         };
       }
       if (table === 'user_sessions') {
-        return {
+        const sessionQuery = {
           update(updates) {
             updatedSessions.push(updates);
-            return {
-              eq() {
-                return {
-                  async eq() {
-                    return { error: null };
-                  },
-                };
-              },
-              async in() {
-                return { error: null };
-              },
-            };
+            return sessionQuery;
+          },
+          eq() {
+            return sessionQuery;
+          },
+          in() {
+            return sessionQuery;
+          },
+          then(resolve) {
+            return Promise.resolve({ error: null }).then(resolve);
+          },
+        };
+        return sessionQuery;
+      }
+      if (table === 'password_reset_requests') {
+        return {
+          async insert(record) {
+            insertedPasswordResetRequests.push(record);
+            return { error: null };
           },
         };
       }
@@ -169,6 +182,11 @@ test('login enforces lockout at 4 consecutive failed attempts and revokes sessio
   // Verify sessions revoked
   assert.equal(updatedSessions.length, 1);
   assert.equal(updatedSessions[0].is_revoked, true);
+
+  // Verify automated password reset flow was triggered
+  assert.equal(insertedPasswordResetRequests.length, 1);
+  assert.equal(insertedPasswordResetRequests[0].email, 'lockout@example.com');
+  assert.equal(resetDispatchedForEmail, 'lockout@example.com');
 });
 
 test('login blocks already locked account with 403 ACCOUNT_LOCKED', async () => {
