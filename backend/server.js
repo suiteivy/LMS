@@ -103,6 +103,10 @@ app.use("/api/tracks", authMiddleware, checkSubscription, require("./routes/trac
 app.use("/api/checkpoints", authMiddleware, checkSubscription, require("./routes/nationalCheckpoint.route.js"));
 app.use("/api/promotions", authMiddleware, checkSubscription, require("./routes/promotion.route.js"));
 app.use("/api/calendar", authMiddleware, checkSubscription, require("./routes/calendar.route.js"));
+app.use("/api/pdf", authMiddleware, checkSubscription, require("./routes/pdf.route.js"));
+app.use("/api/clearance", authMiddleware, checkSubscription, require("./routes/clearance.route.js"));
+app.use("/api/violations", authMiddleware, checkSubscription, require("./routes/violations.route.js"));
+app.use("/api/users", authMiddleware, checkSubscription, require("./routes/user.route.js"));
 app.use("/api/addon-requests", authMiddleware, addonRequestRoutes);
 
 // Explicitly define currency route as public before using auth wrapper on settings

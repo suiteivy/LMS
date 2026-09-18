@@ -578,6 +578,14 @@ export default function TeacherHome() {
                     route: '/(teacher)/management/messages',
                     gated: true,
                 },
+                {
+                    key: 'clearance',
+                    icon: LogOut,
+                    label: 'Clearance',
+                    color: '#f59e0b',
+                    route: '/(teacher)/clearance',
+                    gated: false,
+                },
             ];
         }
 
@@ -613,6 +621,14 @@ export default function TeacherHome() {
                 color: '#0891b2',
                 route: '/(teacher)/management/messages',
                 gated: true,
+            },
+            {
+                key: 'clearance',
+                icon: LogOut,
+                label: 'Clearance',
+                color: '#f59e0b',
+                route: '/(teacher)/clearance',
+                gated: false,
             },
         ];
     }, [mode, isDark]);

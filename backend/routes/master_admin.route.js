@@ -84,4 +84,9 @@ router.put('/currencies/:id', (req, _res, next) => {
 }, masterAdminController.upsertCurrency);
 router.delete('/currencies/:id', masterAdminController.deactivateCurrency);
 
+// Credential Requests Management (Institution Admin Name Change & Email Reset)
+router.get('/credential-requests', masterAdminController.getCredentialRequests);
+router.post('/credential-requests/:id/approve', masterAdminController.approveCredentialRequest);
+router.post('/credential-requests/:id/reject', masterAdminController.rejectCredentialRequest);
+
 module.exports = router;

@@ -966,6 +966,7 @@ export default function UserDetailsScreen() {
                         <UserCard
                             user={mappedUser} variant="detailed" showBackButton
                             onBackPress={() => router.back()} showActions={!isEditing}
+                            onMasterRecordPress={() => router.push(`/(admin)/users/${id}/master-record`)}
                             onEditPress={() => setIsEditing(true)}
                             onResetCredentialsPress={isSelf ? undefined : () => setShowResetModal(true)}
                             onDeletePress={isSelf ? undefined : handleDelete}
@@ -977,6 +978,22 @@ export default function UserDetailsScreen() {
                 <View style={{ paddingHorizontal: 24, paddingTop: 16, gap: 12 }}>
                     {!isEditing ? (
                         <>
+                            <TouchableOpacity
+                                onPress={() => router.push(`/(admin)/users/${id}/master-record`)}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#eff6ff',
+                                    paddingVertical: 14,
+                                    borderRadius: 12,
+                                    borderWidth: 1,
+                                    borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : '#bfdbfe'
+                                }}>
+                                <Ionicons name="document-text-outline" size={18} color="#3b82f6" />
+                                <Text style={{ color: '#3b82f6', fontWeight: '700', marginLeft: 8 }}>View Master Record & PDF</Text>
+                            </TouchableOpacity>
+
                             <TouchableOpacity onPress={() => setIsEditing(true)}
                                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FF6900', paddingVertical: 14, borderRadius: 12 }}>
                                 <Ionicons name="create-outline" size={18} color="white" />

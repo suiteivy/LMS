@@ -28,6 +28,11 @@ const {
   pingSession,
   getEnrollmentSlotCapacity,
   requestPasswordResetEscalation,
+  createCredentialRequest,
+  getMyCredentialRequests,
+  getCredentialRequests,
+  approveCredentialRequest,
+  rejectCredentialRequest,
 } = require("../controllers/auth.controller.js");
 const { authMiddleware } = require("../middleware/auth.middleware.js");
 const checkSubscription = require("../middleware/subscriptionCheck.js");
@@ -144,5 +149,12 @@ router.put(
   requireRole('admin', 'master_admin'),
   updateAdminDelegation,
 );
+
+// Credential Change Requests (Name Change & Email Reset)
+router.post("/credential-requests", authMiddleware, createCredentialRequest);
+router.get("/credential-requests/me", authMiddleware, getMyCredentialRequests);
+router.get("/credential-requests", authMiddleware, requireRole('admin', 'master_admin'), getCredentialRequests);
+router.post("/credential-requests/:id/approve", authMiddleware, requireRole('admin', 'master_admin'), approveCredentialRequest);
+router.post("/credential-requests/:id/reject", authMiddleware, requireRole('admin', 'master_admin'), rejectCredentialRequest);
 
 module.exports = router;

@@ -41,7 +41,7 @@ const EXPLICIT_TAB_NAMES = [...MOBILE_TAB_NAMES, "diary"];
 const ALL_OTHER = NAV_ITEMS
   .filter(i => !EXPLICIT_TAB_NAMES.includes(i.name))
   .map(i => i.name);
-const HIDDEN_ROUTES = [...ALL_OTHER, "attendance", "announcements", "grades-enhanced", "report-cards", "analytics"];
+const HIDDEN_ROUTES = [...ALL_OTHER, "attendance", "announcements", "grades-enhanced", "report-cards", "analytics", "clearance"];
 
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useNotifications } from "@/contexts/NotificationContext";

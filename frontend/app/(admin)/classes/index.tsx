@@ -67,6 +67,7 @@ export default function AdminClassManagement() {
     const [formClassType, setFormClassType] = useState('Grade');
     const [classTypes, setClassTypes] = useState<string[]>(['Grade']);
     const [formStructure, setFormStructure] = useState<'stream' | 'single'>('stream');
+    const [formIsFinalLevel, setFormIsFinalLevel] = useState(false);
 
     // Students panel
     const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
@@ -367,6 +368,7 @@ export default function AdminClassManagement() {
         setFormStreamId('');
         setFormCapacity('');
         setFormTeacher('');
+        setFormIsFinalLevel(false);
         setShowModal(true);
     };
 
@@ -383,6 +385,7 @@ export default function AdminClassManagement() {
         setFormStreamId(cls.stream_id || '');
         setFormCapacity(cls.capacity != null ? String(cls.capacity) : '');
         setFormTeacher(cls.teacher_id || '');
+        setFormIsFinalLevel(Boolean(cls.is_final_level));
         setShowModal(true);
     };
 
@@ -401,6 +404,7 @@ export default function AdminClassManagement() {
                 stream: isSingle ? null : (formStream ? formStream.trim() : undefined),
                 capacity: formCapacity ? parseInt(formCapacity, 10) : undefined,
                 teacher_id: formTeacher || undefined,
+                is_final_level: formIsFinalLevel,
             };
 
             if (editingClass) {
@@ -797,6 +801,11 @@ export default function AdminClassManagement() {
                                                 {!cls.stream && !cls.stream_id && (
                                                     <View style={{ backgroundColor: isDark ? 'rgba(255,107,0,0.18)' : '#fff7ed', borderWidth: 1, borderColor: isDark ? 'rgba(255,107,0,0.35)' : '#fed7aa', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 }}>
                                                         <Text style={{ color: '#FF6B00', fontSize: 11, fontWeight: '700' }}>Entire Grade</Text>
+                                                    </View>
+                                                )}
+                                                {Boolean(cls.is_final_level) && (
+                                                    <View style={{ backgroundColor: isDark ? 'rgba(16,185,129,0.18)' : '#ECFDF5', borderWidth: 1, borderColor: isDark ? 'rgba(16,185,129,0.35)' : '#A7F3D0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 }}>
+                                                        <Text style={{ color: '#059669', fontSize: 11, fontWeight: '800' }}>Graduating Level</Text>
                                                     </View>
                                                 )}
                                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -1244,6 +1253,41 @@ export default function AdminClassManagement() {
                                     </View>
                                 </ScrollView>
                             </View>
+
+                            {/* Final Level / Graduating Class Setting */}
+                            <TouchableOpacity
+                                onPress={() => setFormIsFinalLevel(!formIsFinalLevel)}
+                                style={{
+                                    marginBottom: 20,
+                                    padding: 14,
+                                    borderRadius: 14,
+                                    backgroundColor: formIsFinalLevel ? (isDark ? 'rgba(16,185,129,0.15)' : '#ECFDF5') : inputBg,
+                                    borderWidth: 1.5,
+                                    borderColor: formIsFinalLevel ? '#10B981' : inputBorder,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                }}
+                            >
+                                <View style={{ flex: 1, marginRight: 12 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <Text style={{ fontSize: 14, fontWeight: '700', color: formIsFinalLevel ? '#059669' : textPrimary }}>
+                                            Final / Graduating Level
+                                        </Text>
+                                        <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#10B981' }}>GRADUATION</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>
+                                        Mark this class as the institution completion level. Enables student clearance of studies.
+                                    </Text>
+                                </View>
+                                <Ionicons
+                                    name={formIsFinalLevel ? "checkbox" : "square-outline"}
+                                    size={24}
+                                    color={formIsFinalLevel ? '#10B981' : textMuted}
+                                />
+                            </TouchableOpacity>
 
                             <TouchableOpacity
                                 onPress={handleSave}

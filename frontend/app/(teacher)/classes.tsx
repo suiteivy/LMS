@@ -24,7 +24,9 @@ import {
     School,
     Users,
     X,
+    ArrowLeftRight,
 } from 'lucide-react-native';
+import { StudentTransferModal } from "@/components/transfers/StudentTransferModal";
 import React, { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -178,6 +180,8 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
     // Timetable / schedule
     const [schedule, setSchedule] = useState<TimetableEntry[]>([]);
     const [schedLoading, setSchedLoading] = useState(true);
+    const [transferStudent, setTransferStudent] = useState<{ id: string; full_name: string; class_id?: string; current_class_name?: string } | null>(null);
+    const [showTransferModal, setShowTransferModal] = useState(false);
 
     // Fetch class timetable once on mount
     useEffect(() => {
@@ -480,9 +484,27 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
                                     </View>
 
                                     <View className="flex-1">
-                                        <Text className="text-gray-900 dark:text-white font-bold text-sm" numberOfLines={1}>
-                                            {r.full_name}
-                                        </Text>
+                                        <View className="flex-row items-center gap-2">
+                                            <Text className="text-gray-900 dark:text-white font-bold text-sm" numberOfLines={1}>
+                                                {r.full_name}
+                                            </Text>
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    setTransferStudent({
+                                                        id: r.student_id,
+                                                        full_name: r.full_name || '',
+                                                        class_id: classId,
+                                                        current_class_name: cName,
+                                                    });
+                                                    setShowTransferModal(true);
+                                                }}
+                                                className="p-1 rounded-md bg-orange-500/10 active:bg-orange-500/20"
+                                                accessibilityRole="button"
+                                                accessibilityLabel={`Transfer ${r.full_name}`}
+                                            >
+                                                <ArrowLeftRight size={12} color="#FF6900" />
+                                            </TouchableOpacity>
+                                        </View>
                                         <Text className="text-gray-400 dark:text-gray-500 text-[10px]">{r.email}</Text>
                                     </View>
 
@@ -523,6 +545,19 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
                             )}
                         </ScrollView>
                     )}
+
+                    {/* Student Transfer Modal */}
+                    <StudentTransferModal
+                        visible={showTransferModal}
+                        student={transferStudent}
+                        onClose={() => {
+                            setShowTransferModal(false);
+                            setTransferStudent(null);
+                        }}
+                        onSuccess={() => {
+                            loadData();
+                        }}
+                    />
                 </View>
             )}
         </View>

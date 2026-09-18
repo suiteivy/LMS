@@ -37,7 +37,7 @@ const ALL_SIDEBAR_ITEMS: NavItem[] = [
 ];
 
 // Routes accessible via Manage — registered but hidden from tab bar
-const MANAGE_SUB_ROUTES = ["subjects", "classes", "students", "library", "faculty-presence"];
+const MANAGE_SUB_ROUTES = ["subjects", "classes", "students", "library", "faculty-presence", "clearance"];
 // Beta plan additionally hides subjects/students
 const BETA_HIDDEN = ["subjects", "students"];
 

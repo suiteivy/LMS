@@ -4036,3 +4036,218 @@ exports.prunePasswordAuditLogs = async () => {
         throw error;
     }
 };
+
+/**
+ * Master Admin: List credential change requests across all institutions.
+ */
+exports.getCredentialRequests = async (req, res) => {
+    try {
+        const adminClient = getServiceSupabase();
+        const { status = 'all', request_type, institution_id } = req.query;
+
+        let query = adminClient
+            .from('credential_change_requests')
+            .select(`
+                *,
+                user:users!user_id(id, full_name, first_name, last_name, email, role, avatar_url),
+                institution:institutions!institution_id(id, name),
+                reviewer:users!reviewed_by(id, full_name, email)
+            `)
+            .order('created_at', { ascending: false });
+
+        if (institution_id) {
+            query = query.eq('institution_id', institution_id);
+        }
+
+        if (status && status !== 'all') {
+            query = query.eq('status', status);
+        }
+
+        if (request_type) {
+            query = query.eq('request_type', request_type);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        return res.json({ success: true, data: data || [] });
+    } catch (err) {
+        console.error("masterAdmin.getCredentialRequests error:", err);
+        return res.status(500).json({ error: err.message || "Failed to fetch credential requests" });
+    }
+};
+
+/**
+ * Master Admin: Approve credential request (Name change or Email reset for Institution Admin or any user).
+ */
+exports.approveCredentialRequest = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const masterAdminId = req.userId;
+        const { admin_notes } = req.body;
+        const adminClient = getServiceSupabase();
+
+        const { data: request, error: fetchErr } = await adminClient
+            .from('credential_change_requests')
+            .select(`*, user:users!user_id(id, full_name, first_name, last_name, email, role, institution_id)`)
+            .eq('id', id)
+            .single();
+
+        if (fetchErr || !request) {
+            return res.status(404).json({ error: "Credential request not found" });
+        }
+
+        if (request.status !== 'pending') {
+            return res.status(400).json({ error: `Request has already been ${request.status}` });
+        }
+
+        let tempCredentialPackage = null;
+
+        if (request.request_type === 'name_change') {
+            const rawName = String(request.requested_value).trim();
+            const parts = rawName.split(/\s+/);
+            const firstName = parts[0] || '';
+            const lastName = parts.slice(1).join(' ') || firstName;
+            const fullName = rawName;
+
+            const { error: updateErr } = await adminClient
+                .from('users')
+                .update({
+                    first_name: firstName,
+                    last_name: lastName,
+                    full_name: fullName,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', request.user_id);
+
+            if (updateErr) throw updateErr;
+        } else if (request.request_type === 'email_reset') {
+            const targetEmail = String(request.requested_value).trim().toLowerCase();
+            const temporaryPassword = `Temp-${crypto.randomBytes(3).toString('hex').toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+            try {
+                await adminClient.auth.admin.updateUserById(request.user_id, {
+                    email: targetEmail,
+                    password: temporaryPassword,
+                    email_confirm: true,
+                });
+            } catch (authEx) {
+                console.warn("Master Admin auth updateUserById warning:", authEx?.message);
+            }
+
+            const { error: userUpdateErr } = await adminClient
+                .from('users')
+                .update({
+                    email: targetEmail,
+                    must_change_password: true,
+                    requires_security_questions_setup: true,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', request.user_id);
+
+            if (userUpdateErr) throw userUpdateErr;
+
+            let deliveryUrl = null;
+            try {
+                const deliveryResult = await createCredentialDeliveryToken({
+                    adminClient,
+                    createdBy: masterAdminId,
+                    targetUserId: request.user_id,
+                    targetEmail,
+                    temporaryPassword,
+                    metadata: { request_id: request.id, source: 'master_admin_email_reset' },
+                });
+                deliveryUrl = deliveryResult.url;
+            } catch (tokEx) {
+                console.warn("createCredentialDeliveryToken error:", tokEx?.message);
+            }
+
+            tempCredentialPackage = {
+                email: targetEmail,
+                temporary_password: temporaryPassword,
+                one_time_url: deliveryUrl,
+                copy_text: `Cloudora LMS Administrator Credentials\nName: ${request.user?.full_name || 'Admin'}\nEmail: ${targetEmail}\nTemporary Password: ${temporaryPassword}${deliveryUrl ? `\nOne-Time Link: ${deliveryUrl}` : ''}\n\nNote: Please log in and update your password immediately.`,
+            };
+        }
+
+        const { data: updatedReq, error: reqUpdateErr } = await adminClient
+            .from('credential_change_requests')
+            .update({
+                status: 'approved',
+                admin_notes: admin_notes ? String(admin_notes).trim() : null,
+                temp_credential: tempCredentialPackage ? tempCredentialPackage.copy_text : null,
+                reviewed_by: masterAdminId,
+                reviewed_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (reqUpdateErr) throw reqUpdateErr;
+
+        return res.json({
+            success: true,
+            message: `${request.request_type === 'email_reset' ? 'Email reset' : 'Name change'} request approved successfully.`,
+            temp_credential: tempCredentialPackage,
+            data: updatedReq,
+        });
+    } catch (err) {
+        console.error("masterAdmin.approveCredentialRequest error:", err);
+        return res.status(500).json({ error: err.message || "Failed to approve credential request" });
+    }
+};
+
+/**
+ * Master Admin: Reject credential request.
+ */
+exports.rejectCredentialRequest = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const masterAdminId = req.userId;
+        const { rejection_reason } = req.body;
+        const adminClient = getServiceSupabase();
+
+        if (!rejection_reason || !String(rejection_reason).trim()) {
+            return res.status(400).json({ error: "Rejection reason is required" });
+        }
+
+        const { data: request, error: fetchErr } = await adminClient
+            .from('credential_change_requests')
+            .select('id, status, user_id, request_type')
+            .eq('id', id)
+            .single();
+
+        if (fetchErr || !request) {
+            return res.status(404).json({ error: "Credential request not found" });
+        }
+
+        if (request.status !== 'pending') {
+            return res.status(400).json({ error: `Request has already been ${request.status}` });
+        }
+
+        const { data: updatedReq, error: reqUpdateErr } = await adminClient
+            .from('credential_change_requests')
+            .update({
+                status: 'rejected',
+                admin_notes: String(rejection_reason).trim(),
+                reviewed_by: masterAdminId,
+                reviewed_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (reqUpdateErr) throw reqUpdateErr;
+
+        return res.json({
+            success: true,
+            message: "Credential request rejected.",
+            data: updatedReq,
+        });
+    } catch (err) {
+        console.error("masterAdmin.rejectCredentialRequest error:", err);
+        return res.status(500).json({ error: err.message || "Failed to reject credential request" });
+    }
+};

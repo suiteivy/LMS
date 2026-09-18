@@ -147,6 +147,7 @@ function ParentTabs() {
             <Tabs.Screen name="report-cards" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="analytics" options={{ href: null, headerShown: false }} />
             <Tabs.Screen name="messages" options={{ href: null, headerShown: false }} />
+            <Tabs.Screen name="clearance" options={{ href: null, headerShown: false }} />
             </Tabs>
 
             <NotificationBellDropdown

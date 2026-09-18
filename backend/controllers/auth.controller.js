@@ -3553,4 +3553,456 @@ exports.requestPasswordResetEscalation = async (req, res) => {
   }
 };
 
+/**
+ * ------------------------------------------------------------------------
+ * CREDENTIAL CHANGE REQUESTS (Name Change & Email Reset)
+ * ------------------------------------------------------------------------
+ */
+
+/**
+ * Submit a request to change user name or reset email.
+ * Accessible to any authenticated user (Student, Teacher, Institution Admin).
+ */
+exports.createCredentialRequest = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const institutionId = req.institution_id || req.user?.institution_id;
+    const { request_type, requested_value, reason, document_url } = req.body;
+
+    if (!['name_change', 'email_reset'].includes(request_type)) {
+      return res.status(400).json({ error: "Invalid request_type. Must be 'name_change' or 'email_reset'." });
+    }
+
+    if (!requested_value || !String(requested_value).trim()) {
+      return res.status(400).json({ error: "requested_value is required" });
+    }
+
+    if (!reason || !String(reason).trim()) {
+      return res.status(400).json({ error: "reason is required" });
+    }
+
+    const { data: user, error: userErr } = await supabase
+      .from('users')
+      .select('id, institution_id, role, email, first_name, last_name, full_name')
+      .eq('id', userId)
+      .single();
+
+    if (userErr || !user) {
+      return res.status(404).json({ error: "User account not found" });
+    }
+
+    let currentValue = '';
+    let targetRequestedValue = String(requested_value).trim();
+
+    if (request_type === 'name_change') {
+      currentValue = user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Current Name';
+    } else if (request_type === 'email_reset') {
+      currentValue = user.email || '';
+      targetRequestedValue = normalizeEmail(targetRequestedValue);
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(targetRequestedValue)) {
+        return res.status(400).json({ error: "A valid email address is required for email_reset" });
+      }
+
+      if (targetRequestedValue === normalizeEmail(user.email)) {
+        return res.status(400).json({ error: "Requested email is identical to current email" });
+      }
+
+      // Check for conflict with existing users
+      const { data: duplicate } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', targetRequestedValue)
+        .neq('id', userId)
+        .maybeSingle();
+
+      if (duplicate) {
+        return res.status(400).json({ error: "The requested email is already in use by another account" });
+      }
+    }
+
+    // Check for existing pending request of the same type
+    const { data: existing } = await supabase
+      .from('credential_change_requests')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('request_type', request_type)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (existing) {
+      return res.status(400).json({
+        error: `You already have a pending ${request_type.replace('_', ' ')} request awaiting administrative review.`,
+      });
+    }
+
+    const effectiveInstId = institutionId || user.institution_id;
+
+    const { data: created, error: insertErr } = await supabase
+      .from('credential_change_requests')
+      .insert({
+        institution_id: effectiveInstId,
+        user_id: userId,
+        request_type,
+        current_value: currentValue,
+        requested_value: targetRequestedValue,
+        reason: String(reason).trim(),
+        document_url: document_url || null,
+        status: 'pending',
+      })
+      .select()
+      .single();
+
+    if (insertErr) {
+      console.error("createCredentialRequest insert error:", insertErr);
+      return res.status(500).json({ error: "Failed to submit credential change request" });
+    }
+
+    await logRecordChange({
+      institution_id: effectiveInstId,
+      table_name: 'credential_change_requests',
+      record_id: created.id,
+      action: request_type === 'email_reset' ? 'EMAIL_RESET_REQUESTED' : 'NAME_CHANGE_REQUESTED',
+      old_data: { current_value: currentValue },
+      new_data: { requested_value: targetRequestedValue, reason: String(reason).trim() },
+      changed_by: userId,
+      reason: String(reason).trim(),
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: `${request_type === 'email_reset' ? 'Email reset' : 'Name change'} request submitted for review.`,
+      data: created,
+    });
+  } catch (err) {
+    console.error("createCredentialRequest error:", err);
+    return res.status(500).json({ error: err.message || "Server error submitting request" });
+  }
+};
+
+/**
+ * Get credential change requests for the currently authenticated user.
+ */
+exports.getMyCredentialRequests = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { data, error } = await supabase
+      .from('credential_change_requests')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ error: error.message || "Failed to load requests" });
+    }
+
+    return res.json({ success: true, data: data || [] });
+  } catch (err) {
+    console.error("getMyCredentialRequests error:", err);
+    return res.status(500).json({ error: "Server error fetching user requests" });
+  }
+};
+
+/**
+ * List credential change requests for an institution (Admin view).
+ * Excludes Institution Admin requests if caller is not Master Admin.
+ */
+exports.getCredentialRequests = async (req, res) => {
+  try {
+    const institutionId = req.institution_id || req.user?.institution_id;
+    const { status = 'all', request_type } = req.query;
+
+    let query = supabase
+      .from('credential_change_requests')
+      .select(`
+        *,
+        user:users!user_id(id, full_name, first_name, last_name, email, role, avatar_url),
+        reviewer:users!reviewed_by(id, full_name, email)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (institutionId) {
+      query = query.eq('institution_id', institutionId);
+    }
+
+    if (status && status !== 'all') {
+      query = query.eq('status', status);
+    }
+
+    if (request_type) {
+      query = query.eq('request_type', request_type);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("getCredentialRequests query error:", error);
+      return res.status(500).json({ error: error.message || "Failed to fetch requests" });
+    }
+
+    // Filter out institution admins if caller is a regular institution admin
+    const callerRole = req.user?.role;
+    const filtered = (data || []).filter((item) => {
+      if (callerRole === 'admin' && item.user?.role === 'admin') {
+        return false;
+      }
+      return true;
+    });
+
+    return res.json({ success: true, data: filtered });
+  } catch (err) {
+    console.error("getCredentialRequests error:", err);
+    return res.status(500).json({ error: "Server error retrieving credential requests" });
+  }
+};
+
+/**
+ * Approve a credential request (Name change or Email reset).
+ */
+exports.approveCredentialRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.userId;
+    const callerRole = req.user?.role;
+    const { admin_notes } = req.body;
+
+    const { data: request, error: fetchErr } = await supabase
+      .from('credential_change_requests')
+      .select(`
+        *,
+        user:users!user_id(id, full_name, first_name, last_name, email, role, institution_id)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (fetchErr || !request) {
+      return res.status(404).json({ error: "Credential request not found" });
+    }
+
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: `Request has already been ${request.status}` });
+    }
+
+    // Authorization: If target user is Admin, only Master Admin can approve
+    if (request.user?.role === 'admin' && callerRole !== 'master_admin') {
+      return res.status(403).json({ error: "Institution Admin credential requests can only be approved by Master Platform Administrators." });
+    }
+
+    // Institution match check for regular admins
+    if (callerRole !== 'master_admin') {
+      const adminInstId = req.institution_id || req.user?.institution_id;
+      if (adminInstId && request.institution_id && adminInstId !== request.institution_id) {
+        return res.status(403).json({ error: "Unauthorized. Cross-institution approval denied." });
+      }
+    }
+
+    let tempCredentialPackage = null;
+
+    if (request.request_type === 'name_change') {
+      const rawName = String(request.requested_value).trim();
+      const parts = rawName.split(/\s+/);
+      const firstName = parts[0] || '';
+      const lastName = parts.slice(1).join(' ') || firstName;
+      const fullName = rawName;
+
+      const { error: userUpdateErr } = await supabase
+        .from('users')
+        .update({
+          first_name: firstName,
+          last_name: lastName,
+          full_name: fullName,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', request.user_id);
+
+      if (userUpdateErr) throw userUpdateErr;
+
+      // Sync teachers table if user is a teacher
+      if (request.user?.role === 'teacher') {
+        try {
+          await supabase.from('teachers').update({ full_name: fullName }).eq('user_id', request.user_id);
+        } catch (tErr) {
+          console.warn("Sync teacher name error:", tErr?.message);
+        }
+      }
+
+      await logRecordChange({
+        institution_id: request.institution_id,
+        table_name: 'users',
+        record_id: request.user_id,
+        action: 'NAME_CHANGE_APPROVED',
+        old_data: { full_name: request.current_value },
+        new_data: { full_name: fullName },
+        changed_by: adminId,
+        reason: admin_notes || 'Approved by administrator',
+      });
+    } else if (request.request_type === 'email_reset') {
+      const targetEmail = normalizeEmail(request.requested_value);
+
+      // Generate strong temporary password: Temp-[3HEX]-[4DIGITS]
+      const temporaryPassword = `Temp-${crypto.randomBytes(3).toString('hex').toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      // Update Supabase Auth user credentials (preserving user.id and all historical links)
+      try {
+        const { error: authUpdateError } = await supabase.auth.admin.updateUserById(request.user_id, {
+          email: targetEmail,
+          password: temporaryPassword,
+          email_confirm: true,
+        });
+        if (authUpdateError) {
+          console.warn("supabase.auth.admin.updateUserById notice:", authUpdateError.message);
+        }
+      } catch (authEx) {
+        console.warn("Auth admin update exception:", authEx?.message);
+      }
+
+      // Update public.users table
+      const { error: userUpdateErr } = await supabase
+        .from('users')
+        .update({
+          email: targetEmail,
+          must_change_password: true,
+          requires_security_questions_setup: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', request.user_id);
+
+      if (userUpdateErr) throw userUpdateErr;
+
+      // Invalidate cache and revoke active sessions
+      invalidateAuthCacheForUser(request.user_id);
+      await revokeAllUserSessions(request.user_id);
+
+      // Generate one-time delivery token
+      let deliveryUrl = null;
+      try {
+        const deliveryResult = await createCredentialDeliveryToken({
+          createdBy: adminId,
+          targetUserId: request.user_id,
+          targetEmail,
+          temporaryPassword,
+          metadata: { request_id: request.id, source: 'email_reset_approval' },
+        });
+        deliveryUrl = deliveryResult.url;
+      } catch (delErr) {
+        console.warn("createCredentialDeliveryToken notice:", delErr?.message);
+      }
+
+      tempCredentialPackage = {
+        email: targetEmail,
+        temporary_password: temporaryPassword,
+        one_time_url: deliveryUrl,
+        copy_text: `Cloudora LMS Account Credentials\nName: ${request.user?.full_name || 'User'}\nEmail: ${targetEmail}\nTemporary Password: ${temporaryPassword}${deliveryUrl ? `\nOne-Time Link: ${deliveryUrl}` : ''}\n\nNote: Please log in and update your password immediately.`,
+      };
+
+      await logRecordChange({
+        institution_id: request.institution_id,
+        table_name: 'users',
+        record_id: request.user_id,
+        action: 'EMAIL_RESET_APPROVED',
+        old_data: { email: request.current_value },
+        new_data: { email: targetEmail },
+        changed_by: adminId,
+        reason: admin_notes || 'Email reset approved by administrator',
+      });
+    }
+
+    const { data: updatedReq, error: reqUpdateErr } = await supabase
+      .from('credential_change_requests')
+      .update({
+        status: 'approved',
+        admin_notes: admin_notes ? String(admin_notes).trim() : null,
+        temp_credential: tempCredentialPackage ? tempCredentialPackage.copy_text : null,
+        reviewed_by: adminId,
+        reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (reqUpdateErr) throw reqUpdateErr;
+
+    return res.json({
+      success: true,
+      message: `${request.request_type === 'email_reset' ? 'Email reset' : 'Name change'} request approved successfully.`,
+      temp_credential: tempCredentialPackage,
+      data: updatedReq,
+    });
+  } catch (err) {
+    console.error("approveCredentialRequest error:", err);
+    return res.status(500).json({ error: err.message || "Failed to approve credential request" });
+  }
+};
+
+/**
+ * Reject a credential request with mandatory reason.
+ */
+exports.rejectCredentialRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.userId;
+    const callerRole = req.user?.role;
+    const { rejection_reason } = req.body;
+
+    if (!rejection_reason || !String(rejection_reason).trim()) {
+      return res.status(400).json({ error: "Rejection reason is required" });
+    }
+
+    const { data: request, error: fetchErr } = await supabase
+      .from('credential_change_requests')
+      .select('*, user:users!user_id(role)')
+      .eq('id', id)
+      .single();
+
+    if (fetchErr || !request) {
+      return res.status(404).json({ error: "Credential request not found" });
+    }
+
+    if (request.status !== 'pending') {
+      return res.status(400).json({ error: `Request has already been ${request.status}` });
+    }
+
+    if (request.user?.role === 'admin' && callerRole !== 'master_admin') {
+      return res.status(403).json({ error: "Institution Admin requests can only be rejected by Master Platform Administrators." });
+    }
+
+    const { data: updatedReq, error: reqUpdateErr } = await supabase
+      .from('credential_change_requests')
+      .update({
+        status: 'rejected',
+        admin_notes: String(rejection_reason).trim(),
+        reviewed_by: adminId,
+        reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (reqUpdateErr) throw reqUpdateErr;
+
+    await logRecordChange({
+      institution_id: request.institution_id,
+      table_name: 'credential_change_requests',
+      record_id: id,
+      action: request.request_type === 'email_reset' ? 'EMAIL_RESET_REJECTED' : 'NAME_CHANGE_REJECTED',
+      old_data: { status: 'pending' },
+      new_data: { status: 'rejected', rejection_reason: String(rejection_reason).trim() },
+      changed_by: adminId,
+      reason: String(rejection_reason).trim(),
+    });
+
+    return res.json({
+      success: true,
+      message: "Credential request rejected.",
+      data: updatedReq,
+    });
+  } catch (err) {
+    console.error("rejectCredentialRequest error:", err);
+    return res.status(500).json({ error: err.message || "Failed to reject credential request" });
+  }
+};
+
+
 

@@ -21,6 +21,7 @@ const {
     getStudentTransfers,
     approveStudentTransfer,
     rejectStudentTransfer,
+    setClassFinalLevel,
 } = require("../controllers/class.controller.js");
 const { authMiddleware } = require("../middleware/auth.middleware.js");
 const { authorizeRoles } = require("../middleware/authRole.js");
@@ -42,6 +43,7 @@ router.get("/:id/students", authorizeRoles(["admin", "teacher", "master_admin"])
 
 // Mutation routes: allow admin & master_admin
 router.post("/", authorizeRoles(["admin", "master_admin"]), createClass);
+router.patch("/:id/final-level", authorizeRoles(["admin", "master_admin"]), setClassFinalLevel);
 router.post("/domain/categories", authorizeRoles(["admin", "master_admin"]), createClassDomainCategory);
 router.post("/domain/levels", authorizeRoles(["admin", "master_admin"]), createClassDomainLevel);
 router.post("/domain/streams", authorizeRoles(["admin", "master_admin"]), createClassDomainStream);

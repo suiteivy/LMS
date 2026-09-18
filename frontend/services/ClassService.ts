@@ -16,6 +16,7 @@ export interface ClassItem {
     capacity?: number;
     teacher_id?: string;
     institution_id?: string;
+    is_final_level?: boolean;
     student_count?: number;
     created_at?: string;
     updated_at?: string;
@@ -216,6 +217,14 @@ export const ClassService = {
 
     async rejectTransfer(id: string, reason?: string): Promise<any> {
         const res = await api.patch(`/classes/transfers/${id}/reject`, { reason });
+        return res.data;
+    },
+
+    async setClassFinalLevel(classId: string, isFinalLevel: boolean, applyToLevel: boolean = true): Promise<any> {
+        const res = await api.patch(`/classes/${classId}/final-level`, {
+            is_final_level: isFinalLevel,
+            apply_to_level: applyToLevel,
+        });
         return res.data;
     },
 };

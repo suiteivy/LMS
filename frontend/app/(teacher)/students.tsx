@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StatusBar, TextInput, Modal } from "react-native";
-import { ArrowLeft, Users, Search, Download, Calendar, GraduationCap, X, Phone, User, MapPin, AlertCircle, ShieldAlert, BookOpen, Award, ArrowLeftRight } from "lucide-react-native";
+import { ArrowLeft, Users, Search, Download, Calendar, GraduationCap, X, Phone, User, MapPin, AlertCircle, ShieldAlert, BookOpen, Award, ArrowLeftRight, FileText } from "lucide-react-native";
 import { router } from "expo-router";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,6 +10,10 @@ import { TeacherAPI } from "@/services/TeacherService";
 import { useTheme } from "@/contexts/ThemeContext";
 import { showFetchError } from "@/utils/toast";
 import { StudentTransferModal } from "@/components/transfers/StudentTransferModal";
+import { ViolationService, StudentViolation } from "@/services/ViolationService";
+import { ViolationList } from "@/components/violations/ViolationList";
+import { RecordViolationModal } from "@/components/violations/RecordViolationModal";
+import { PdfPreviewModal } from "@/components/pdf/PdfPreviewModal";
 
 interface StudentListItem {
     id: string;
@@ -59,8 +63,11 @@ export default function StudentsPage() {
     const [studentDetails, setStudentDetails] = useState<any>(null);
     const [detailsLoading, setDetailsLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
-    const [detailsTab, setDetailsTab] = useState<'info' | 'attendance' | 'performance'>('info');
+    const [detailsTab, setDetailsTab] = useState<'info' | 'attendance' | 'performance' | 'disciplinary'>('info');
     const [showTransferModal, setShowTransferModal] = useState(false);
+    const [violations, setViolations] = useState<StudentViolation[]>([]);
+    const [showRecordModal, setShowRecordModal] = useState(false);
+    const [showSummaryPdf, setShowSummaryPdf] = useState(false);
 
  useEffect(() => {
  if (teacherId) {
@@ -83,10 +90,20 @@ export default function StudentsPage() {
         }
     };
 
+    const fetchViolations = async (studentId: string) => {
+        try {
+            const res = await ViolationService.getStudentViolations(studentId);
+            setViolations(res?.data || []);
+        } catch (err) {
+            console.error("Failed to load violations:", err);
+        }
+    };
+
     const handleSelectStudent = async (student: StudentListItem) => {
         setSelectedStudent(student);
         setModalVisible(true);
         setDetailsTab('info');
+        fetchViolations(student.id);
         try {
             setDetailsLoading(true);
             setStudentDetails(null);
@@ -206,7 +223,7 @@ export default function StudentsPage() {
 
                         {/* Navigation Tabs */}
                         <View className="flex-row px-6 my-4 gap-2">
-                            {(['info', 'attendance', 'performance'] as const).map((tab) => (
+                            {(['info', 'attendance', 'performance', 'disciplinary'] as const).map((tab) => (
                                 <TouchableOpacity
                                     key={tab}
                                     onPress={() => setDetailsTab(tab)}
@@ -216,12 +233,12 @@ export default function StudentsPage() {
                                             : "bg-gray-100 dark:bg-[#161B22]"
                                     }`}
                                 >
-                                    <Text className={`font-bold text-xs uppercase tracking-wider ${
+                                    <Text className={`font-bold text-[11px] uppercase tracking-wider ${
                                         detailsTab === tab 
                                             ? "text-white" 
                                             : "text-gray-500 dark:text-gray-400"
                                     }`}>
-                                        {tab}
+                                        {tab === 'disciplinary' ? 'Conduct' : tab}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -274,6 +291,15 @@ export default function StudentsPage() {
                                                     </TouchableOpacity>
                                                 </>
                                             )}
+                                            <TouchableOpacity
+                                                onPress={() => setShowSummaryPdf(true)}
+                                                className="bg-blue-500/15 px-2.5 py-1 rounded-lg flex-row items-center gap-1"
+                                            >
+                                                <FileText size={10} color="#3B82F6" />
+                                                <Text className="text-[#3B82F6] text-[10px] font-bold uppercase tracking-wider">
+                                                    Summary PDF
+                                                </Text>
+                                            </TouchableOpacity>
                                         </View>
                                     </View>
                                 </View>
@@ -467,6 +493,27 @@ export default function StudentsPage() {
                                         )}
                                     </View>
                                 )}
+
+                                {detailsTab === 'disciplinary' && (
+                                    <View>
+                                        <View className="flex-row justify-between items-center mb-4">
+                                            <Text className="text-sm font-bold text-gray-400 uppercase tracking-widest">Disciplinary & Conduct</Text>
+                                            <TouchableOpacity
+                                                onPress={() => setShowRecordModal(true)}
+                                                className="bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-xl flex-row items-center gap-1.5"
+                                            >
+                                                <ShieldAlert size={14} color="#EF4444" />
+                                                <Text className="text-red-500 font-bold text-xs">Record Infraction</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <ViolationList
+                                            violations={violations}
+                                            studentId={selectedStudent?.id}
+                                            canResolve={true}
+                                            onRefresh={() => selectedStudent && fetchViolations(selectedStudent.id)}
+                                        />
+                                    </View>
+                                )}
                             </ScrollView>
                         )}
                     </View>
@@ -481,6 +528,8 @@ export default function StudentsPage() {
                     full_name: studentDetails?.profile?.full_name || selectedStudent.users.full_name,
                     class_id: studentDetails?.profile?.class_id,
                     current_class_name: studentDetails?.profile?.class_name || selectedStudent.grade_level,
+                    grade_level: studentDetails?.profile?.grade_level || selectedStudent.grade_level,
+                    form_level: studentDetails?.profile?.form_level || selectedStudent.form_level,
                 } : null}
                 onClose={() => setShowTransferModal(false)}
                 onSuccess={() => {
@@ -488,6 +537,31 @@ export default function StudentsPage() {
                     setModalVisible(false);
                 }}
             />
+
+            {/* Record Violation Modal */}
+            {selectedStudent && (
+                <RecordViolationModal
+                    visible={showRecordModal}
+                    onClose={() => setShowRecordModal(false)}
+                    studentId={selectedStudent.id}
+                    studentName={studentDetails?.profile?.full_name || selectedStudent.users?.full_name}
+                    onSuccess={() => {
+                        fetchViolations(selectedStudent.id);
+                        fetchStudents();
+                    }}
+                />
+            )}
+
+            {/* Institutional Summary PDF Preview Modal */}
+            {selectedStudent && (
+                <PdfPreviewModal
+                    visible={showSummaryPdf}
+                    onClose={() => setShowSummaryPdf(false)}
+                    title={`Institutional Summary - ${studentDetails?.profile?.full_name || selectedStudent.users?.full_name || 'Student'}`}
+                    pdfEndpoint={`/api/users/${selectedStudent.id}/institutional-summary-pdf`}
+                    fileName={`Institutional_Summary_${(studentDetails?.profile?.full_name || selectedStudent.users?.full_name || 'Student').replace(/\s+/g, '_')}.pdf`}
+                />
+            )}
         </View>
     );
 }

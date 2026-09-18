@@ -2,10 +2,13 @@ const express = require("express");
 const router = express.Router();
 const { authMiddleware } = require("../middleware/auth.middleware.js");
 const { authorizeRoles } = require("../middleware/authRole.js");
-const { getMyFinance, getMyTimetable, getMyAnnouncements, listStudents } = require("../controllers/student.controller.js");
+const { getMyFinance, getMyTimetable, getMyAnnouncements, listStudents, getMyProfile } = require("../controllers/student.controller.js");
 
 // All routes require authentication
 router.use(authMiddleware);
+
+// Get My Profile (Student only)
+router.get("/me/profile", authorizeRoles(['student']), getMyProfile);
 
 // Get My Finance Data (Student only)
 router.get("/me/finance", authorizeRoles(['student']), getMyFinance);

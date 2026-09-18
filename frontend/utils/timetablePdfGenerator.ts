@@ -445,84 +445,14 @@ export async function downloadTimetablePdf(options: TimetablePdfOptions): Promis
   const fileName = normalizePdfFileName(options.fileName || `${options.title}-${formatLocalDateKey(new Date())}`);
 
   try {
-    const useBase64 = Platform.OS === 'web';
-    const printResult = await Print.printToFileAsync({
+    const { PdfService } = require('@/services/PdfService');
+    await PdfService.downloadCompiledPdf({
+      documentType: 'timetable',
+      data: options,
+      title: options.title || 'Timetable',
+      fileName,
       html,
-      base64: useBase64,
     });
-
-    const uri = (printResult as any)?.uri as string | undefined;
-    const base64 = (printResult as any)?.base64 as string | undefined;
-
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !== 'undefined') {
-      if (base64) {
-        const binary = window.atob(base64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i += 1) {
-          bytes.set([binary.charCodeAt(i)], i);
-        }
-
-        const blob = new Blob([bytes], { type: 'application/pdf' });
-        const blobUrl = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = blobUrl;
-        anchor.download = fileName;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        URL.revokeObjectURL(blobUrl);
-        return;
-      }
-
-      if (uri) {
-        const anchor = document.createElement('a');
-        anchor.href = uri;
-        anchor.download = fileName;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        return;
-      }
-
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(html);
-        printWindow.document.close();
-        setTimeout(() => {
-          printWindow.focus();
-          printWindow.print();
-        }, 250);
-      }
-      return;
-    }
-
-    const isAvailable = await Sharing.isAvailableAsync();
-    if (isAvailable) {
-      if (!uri) {
-        throw new Error('PDF URI unavailable for sharing');
-      }
-
-      let shareUri = uri;
-      try {
-        const sourceFile = new File(uri);
-        const targetFile = new File(Paths.cache, fileName);
-        if (targetFile.exists) {
-          targetFile.delete();
-        }
-        await sourceFile.copy(targetFile);
-        shareUri = targetFile.uri;
-      } catch (renameErr) {
-        console.warn('Unable to rename PDF before share:', renameErr);
-      }
-
-      await Sharing.shareAsync(shareUri, {
-        UTI: '.pdf',
-        mimeType: 'application/pdf',
-        dialogTitle: `Download ${options.title || 'Timetable'} PDF`,
-      });
-    } else {
-      await Print.printAsync({ uri });
-    }
   } catch (err) {
     console.error('Failed to generate timetable PDF:', err);
     throw err;

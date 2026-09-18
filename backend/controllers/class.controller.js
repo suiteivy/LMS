@@ -932,6 +932,7 @@ exports.createClass = async (req, res) => {
         }
         if (capacity !== undefined) insertData.capacity = capacity;
         if (teacher_id !== undefined) insertData.teacher_id = teacher_id;
+        if (req.body?.is_final_level !== undefined) insertData.is_final_level = Boolean(req.body.is_final_level);
 
         const isStandalone = (
             (!insertData.stream_id) &&
@@ -1037,6 +1038,7 @@ exports.updateClass = async (req, res) => {
         }
         if (capacity !== undefined) updates.capacity = capacity;
         if (teacher_id !== undefined) updates.teacher_id = teacher_id || null;
+        if (req.body?.is_final_level !== undefined) updates.is_final_level = Boolean(req.body.is_final_level);
 
         if (Object.keys(updates).length === 0) {
             return res.status(400).json({ error: "No fields to update" });
@@ -2054,6 +2056,71 @@ exports.rejectStudentTransfer = async (req, res) => {
         });
     } catch (err) {
         console.error("rejectStudentTransfer error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Toggle or set is_final_level for a class or all classes in that level
+ */
+exports.setClassFinalLevel = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { is_final_level, apply_to_level } = req.body;
+        const institution_id = req.institution_id;
+
+        const { data: targetClass, error: findErr } = await supabase
+            .from("classes")
+            .select("id, institution_id, grade_level, form_level, level_id")
+            .eq("id", id)
+            .single();
+
+        if (findErr || !targetClass) {
+            return res.status(404).json({ error: "Class not found" });
+        }
+
+        const finalLevelVal = is_final_level !== undefined ? Boolean(is_final_level) : true;
+
+        if (apply_to_level) {
+            let query = supabase
+                .from("classes")
+                .update({ is_final_level: finalLevelVal })
+                .eq("institution_id", institution_id || targetClass.institution_id);
+
+            if (targetClass.level_id) {
+                query = query.eq("level_id", targetClass.level_id);
+            } else if (targetClass.grade_level !== null && targetClass.grade_level !== undefined) {
+                query = query.eq("grade_level", targetClass.grade_level);
+            } else if (targetClass.form_level !== null && targetClass.form_level !== undefined) {
+                query = query.eq("form_level", targetClass.form_level);
+            } else {
+                query = query.eq("id", id);
+            }
+
+            const { error: batchErr } = await query;
+            if (batchErr) throw batchErr;
+
+            return res.json({
+                message: "Final level status updated for all classes in this level",
+                is_final_level: finalLevelVal,
+            });
+        }
+
+        const { data: updated, error: updateErr } = await supabase
+            .from("classes")
+            .update({ is_final_level: finalLevelVal })
+            .eq("id", id)
+            .select()
+            .single();
+
+        if (updateErr) throw updateErr;
+
+        res.json({
+            message: "Class final level status updated",
+            class: updated,
+        });
+    } catch (err) {
+        console.error("setClassFinalLevel error:", err);
         res.status(500).json({ error: err.message });
     }
 };

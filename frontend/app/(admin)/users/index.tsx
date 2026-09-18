@@ -19,6 +19,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SettingsService } from '@/services/SettingsService';
 import { AdminPasswordResetModal, VerificationDetails } from '@/components/auth/AdminPasswordResetModal';
+import { CredentialRequestsSection } from '@/components/admin/CredentialRequestsSection';
 import Toast from 'react-native-toast-message';
 
 export default function UsersManagementScreen() {
@@ -33,7 +34,7 @@ export default function UsersManagementScreen() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeFilter, setActiveFilter] = useState<'all' | 'student' | 'teacher' | 'admin'>('all');
+    const [activeFilter, setActiveFilter] = useState<'all' | 'student' | 'teacher' | 'admin' | 'requests'>('all');
 
     // System-wide standardized confirmation modal state
     const [confirmModalConfig, setConfirmModalConfig] = useState<{
@@ -248,6 +249,11 @@ export default function UsersManagementScreen() {
 
             query = query.order('created_at', { ascending: false });
 
+            if (activeFilter === 'requests') {
+                setLoading(false);
+                return;
+            }
+
             if (activeFilter !== 'all') query = query.eq('role', activeFilter);
 
             const { data, error } = await query;
@@ -308,7 +314,7 @@ export default function UsersManagementScreen() {
         (user.displayId?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
     );
 
-    const FILTERS = ['all', 'student', 'teacher', 'admin'] as const;
+    const FILTERS = ['all', 'student', 'teacher', 'admin', 'requests'] as const;
 
     return (
         <View style={{ flex: 1, backgroundColor: bg }}>
@@ -364,6 +370,7 @@ export default function UsersManagementScreen() {
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                     {FILTERS.map(filter => {
                         const isActive = activeFilter === filter;
+                        const label = filter === 'requests' ? 'Credential Requests' : filter;
                         return (
                             <TouchableOpacity
                                 key={filter}
@@ -379,7 +386,7 @@ export default function UsersManagementScreen() {
                                     fontWeight: '600', fontSize: 13, textTransform: 'capitalize',
                                     color: isActive ? '#FF6900' : textSecondary,
                                 }}>
-                                    {filter}
+                                    {label}
                                 </Text>
                             </TouchableOpacity>
                         );
@@ -387,8 +394,10 @@ export default function UsersManagementScreen() {
                 </ScrollView>
             </View>
 
-            {/* User list */}
-            {loading ? (
+            {/* User list or Credential Requests view */}
+            {activeFilter === 'requests' ? (
+                <CredentialRequestsSection />
+            ) : loading ? (
                 <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
                     <ListItemSkeleton loading={loading} count={6} label="Loading users..." />
                 </View>
@@ -405,6 +414,7 @@ export default function UsersManagementScreen() {
                             <UserCard
                                 user={item}
                                 showActions={true}
+                                onMasterRecordPress={u => router.push(`/(admin)/users/${u.id}/master-record` as Href)}
                                 onResetCredentialsPress={item.id === profile?.id ? undefined : openCredentialReset}
                                 onMarkLeaverPress={item.id === profile?.id ? undefined : handleMarkLeaver}
                                 onReactivatePress={item.id === profile?.id ? undefined : handleReactivate}

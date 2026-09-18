@@ -453,3 +453,103 @@ exports.listStudents = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+/**
+ * Get authenticated student's profile, academic status, active clearance, and violation counts.
+ */
+exports.getMyProfile = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const institutionId = req.institution_id || req.user?.institution_id;
+
+        const { data: user, error: userErr } = await supabase
+            .from('users')
+            .select(`
+                id, first_name, last_name, full_name, email, role, phone, address, gender, date_of_birth, avatar_url, created_at,
+                students(id, admission_number, grade_level, form_level, enrollment_status, created_at)
+            `)
+            .eq('id', userId)
+            .single();
+
+        if (userErr || !user) {
+            return res.status(404).json({ error: "Student profile not found" });
+        }
+
+        const student = Array.isArray(user.students) ? user.students[0] : user.students;
+
+        let currentClass = null;
+        if (student?.id) {
+            try {
+                currentClass = await getStudentCurrentClassEnrollment(student.id);
+            } catch (e) {
+                console.warn("Class enrollment lookup warning:", e.message);
+            }
+        }
+
+        let violationsCount = 0;
+        if (student?.id) {
+            try {
+                const { count } = await supabase
+                    .from('student_violations')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('student_id', student.id)
+                    .eq('status', 'active');
+                violationsCount = count || 0;
+            } catch (e) {
+                violationsCount = 0;
+            }
+        }
+
+        let activeClearance = null;
+        try {
+            const { data: clearance } = await supabase
+                .from('clearance_processes')
+                .select('*')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (clearance) {
+                activeClearance = clearance;
+            }
+        } catch (e) {
+            activeClearance = null;
+        }
+
+        return res.json({
+            success: true,
+            data: {
+                personal: {
+                    id: student?.id,
+                    user_id: user.id,
+                    full_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Student',
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    email: user.email,
+                    phone: user.phone,
+                    address: user.address,
+                    gender: user.gender,
+                    date_of_birth: user.date_of_birth,
+                    avatar_url: user.avatar_url,
+                    enrollment_status: student?.enrollment_status || 'active',
+                    created_at: user.created_at,
+                },
+                academic: {
+                    student_id: student?.id,
+                    admission_number: student?.admission_number,
+                    current_class: currentClass ? {
+                        id: currentClass.class_id,
+                        name: currentClass.class_name,
+                    } : null,
+                    active_violations_count: violationsCount,
+                },
+                clearance: activeClearance,
+            },
+        });
+    } catch (err) {
+        console.error("getMyProfile student error:", err);
+        return res.status(500).json({ error: "Server error retrieving student profile" });
+    }
+};
+

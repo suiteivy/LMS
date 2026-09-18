@@ -22,13 +22,17 @@ import {
   LogOut,
   MessageSquare,
   TrendingUp,
-  UserCircle
+  UserCircle,
+  ShieldAlert,
+  X
 } from 'lucide-react-native';
 import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
 import React, { useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SubscriptionBanner } from "@/components/shared/SubscriptionComponents";
 import { clearParentSelectedChild, getParentSelectedChild, setParentSelectedChild } from "@/utils/parentSelectedChild";
+import { ViolationService, StudentViolation } from "@/services/ViolationService";
+import { ViolationList } from "@/components/violations/ViolationList";
 
 export default function ParentIndex() {
   const { profile, loading, logout } = useAuth();
@@ -55,6 +59,8 @@ function ParentDashboard({ user, logout }: any) {
   const [linkedStudents, setLinkedStudents] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [studentData, setStudentData] = useState<any>({});
+  const [childViolations, setChildViolations] = useState<StudentViolation[]>([]);
+  const [showConductModal, setShowConductModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -131,6 +137,10 @@ function ParentDashboard({ user, logout }: any) {
       };
       setStudentData(computed);
       CacheService.set(detailCacheKey, computed, 10 * 60 * 1000);
+
+      // Fetch student disciplinary conduct
+      const vRes = await ViolationService.getStudentViolations(studentId).catch(() => ({ data: [] }));
+      setChildViolations(vRes.data || []);
     } catch (error) {
       console.error("Error fetching student details:", error);
     }
@@ -246,6 +256,20 @@ function ParentDashboard({ user, logout }: any) {
       label: "Support",
       color: "#6366f1",
       onPress: () => goTo("/(parent)/support"),
+      show: true,
+    },
+    {
+      icon: ShieldAlert,
+      label: "Conduct Log",
+      color: "#f43f5e",
+      onPress: () => setShowConductModal(true),
+      show: true,
+    },
+    {
+      icon: BookOpenCheck,
+      label: "Clearance",
+      color: "#10b981",
+      onPress: () => goTo("/(parent)/clearance"),
       show: true,
     },
   ].filter((action) => action.show);
@@ -458,6 +482,47 @@ function ParentDashboard({ user, logout }: any) {
           )}
         </View>
       </ScrollView>
+
+      {/* Conduct & Disciplinary Modal */}
+      <Modal visible={showConductModal} transparent animationType="fade" onRequestClose={() => setShowConductModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+          <View
+            style={{
+              backgroundColor: isDark ? '#161B22' : '#FFFFFF',
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: isDark ? '#21262D' : '#D0D7DE',
+              width: '100%',
+              maxWidth: 560,
+              maxHeight: '85%',
+              padding: 22,
+            }}
+          >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <View>
+                <Text style={{ color: isDark ? '#F9FAFB' : '#111827', fontSize: 18, fontWeight: '900' }}>
+                  Student Behavioral & Conduct History
+                </Text>
+                <Text style={{ color: isDark ? '#9CA3AF' : '#6B7280', fontSize: 12, marginTop: 2 }}>
+                  Student: {selectedStudent?.users?.full_name || selectedStudent?.first_name || 'Child'}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowConductModal(false)} style={{ padding: 4 }}>
+                <X size={20} color={isDark ? '#9CA3AF' : '#6B7280'} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ paddingBottom: 10 }}>
+              <ViolationList
+                violations={childViolations}
+                studentId={selectedStudent?.id}
+                framing="constructive"
+                onRefresh={() => selectedStudent && fetchStudentDetails(selectedStudent.id)}
+              />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

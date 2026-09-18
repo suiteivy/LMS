@@ -15,6 +15,7 @@ interface UserCardProps extends BaseComponentProps {
     onDeletePress?: (user: User) => void;
     onMarkLeaverPress?: (user: User) => void;
     onReactivatePress?: (user: User) => void;
+    onMasterRecordPress?: (user: User) => void;
     showBackButton?: boolean;
     onBackPress?: () => void;
 }
@@ -29,6 +30,7 @@ export const UserCard: React.FC<UserCardProps> = ({
     onDeletePress,
     onMarkLeaverPress,
     onReactivatePress,
+    onMasterRecordPress,
     showBackButton = false,
     onBackPress,
     className = "",
@@ -241,6 +243,18 @@ export const UserCard: React.FC<UserCardProps> = ({
 
                     {showActions && (
                         <View className="flex-row items-center gap-1.5">
+                            {onMasterRecordPress && (
+                                <ActionTooltip text="Master Record">
+                                    <TouchableOpacity
+                                        onPress={(e) => { e.stopPropagation(); onMasterRecordPress(user); }}
+                                        className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-500/20 items-center justify-center"
+                                        activeOpacity={0.7}
+                                        accessibilityLabel="Master Record"
+                                    >
+                                        <MaterialCommunityIcons name="file-document-outline" size={15} color="#3B82F6" />
+                                    </TouchableOpacity>
+                                </ActionTooltip>
+                            )}
                             {onResetCredentialsPress && (
                                 <ActionTooltip text="Reset credentials">
                                     <TouchableOpacity
@@ -368,6 +382,18 @@ export const UserCard: React.FC<UserCardProps> = ({
 
                         {showActions && (
                             <View className="flex-col gap-1.5">
+                                {onMasterRecordPress && (
+                                    <ActionTooltip text="View Master Record">
+                                        <TouchableOpacity
+                                            onPress={(e) => { e.stopPropagation(); onMasterRecordPress(user); }}
+                                            className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-500/20 items-center justify-center"
+                                            activeOpacity={0.7}
+                                            accessibilityLabel="View Master Record"
+                                        >
+                                            <MaterialCommunityIcons name="file-document-outline" size={18} color="#3B82F6" />
+                                        </TouchableOpacity>
+                                    </ActionTooltip>
+                                )}
                                 {onResetCredentialsPress && (
                                     <ActionTooltip text="Reset credentials">
                                         <TouchableOpacity

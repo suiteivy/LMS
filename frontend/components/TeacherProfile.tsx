@@ -37,8 +37,10 @@ export default function TeacherProfile() {
 
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState<any>(null);
+  const [myRequests, setMyRequests] = useState<any[]>([]);
   const [requestModalVisible, setRequestModalVisible] = useState(false);
-  const [requestedName, setRequestedName] = useState("");
+  const [requestType, setRequestType] = useState<'name_change' | 'email_reset'>('name_change');
+  const [requestedValue, setRequestedValue] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -52,10 +54,14 @@ export default function TeacherProfile() {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/teacher/profile");
+      const [res, reqs] = await Promise.all([
+        api.get("/teacher/profile"),
+        api.get("/auth/credential-requests/me").catch(() => ({ data: { data: [] } })),
+      ]);
       if (res.data?.success && res.data?.data) {
         setProfileData(res.data.data);
       }
+      setMyRequests(reqs.data?.data || []);
     } catch (err: any) {
       console.error("Failed to fetch teacher profile:", err);
       showError("Profile Error", err.response?.data?.error || "Could not load detailed teacher profile");
@@ -68,32 +74,36 @@ export default function TeacherProfile() {
     fetchProfile();
   }, []);
 
-  const handleNameChangeSubmit = async () => {
-    if (!requestedName.trim()) {
-      Alert.alert("Required", "Please provide the requested full name.");
+  const handleCredentialRequestSubmit = async () => {
+    if (!requestedValue.trim()) {
+      Alert.alert("Required", `Please provide the requested ${requestType === 'email_reset' ? 'email address' : 'full name'}.`);
       return;
     }
     if (!reason.trim()) {
-      Alert.alert("Required", "Please provide the reason for this name change.");
+      Alert.alert("Required", "Please provide the reason for this request.");
       return;
     }
 
     try {
       setSubmitting(true);
-      const res = await api.post("/teacher/profile/request-name-change", {
-        requested_name: requestedName.trim(),
+      const res = await api.post("/auth/credential-requests", {
+        request_type: requestType,
+        requested_value: requestedValue.trim(),
         reason: reason.trim(),
       });
 
       if (res.data?.success) {
-        showSuccess("Request Submitted", "Your name change request has been submitted for admin approval.");
+        showSuccess(
+          "Request Submitted",
+          `Your ${requestType === 'email_reset' ? 'email reset' : 'name change'} request has been submitted for administrator review.`
+        );
         setRequestModalVisible(false);
-        setRequestedName("");
+        setRequestedValue("");
         setReason("");
         await fetchProfile();
       }
     } catch (err: any) {
-      console.error("Failed to submit name change:", err);
+      console.error("Failed to submit credential request:", err);
       Alert.alert("Submission Failed", err.response?.data?.error || "Unable to submit request.");
     } finally {
       setSubmitting(false);
@@ -118,11 +128,14 @@ export default function TeacherProfile() {
   const avatarUri = resolveAvatarUri(personal?.avatar_url || profile?.avatar_url);
 
   const fullName = personal?.full_name || `${personal?.first_name || ""} ${personal?.last_name || ""}`.trim() || "Teacher";
+  const pendingNameChange = myRequests.find((r: any) => r.request_type === 'name_change' && r.status === 'pending') || pendingChange;
+  const pendingEmailReset = myRequests.find((r: any) => r.request_type === 'email_reset' && r.status === 'pending');
+  const recentRejected = myRequests.find((r: any) => r.status === 'rejected');
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-      {/* Pending Request Banner */}
-      {pendingChange && (
+      {/* Pending Name Change Banner */}
+      {pendingNameChange && (
         <View
           style={{
             backgroundColor: isDark ? "rgba(255, 105, 0, 0.12)" : "#FFF7ED",
@@ -130,7 +143,7 @@ export default function TeacherProfile() {
             borderWidth: 1,
             borderRadius: 14,
             padding: 14,
-            marginBottom: 16,
+            marginBottom: 12,
             flexDirection: "row",
             alignItems: "flex-start",
           }}
@@ -141,13 +154,71 @@ export default function TeacherProfile() {
               Name Change Request Pending Review
             </Text>
             <Text style={{ color: isDark ? "#E5E7EB" : "#7C2D12", fontSize: 12, marginTop: 2 }}>
-              Requested: <Text style={{ fontWeight: "700" }}>{pendingChange.requested_name}</Text>
+              Requested: <Text style={{ fontWeight: "700" }}>{pendingNameChange.requested_value || pendingNameChange.requested_name}</Text>
             </Text>
             <Text style={{ color: textSecondary, fontSize: 11, marginTop: 2 }}>
-              Reason: {pendingChange.reason}
+              Reason: {pendingNameChange.reason}
             </Text>
             <Text style={{ color: textSecondary, fontSize: 10, marginTop: 4, fontStyle: "italic" }}>
-              Status: Under administrative review · New credentials will be issued upon approval
+              Status: Under administrative review · New record will be updated upon approval
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Pending Email Reset Banner */}
+      {pendingEmailReset && (
+        <View
+          style={{
+            backgroundColor: isDark ? "rgba(139, 92, 246, 0.12)" : "#F5F3FF",
+            borderColor: "#8B5CF6",
+            borderWidth: 1,
+            borderRadius: 14,
+            padding: 14,
+            marginBottom: 12,
+            flexDirection: "row",
+            alignItems: "flex-start",
+          }}
+        >
+          <AlertCircle size={20} color="#8B5CF6" style={{ marginRight: 10, marginTop: 2 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: isDark ? "#C4B5FD" : "#5B21B6", fontWeight: "800", fontSize: 13 }}>
+              Email Reset Request Pending Review
+            </Text>
+            <Text style={{ color: isDark ? "#E5E7EB" : "#4C1D95", fontSize: 12, marginTop: 2 }}>
+              Requested Email: <Text style={{ fontWeight: "700" }}>{pendingEmailReset.requested_value}</Text>
+            </Text>
+            <Text style={{ color: textSecondary, fontSize: 11, marginTop: 2 }}>
+              Reason: {pendingEmailReset.reason}
+            </Text>
+            <Text style={{ color: textSecondary, fontSize: 10, marginTop: 4, fontStyle: "italic" }}>
+              Status: Under administrative review · New temporary credentials will be issued upon approval
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Recent Rejection Notice */}
+      {recentRejected && recentRejected.admin_notes && (
+        <View
+          style={{
+            backgroundColor: isDark ? "rgba(239, 68, 68, 0.12)" : "#FEF2F2",
+            borderColor: "#EF4444",
+            borderWidth: 1,
+            borderRadius: 14,
+            padding: 14,
+            marginBottom: 12,
+            flexDirection: "row",
+            alignItems: "flex-start",
+          }}
+        >
+          <AlertCircle size={20} color="#EF4444" style={{ marginRight: 10, marginTop: 2 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: isDark ? "#FCA5A5" : "#991B1B", fontWeight: "800", fontSize: 13 }}>
+              {recentRejected.request_type === 'email_reset' ? 'Email Reset' : 'Name Change'} Request Rejected
+            </Text>
+            <Text style={{ color: isDark ? "#E5E7EB" : "#7F1D1D", fontSize: 12, marginTop: 2 }}>
+              Administrative Reason: <Text style={{ fontWeight: "700" }}>{recentRejected.admin_notes}</Text>
             </Text>
           </View>
         </View>
@@ -189,28 +260,60 @@ export default function TeacherProfile() {
             </Text>
           </View>
 
-          {/* Request Name Change Button */}
-          <TouchableOpacity
-            onPress={() => setRequestModalVisible(true)}
-            disabled={!!pendingChange}
-            style={{
-              marginTop: 14,
-              paddingVertical: 8,
-              paddingHorizontal: 14,
-              borderRadius: 10,
-              backgroundColor: pendingChange ? (isDark ? "#21262D" : "#E5E7EB") : (isDark ? "rgba(255, 105, 0, 0.15)" : "#FFF7ED"),
-              borderWidth: 1,
-              borderColor: pendingChange ? "transparent" : orange,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            <Send size={13} color={pendingChange ? textSecondary : orange} />
-            <Text style={{ color: pendingChange ? textSecondary : orange, fontSize: 12, fontWeight: "700" }}>
-              {pendingChange ? "Name Change Pending" : "Request Name Change"}
-            </Text>
-          </TouchableOpacity>
+          {/* Action Buttons: Request Name Change & Request Email Reset */}
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 14, flexWrap: "wrap", justifyContent: "center" }}>
+            <TouchableOpacity
+              onPress={() => {
+                setRequestType('name_change');
+                setRequestedValue('');
+                setReason('');
+                setRequestModalVisible(true);
+              }}
+              disabled={!!pendingNameChange}
+              style={{
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderRadius: 10,
+                backgroundColor: pendingNameChange ? (isDark ? "#21262D" : "#E5E7EB") : (isDark ? "rgba(255, 105, 0, 0.15)" : "#FFF7ED"),
+                borderWidth: 1,
+                borderColor: pendingNameChange ? "transparent" : orange,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Send size={13} color={pendingNameChange ? textSecondary : orange} />
+              <Text style={{ color: pendingNameChange ? textSecondary : orange, fontSize: 12, fontWeight: "700" }}>
+                {pendingNameChange ? "Name Change Pending" : "Request Name Change"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setRequestType('email_reset');
+                setRequestedValue('');
+                setReason('');
+                setRequestModalVisible(true);
+              }}
+              disabled={!!pendingEmailReset}
+              style={{
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderRadius: 10,
+                backgroundColor: pendingEmailReset ? (isDark ? "#21262D" : "#E5E7EB") : (isDark ? "rgba(139, 92, 246, 0.15)" : "#F5F3FF"),
+                borderWidth: 1,
+                borderColor: pendingEmailReset ? "transparent" : "#8B5CF6",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Send size={13} color={pendingEmailReset ? textSecondary : "#8B5CF6"} />
+              <Text style={{ color: pendingEmailReset ? textSecondary : "#8B5CF6", fontSize: 12, fontWeight: "700" }}>
+                {pendingEmailReset ? "Email Reset Pending" : "Request Email Reset"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Contact Info Rows */}
@@ -381,7 +484,7 @@ export default function TeacherProfile() {
         )}
       </View>
 
-      {/* Request Name Change Modal */}
+      {/* Request Credential Change Modal (Name Change or Email Reset) */}
       <Modal visible={requestModalVisible} transparent animationType="fade" onRequestClose={() => setRequestModalVisible(false)}>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 16 }}>
           <View
@@ -402,7 +505,9 @@ export default function TeacherProfile() {
           >
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <View>
-                <Text style={{ color: textPrimary, fontSize: 18, fontWeight: "900" }}>Request Name Change</Text>
+                <Text style={{ color: textPrimary, fontSize: 18, fontWeight: "900" }}>
+                  {requestType === 'email_reset' ? 'Request Email Reset' : 'Request Name Change'}
+                </Text>
                 <Text style={{ color: textSecondary, fontSize: 12, marginTop: 2 }}>
                   Submits a formal request to your school administrator
                 </Text>
@@ -413,13 +518,17 @@ export default function TeacherProfile() {
             </View>
 
             <View style={{ backgroundColor: isDark ? "#0F141C" : "#F6F8FA", padding: 12, borderRadius: 10, marginBottom: 14, borderWidth: 1, borderColor: border }}>
-              <Text style={{ color: textSecondary, fontSize: 11, fontWeight: "700", textTransform: "uppercase" }}>Current Registered Name</Text>
-              <Text style={{ color: textPrimary, fontSize: 14, fontWeight: "800", marginTop: 2 }}>{fullName}</Text>
+              <Text style={{ color: textSecondary, fontSize: 11, fontWeight: "700", textTransform: "uppercase" }}>
+                {requestType === 'email_reset' ? 'Current Registered Email' : 'Current Registered Name'}
+              </Text>
+              <Text style={{ color: textPrimary, fontSize: 14, fontWeight: "800", marginTop: 2 }}>
+                {requestType === 'email_reset' ? (personal.email || 'N/A') : fullName}
+              </Text>
             </View>
 
             <View style={{ marginBottom: 12 }}>
               <Text style={{ color: textSecondary, fontSize: 12, fontWeight: "700", marginBottom: 6 }}>
-                New Requested Name *
+                {requestType === 'email_reset' ? 'New Requested Email Address *' : 'New Requested Name *'}
               </Text>
               <TextInput
                 style={{
@@ -432,10 +541,12 @@ export default function TeacherProfile() {
                   color: textPrimary,
                   fontSize: 14,
                 }}
-                placeholder="Enter your official new name"
+                placeholder={requestType === 'email_reset' ? 'e.g. teacher.official@school.edu' : 'Enter your official new name'}
                 placeholderTextColor={textSecondary}
-                value={requestedName}
-                onChangeText={setRequestedName}
+                value={requestedValue}
+                onChangeText={setRequestedValue}
+                keyboardType={requestType === 'email_reset' ? 'email-address' : 'default'}
+                autoCapitalize={requestType === 'email_reset' ? 'none' : 'words'}
               />
             </View>
 
@@ -458,7 +569,11 @@ export default function TeacherProfile() {
                 }}
                 multiline
                 numberOfLines={3}
-                placeholder="State the reason (e.g. Marriage, Legal Deed Poll, Gazette Notice)"
+                placeholder={
+                  requestType === 'email_reset'
+                    ? 'State the reason for email reset (e.g. Lost access, provider change, official alias)'
+                    : 'State the reason (e.g. Marriage, Legal Deed Poll, Gazette Notice)'
+                }
                 placeholderTextColor={textSecondary}
                 value={reason}
                 onChangeText={setReason}
@@ -481,13 +596,13 @@ export default function TeacherProfile() {
                 <Text style={{ color: textSecondary, fontWeight: "700", fontSize: 13 }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={handleNameChangeSubmit}
+                onPress={handleCredentialRequestSubmit}
                 disabled={submitting}
                 style={{
                   flex: 1,
                   paddingVertical: 12,
                   borderRadius: 10,
-                  backgroundColor: orange,
+                  backgroundColor: requestType === 'email_reset' ? '#8B5CF6' : orange,
                   alignItems: "center",
                   flexDirection: "row",
                   justifyContent: "center",

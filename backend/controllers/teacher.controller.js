@@ -626,13 +626,31 @@ exports.getStudentDetails = async (req, res) => {
         }
 
         // 3. Determine if teacher is Class Teacher for this student's class
-        const { data: classEnrollment } = await supabase
-            .from('class_enrollments')
-            .select('class_id, classes!inner(teacher_id)')
-            .eq('student_id', studentId)
-            .maybeSingle();
+        let classId = student.class_id;
+        let className = null;
 
-        const isDesignatedClassTeacher = !!(classEnrollment && classEnrollment.classes?.teacher_id === teacherId);
+        if (!classId) {
+            const { data: classEnrollment } = await supabase
+                .from('class_enrollments')
+                .select('class_id')
+                .eq('student_id', studentId)
+                .maybeSingle();
+            classId = classEnrollment?.class_id;
+        }
+
+        let isDesignatedClassTeacher = false;
+        if (classId) {
+            const { data: classData } = await supabase
+                .from('classes')
+                .select('id, display_name, grade_level, form_level, stream, teacher_id')
+                .eq('id', classId)
+                .maybeSingle();
+
+            if (classData) {
+                className = classData.display_name || `Grade ${classData.grade_level ?? classData.form_level ?? ''} ${classData.stream ?? ''}`.trim();
+                isDesignatedClassTeacher = classData.teacher_id === teacherId;
+            }
+        }
 
         // 4. Determine if teacher is Subject Teacher for this student
         const teacherSubjectIds = scope ? scope.taughtSubjectIds : [];
@@ -659,11 +677,16 @@ exports.getStudentDetails = async (req, res) => {
             }
             isClassTeacher = true;
         } else {
-            // Subject mode
-            if (!teachesStudent) {
-                return res.status(403).json({ error: "Access denied: You do not teach this student" });
+            // General or subject mode: grant class teacher access if designated, otherwise verify subject teaching
+            if (!teachesStudent && !isDesignatedClassTeacher) {
+                return res.status(403).json({ error: "Access denied: You do not teach or manage this student" });
             }
-            isSubjectTeacher = true;
+            if (isDesignatedClassTeacher) {
+                isClassTeacher = true;
+            }
+            if (teachesStudent) {
+                isSubjectTeacher = true;
+            }
         }
 
         // 6. Fetch Scoped Data
@@ -685,7 +708,7 @@ exports.getStudentDetails = async (req, res) => {
                 .from('attendance')
                 .select('date, status, notes, subject:subjects(title)')
                 .eq('student_id', studentId)
-                .eq('class_id', classEnrollment?.class_id);
+                .eq('class_id', classId);
             attendance = att || [];
 
             // Fetch all submissions
@@ -740,6 +763,8 @@ exports.getStudentDetails = async (req, res) => {
                 gender: student.users?.gender,
                 date_of_birth: student.users?.date_of_birth,
                 address: student.users?.address,
+                class_id: classId,
+                class_name: className,
                 grade_level: student.grade_level,
                 form_level: student.form_level,
                 academic_year: student.academic_year,
@@ -1037,14 +1062,19 @@ exports.getMyProfile = async (req, res) => {
         let pendingRequest = null;
         try {
             const { data: reqData } = await supabase
-                .from("profile_change_requests")
+                .from("credential_change_requests")
                 .select("*")
                 .eq("user_id", userId)
+                .eq("request_type", "name_change")
                 .eq("status", "pending")
                 .order("created_at", { ascending: false })
                 .limit(1)
                 .maybeSingle();
-            pendingRequest = reqData || null;
+            pendingRequest = reqData ? {
+                ...reqData,
+                requested_name: reqData.requested_value,
+                current_name: reqData.current_value,
+            } : null;
         } catch {
             pendingRequest = null;
         }
@@ -1112,9 +1142,10 @@ exports.requestNameChange = async (req, res) => {
         // Check if pending request already exists
         try {
             const { data: existing } = await supabase
-                .from("profile_change_requests")
+                .from("credential_change_requests")
                 .select("id")
                 .eq("user_id", userId)
+                .eq("request_type", "name_change")
                 .eq("status", "pending")
                 .maybeSingle();
 
@@ -1123,12 +1154,13 @@ exports.requestNameChange = async (req, res) => {
             }
 
             const { data: newReq, error: insertErr } = await supabase
-                .from("profile_change_requests")
+                .from("credential_change_requests")
                 .insert({
                     user_id: userId,
                     institution_id,
-                    current_name: currentName,
-                    requested_name: requested_name.trim(),
+                    request_type: "name_change",
+                    current_value: currentName,
+                    requested_value: requested_name.trim(),
                     reason: reason.trim(),
                     document_url: document_url || null,
                     status: "pending",
@@ -1140,7 +1172,7 @@ exports.requestNameChange = async (req, res) => {
 
             await logRecordChange({
                 institution_id,
-                table_name: "profile_change_requests",
+                table_name: "credential_change_requests",
                 record_id: newReq.id,
                 action: "NAME_CHANGE_REQUESTED",
                 old_data: { current_name: currentName },
