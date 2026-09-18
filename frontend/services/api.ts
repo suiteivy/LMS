@@ -402,10 +402,17 @@ api.interceptors.response.use(
           return Promise.reject({ ...error, isAuthError: true });
         }
         case 403:
+          if (data?.code === 'ACCOUNT_LOCKED') {
+            title = "Account Locked";
+            message = data?.error || "Your account has been temporarily locked due to 4 consecutive failed login attempts. Please reset your password or contact your administrator.";
+            showError(title, message, { code: 'ACCOUNT_LOCKED', autoHide: false });
+            safeSignOut('local', LogoutReason.SESSION_TIMEOUT, true).catch(e => console.warn("safeSignOut error:", e));
+            return Promise.reject({ ...error, isAuthError: true });
+          }
           if (data?.code === 'ACCOUNT_DISABLED') {
             title = "Account Disabled";
             message = data?.error || "Your account has been disabled. Please contact your administrator.";
-            showError(message, title);
+            showError(title, message, { code: 'ACCOUNT_DISABLED', autoHide: false });
             safeSignOut('local', LogoutReason.SESSION_TIMEOUT, true).catch(e => console.warn("safeSignOut error:", e));
             return Promise.reject({ ...error, isAuthError: true });
           }
@@ -424,7 +431,7 @@ api.interceptors.response.use(
           title = "Too Many Requests";
           const retryAfter = Number(data?.retryAfter || 10);
           setRateLimitHold(error.config as InternalAxiosRequestConfig, retryAfter);
-          message = `You're doing that too often. Please wait ${formatRetryAfter(retryAfter)}.`;
+          message = data?.message || data?.error || `You're doing that too often. Please wait ${formatRetryAfter(retryAfter)}.`;
           severity = 'warning';
           break;
         }
@@ -494,12 +501,17 @@ api.interceptors.response.use(
     const canShowRateLimitToast = !isRateLimited || (now - _lastRateLimitToast > RATE_LIMIT_TOAST_COOLDOWN);
 
     if (error.message !== 'canceled' && error.response?.status !== 401 && !skipToast && canShowRateLimitToast) {
+      const errorCode = (error.response?.data as any)?.code;
+      const toastOptions = isRateLimited
+        ? { code: 'RATE_LIMIT_EXCEEDED' }
+        : (errorCode ? { code: errorCode } : undefined);
+
       if (severity === 'warning') {
-        showWarning(title, message);
+        showWarning(title, message, toastOptions);
       } else if (severity === 'info') {
-        showInfo(title, message);
+        showInfo(title, message, toastOptions);
       } else {
-        showError(title, message);
+        showError(title, message, toastOptions);
       }
 
       if (isRateLimited) {

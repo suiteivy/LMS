@@ -937,13 +937,33 @@ exports.getStaffPresence = async (req, res) => {
             .from('teachers')
             .select(`
                 id,
+                user_id,
                 department,
                 position,
-                users:user_id!inner(first_name, last_name, full_name, avatar_url, institution_id)
+                users:user_id!inner(id, first_name, last_name, full_name, avatar_url, institution_id)
             `)
             .eq('users.institution_id', institution_id);
 
         if (tErr) throw tErr;
+
+        // Respect share_staff_presence privacy preference for non-admin staff viewers
+        const isStaffOnlyViewer = (userRole !== 'admin' && userRole !== 'master_admin');
+        const hiddenUserIds = new Set();
+        if (isStaffOnlyViewer && teachers && teachers.length > 0) {
+            const userIds = teachers.map(t => t.user_id).filter(Boolean);
+            if (userIds.length > 0) {
+                const { data: hiddenPrefs } = await supabase
+                    .from('user_preferences')
+                    .select('user_id')
+                    .in('user_id', userIds)
+                    .eq('share_staff_presence', false);
+                (hiddenPrefs || []).forEach(p => hiddenUserIds.add(p.user_id));
+            }
+        }
+
+        const visibleTeachers = isStaffOnlyViewer
+            ? (teachers || []).filter(t => !hiddenUserIds.has(t.user_id))
+            : (teachers || []);
 
         // Fetch attendance records for targetDate
         const { data: attendance, error: aErr } = await supabase
@@ -985,7 +1005,7 @@ exports.getStaffPresence = async (req, res) => {
         const attendanceByTeacher = new Map();
         (attendance || []).forEach(a => attendanceByTeacher.set(a.teacher_id, a));
 
-        const staffList = (teachers || []).map(t => {
+        const staffList = visibleTeachers.map(t => {
             const att = attendanceByTeacher.get(t.id);
             const isScheduled = scheduledTeacherIds.has(t.id);
 

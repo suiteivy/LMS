@@ -21,14 +21,16 @@ const {
     updateSubjectAssessmentSelection,
     getStudentHistoricalReportCards,
     regenerateReportCards
-} = require("../controllers/reportCards.controller.js");
+} = require("../controllers/reportCard.controller.js");
+
+const { rateLimiters } = require("../middleware/rateLimiter.js");
 
 router.use(authMiddleware);
 
 router.get("/", authorizeRoles(["admin", "teacher", "student", "parent"]), getReportCards);
 router.get("/summary", authorizeRoles(["admin", "teacher"]), getReportCardSummary);
 router.get("/completeness", authorizeRoles(["admin", "teacher"]), checkCompleteness);
-router.get("/export/pdf", authorizeRoles(["admin", "teacher", "student", "parent"]), exportReportCardPDF);
+router.get("/export/pdf", rateLimiters.heavyPdf, authorizeRoles(["admin", "teacher", "student", "parent"]), exportReportCardPDF);
 router.get("/assessment-weights", authorizeRoles(["admin", "teacher"]), getAssessmentWeights);
 router.put("/assessment-weights", authorizeRoles(["admin"]), updateAssessmentWeights);
 router.get("/assessments", authorizeRoles(["admin", "teacher"]), getSubjectAssessments);
@@ -37,12 +39,12 @@ router.get("/student-history/:student_id", authorizeRoles(["admin", "teacher", "
 router.get("/:id", authorizeRoles(["admin", "teacher", "student", "parent"]), getReportCard);
 
 router.post("/generate", authorizeRoles(["admin", "teacher"]), generateStudentReportCard);
-router.post("/generate-class", authorizeRoles(["admin", "teacher"]), generateClassReportCards);
-router.post("/regenerate", authorizeRoles(["admin", "teacher"]), regenerateReportCards);
+router.post("/generate-class", rateLimiters.bulkOperations, authorizeRoles(["admin", "teacher"]), generateClassReportCards);
+router.post("/regenerate", rateLimiters.bulkOperations, authorizeRoles(["admin", "teacher"]), regenerateReportCards);
 router.put("/:id/remarks", authorizeRoles(["admin", "teacher"]), updateReportCardRemarks);
 router.put("/:id/publish", authorizeRoles(["admin"]), publishReportCard);
-router.post("/bulk-publish", authorizeRoles(["admin"]), bulkPublishReportCards);
+router.post("/bulk-publish", rateLimiters.bulkOperations, authorizeRoles(["admin"]), bulkPublishReportCards);
 router.put("/:id/release", authorizeRoles(["admin"]), releaseReportCard);
-router.post("/bulk-release", authorizeRoles(["admin"]), bulkReleaseReportCards);
+router.post("/bulk-release", rateLimiters.bulkOperations, authorizeRoles(["admin"]), bulkReleaseReportCards);
 
 module.exports = router;

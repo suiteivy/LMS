@@ -168,6 +168,8 @@ export default function ActiveSessions() {
     );
   }
 
+  const activeCount = sessions.filter(s => s.is_active !== false || s.is_current).length;
+
   return (
     <ScrollView
       className="flex-1"
@@ -177,12 +179,17 @@ export default function ActiveSessions() {
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#FF6900" />
       }
     >
-      <View className="mb-6 flex-row justify-between items-center dark:bg-[#161B22] bg-[#FFFFFF]">
+      <View className="mb-4 flex-row justify-between items-center dark:bg-[#161B22] bg-[#FFFFFF] flex-wrap gap-2">
         <View className="flex-row items-center">
           <View className="bg-orange-500 w-1.5 h-6 rounded-full mr-4 shadow-sm dark:bg-navy" />
-          <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tight uppercase">
-            Active Sessionss
+          <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tight uppercase mr-3">
+            Active Sessions
           </Text>
+          <View className="bg-orange-500/10 dark:bg-orange-950/30 px-2.5 py-0.5 rounded-full border border-orange-500/20">
+            <Text className="text-[#FF6900] dark:text-orange-400 text-xs font-black tracking-wide">
+              {activeCount} / 3 Concurrent Devices
+            </Text>
+          </View>
         </View>
         
         {sessions.length > 1 && (
@@ -203,8 +210,8 @@ export default function ActiveSessions() {
         )}
       </View>
 
-      <Text className="text-gray-400 dark:text-gray-500 text-xs mb-6 px-1">
-        You are currently logged in across the following browsers and devices. Terminate any session remotely to revoke its access immediately.
+      <Text className="text-gray-400 dark:text-gray-500 text-xs mb-6 px-1 leading-relaxed">
+        You are currently logged in across the following browsers and devices (maximum 3 concurrent devices). If you log into a 4th device, your oldest session will be signed out automatically.
       </Text>
 
       {sessions.length === 0 ? (

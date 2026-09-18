@@ -501,8 +501,34 @@ exports.login = async (req, res) => {
       });
     }
 
+    const normalizedEmail = (typeof email === 'string') ? email.trim().toLowerCase() : '';
+
+    // Check account status and failed attempts prior to authentication
+    const { data: userProfile, error: profileCheckError } = await supabase
+      .from('users')
+      .select('id, is_active, disabled_reason, failed_login_attempts')
+      .ilike('email', normalizedEmail)
+      .maybeSingle();
+
+    if (userProfile) {
+      if (userProfile.is_active === false) {
+        if (userProfile.disabled_reason === 'failed_login_lockout') {
+          return res.status(403).json({
+            error: "Your account has been locked due to multiple failed login attempts. Please use 'Forgot Password' or contact your administrator to reset your credentials.",
+            code: "ACCOUNT_LOCKED",
+          });
+        }
+        return res.status(403).json({
+          error: userProfile.disabled_reason === 'marked_leaver'
+            ? "Your account has been deactivated as your profile is marked as a leaver. Please contact your institution administrator."
+            : "Your account has been disabled. Please contact your administrator.",
+          code: "ACCOUNT_DISABLED",
+        });
+      }
+    }
+
     // Use a fresh client to avoid polluting global state
-const { createClient } = require("@supabase/supabase-js");
+    const { createClient } = require("@supabase/supabase-js");
     const scopedClient = createClient(
       process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL,
       process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, // Use Anon Key for login check
@@ -510,16 +536,138 @@ const { createClient } = require("@supabase/supabase-js");
     );
 
     const { data: authData, error: authError } =
-      await scopedClient.auth.signInWithPassword({ email, password });
-    if (authError) throw authError;
+      await scopedClient.auth.signInWithPassword({ email: normalizedEmail, password });
+
+    if (authError) {
+      if (userProfile) {
+        const currentFailed = (Number(userProfile.failed_login_attempts) || 0) + 1;
+        const nowIso = new Date().toISOString();
+        const { ip_address: ipAddress, user_agent: userAgent } = getRequestContext(req);
+
+        if (currentFailed >= 4) {
+          // Lock account server-side
+          await supabase
+            .from('users')
+            .update({
+              is_active: false,
+              disabled_reason: 'failed_login_lockout',
+              failed_login_attempts: currentFailed,
+              last_failed_login_at: nowIso,
+            })
+            .eq('id', userProfile.id);
+
+          // Terminate active sessions and purge cache
+          await revokeAllUserSessions(userProfile.id);
+          invalidateAuthCacheForUser(userProfile.id);
+
+          await writePasswordAuditLog({
+            action: 'account_lockout',
+            actorUserId: userProfile.id,
+            targetUserId: userProfile.id,
+            targetEmail: normalizedEmail,
+            outcome: 'failure',
+            reason: 'failed_login_lockout_4_attempts',
+            ipAddress,
+            userAgent,
+            metadata: { attempts: currentFailed },
+          });
+
+          return res.status(403).json({
+            error: "Your account has been locked after 4 consecutive failed login attempts. Please use 'Forgot Password' to securely regain access.",
+            code: "ACCOUNT_LOCKED",
+          });
+        } else {
+          await supabase
+            .from('users')
+            .update({
+              failed_login_attempts: currentFailed,
+              last_failed_login_at: nowIso,
+            })
+            .eq('id', userProfile.id);
+
+          const remaining = 4 - currentFailed;
+          return res.status(401).json({
+            error: `Invalid email or password. You have ${remaining} attempt${remaining === 1 ? '' : 's'} remaining before your account is locked.`,
+            code: "INVALID_CREDENTIALS",
+            remainingAttempts: remaining,
+          });
+        }
+      }
+
+      return res.status(401).json({
+        error: "Invalid email or password.",
+        code: "INVALID_CREDENTIALS",
+      });
+    }
 
     const { user } = authData;
-    // Use global supabase (Service Role) to fetch user details to verify role etc. without RLS issues?
-    // Actually, users table is public read usually? Or RLS protected?
-    // Let's use the global supabase client for data fetching as it is reliable (Service Role).
-    // The scopedClient was only for auth verification.
 
-    // Check if we need to signOut the scopedClient? No, persistSession: false.
+    // Reset failed login counter upon successful authentication
+    if (userProfile && (userProfile.failed_login_attempts > 0 || userProfile.last_failed_login_at)) {
+      await supabase
+        .from('users')
+        .update({ failed_login_attempts: 0, last_failed_login_at: null })
+        .eq('id', user.id);
+    }
+
+    // Enforce 3 concurrent active sessions limit (server-side)
+    let sessionEvicted = false;
+    let activeSessionsCount = 0;
+    const MAX_CONCURRENT_SESSIONS = 3;
+
+    try {
+      const nowMs = Date.now();
+      const { data: userSessions, error: sessionQueryErr } = await supabase
+        .from('user_sessions')
+        .select('id, session_id, device_type, os_name, last_active_at, expires_at, is_revoked')
+        .eq('user_id', user.id)
+        .eq('is_revoked', false)
+        .order('last_active_at', { ascending: true }); // oldest first
+
+      if (!sessionQueryErr && Array.isArray(userSessions)) {
+        const stillActive = [];
+        const expiredOrIdleIds = [];
+
+        for (const s of userSessions) {
+          const lastActiveMs = new Date(s.last_active_at).getTime();
+          const expiresMs = new Date(s.expires_at).getTime();
+          const isExpired = expiresMs <= nowMs;
+          const isIdle = (nowMs - lastActiveMs > IDLE_TIMEOUT_MS);
+
+          if (isExpired || isIdle) {
+            expiredOrIdleIds.push(s.id);
+          } else {
+            stillActive.push(s);
+          }
+        }
+
+        if (expiredOrIdleIds.length > 0) {
+          await supabase
+            .from('user_sessions')
+            .update({ is_revoked: true })
+            .in('id', expiredOrIdleIds);
+        }
+
+        // If active sessions meet or exceed limit, evict oldest to make room for this new login
+        const evictCount = stillActive.length >= MAX_CONCURRENT_SESSIONS
+          ? (stillActive.length - MAX_CONCURRENT_SESSIONS + 1)
+          : 0;
+
+        if (evictCount > 0) {
+          const evictIds = stillActive.slice(0, evictCount).map(s => s.id);
+          await supabase
+            .from('user_sessions')
+            .update({ is_revoked: true })
+            .in('id', evictIds);
+          sessionEvicted = true;
+          activeSessionsCount = stillActive.length - evictCount + 1;
+        } else {
+          activeSessionsCount = stillActive.length + 1;
+        }
+      }
+    } catch (sessionLimitErr) {
+      console.warn('[Login] Session limit enforcement check warning:', sessionLimitErr?.message || sessionLimitErr);
+    }
 
     const { data: userData, error: userError } = await supabase
       .from("users")
@@ -598,6 +746,14 @@ const { createClient } = require("@supabase/supabase-js");
       message: "Login successful",
       token: authData.session.access_token,
       expiresIn,
+      sessionQuota: {
+        active: Math.min(activeSessionsCount || 1, MAX_CONCURRENT_SESSIONS),
+        max: MAX_CONCURRENT_SESSIONS,
+        evictedOldest: sessionEvicted,
+        notice: sessionEvicted
+          ? "Your oldest active device session was logged out to maintain your 3-device limit."
+          : null,
+      },
       user: withRoleAliases({
         uid: user.id,
         email: user.email,
@@ -1855,7 +2011,13 @@ exports.reactivateUser = async (req, res) => {
 
     await supabase
       .from('users')
-      .update({ is_active: true, retention_until: null })
+      .update({
+        is_active: true,
+        retention_until: null,
+        disabled_reason: null,
+        failed_login_attempts: 0,
+        last_failed_login_at: null,
+      })
       .eq('id', id);
 
     const userRole = String(userRow.role).toLowerCase();
@@ -2116,7 +2278,7 @@ exports.adminResetPassword = async (req, res) => {
     // Fetch target user info
     const { data: targetUser, error: targetError } = await supabase
       .from('users')
-      .select('institution_id, role, email, full_name')
+      .select('institution_id, role, email, full_name, is_active, disabled_reason')
       .eq('id', targetUserId)
       .single();
 
@@ -2272,12 +2434,20 @@ exports.adminResetPassword = async (req, res) => {
       return res.status(400).json({ error: updateError.message || "Failed to update user password" });
     }
 
+    const adminUserUpdatePayload = {
+      must_change_password: true,
+      requires_security_questions_setup: true,
+      failed_login_attempts: 0,
+      last_failed_login_at: null,
+    };
+    if (targetUser.disabled_reason === 'failed_login_lockout') {
+      adminUserUpdatePayload.is_active = true;
+      adminUserUpdatePayload.disabled_reason = null;
+    }
+
     await supabase
       .from('users')
-      .update({
-        must_change_password: true,
-        requires_security_questions_setup: true,
-      })
+      .update(adminUserUpdatePayload)
       .eq('id', targetUserId);
 
     invalidateAuthCacheForUser(targetUserId);
@@ -2788,12 +2958,28 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ error: updateError.message || "Failed to reset password" });
     }
 
+    // Check if account was locked due to failed login attempts and reactivate it
+    const { data: userStatusRow } = await supabase
+      .from('users')
+      .select('is_active, disabled_reason')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const resetUserUpdatePayload = {
+      must_change_password: false,
+      requires_security_questions_setup: false,
+      failed_login_attempts: 0,
+      last_failed_login_at: null,
+    };
+
+    if (userStatusRow && userStatusRow.disabled_reason === 'failed_login_lockout') {
+      resetUserUpdatePayload.is_active = true;
+      resetUserUpdatePayload.disabled_reason = null;
+    }
+
     await supabase
       .from('users')
-      .update({
-        must_change_password: false,
-        requires_security_questions_setup: false,
-      })
+      .update(resetUserUpdatePayload)
       .eq('id', user.id);
 
     invalidateAuthCacheForUser(user.id);
@@ -2810,7 +2996,7 @@ exports.resetPassword = async (req, res) => {
       userAgent,
     });
 
-    res.status(200).json({ message: "Password reset successfully" });
+    res.status(200).json({ success: true, message: "Password reset successfully" });
   } catch (err) {
     console.error("resetPassword error:", err);
     await writePasswordAuditLog({
@@ -3078,7 +3264,7 @@ exports.verifySecurityQuestions = async (req, res) => {
 
     const { data: userRow } = await supabase
       .from('users')
-      .select('id, email')
+      .select('id, email, is_active, disabled_reason')
       .ilike('email', email)
       .maybeSingle();
 
@@ -3173,12 +3359,21 @@ exports.verifySecurityQuestions = async (req, res) => {
         password: new_password,
       });
       if (updateError) throw updateError;
+      const verifyUpdatePayload = {
+        must_change_password: false,
+        requires_security_questions_setup: false,
+        failed_login_attempts: 0,
+        last_failed_login_at: null,
+      };
+
+      if (userRow.disabled_reason === 'failed_login_lockout') {
+        verifyUpdatePayload.is_active = true;
+        verifyUpdatePayload.disabled_reason = null;
+      }
+
       await supabase
         .from('users')
-        .update({
-          must_change_password: false,
-          requires_security_questions_setup: false,
-        })
+        .update(verifyUpdatePayload)
         .eq('id', userRow.id);
 
       invalidateAuthCacheForUser(userRow.id);

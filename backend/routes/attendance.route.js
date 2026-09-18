@@ -14,6 +14,8 @@ const {
 const { authorizeRoles } = require("../middleware/authRole.js");
 const { authMiddleware } = require("../middleware/auth.middleware.js");
 
+const { rateLimiters } = require("../middleware/rateLimiter.js");
+
 router.use(authMiddleware);
 
 // Teacher Attendance Routes
@@ -26,7 +28,7 @@ router.get("/staff-presence", authorizeRoles(["teacher", "admin", "master_admin"
 // Student Attendance Routes
 router.get("/students", authorizeRoles(["admin", "teacher"]), getStudentAttendance);
 router.post("/students", authorizeRoles(["admin", "teacher"]), markStudentAttendance);
-router.post("/students/bulk", authorizeRoles(["admin", "teacher"]), bulkMarkStudentAttendance);
+router.post("/students/bulk", rateLimiters.bulkOperations, authorizeRoles(["admin", "teacher"]), bulkMarkStudentAttendance);
 
 // Retention cleanup (Admin only)
 router.post("/cleanup", authorizeRoles(["admin"]), cleanupOldAttendanceRecords);

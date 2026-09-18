@@ -233,10 +233,19 @@ test('auth middleware tolerates duplicate session registration and continues req
           eq() {
             return this;
           },
+          gt() {
+            return this;
+          },
           order() {
             return this;
           },
           limit() {
+            return this;
+          },
+          update() {
+            return this;
+          },
+          in() {
             return this;
           },
           async maybeSingle() {

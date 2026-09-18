@@ -54,7 +54,7 @@ const createRateLimiter = (options = {}) => {
 
     return (req, res, next) => {
         const ip = req.ip || req.connection.remoteAddress || 'unknown';
-        const userId = differentiateByUser && req.user ? req.user.id : null;
+        const userId = differentiateByUser ? (req.user?.id || req.userId || null) : null;
 
         // Build the key
         const key = userId
@@ -170,6 +170,38 @@ const rateLimiters = {
         windowMs: 60 * 1000, // 1 minute
         maxRequests: 240,
         keyPrefix: 'search',
+        differentiateByUser: true
+    }),
+
+    // Specific limit for login attempts per IP
+    authLogin: createRateLimiter({
+        windowMs: 60 * 1000, // 1 minute
+        maxRequests: 10,
+        keyPrefix: 'auth-login',
+        differentiateByUser: false
+    }),
+
+    // High-computation / heavy PDF compilation
+    heavyPdf: createRateLimiter({
+        windowMs: 60 * 1000, // 1 minute
+        maxRequests: 10,
+        keyPrefix: 'heavy-pdf',
+        differentiateByUser: true
+    }),
+
+    // Bulk administrative mutations (attendance, class report-cards, promotions)
+    bulkOperations: createRateLimiter({
+        windowMs: 60 * 1000, // 1 minute
+        maxRequests: 20,
+        keyPrefix: 'bulk-ops',
+        differentiateByUser: true
+    }),
+
+    // Timetable constraint generation / solve
+    timetableGenerate: createRateLimiter({
+        windowMs: 60 * 1000, // 1 minute
+        maxRequests: 5,
+        keyPrefix: 'timetable-gen',
         differentiateByUser: true
     }),
 

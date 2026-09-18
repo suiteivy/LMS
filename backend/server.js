@@ -101,9 +101,9 @@ app.use("/api/report-cards", authMiddleware, checkSubscription, require("./route
 app.use("/api/evidence-assessments", authMiddleware, checkSubscription, require("./routes/evidenceAssessment.route.js"));
 app.use("/api/tracks", authMiddleware, checkSubscription, require("./routes/track.route.js"));
 app.use("/api/checkpoints", authMiddleware, checkSubscription, require("./routes/nationalCheckpoint.route.js"));
-app.use("/api/promotions", authMiddleware, checkSubscription, require("./routes/promotion.route.js"));
+app.use("/api/promotions", authMiddleware, checkSubscription, rateLimiters.bulkOperations, require("./routes/promotion.route.js"));
 app.use("/api/calendar", authMiddleware, checkSubscription, require("./routes/calendar.route.js"));
-app.use("/api/pdf", authMiddleware, checkSubscription, require("./routes/pdf.route.js"));
+app.use("/api/pdf", authMiddleware, checkSubscription, rateLimiters.heavyPdf, require("./routes/pdf.route.js"));
 app.use("/api/clearance", authMiddleware, checkSubscription, require("./routes/clearance.route.js"));
 app.use("/api/violations", authMiddleware, checkSubscription, require("./routes/violations.route.js"));
 app.use("/api/users", authMiddleware, checkSubscription, require("./routes/user.route.js"));

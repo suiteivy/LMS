@@ -273,6 +273,25 @@ async function authMiddleware(req, res, next) {
                   console.error("[AuthMiddleware] Session registration error:", insertErr.message);
                 }
               }
+
+              // Enforce 3 concurrent active sessions limit
+              try {
+                const { data: userActives } = await supabase
+                  .from('user_sessions')
+                  .select('id, last_active_at')
+                  .eq('user_id', user.id)
+                  .eq('is_revoked', false)
+                  .gt('expires_at', new Date().toISOString())
+                  .order('last_active_at', { ascending: true });
+
+                if (userActives && userActives.length > 3) {
+                  const evictCount = userActives.length - 3;
+                  const evictIds = userActives.slice(0, evictCount).map(r => r.id);
+                  await supabase.from('user_sessions').update({ is_revoked: true }).in('id', evictIds);
+                }
+              } catch (evictErr) {
+                console.warn('[AuthMiddleware] Concurrency eviction check error:', evictErr?.message || evictErr);
+              }
             }
           } catch (err) {
             if (isDuplicateSessionInsertError(err)) {
@@ -371,12 +390,20 @@ async function authMiddleware(req, res, next) {
         return res.status(401).json({ error: "Invalid session or user profile not found", code: "SESSION_INVALID" });
       }
 
-      // Check if account is disabled (Item 12)
+      // Check if account is disabled
       if (profileData.is_active === false) {
         if (isLogoutPath) return res.status(200).json({ message: "Already logged out" });
+        if (profileData.disabled_reason === 'failed_login_lockout') {
+          return res.status(403).json({
+            error: "Your account has been locked due to multiple failed login attempts. Please use Forgot Password or contact your administrator to reset your credentials.",
+            code: "ACCOUNT_LOCKED",
+          });
+        }
         return res.status(403).json({
-          error: "Your account has been disabled. Please contact your administrator.",
-          code: "ACCOUNT_DISABLED"
+          error: profileData.disabled_reason === 'marked_leaver'
+            ? "Your account has been deactivated as your profile is marked as a leaver. Please contact your institution administrator."
+            : "Your account has been disabled. Please contact your administrator.",
+          code: "ACCOUNT_DISABLED",
         });
       }
 

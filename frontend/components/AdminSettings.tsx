@@ -2,7 +2,7 @@ import { ProfileEdit } from "@/components/ProfileEdit";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { SettingsService, UserPreferences } from "@/services/SettingsService";
-import { Bell, ChevronRight, Globe, Lock, LucideIcon, Shield, User, Image as ImageIcon } from "lucide-react-native";
+import { Bell, ChevronRight, ClipboardCheck, CreditCard, Globe, Lock, LucideIcon, Shield, Sparkles, User, Image as ImageIcon } from "lucide-react-native";
 import React, { ReactNode, useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
 import Toast from 'react-native-toast-message';
@@ -145,7 +145,7 @@ export default function AdminSettings() {
                             disabled={prefsLoading}
                         />
                     </SettingRow>
-                    <SettingRow icon={Shield} title="Admin Priority Alerts" isLast>
+                    <SettingRow icon={Shield} title="Admin Priority Alerts">
                         <HelpTooltip id="settings.notifications.priority" role="admin" tier={tier} onLearnMore={openManual} />
                         <Switch
                             value={prefs.system_alerts}
@@ -155,11 +155,40 @@ export default function AdminSettings() {
                             disabled={prefsLoading}
                         />
                     </SettingRow>
+                    <SettingRow icon={ClipboardCheck} title="Submission Alerts">
+                        <Switch
+                            value={prefs.submission_alerts !== false}
+                            onValueChange={() => togglePref('submission_alerts')}
+                            trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }}
+                            thumbColor="#fd6900"
+                            disabled={prefsLoading}
+                        />
+                    </SettingRow>
+                    <SettingRow icon={CreditCard} title="Subscription & Billing Alerts" isLast>
+                        <Switch
+                            value={prefs.subscription_alerts !== false}
+                            onValueChange={() => togglePref('subscription_alerts')}
+                            trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }}
+                            thumbColor="#fd6900"
+                            disabled={prefsLoading}
+                        />
+                    </SettingRow>
                 </View>
 
-                <Text className="text-xs font-bold text-gray-400 dark:text-white uppercase tracking-widest ml-1 mb-2">Appearance</Text>
-                <View className="bg-white dark:bg-[#161B22] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-6 overflow-hidden p-3">
+                <Text className="text-xs font-bold text-gray-400 dark:text-white uppercase tracking-widest ml-1 mb-2">Appearance & Accessibility</Text>
+                <View className="bg-white dark:bg-[#161B22] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-4 overflow-hidden p-3">
                     <ThemeSegmentedControl />
+                </View>
+                <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-3xl border border-[#D0D7DE] dark:border-[#21262D] mb-6 overflow-hidden">
+                    <SettingRow icon={Sparkles} title="Reduced Motion" isLast>
+                        <Switch
+                            value={!!prefs.reduced_motion}
+                            onValueChange={() => togglePref('reduced_motion')}
+                            trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }}
+                            thumbColor="#fd6900"
+                            disabled={prefsLoading}
+                        />
+                    </SettingRow>
                 </View>
 
                 <ProfileEdit visible={showEditForm} onClose={() => setShowEditForm(false)} />

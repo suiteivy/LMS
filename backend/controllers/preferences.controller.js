@@ -24,6 +24,11 @@ exports.getPreferences = async (req, res) => {
                 subscription_alerts: true,
                 issues_requests_alerts: true,
                 support_cases_alerts: true,
+                reduced_motion: false,
+                font_size: 'normal',
+                share_staff_presence: true,
+                grade_release_alerts: true,
+                attendance_digest: true,
             });
         }
 
@@ -48,7 +53,12 @@ exports.updatePreferences = async (req, res) => {
             email_notifications,
             subscription_alerts,
             issues_requests_alerts,
-            support_cases_alerts
+            support_cases_alerts,
+            reduced_motion,
+            font_size,
+            share_staff_presence,
+            grade_release_alerts,
+            attendance_digest,
         } = req.body;
 
         const prefData = {
@@ -63,6 +73,11 @@ exports.updatePreferences = async (req, res) => {
         if (subscription_alerts !== undefined) prefData.subscription_alerts = subscription_alerts;
         if (issues_requests_alerts !== undefined) prefData.issues_requests_alerts = issues_requests_alerts;
         if (support_cases_alerts !== undefined) prefData.support_cases_alerts = support_cases_alerts;
+        if (reduced_motion !== undefined) prefData.reduced_motion = reduced_motion;
+        if (font_size !== undefined) prefData.font_size = font_size;
+        if (share_staff_presence !== undefined) prefData.share_staff_presence = share_staff_presence;
+        if (grade_release_alerts !== undefined) prefData.grade_release_alerts = grade_release_alerts;
+        if (attendance_digest !== undefined) prefData.attendance_digest = attendance_digest;
 
         const { data, error } = await supabase
             .from('user_preferences')

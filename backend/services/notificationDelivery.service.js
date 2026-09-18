@@ -4,9 +4,13 @@ const MAX_RETRY_ATTEMPTS_DEFAULT = 3;
 
 const resolvePreferenceKey = (payload = {}) => {
   const source = String(payload?.source || '').toLowerCase();
+  const type = String(payload?.type || '').toLowerCase();
   if (source === 'subscription_lifecycle') return 'subscription_alerts';
   if (source === 'support_ticket' || source === 'support_case') return 'support_cases_alerts';
   if (source === 'issue_request' || source === 'addon_request') return 'issues_requests_alerts';
+  if (source === 'submission' || source === 'assignment_submission' || type === 'submission') return 'submission_alerts';
+  if (source === 'grade_release' || source === 'report_card' || type === 'grade_release' || type === 'report_card') return 'grade_release_alerts';
+  if (source === 'attendance' || source === 'attendance_digest' || type === 'attendance') return 'attendance_digest';
   if (
     source === 'master_admin_notice' ||
     source === 'system_maintenance' ||
@@ -367,4 +371,6 @@ module.exports = {
   sendInAppNotificationWithHistory,
   sendBulkInAppNotificationsWithHistory,
   retryScheduledNotificationDeliveries,
+  resolvePreferenceKey,
+  isNotificationAllowedByPreferences,
 };

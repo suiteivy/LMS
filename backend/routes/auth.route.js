@@ -40,8 +40,8 @@ const { validate, schemas } = require("../middleware/inputValidator.js");
 const { rateLimiters } = require("../middleware/rateLimiter.js");
 const { requireAdmin, requireRole } = require("../middleware/roleCheck.js");
 
-// Public: Login with validation
-router.post("/login", validate(schemas.login), login);
+// Public: Login with validation and attempt rate limiting
+router.post("/login", rateLimiters.authLogin, validate(schemas.login), login);
 
 // Public: Password reset with strict rate limiting
 router.post(

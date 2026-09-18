@@ -13,6 +13,11 @@ export interface UserPreferences {
     subscription_alerts?: boolean;
     issues_requests_alerts?: boolean;
     support_cases_alerts?: boolean;
+    reduced_motion?: boolean;
+    font_size?: 'small' | 'normal' | 'large';
+    share_staff_presence?: boolean;
+    grade_release_alerts?: boolean;
+    attendance_digest?: boolean;
 }
 
 export interface MaintenanceStatus {
@@ -74,6 +79,11 @@ export const SettingsService = {
                 subscription_alerts: true,
                 issues_requests_alerts: true,
                 support_cases_alerts: true,
+                reduced_motion: false,
+                font_size: 'normal',
+                share_staff_presence: true,
+                grade_release_alerts: true,
+                attendance_digest: true,
             };
         }
     },

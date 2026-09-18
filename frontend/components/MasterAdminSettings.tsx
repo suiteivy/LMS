@@ -1,5 +1,5 @@
 import { useTheme } from "@/contexts/ThemeContext";
-import { Lock, ShieldAlert, Bell, Mail, Smartphone, AlertTriangle, AlertCircle, HelpCircle } from "lucide-react-native";
+import { Lock, ShieldAlert, Bell, Mail, Smartphone, AlertTriangle, AlertCircle, HelpCircle, Sparkles } from "lucide-react-native";
 import React, { useState, useEffect } from "react";
 import { ActivityIndicator, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, Switch } from "react-native";
 import Toast from 'react-native-toast-message';
@@ -281,9 +281,17 @@ export default function MasterAdminSettings() {
                     <SettingRow icon={ShieldAlert} title="Enroll New Master Admin" onPress={() => setEnrollModalVisible(true)} isLast />
                 </View>
 
-                <Text style={{ fontSize: 12, fontWeight: 'bold', color: tokens.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginLeft: 4, marginBottom: 8 }}>Appearance</Text>
-                <View style={{ backgroundColor: tokens.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, marginBottom: 24, overflow: 'hidden', padding: 12 }}>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: tokens.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginLeft: 4, marginBottom: 8 }}>Appearance & Accessibility</Text>
+                <View style={{ backgroundColor: tokens.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, marginBottom: 12, overflow: 'hidden', padding: 12 }}>
                     <ThemeSegmentedControl />
+                </View>
+                <View style={{ backgroundColor: tokens.surface, borderRadius: 16, borderWidth: 1, borderColor: tokens.border, marginBottom: 24, overflow: 'hidden' }}>
+                    <SettingRow
+                        icon={Sparkles}
+                        title="Reduced Motion"
+                        isLast
+                        rightElement={<Switch value={!!prefs.reduced_motion} onValueChange={() => togglePref('reduced_motion')} trackColor={{ false: isDark ? "#21262D" : "#D0D7DE", true: "#FF6900" }} />}
+                    />
                 </View>
 
             </View>
