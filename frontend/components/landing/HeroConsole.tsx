@@ -26,7 +26,7 @@ interface HeroConsoleProps {
   onOpenTrial: () => void;
 }
 
-type RoleType = 'admin' | 'teacher' | 'student' | 'parent';
+type RoleType = 'admin' | 'teacher' | 'finance' | 'student' | 'parent';
 
 export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOpenTrial }) => {
   const isWeb = Platform.OS === 'web';
@@ -93,79 +93,98 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
 
   const roleConfigs = {
     admin: {
-      title: 'School Administration',
-      badge: 'ADMINISTRATION & REPORTS',
+      title: 'School Leadership & Admin',
+      badge: 'GOVERNANCE & ROLES',
       accent: '#FF6B00',
       icon: <Building size={16} color="#FF6B00" />,
       stats: [
-        { label: 'Enrolled Students', value: '1,420', sub: '+12% this term', trend: true },
-        { label: 'Fees Collected', value: '96.4%', sub: 'Direct M-Pesa & Bank', trend: true },
-        { label: 'Teaching Staff', value: '48 Active', sub: 'All departments active', trend: false },
+        { label: 'Active Students', value: '1,420', sub: 'Across all class levels', trend: true },
+        { label: 'Tuition Collected', value: '96.4%', sub: 'Online & bank deposits', trend: true },
+        { label: 'Campus Staff', value: '52 Active', sub: 'Teachers, HODs & staff', trend: false },
       ],
       previewItem: {
-        title: 'Term Fee Collection Summary',
-        tag: 'PAID & RECORDED',
-        metric: 'KSH. 2,840,000 Collected Today',
+        title: 'Campus Operations & Clearance',
+        tag: 'ALL STREAMS ACTIVE',
+        metric: 'Timetables Synced • Step-Gated Clearance Live',
         progress: 0.96,
         accent: '#FF6B00',
-        actionText: 'Download Fee Report',
+        actionText: 'View School Overview',
       },
     },
     teacher: {
-      title: 'Teacher Workspace',
-      badge: 'LESSONS & GRADING',
+      title: 'Teaching & Faculty Workspace',
+      badge: 'LESSONS & ASSESSMENTS',
       accent: '#8B5CF6',
       icon: <GraduationCap size={16} color="#8B5CF6" />,
       stats: [
-        { label: 'Active Classes', value: '18 Classes', sub: 'Videos, notes & quizzes', trend: true },
-        { label: 'Assignments Received', value: '142 Tasks', sub: 'Ready for grading', trend: true },
-        { label: 'Class Attendance', value: '98.2%', sub: 'Daily roll-call taken', trend: true },
+        { label: 'Syllabus Progress', value: '88% Covered', sub: 'Record of Work on track', trend: true },
+        { label: 'Tasks Marked', value: '142 Tasks', sub: 'Descriptors & scores recorded', trend: true },
+        { label: 'Morning Attendance', value: '98.2%', sub: 'Teacher presence active', trend: true },
       ],
       previewItem: {
-        title: 'Form 4 Mathematics',
-        tag: 'CLASS IN PROGRESS',
-        metric: '28 of 30 Students Completed Quiz',
+        title: 'Mathematics: Lesson & Record of Work',
+        tag: 'TOPIC IN PROGRESS',
+        metric: 'Algebra & Geometry: 28 of 30 Students Evaluated',
         progress: 0.93,
         accent: '#8B5CF6',
-        actionText: 'View Student Scores',
+        actionText: 'Update Record of Work',
+      },
+    },
+    finance: {
+      title: 'Finance & Library Operations',
+      badge: 'FEE BILLING & LOANS',
+      accent: '#10B981',
+      icon: <CreditCard size={16} color="#10B981" />,
+      stats: [
+        { label: 'Fee Structures', value: 'Multi-Tier', sub: 'Class, level & student fees', trend: true },
+        { label: 'Library Loans', value: '340 Books', sub: 'Librarian-mediated circulation', trend: true },
+        { label: 'Invoices Issued', value: '1,280 Sent', sub: 'Downloadable PDF receipts', trend: true },
+      ],
+      previewItem: {
+        title: 'Term Fee Schedules & Book Loans',
+        tag: 'SYSTEM BALANCED',
+        metric: 'Bursaries & Fee Invoices Processed on Schedule',
+        progress: 0.95,
+        accent: '#10B981',
+        actionText: 'View Financial Summary',
       },
     },
     student: {
-      title: 'Student Portal',
-      badge: 'STUDENT DASHBOARD',
+      title: 'Student Learning Portal',
+      badge: 'COURSES & GRADES',
       accent: '#3B82F6',
       icon: <Users size={16} color="#3B82F6" />,
       stats: [
-        { label: 'Class Progress', value: '88%', sub: 'Term syllabus covered', trend: true },
-        { label: 'Homework Due', value: '2 Pending', sub: 'Physics & Chemistry', trend: false },
-        { label: 'School Library', value: '240+ Books', sub: 'Free digital textbooks', trend: true },
+        { label: 'Curriculum Progress', value: '92%', sub: 'All subjects on schedule', trend: true },
+        { label: 'Homework Due', value: '2 Pending', sub: 'Science & Social Studies', trend: false },
+        { label: 'Academic Vault', value: '350+ Guides', sub: 'Revision notes & past papers', trend: true },
       ],
       previewItem: {
-        title: 'Physics: Forces and Energy',
-        tag: 'DUE TOMORROW',
-        metric: 'Chapter 4: Practice Problems & Notes',
+        title: 'Science: Forces, Energy & Motion',
+        tag: 'NEXT LESSON',
+        metric: 'Learning Objectives & Study Notes Available',
         progress: 0.75,
         accent: '#3B82F6',
-        actionText: 'Continue Lesson',
+        actionText: 'Open Study Materials',
       },
     },
     parent: {
-      title: 'Parent Portal',
-      badge: 'PARENT UPDATES',
-      accent: '#10B981',
-      icon: <HeartHandshake size={16} color="#10B981" />,
+      title: 'Parent & Guardian Portal',
+      badge: 'STUDENT PROGRESS UPDATES',
+      accent: '#F59E0B',
+      icon: <HeartHandshake size={16} color="#F59E0B" />,
       stats: [
-        { label: 'Today Attendance', value: 'Present', sub: 'Arrived at 07:52 AM', trend: true },
-        { label: 'Fee Balance', value: 'KSH. 0', sub: 'Fully paid this term', trend: true },
-        { label: 'Teacher Messages', value: '3 New Notes', sub: 'From class teacher', trend: false },
+        { label: 'Morning Attendance', value: 'Present', sub: 'Checked in at 07:50 AM', trend: true },
+        { label: 'Fee Statement', value: 'Cleared', sub: 'Receipt available for download', trend: true },
+        { label: 'Teacher Notes', value: '2 Updates', sub: 'Direct from class teacher', trend: false },
       ],
       previewItem: {
-        title: 'Daily School Diary & Updates',
-        tag: 'NEW MESSAGE',
-        metric: 'Great progress in Science this week',
+        title: 'Student Performance & Term Transcripts',
+        tag: 'OFFICIAL REPORT',
+        metric: 'Continuous Assessment & Term Transcripts Ready',
         progress: 1.0,
-        accent: '#10B981',
-        actionText: 'Message Class Teacher',
+        accent: '#F59E0B',
+        actionText: 'View Academic Transcript',
       },
     },
   };
@@ -247,7 +266,7 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                 textTransform: 'uppercase',
               }}
             >
-              ALL-IN-ONE SCHOOL MANAGEMENT PLATFORM
+              ALL-IN-ONE SCHOOL OPERATIONS PLATFORM
             </Text>
           </View>
 
@@ -263,7 +282,7 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
               ...(isWeb ? ({ textWrap: 'balance' } as any) : {}),
             }}
           >
-            The Intelligent{' '}
+            The Complete{' '}
             <Text
               style={{
                 color: '#FF8C40',
@@ -272,9 +291,9 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                 textShadowRadius: 18,
               }}
             >
-              Learning
+              Management
             </Text>{' '}
-            Ecosystem for{' '}
+            Platform for{' '}
             <Text
               style={{
                 color: '#A78BFA',
@@ -283,12 +302,12 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                 textShadowRadius: 18,
               }}
             >
-              Visionary
+              Every
             </Text>{' '}
-            Schools.
+            School.
           </Text>
 
-          {/* Subtitle with Technical Clarity */}
+          {/* Subtitle with Clear, Simple Value */}
           <Text
             style={{
               color: 'rgba(255, 255, 255, 0.65)',
@@ -298,8 +317,7 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
               ...(isWeb ? ({ textWrap: 'pretty' } as any) : {}),
             }}
           >
-            Bring administrators, teachers, students, and parents together in one easy cloud platform.
-            Manage classes, student grades, fee payments, and daily attendance with zero hassle.
+            Connect school leadership, teachers, finance staff, students, and parents in one unified cloud system. Built to adapt easily to any curriculum, class hierarchy, and grading style.
           </Text>
 
           {/* High-Impact Actions */}
@@ -469,9 +487,10 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
             }}
           >
             {[
-              { label: 'User Portals', val: '4 in 1' },
-              { label: 'Fee Invoicing', val: 'Automated' },
-              { label: 'Digital Library', val: 'Built-in' },
+              { label: 'Staff & Roles', val: '10+ Roles' },
+              { label: 'Evaluation Styles', val: 'Flexible' },
+              { label: 'Timetable Clashes', val: '0 Clashes' },
+              { label: 'Fee Structures', val: 'Multi-Tier' },
             ].map((item, idx) => (
               <GlassCard
                 key={idx}
@@ -570,7 +589,7 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
                   gap: 8,
                 }}
               >
-                {(['admin', 'teacher', 'student', 'parent'] as RoleType[]).map((roleKey) => {
+                {(['admin', 'teacher', 'finance', 'student', 'parent'] as RoleType[]).map((roleKey) => {
                   const cfg = roleConfigs[roleKey];
                   const isSelected = activeRole === roleKey;
 

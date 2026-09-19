@@ -17,30 +17,30 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
 
   const contacts = [
     {
-      title: 'Institutional Dispatch',
+      title: 'Email Support',
       value: 'Support@cloudora.live',
       sub: 'Direct response within 1 business day',
       icon: <Mail size={22} color="#8B5CF6" />,
       accent: '#8B5CF6',
     },
     {
-      title: 'Voice Telecom Line',
+      title: 'Phone & WhatsApp',
       value: '+254 759 585 197',
       sub: 'Monday to Friday, 08:00 - 18:00 EAT',
       icon: <Phone size={22} color="#FF6B00" />,
       accent: '#FF6B00',
     },
     {
-      title: 'Digital Social Channel',
+      title: 'Social Channels',
       value: '@cloudora.solutions',
-      sub: 'Product releases & announcements',
+      sub: 'Product updates & guides',
       icon: <Instagram size={22} color="#EC4899" />,
       accent: '#EC4899',
     },
     {
-      title: 'Enterprise Network',
+      title: 'Office & Partnerships',
       value: 'Cloudora Solutions',
-      sub: 'Institutional partnerships & careers',
+      sub: 'School visits & demonstrations',
       icon: <Linkedin size={22} color="#3B82F6" />,
       accent: '#3B82F6',
     },
@@ -100,7 +100,7 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
             marginBottom: 10,
           }}
         >
-          Connect with Our Solutions Engineering Team
+          Get in Touch with Our Team
         </Text>
         <Text
           style={{
@@ -111,7 +111,7 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
             lineHeight: 24,
           }}
         >
-          Dedicated architectural consulting for private schools, universities, and enterprise education trusts.
+          We help schools, colleges, and education groups set up their digital campus smoothly and affordably.
         </Text>
       </View>
 
@@ -210,10 +210,10 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
       >
         <View style={{ flex: 1 }}>
           <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '900', marginBottom: 4 }}>
-            Schedule a Guided Platform Walkthrough
+            Schedule a Guided School Walkthrough
           </Text>
           <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
-            Our solutions architects will demonstrate custom courseware and bursary setups tailored to your syllabus.
+            Our team will walk you through live features, gradebook setups, and fee tracking tailored to your school.
           </Text>
         </View>
 
@@ -275,7 +275,7 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
             }}
           />
           <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>
-            Request Institutional Setup
+            Book a Guided Demo
           </Text>
           <MoveRight
             size={16}

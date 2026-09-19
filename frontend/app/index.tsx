@@ -39,38 +39,38 @@ import {
 
 const ADDONS_DATA = [
   {
-    name: 'Digital Library',
-    tagline: 'Add-On Module',
+    name: 'Digital Academic Vault',
+    tagline: 'Institutional Content Cloud',
     price: '$30/mo',
-    desc: 'Manage library and virtual learning materials on a main dashboard',
+    desc: 'Central repository for lecture slides, study guides, and past exams',
   },
   {
-    name: 'Bursary Module',
-    tagline: 'Add-On Module',
+    name: 'School Finance & Invoicing',
+    tagline: 'Cashier & Bursar Suite',
     price: '$30/mo',
-    desc: 'Manage student accounts and financial logs on a main dashboard',
+    desc: 'Multi-category fee structures, student invoice generation, and balance ledger tracking',
   },
   {
-    name: 'Messaging Module',
-    tagline: 'Add-On Module',
+    name: 'Direct Parent Messaging',
+    tagline: 'Multi-Channel Dispatch',
     price: '$5/mo',
-    desc: 'Direct messaging and announcement sharing on e-learning platform',
+    desc: 'Targeted broadcast announcements and direct staff-to-parent conversations',
   },
   {
-    name: 'Virtual Diary',
-    tagline: 'Add-On Module',
-    price: '$5/mo',
-    desc: 'Digital class entries, daily reports and performance tracking for students',
+    name: 'Library Circulation Manager',
+    tagline: 'Book Catalog & Returns',
+    price: '$15/mo',
+    desc: 'Physical book cataloging, circulation check-in/out, and librarian return audit logs',
   },
 ];
 
 const CUSTOM_FEATURES_DATA = [
-  'Client-specific courses & learning paths',
-  'HR system & attendance integration',
-  'Custom progress & certification reports',
-  'UI adjustments (dashboards, labels, branding)',
-  'All add-ons included (Library, Bursary, Messaging)',
-  'Dedicated onboarding & support',
+  'Custom curriculum, subjects & grading schemes',
+  'Connects with existing accounting tools',
+  'Your school branding, logos & custom reports',
+  'Conflict-free timetable scheduling setup',
+  'Step-gated student clearance workflows',
+  'Dedicated onboarding & staff training support',
 ];
 
 export default function Index() {
@@ -326,7 +326,7 @@ export default function Index() {
                 <Plus size={26} color="#FF8C40" />
               </View>
               <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '900', textAlign: 'center' }}>
-                Augment Your {selectedPlan}
+                Customize Your {selectedPlan || 'Plan'}
               </Text>
               <Text
                 style={{
@@ -336,7 +336,7 @@ export default function Index() {
                   marginTop: 6,
                 }}
               >
-                Select optional institutional modules to bundle into your deployment.
+                Select optional extra modules to add to your school setup.
               </Text>
             </View>
 
@@ -499,7 +499,7 @@ export default function Index() {
                 <Settings size={26} color="#A78BFA" />
               </View>
               <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '900', textAlign: 'center' }}>
-                Configure Custom Deployment
+                Configure Your School Solution
               </Text>
               <Text
                 style={{
@@ -509,7 +509,7 @@ export default function Index() {
                   marginTop: 4,
                 }}
               >
-                Select the specialized architectural features and modules required.
+                Choose the custom features, portals, and integrations your school needs.
               </Text>
             </View>
 
@@ -536,7 +536,7 @@ export default function Index() {
                     marginBottom: 20,
                   }}
                 >
-                  {['Student module', 'Teacher module', 'Parent/Guardian module'].map((mod) => {
+                  {['Student Portal', 'Teacher Portal', 'Parent & Guardian Portal', 'Finance & Bursar Desk', 'Librarian Desk'].map((mod) => {
                     const isSelected = selectedCoreModules.includes(mod);
                     return (
                       <TouchableOpacity
@@ -770,7 +770,7 @@ export default function Index() {
                   >
                     <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' }} />
                     <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' }}>
-                      Deployment Queue Initialized
+                      Setup Request Received
                     </Text>
                   </View>
 
@@ -784,7 +784,7 @@ export default function Index() {
                       letterSpacing: -0.5,
                     }}
                   >
-                    Setup Request Transmitted!
+                    Setup Request Submitted!
                   </Text>
                   <Text
                     style={{
@@ -796,7 +796,7 @@ export default function Index() {
                       maxWidth: 440,
                     }}
                   >
-                    Thank you! Our cloud architecture and implementation engineering team has received your institutional parameters and will dispatch provisioning credentials within 24 business hours.
+                    Thank you! Our school implementation team has received your request and will contact you within 24 business hours to guide your setup.
                   </Text>
 
                   {/* Summary Ticket Card */}
@@ -867,7 +867,7 @@ export default function Index() {
                     onPress={() => setModalVisible(false)}
                   >
                     <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 15 }}>
-                      Return to Command Center
+                      Return to Homepage
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -891,7 +891,7 @@ export default function Index() {
                     </View>
                     <View style={{ flex: 1, paddingRight: 32 }}>
                       <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '900', letterSpacing: -0.5 }}>
-                        Deploy {selectedPlan || 'Platform'}
+                        Get Started with {selectedPlan || 'Cloudora'}
                       </Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
                         <Sparkles size={13} color="#FF8C40" />
@@ -904,7 +904,7 @@ export default function Index() {
                             letterSpacing: 1,
                           }}
                         >
-                          Institutional Setup & Architecture
+                          School Setup & Consultation
                         </Text>
                       </View>
                     </View>
@@ -1086,7 +1086,7 @@ export default function Index() {
                     <View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                         <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 13, fontWeight: '700' }}>
-                          Deployment Scope & Student Capacity
+                          School Size & Estimated Student Count
                         </Text>
                         <Text style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: 11.5, fontWeight: '600' }}>
                           Optional
@@ -1182,7 +1182,7 @@ export default function Index() {
                       <ActivityIndicator color="white" style={{ marginRight: 10 }} />
                     ) : null}
                     <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 15, letterSpacing: 0.2 }}>
-                      {submitting ? 'Transmitting Request...' : 'Authorize Setup Request'}
+                      {submitting ? 'Submitting Request...' : 'Submit Setup Request'}
                     </Text>
                     {!submitting && <MoveRight size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />}
                   </TouchableOpacity>

@@ -21,7 +21,7 @@ const {
     updateSubjectAssessmentSelection,
     getStudentHistoricalReportCards,
     regenerateReportCards
-} = require("../controllers/reportCard.controller.js");
+} = require("../controllers/reportCards.controller.js");
 
 const { rateLimiters } = require("../middleware/rateLimiter.js");
 

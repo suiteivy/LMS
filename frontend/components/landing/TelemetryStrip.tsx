@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Platform, useWindowDimensions } from 'react-native';
-import { Cpu, ShieldCheck, Zap, Database, Server } from 'lucide-react-native';
+import { Cpu, ShieldCheck, Zap, Server, Users } from 'lucide-react-native';
 import { GlassCard } from '@/components/ui/GlassCard';
 
 export const TelemetryStrip: React.FC = () => {
@@ -11,26 +11,26 @@ export const TelemetryStrip: React.FC = () => {
   const pillars = [
     {
       icon: <Server size={20} color="#FF8C40" />,
-      title: 'Always Online',
-      desc: 'Reliable cloud hosting ensuring zero downtime during classes and exam periods.',
+      title: 'Always Reliable',
+      desc: 'Dependable cloud access ensuring teachers, students, and parents stay connected throughout the school term.',
       accent: '#FF6B00',
     },
     {
-      icon: <Zap size={20} color="#10B981" />,
-      title: 'Instant Live Updates',
-      desc: 'Real-time notice alerts, rapid attendance records, and immediate parent updates.',
-      accent: '#10B981',
-    },
-    {
-      icon: <ShieldCheck size={20} color="#8B5CF6" />,
-      title: 'Private & Secure Data',
-      desc: 'Bank-grade encryption ensuring student records and school finances stay 100% safe.',
+      icon: <Users size={20} color="#8B5CF6" />,
+      title: 'Custom Staff Roles',
+      desc: 'Give teachers, heads of department, librarians, and finance officers the exact tools and permissions they need.',
       accent: '#8B5CF6',
     },
     {
-      icon: <Database size={20} color="#3B82F6" />,
-      title: 'Built for Any School Size',
-      desc: 'Easily handles thousands of students, teachers, and parents logged in at the same time.',
+      icon: <ShieldCheck size={20} color="#10B981" />,
+      title: 'Protected School Records',
+      desc: 'Automatic account lockouts after failed logins and safe session protections keep student data secure.',
+      accent: '#10B981',
+    },
+    {
+      icon: <Zap size={20} color="#3B82F6" />,
+      title: 'Instant Live Updates',
+      desc: 'Daily attendance, fee receipts, and school notices reflect immediately across all phones and computers.',
       accent: '#3B82F6',
     },
   ];
