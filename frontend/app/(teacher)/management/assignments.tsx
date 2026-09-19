@@ -1026,7 +1026,7 @@ export default function AssignmentsPage() {
                                     {/* Topic Area Selection (CBC 2-Level Breakdown) */}
                                     {topicAreas.length > 0 && (
                                         <View className="mb-5">
-                                            <Text className="text-gray-700 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-2.5">Topic Area (CBC Breakdown)</Text>
+                                            <Text className="text-gray-700 dark:text-gray-300 text-xs font-bold uppercase tracking-wider mb-2.5">Topic Area (Subject Breakdown)</Text>
                                             <View className="flex-row flex-wrap gap-2">
                                                 <TouchableOpacity
                                                     onPress={() => setSelectedTopicAreaId("")}

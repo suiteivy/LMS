@@ -98,6 +98,7 @@ app.use("/api/academic-years", authMiddleware, checkSubscription, require("./rou
 app.use("/api/grading-scales", authMiddleware, checkSubscription, require("./routes/gradingScales.route.js"));
 app.use("/api/grade-entries", authMiddleware, checkSubscription, require("./routes/gradeEntries.route.js"));
 app.use("/api/report-cards", authMiddleware, checkSubscription, require("./routes/reportCards.route.js"));
+app.use("/api/transcripts", authMiddleware, checkSubscription, require("./routes/transcripts.route.js"));
 app.use("/api/evidence-assessments", authMiddleware, checkSubscription, require("./routes/evidenceAssessment.route.js"));
 app.use("/api/tracks", authMiddleware, checkSubscription, require("./routes/track.route.js"));
 app.use("/api/checkpoints", authMiddleware, checkSubscription, require("./routes/nationalCheckpoint.route.js"));

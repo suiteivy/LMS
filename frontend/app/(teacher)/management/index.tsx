@@ -248,7 +248,7 @@ export default function ManagementIndex() {
         {
             icon: Layers,
             title: "Coverage Planner",
-            description: "Termly CBC topic strands and syllabus timeline",
+            description: "Termly topic coverage and syllabus timeline",
             color: "#6366f1",
             bgColor: "#e0e7ff",
             route: "/(teacher)/management/coverage",

@@ -246,8 +246,8 @@ export default function ParentExamsPage() {
                 <Text className="text-sky-400 font-bold text-lg mt-0.5">{exams.length}</Text>
               </View>
               <View>
-                <Text className="text-white/40 text-[9px] font-bold uppercase tracking-widest">CBC Level</Text>
-                <Text className="text-amber-400 font-bold text-lg mt-0.5">Competency</Text>
+                <Text className="text-white/40 text-[9px] font-bold uppercase tracking-widest">Grading Status</Text>
+                <Text className="text-amber-400 font-bold text-lg mt-0.5">Active</Text>
               </View>
             </View>
           </View>
@@ -311,7 +311,7 @@ export default function ParentExamsPage() {
                   No Exam Results Published Yet
                 </Text>
                 <Text className="text-gray-400 text-xs text-center mt-1 max-w-xs">
-                  Official exam grades and CBC competency bands will appear here once finalized by subject teachers.
+                  Official exam grades and performance levels will appear here once finalized by subject teachers.
                 </Text>
               </View>
             ) : (
@@ -357,7 +357,7 @@ export default function ParentExamsPage() {
                       </View>
                     </View>
 
-                    {/* CBC Competency Band */}
+                    {/* Performance Level */}
                     {res.competency_band ? (
                       <View
                         style={{

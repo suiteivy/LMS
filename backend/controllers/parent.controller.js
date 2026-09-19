@@ -3,6 +3,11 @@ const { buildClassLabel } = require('../utils/classLabel');
 const { resolveActiveTerm } = require('../utils/resolveActiveTerm');
 const { getStudentCurrentClassEnrollment } = require('../utils/studentClassEnrollment');
 const { computeStudentFinancialAssessment } = require('../utils/feePrecedenceEngine.js');
+const {
+    roundCurrency,
+    roundDecimal,
+    roundPercentage,
+} = require('../utils/numericStandards.js');
 
 const normalizeText = (value) => {
     if (typeof value !== 'string') return '';
@@ -295,17 +300,19 @@ exports.getStudentFinance = async (req, res) => {
             discounts,
         });
 
-        const totalFees = assessment.netAssessed;
-        const paidAmount = assessment.totalPaid;
-        const pendingAmount = Math.max(assessment.netBalance, 0);
-        const balance = assessment.netBalance;
+        const totalFees = roundCurrency(assessment.netAssessed);
+        const grossFees = roundCurrency(assessment.grossAmount);
+        const totalDiscount = roundCurrency(assessment.totalDiscount);
+        const paidAmount = roundCurrency(assessment.totalPaid);
+        const balance = roundCurrency(assessment.netBalance);
+        const pendingAmount = Math.max(balance, 0);
 
         const enrichedTransactions = (paymentRows || []).map((p) => ({
             id: p.id,
             type: p.payment_method || 'payment',
             description: p.reference_number || 'Fee payment',
             date: p.payment_date || p.created_at,
-            amount: Number(p.amount || 0),
+            amount: roundCurrency(p.amount || 0),
             status: p.status,
             reference_number: p.reference_number,
             direction: p.status === 'completed' ? 'inflow' : 'outflow',
@@ -319,15 +326,32 @@ exports.getStudentFinance = async (req, res) => {
             recorded_by_label: p.recorded_by_label || null,
         }));
 
+        // Fetch student invoices
+        const { data: invoiceRows } = await supabase
+            .from('student_fee_invoices')
+            .select('*, fee_structures(id, title, due_date)')
+            .eq('institution_id', student.institution_id)
+            .eq('student_id', studentId)
+            .order('created_at', { ascending: false });
+
+        const invoices = (invoiceRows || []).map(inv => ({
+            ...inv,
+            gross_amount: roundCurrency(inv.gross_amount),
+            discount_amount: roundCurrency(inv.discount_amount),
+            net_amount: roundCurrency(inv.net_amount),
+            paid_amount: roundCurrency(inv.paid_amount),
+            balance_due: roundCurrency(inv.balance_due)
+        }));
+
         const paidPercentage = totalFees > 0
-            ? Math.min(100, Math.round((paidAmount / totalFees) * 100))
+            ? roundPercentage((paidAmount / totalFees) * 100)
             : 0;
 
         res.json({
             balance,
             total_fees: totalFees,
-            gross_fees: assessment.grossAmount,
-            total_discount: assessment.totalDiscount,
+            gross_fees: grossFees,
+            total_discount: totalDiscount,
             paid_amount: paidAmount,
             pending_amount: pendingAmount,
             paid_percentage: paidPercentage,
@@ -335,6 +359,7 @@ exports.getStudentFinance = async (req, res) => {
             fee_structures: assessment.feeStructure ? [assessment.feeStructure] : [],
             components: assessment.components || [],
             discounts: assessment.appliedDiscounts || [],
+            invoices,
             transactions: enrichedTransactions,
         });
     } catch (err) {

@@ -40,6 +40,10 @@ const {
     revokeFeeDiscountOrWaiver,
     generateStudentInvoice,
     getStudentInvoices,
+    compileInvoicePdf,
+    compileInvoicePdfBase64,
+    compilePaymentReceiptPdf,
+    compilePaymentReceiptBase64,
     sendOverdueFeeReminders,
 } = require("../controllers/finance.controller.js");
 
@@ -94,7 +98,9 @@ router.post("/discounts/:id/revoke", authMiddleware, authorizeRoles(FINANCE_OPER
 
 // Billing Statements & Invoices
 router.post("/invoices/generate", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLES), generateStudentInvoice);
-router.get("/invoices/:studentId", authMiddleware, authorizeRoles(FINANCE_DASHBOARD_ROLES), getStudentInvoices);
+router.get("/invoices/:studentId", authMiddleware, getStudentInvoices);
+router.get("/invoices/item/:id/pdf", authMiddleware, compileInvoicePdf);
+router.post("/invoices/item/:id/compile-base64", authMiddleware, compileInvoicePdfBase64);
 
 // Overdue Reminders Sweep
 router.post("/reminders/overdue", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLES), sendOverdueFeeReminders);
@@ -104,7 +110,9 @@ router.post("/fees/pay", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLE
 router.post("/fees/evidence", authMiddleware, submitPaymentEvidence); // Parents can submit
 router.get("/fees/pending", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLES), getPendingPayments);
 router.post("/fees/confirm", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLES), confirmPaymentEvidence);
-router.get('/fees/:id/receipt', authMiddleware, authorizeRoles(FINANCE_DASHBOARD_ROLES), getPaymentReceipt);
+router.get('/fees/:id/receipt', authMiddleware, getPaymentReceipt);
+router.get('/fees/:id/receipt-pdf', authMiddleware, compilePaymentReceiptPdf);
+router.post('/fees/:id/receipt-base64', authMiddleware, compilePaymentReceiptBase64);
 router.get('/transactions/:id/receipt', authMiddleware, authorizeRoles(FINANCE_DASHBOARD_ROLES), getTransactionReceipt);
 
 module.exports = router;

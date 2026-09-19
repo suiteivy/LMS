@@ -397,7 +397,7 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
   'teacher.manage.coverage': {
     id: 'teacher.manage.coverage',
     title: 'Coverage Planner',
-    text: 'Map out curriculum topic strands by week and track pacing against term milestones.',
+    text: 'Map out curriculum topics by week and track pacing against term milestones.',
     learnMoreAnchor: 'coverage-planner',
     roles: ['teacher', 'admin'],
   },

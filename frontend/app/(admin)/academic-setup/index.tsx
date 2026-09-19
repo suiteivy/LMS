@@ -5,6 +5,7 @@ import { ConfirmationModal } from '@/components/common/ConfirmationModal';
 import { Spinner } from '@/components/ui/Spinner';
 import { useTheme } from '@/contexts/ThemeContext';
 import { GradingAPI } from '@/services/GradingService';
+import { TranscriptService, TranscriptConfig, TranscriptConfigsResponse } from '@/services/TranscriptService';
 import { showSuccess, showError } from '@/utils/toast';
 import { useRouter } from 'expo-router';
 import {
@@ -24,6 +25,7 @@ import {
     ArrowDown,
     RotateCcw,
     Pencil,
+    FileText,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -77,12 +79,13 @@ interface AssessmentType {
     is_deleted?: boolean;
 }
 
-type TabKey = 'academic_years' | 'grading_scales' | 'assessment_types';
+type TabKey = 'academic_years' | 'grading_scales' | 'assessment_types' | 'transcripts';
 
 const TABS: { key: TabKey; label: string; icon: any }[] = [
     { key: 'academic_years', label: 'Academic Years', icon: Calendar },
     { key: 'grading_scales', label: 'Grading Scales', icon: Award },
     { key: 'assessment_types', label: 'Assessment Types', icon: ClipboardCheck },
+    { key: 'transcripts', label: 'Transcripts & Reports', icon: FileText },
 ];
 
 const DEFAULT_7POINT_SCALE: Omit<GradingScale, 'id'>[] = [
@@ -246,6 +249,33 @@ export default function AcademicSetupPage() {
         }
     }, []);
 
+    const [transcriptConfigs, setTranscriptConfigs] = useState<TranscriptConfigsResponse | null>(null);
+    const [selectedConfigClassification, setSelectedConfigClassification] = useState<'term' | 'year' | 'overall'>('term');
+    const [savingTranscriptConfig, setSavingTranscriptConfig] = useState(false);
+
+    const loadTranscriptConfigs = useCallback(async () => {
+        try {
+            const data = await TranscriptService.getConfigurations();
+            setTranscriptConfigs(data);
+        } catch (err: any) {
+            console.warn('loadTranscriptConfigs error:', err);
+        }
+    }, []);
+
+    const handleSaveTranscriptConfig = async (classification: 'term' | 'year' | 'overall') => {
+        if (!transcriptConfigs || !transcriptConfigs[classification]) return;
+        setSavingTranscriptConfig(true);
+        try {
+            const updated = await TranscriptService.updateConfiguration(classification, transcriptConfigs[classification]);
+            setTranscriptConfigs(prev => prev ? ({ ...prev, [classification]: updated }) : null);
+            showSuccess(`${classification.toUpperCase()} report configuration saved`);
+        } catch (err: any) {
+            showError(err.response?.data?.error || err.message || 'Failed to save configuration');
+        } finally {
+            setSavingTranscriptConfig(false);
+        }
+    };
+
     const loadAllData = useCallback(async () => {
         setLoading(true);
         await Promise.all([
@@ -255,9 +285,10 @@ export default function AcademicSetupPage() {
             loadAssessmentWeights(),
             loadAssessmentTypes(),
             loadActiveTerm(),
+            loadTranscriptConfigs(),
         ]);
         setLoading(false);
-    }, [loadAcademicYears, loadTerms, loadGradingScales, loadAssessmentWeights, loadAssessmentTypes, loadActiveTerm]);
+    }, [loadAcademicYears, loadTerms, loadGradingScales, loadAssessmentWeights, loadAssessmentTypes, loadActiveTerm, loadTranscriptConfigs]);
 
     useEffect(() => {
         loadAllData();
@@ -1546,6 +1577,300 @@ export default function AcademicSetupPage() {
                                 </TouchableOpacity>
                             ))
                         )}
+                    </View>
+                )}
+
+                {/* ════════════════════════════════════════════════
+                    TAB 4: Transcripts & Reports
+                ════════════════════════════════════════════════ */}
+                {activeTab === 'transcripts' && (
+                    <View>
+                        {/* Header info banner */}
+                        <View style={{
+                            backgroundColor: card,
+                            borderRadius: 18,
+                            padding: 20,
+                            marginBottom: 20,
+                            borderWidth: 1,
+                            borderColor: border,
+                        }}>
+                            <Text style={{ fontSize: 18, fontWeight: '800', color: textPrimary, marginBottom: 6 }}>
+                                Academic Transcript & Progress Report Criteria
+                            </Text>
+                            <Text style={{ fontSize: 13, color: textSecondary, lineHeight: 19 }}>
+                                Configure what sections, fee details, legends, and summary models appear on official generated PDFs across Term, Year, and Overall classifications.
+                            </Text>
+                        </View>
+
+                        {/* Classification Selector Sub-Pills */}
+                        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
+                            {(['term', 'year', 'overall'] as const).map((cls) => {
+                                const isSelected = selectedConfigClassification === cls;
+                                const titles = {
+                                    term: 'Term Report',
+                                    year: 'Year Report',
+                                    overall: 'Overall Transcript',
+                                };
+                                return (
+                                    <TouchableOpacity
+                                        key={cls}
+                                        onPress={() => setSelectedConfigClassification(cls)}
+                                        style={{
+                                            flex: 1,
+                                            paddingVertical: 12,
+                                            borderRadius: 12,
+                                            borderWidth: 1.5,
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            backgroundColor: isSelected ? accent : card,
+                                            borderColor: isSelected ? accent : border,
+                                        }}
+                                    >
+                                        <Text style={{
+                                            fontSize: 13,
+                                            fontWeight: '700',
+                                            color: isSelected ? 'white' : textPrimary,
+                                        }}>
+                                            {titles[cls]}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+
+                        {/* Configuration Form Card for Selected Classification */}
+                        {(() => {
+                            const currentCfg = transcriptConfigs?.[selectedConfigClassification];
+                            if (!currentCfg) {
+                                return (
+                                    <View style={{ padding: 30, alignItems: 'center' }}>
+                                        <Spinner size="small" color={accent} label="Loading configuration" />
+                                        <Text style={{ marginTop: 8, color: textSecondary, fontSize: 13 }}>Loading configuration...</Text>
+                                    </View>
+                                );
+                            }
+
+                            const updateField = (field: keyof TranscriptConfig, val: any) => {
+                                setTranscriptConfigs(prev => {
+                                    if (!prev) return null;
+                                    return {
+                                        ...prev,
+                                        [selectedConfigClassification]: {
+                                            ...prev[selectedConfigClassification],
+                                            [field]: val,
+                                        },
+                                    };
+                                });
+                            };
+
+                            const renderToggleRow = (
+                                title: string,
+                                description: string,
+                                field: keyof TranscriptConfig
+                            ) => {
+                                const val = Boolean(currentCfg[field]);
+                                return (
+                                    <View style={{
+                                        flexDirection: 'row',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        paddingVertical: 14,
+                                        borderBottomWidth: 1,
+                                        borderBottomColor: border,
+                                    }}>
+                                        <View style={{ flex: 1, paddingRight: 16 }}>
+                                            <Text style={{ fontSize: 14, fontWeight: '700', color: textPrimary, marginBottom: 3 }}>
+                                                {title}
+                                            </Text>
+                                            <Text style={{ fontSize: 12, color: textSecondary, lineHeight: 16 }}>
+                                                {description}
+                                            </Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            onPress={() => updateField(field, !val)}
+                                            style={{
+                                                width: 48,
+                                                height: 28,
+                                                borderRadius: 14,
+                                                backgroundColor: val ? accent : (isDark ? '#3F3F3F' : '#D1D5DB'),
+                                                justifyContent: 'center',
+                                                alignItems: val ? 'flex-end' : 'flex-start',
+                                                paddingHorizontal: 3,
+                                            }}
+                                        >
+                                            <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: 'white' }} />
+                                        </TouchableOpacity>
+                                    </View>
+                                );
+                            };
+
+                            return (
+                                <View style={{
+                                    backgroundColor: card,
+                                    borderRadius: 18,
+                                    padding: 20,
+                                    borderWidth: 1,
+                                    borderColor: border,
+                                }}>
+                                    <View style={{ marginBottom: 16, borderBottomWidth: 1, borderBottomColor: border, paddingBottom: 12 }}>
+                                        <Text style={{ fontSize: 16, fontWeight: '800', color: textPrimary }}>
+                                            {selectedConfigClassification.toUpperCase()} Report Content Rules
+                                        </Text>
+                                        <Text style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>
+                                            Customized settings for {selectedConfigClassification === 'overall' ? 'Cumulative Overall Progress Transcripts' : `${selectedConfigClassification}-level report documents`}.
+                                        </Text>
+                                    </View>
+
+                                    {/* Toggles */}
+                                    {renderToggleRow(
+                                        'Show Fee Balance',
+                                        'Display student fee balance and clearance status with dynamic currency on the header block.',
+                                        'show_fee_balance'
+                                    )}
+
+                                    {renderToggleRow(
+                                        'Include Pending / Incomplete Section',
+                                        'List enrolled subjects or assessments not yet completed for this period in a dedicated section.',
+                                        'show_pending_section'
+                                    )}
+
+                                    {renderToggleRow(
+                                        'Compulsory vs. Elective Distinction',
+                                        'Show plain-language markers distinguishing mandatory curriculum from student pathway electives.',
+                                        'show_compulsory_elective'
+                                    )}
+
+                                    {renderToggleRow(
+                                        'Include Performance Summary & Averages',
+                                        'Display the top summary block (percentage averages, GPA, or performance level counts).',
+                                        'show_summary_averages'
+                                    )}
+
+                                    {renderToggleRow(
+                                        'Include Key & Legend Section',
+                                        'Include simple explanations for abbreviations, grade levels, and elective markers.',
+                                        'show_key_legend'
+                                    )}
+
+                                    {renderToggleRow(
+                                        'Include Attendance Statistics',
+                                        'Display total days present, days absent, and attendance rate for the period.',
+                                        'show_attendance'
+                                    )}
+
+                                    {renderToggleRow(
+                                        'Include Teacher Remarks',
+                                        'Show instructional remarks and feedback from subject and class teachers.',
+                                        'show_teacher_remarks'
+                                    )}
+
+                                    {/* Summary Format Selector */}
+                                    <View style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: border }}>
+                                        <Text style={{ fontSize: 14, fontWeight: '700', color: textPrimary, marginBottom: 4 }}>
+                                            Summary Calculation Model
+                                        </Text>
+                                        <Text style={{ fontSize: 12, color: textSecondary, marginBottom: 10 }}>
+                                            Match summary to school grading scales, or display performance level counts.
+                                        </Text>
+                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                            {[
+                                                { id: 'auto', label: 'Auto (Adaptive)' },
+                                                { id: 'numeric', label: 'Numeric Average / GPA' },
+                                                { id: 'descriptor_distribution', label: 'Performance Level Counts' },
+                                            ].map((fmt) => {
+                                                const isFmt = (currentCfg.summary_format || 'auto') === fmt.id;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={fmt.id}
+                                                        onPress={() => updateField('summary_format', fmt.id)}
+                                                        style={{
+                                                            paddingHorizontal: 12,
+                                                            paddingVertical: 8,
+                                                            borderRadius: 10,
+                                                            borderWidth: 1.5,
+                                                            backgroundColor: isFmt ? (isDark ? '#2A1A0A' : '#FFF7ED') : inputBg,
+                                                            borderColor: isFmt ? accent : inputBorder,
+                                                        }}
+                                                    >
+                                                        <Text style={{
+                                                            fontSize: 12,
+                                                            fontWeight: '700',
+                                                            color: isFmt ? accent : textPrimary,
+                                                        }}>
+                                                            {fmt.label}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                    </View>
+
+                                    {/* Overall Layout Mode Selector (Only on Overall tab) */}
+                                    {selectedConfigClassification === 'overall' && (
+                                        <View style={{ paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: border }}>
+                                            <Text style={{ fontSize: 14, fontWeight: '700', color: textPrimary, marginBottom: 4 }}>
+                                                Overall Transcript Layout Mode
+                                            </Text>
+                                            <Text style={{ fontSize: 12, color: textSecondary, marginBottom: 10 }}>
+                                                Choose between a full chronological period breakdown (multi-page) or a consolidated 1–2 page unique subject overview.
+                                            </Text>
+                                            <View style={{ flexDirection: 'row', gap: 8 }}>
+                                                {[
+                                                    { id: 'period_grouped', label: 'Period-Grouped Timeline (Multi-page)' },
+                                                    { id: 'consolidated_subjects', label: 'Consolidated Unique Subjects (Compact)' },
+                                                ].map((mode) => {
+                                                    const isMode = (currentCfg.overall_layout_mode || 'period_grouped') === mode.id;
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={mode.id}
+                                                            onPress={() => updateField('overall_layout_mode', mode.id)}
+                                                            style={{
+                                                                paddingHorizontal: 12,
+                                                                paddingVertical: 8,
+                                                                borderRadius: 10,
+                                                                borderWidth: 1.5,
+                                                                backgroundColor: isMode ? (isDark ? '#2A1A0A' : '#FFF7ED') : inputBg,
+                                                                borderColor: isMode ? accent : inputBorder,
+                                                            }}
+                                                        >
+                                                            <Text style={{
+                                                                fontSize: 12,
+                                                                fontWeight: '700',
+                                                                color: isMode ? accent : textPrimary,
+                                                            }}>
+                                                                {mode.label}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {/* Save Button */}
+                                    <TouchableOpacity
+                                        onPress={() => handleSaveTranscriptConfig(selectedConfigClassification)}
+                                        disabled={savingTranscriptConfig}
+                                        style={{
+                                            marginTop: 20,
+                                            backgroundColor: accent,
+                                            paddingVertical: 14,
+                                            borderRadius: 14,
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                        }}
+                                    >
+                                        {savingTranscriptConfig ? (
+                                            <Spinner size="small" color="white" label="Saving criteria" />
+                                        ) : (
+                                            <Text style={{ color: 'white', fontWeight: '800', fontSize: 15 }}>
+                                                Save {selectedConfigClassification.toUpperCase()} Report Criteria
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            );
+                        })()}
                     </View>
                 )}
             </ScrollView>

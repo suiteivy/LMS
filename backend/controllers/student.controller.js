@@ -3,6 +3,11 @@ const { buildClassLabel } = require('../utils/classLabel');
 const { getStudentCurrentClassEnrollment } = require('../utils/studentClassEnrollment');
 const { resolveActiveTerm } = require('../utils/resolveActiveTerm');
 const { resolveTeacherScope } = require('../middleware/teacherScope');
+const {
+    roundCurrency,
+    roundDecimal,
+    roundPercentage,
+} = require('../utils/numericStandards.js');
 
 const normalizeText = (value) => {
     if (typeof value !== 'string') return '';
@@ -142,32 +147,71 @@ exports.getMyFinance = async (req, res) => {
 
         const hasActiveReleasedStructures = feeStructures.length > 0;
 
-        // 3. Get transactions
-        const { data: transactions } = await supabase
-            .from("financial_transactions")
-            .select("*")
-            .eq("user_id", userId)
-            .eq("institution_id", req.institution_id)
-            .order("date", { ascending: false });
+        // 3. Get transactions and payments
+        const [{ data: transactions }, { data: paymentRows }, { data: invoiceRows }] = await Promise.all([
+            supabase
+                .from("financial_transactions")
+                .select("*")
+                .eq("user_id", userId)
+                .eq("institution_id", req.institution_id)
+                .order("date", { ascending: false }),
+            supabase
+                .from("payments")
+                .select("*")
+                .eq("student_id", student.id)
+                .eq("institution_id", req.institution_id)
+                .order("payment_date", { ascending: false }),
+            supabase
+                .from("student_fee_invoices")
+                .select("*, fee_structures(id, title, due_date)")
+                .eq("student_id", student.id)
+                .eq("institution_id", req.institution_id)
+                .order("created_at", { ascending: false })
+        ]);
+
+        const invoices = (invoiceRows || []).map(inv => ({
+            ...inv,
+            gross_amount: roundCurrency(inv.gross_amount),
+            discount_amount: roundCurrency(inv.discount_amount),
+            net_amount: roundCurrency(inv.net_amount),
+            paid_amount: roundCurrency(inv.paid_amount),
+            balance_due: roundCurrency(inv.balance_due)
+        }));
+
+        const enrichedPayments = (paymentRows || []).map(p => ({
+            id: p.id,
+            type: p.payment_method || 'payment',
+            description: p.reference_number || 'Fee payment',
+            date: p.payment_date || p.created_at,
+            amount: roundCurrency(p.amount || 0),
+            status: p.status,
+            reference_number: p.reference_number,
+            direction: ['confirmed', 'completed', 'approved', 'paid', 'successful'].includes(String(p.status || '').toLowerCase()) ? 'inflow' : 'pending'
+        }));
 
         // Calculate paid and total
-        const paidAmount = hasActiveReleasedStructures
-            ? (transactions
-                ?.filter(t => t.type === 'fee_payment' && t.status === 'completed')
-                .reduce((sum, t) => sum + Number(t.amount), 0) || 0)
-            : 0;
+        const confirmedPaymentTotal = enrichedPayments
+            .filter(p => p.direction === 'inflow')
+            .reduce((sum, p) => sum + p.amount, 0);
 
-        const totalFees = hasActiveReleasedStructures
-            ? (feeStructures || []).reduce((sum, fee) => sum + Number(fee.amount || 0), 0)
-            : 0;
+        const txPaidTotal = transactions
+            ?.filter(t => t.type === 'fee_payment' && t.status === 'completed')
+            .reduce((sum, t) => sum + Number(t.amount || 0), 0) || 0;
 
-        const balance = hasActiveReleasedStructures
-            ? Math.max(totalFees - paidAmount, 0)
-            : 0;
+        const rawPaid = Math.max(confirmedPaymentTotal, txPaidTotal);
+        const paidAmount = roundCurrency(rawPaid);
 
-        const pendingAmount = Math.max(totalFees - paidAmount, 0);
+        let totalFees = 0;
+        if (invoices.length > 0) {
+            totalFees = roundCurrency(invoices.reduce((sum, inv) => sum + Number(inv.net_amount || 0), 0));
+        } else if (hasActiveReleasedStructures) {
+            totalFees = roundCurrency((feeStructures || []).reduce((sum, fee) => sum + Number(fee.amount || 0), 0));
+        }
+
+        const balance = roundCurrency(Math.max(totalFees - paidAmount, 0));
+        const pendingAmount = balance;
         const paidPercentage = totalFees > 0
-            ? Math.min(100, Math.round((paidAmount / totalFees) * 100))
+            ? roundPercentage((paidAmount / totalFees) * 100)
             : 0;
 
         res.json({
@@ -177,7 +221,9 @@ exports.getMyFinance = async (req, res) => {
             pending_amount: pendingAmount,
             paid_percentage: paidPercentage,
             fee_structures: feeStructures,
-            transactions
+            invoices,
+            payments: enrichedPayments,
+            transactions: enrichedPayments.length > 0 ? enrichedPayments : (transactions || [])
         });
     } catch (err) {
         console.error("Get my finance error:", err);

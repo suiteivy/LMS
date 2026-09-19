@@ -77,7 +77,20 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
   };
 
   const handlePrint = () => {
-    if (effectivePayload.html) {
+    if (effectivePayload.pdfBase64 && Platform.OS === 'web') {
+      const byteCharacters = atob(effectivePayload.pdfBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+      const printWindow = window.open(blobUrl, '_blank');
+      if (printWindow) {
+        printWindow.focus();
+      }
+    } else if (effectivePayload.html) {
       const printWindow = window.open('', '_blank');
       if (printWindow) {
         printWindow.document.write(effectivePayload.html);
@@ -200,7 +213,22 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
               padding: 12,
             }}
           >
-            {effectivePayload.html ? (
+            {effectivePayload.pdfBase64 ? (
+              <iframe
+                src={`data:application/pdf;base64,${effectivePayload.pdfBase64}`}
+                style={{
+                  width: `${zoomLevel}%`,
+                  height: '100%',
+                  maxWidth: 820 * (zoomLevel / 100),
+                  border: `1px solid ${border}`,
+                  borderRadius: 8,
+                  backgroundColor: '#FFFFFF',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                  transition: 'width 0.15s ease, max-width 0.15s ease',
+                }}
+                title="PDF Vector Preview"
+              />
+            ) : effectivePayload.html ? (
               <iframe
                 srcDoc={effectivePayload.html}
                 style={{

@@ -7,7 +7,7 @@ import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { supabase } from "@/libs/supabase";
 import { router } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Award, BarChart3, Star, TrendingUp } from "lucide-react-native";
+import { Award, BarChart3, FileText, Star, TrendingUp } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { showFetchError } from "@/utils/toast";
@@ -384,7 +384,7 @@ export default function Grades() {
                             shadowRadius: 2,
                             elevation: 2,
                         }}
-                        className="bg-white dark:bg-[#161B22] p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-6 flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
+                        className="bg-white dark:bg-[#161B22] p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-4 flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
                     >
                         <View style={{ backgroundColor: isDark ? '#2e1065' : '#ede9fe', padding: 12, borderRadius: 12, marginRight: 16 }}>
                             <Award size={24} color="#8b5cf6" />
@@ -392,6 +392,38 @@ export default function Grades() {
                         <View className="flex-1">
                             <Text className="text-gray-900 dark:text-white font-bold text-base">Report Cards</Text>
                             <Text className="text-gray-400 dark:text-gray-500 text-xs">View official report cards and GPA</Text>
+                        </View>
+                        <Text className="text-[#FF6900] font-bold text-xs">VIEW</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => {
+                            if (Platform.OS === 'web' && typeof document !== 'undefined') {
+                                (document.activeElement as HTMLElement)?.blur?.();
+                            }
+                            router.push('/(student)/transcripts' as any);
+                        }}
+                        style={{
+                            boxShadow: [{
+                                offsetX: 0,
+                                offsetY: 1,
+                                blurRadius: 2,
+                                color: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.05)',
+                            }],
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: isDark ? 0.4 : 0.05,
+                            shadowRadius: 2,
+                            elevation: 2,
+                        }}
+                        className="bg-white dark:bg-[#161B22] p-5 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-6 flex-row items-center active:bg-gray-50 dark:active:bg-gray-900"
+                    >
+                        <View style={{ backgroundColor: isDark ? '#1e293b' : '#ffedd5', padding: 12, borderRadius: 12, marginRight: 16 }}>
+                            <FileText size={24} color="#FF6900" />
+                        </View>
+                        <View className="flex-1">
+                            <Text className="text-gray-900 dark:text-white font-bold text-base">Official Transcripts</Text>
+                            <Text className="text-gray-400 dark:text-gray-500 text-xs">Term, Year, and Overall Cumulative vector reports</Text>
                         </View>
                         <Text className="text-[#FF6900] font-bold text-xs">VIEW</Text>
                     </TouchableOpacity>

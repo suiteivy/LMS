@@ -11,6 +11,14 @@ const {
     applyDiscountsAndWaivers
 } = require('../utils/feePrecedenceEngine.js');
 const { runFeeDeadlineReminderSweepWithRetry } = require('../services/feeDeadlineReminder.service.js');
+const { compilePdfBuffer } = require('../services/pdfCompiler.service.js');
+const {
+    roundCurrency,
+    roundDecimal,
+    formatCurrencyAmount,
+    calculateRunningBalance,
+    normalizeCurrency,
+} = require('../utils/numericStandards.js');
 
 const FEE_STRUCTURE_STATUS = {
     DRAFT: 'Draft',
@@ -111,6 +119,66 @@ const normalizeDateOrNull = (value) => {
     }
 
     return { ok: true, value: asDate.toISOString().slice(0, 10) };
+};
+
+/**
+ * Scoped access authorization helper:
+ * - Finance Admins / Super Admins / Bursars have full access.
+ * - Students can only access their own student records.
+ * - Parents can only access records of their linked children.
+ * - Non-finance staff/teachers are strictly excluded.
+ */
+const resolveAuthorizedStudentAccess = async (req, targetStudentId) => {
+    if (hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) {
+        return { authorized: true, role: 'admin' };
+    }
+
+    const institution_id = req.institution_id || req.user?.institution_id;
+    const userId = req.userId || req.user?.id;
+    const userRole = normalizeRoleForAccess(req.userRole || req.user?.role || req.user?.active_role);
+
+    if (!userId || !institution_id || !targetStudentId) {
+        return { authorized: false, reason: 'Missing authentication context or student identifier' };
+    }
+
+    if (userRole === 'student') {
+        const { data: student } = await supabase
+            .from('students')
+            .select('id, user_id')
+            .eq('id', targetStudentId)
+            .eq('institution_id', institution_id)
+            .maybeSingle();
+
+        if (student && student.user_id === userId) {
+            return { authorized: true, role: 'student', studentId: student.id };
+        }
+        return { authorized: false, reason: 'Students may only access their own financial records' };
+    }
+
+    if (userRole === 'parent' || userRole === 'guardian') {
+        const { data: parent } = await supabase
+            .from('parents')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('institution_id', institution_id)
+            .maybeSingle();
+
+        if (parent) {
+            const { data: link } = await supabase
+                .from('parent_students')
+                .select('id')
+                .eq('parent_id', parent.id)
+                .eq('student_id', targetStudentId)
+                .maybeSingle();
+
+            if (link) {
+                return { authorized: true, role: 'parent' };
+            }
+        }
+        return { authorized: false, reason: 'Parents may only access financial records for their linked children' };
+    }
+
+    return { authorized: false, reason: 'Unauthorized access: Teachers and staff without finance designation cannot access student fee records' };
 };
 
 const resolveAcademicYearById = async ({ institution_id, academic_year_id }) => {
@@ -1632,22 +1700,24 @@ exports.confirmPaymentEvidence = async (req, res) => {
 exports.getPaymentReceipt = async (req, res) => {
     try {
         const { id } = req.params;
-        const { institution_id, userRole } = req;
+        const { institution_id } = req;
 
         if (!id) return res.status(400).json({ error: 'Payment id is required' });
-        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) {
-            return res.status(403).json({ error: 'Unauthorized' });
-        }
 
         const { data: payment, error } = await supabase
             .from('payments')
-            .select('id, institution_id, fee_structure_id, fee_structure_snapshot, amount, payment_method, status, reference_number, payment_date, admin_notes, proof_url, created_at, updated_at, reviewed_at, confirmed_at, status_updated_at, retention_until, origin_type, origin_id, origin_label, target_type, target_id, target_label, recorded_by_user_id, recorded_by_label, students(id, users(first_name, last_name, full_name)), institutions:institution_id(name)')
+            .select('id, institution_id, student_id, fee_structure_id, fee_structure_snapshot, amount, payment_method, status, reference_number, payment_date, admin_notes, proof_url, created_at, updated_at, reviewed_at, confirmed_at, status_updated_at, retention_until, origin_type, origin_id, origin_label, target_type, target_id, target_label, recorded_by_user_id, recorded_by_label, students(id, users(first_name, last_name, full_name)), institutions:institution_id(name)')
             .eq('id', id)
             .eq('institution_id', institution_id)
             .single();
 
         if (error || !payment) {
             return res.status(404).json({ error: 'Payment not found' });
+        }
+
+        const authCheck = await resolveAuthorizedStudentAccess(req, payment.student_id || payment?.students?.id);
+        if (!authCheck.authorized) {
+            return res.status(403).json({ error: authCheck.reason || 'Unauthorized' });
         }
 
         const studentUser = payment?.students?.users;
@@ -1667,7 +1737,7 @@ exports.getPaymentReceipt = async (req, res) => {
             rows: [
                 { label: 'Institution', value: payment?.institutions?.name || 'Unknown Institution' },
                 { label: 'Student', value: studentName || 'N/A' },
-                { label: 'Amount', value: payment?.amount || 0, isAmount: true },
+                { label: 'Amount', value: roundCurrency(payment?.amount || 0), isAmount: true },
                 { label: 'Method', value: payment?.payment_method || 'N/A' },
                 { label: 'Status', value: payment?.status || 'N/A' },
                 { label: 'Reference', value: payment?.reference_number || 'N/A' },
@@ -1694,6 +1764,190 @@ exports.getPaymentReceipt = async (req, res) => {
     } catch (err) {
         console.error('Get payment receipt error:', err);
         return res.status(500).json({ error: err.message || 'Failed to generate payment receipt' });
+    }
+};
+
+/**
+ * Prepares reconciled vector payment receipt data with running balance calculations.
+ */
+const preparePaymentReceiptData = async (req, paymentId) => {
+    const institutionId = req.institution_id || req.user?.institution_id;
+    const { data: payment, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('id', paymentId)
+        .eq('institution_id', institutionId)
+        .single();
+
+    if (error || !payment) {
+        const err = new Error('Payment record not found');
+        err.status = 404;
+        throw err;
+    }
+
+    const authCheck = await resolveAuthorizedStudentAccess(req, payment.student_id);
+    if (!authCheck.authorized) {
+        const err = new Error(authCheck.reason || 'Access denied');
+        err.status = 403;
+        throw err;
+    }
+
+    const [studentRes, institutionRes, currency] = await Promise.all([
+        supabase
+            .from('students')
+            .select('id, admission_number, grade_level, form_level, users:user_id(first_name, last_name, full_name), classes:class_id(name)')
+            .eq('id', payment.student_id)
+            .maybeSingle(),
+        supabase
+            .from('institutions')
+            .select('name, logo_url, address, contact_email, phone')
+            .eq('id', institutionId)
+            .maybeSingle(),
+        getInstitutionCurrency(institutionId)
+    ]);
+
+    const student = studentRes.data;
+    const institution = institutionRes.data;
+
+    // Confirmed payments to date to compute running ledger and total paid
+    const { data: allPayments } = await supabase
+        .from('payments')
+        .select('id, amount, payment_date, created_at, status, reference_number, payment_method')
+        .eq('institution_id', institutionId)
+        .eq('student_id', payment.student_id)
+        .order('payment_date', { ascending: true });
+
+    const confirmedPayments = (allPayments || []).filter(p =>
+        ['confirmed', 'completed', 'approved', 'paid', 'successful'].includes(String(p.status || '').toLowerCase())
+    );
+
+    const thisDate = new Date(payment.payment_date || payment.created_at || Date.now()).getTime();
+    let paidUpToNow = 0;
+    const ledger = [];
+    for (const p of confirmedPayments) {
+        const pDate = new Date(p.payment_date || p.created_at || Date.now()).getTime();
+        if (pDate <= thisDate || p.id === payment.id) {
+            paidUpToNow = roundCurrency(paidUpToNow + Number(p.amount || 0));
+            ledger.push({
+                date: (p.payment_date || p.created_at)?.slice(0, 10),
+                reference: p.reference_number || 'N/A',
+                method: p.payment_method || 'Payment',
+                amount: roundCurrency(p.amount)
+            });
+        }
+    }
+
+    // Invoices for student to determine total billed obligation
+    const { data: invoices } = await supabase
+        .from('student_fee_invoices')
+        .select('id, invoice_number, net_amount, gross_amount, paid_amount, balance_due')
+        .eq('institution_id', institutionId)
+        .eq('student_id', payment.student_id)
+        .order('created_at', { ascending: false });
+
+    let billedObligation = 0;
+    let invoiceNumber = 'N/A';
+    if (invoices && invoices.length > 0) {
+        billedObligation = roundCurrency(invoices.reduce((acc, inv) => acc + Number(inv.net_amount || 0), 0));
+        invoiceNumber = invoices[0].invoice_number || 'N/A';
+    } else {
+        billedObligation = roundCurrency(payment.amount || 0);
+    }
+
+    const balanceRemaining = calculateRunningBalance(billedObligation, paidUpToNow);
+
+    const studentUser = student?.users;
+    const studentName = studentUser?.first_name
+        ? `${studentUser.first_name} ${studentUser.last_name || ''}`.trim()
+        : (studentUser?.full_name || `Student ${student?.admission_number || student?.id || ''}`.trim());
+
+    return {
+        institution: {
+            name: institution?.name || 'SuiteIvy Institution',
+            logo_url: institution?.logo_url || null,
+            address: institution?.address || 'P.O. Box Nairobi, Kenya',
+            contact_email: institution?.contact_email || 'bursar@suiteivy.edu',
+            phone: institution?.phone || '+254 700 000 000'
+        },
+        receipt: {
+            receipt_number: `RCP-${(payment.payment_date || new Date().toISOString()).slice(0, 4)}-${(payment.reference_number || payment.id.slice(0, 8)).toUpperCase()}`,
+            payment_date: payment.payment_date || payment.created_at?.slice(0, 10),
+            payment_method: payment.payment_method || 'Electronic Transfer',
+            reference_number: payment.reference_number || 'N/A',
+            notes: payment.admin_notes || 'Fee payment received with thanks'
+        },
+        student: {
+            full_name: studentName,
+            admission_number: student?.admission_number || 'N/A',
+            grade_level: student?.grade_level || student?.form_level || 'N/A',
+            form_level: student?.form_level || null,
+            class_name: student?.classes?.name || 'N/A'
+        },
+        currency: {
+            symbol: currency?.symbol || 'KSh',
+            code: currency?.code || 'KES',
+            decimal_places: currency?.decimal_places ?? 2
+        },
+        payment: {
+            amount: roundCurrency(payment.amount)
+        },
+        reconciliation: {
+            billed_obligation: billedObligation,
+            total_paid_to_date: paidUpToNow,
+            balance_remaining: balanceRemaining,
+            invoice_number: invoiceNumber
+        },
+        ledger
+    };
+};
+
+/**
+ * Compiles and downloads a genuine ReportLab vector Payment Receipt PDF.
+ */
+exports.compilePaymentReceiptPdf = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ error: 'Payment id is required' });
+
+        const receiptData = await preparePaymentReceiptData(req, id);
+        const pdfBuffer = await compilePdfBuffer({
+            document_type: 'payment_receipt',
+            data: receiptData
+        });
+
+        const filename = `Receipt-${receiptData.receipt.receipt_number || id}`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.pdf"`);
+        return res.status(200).send(pdfBuffer);
+    } catch (err) {
+        console.error('compilePaymentReceiptPdf error:', err);
+        return res.status(err.status || 500).json({ error: err.message || 'Failed to compile payment receipt PDF' });
+    }
+};
+
+/**
+ * Compiles a base64 ReportLab vector Payment Receipt PDF for in-app preview modal.
+ */
+exports.compilePaymentReceiptBase64 = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ error: 'Payment id is required' });
+
+        const receiptData = await preparePaymentReceiptData(req, id);
+        const pdfBuffer = await compilePdfBuffer({
+            document_type: 'payment_receipt',
+            data: receiptData
+        });
+
+        const filename = `Receipt-${receiptData.receipt.receipt_number || id}.pdf`;
+        return res.status(200).json({
+            success: true,
+            base64: pdfBuffer.toString('base64'),
+            filename
+        });
+    } catch (err) {
+        console.error('compilePaymentReceiptBase64 error:', err);
+        return res.status(err.status || 500).json({ error: err.message || 'Failed to preview payment receipt PDF' });
     }
 };
 
@@ -2574,12 +2828,12 @@ exports.generateStudentInvoice = async (req, res) => {
             invoice_number: invoiceNumber,
             issue_date: new Date().toISOString().slice(0, 10),
             due_date: due_date || assessment.feeStructure?.due_date || null,
-            gross_amount: assessment.grossAmount,
-            discount_amount: assessment.totalDiscount,
-            net_amount: assessment.netAssessed,
-            paid_amount: assessment.totalPaid,
-            balance_due: assessment.netBalance,
-            status: assessment.netBalance <= 0 ? (assessment.grossAmount > 0 ? 'paid' : 'cleared') : (assessment.totalPaid > 0 ? 'partial' : 'unpaid'),
+            gross_amount: roundCurrency(assessment.grossAmount),
+            discount_amount: roundCurrency(assessment.totalDiscount),
+            net_amount: roundCurrency(assessment.netAssessed),
+            paid_amount: roundCurrency(assessment.totalPaid),
+            balance_due: roundCurrency(assessment.netBalance),
+            status: roundCurrency(assessment.netBalance) <= 0 ? (roundCurrency(assessment.grossAmount) > 0 ? 'paid' : 'cleared') : (roundCurrency(assessment.totalPaid) > 0 ? 'partial' : 'unpaid'),
             itemized_breakdown: assessment.components,
             notes: notes || `Statement generated for ${assessment.feeStructure?.title || 'Academic Term'}`
         };
@@ -2606,6 +2860,11 @@ exports.getStudentInvoices = async (req, res) => {
 
         if (!studentId) return res.status(400).json({ error: "studentId is required" });
 
+        const authCheck = await resolveAuthorizedStudentAccess(req, studentId);
+        if (!authCheck.authorized) {
+            return res.status(403).json({ error: authCheck.reason || 'Access denied' });
+        }
+
         const { data, error } = await supabase
             .from('student_fee_invoices')
             .select('*, fee_structures(id, title, due_date)')
@@ -2614,10 +2873,185 @@ exports.getStudentInvoices = async (req, res) => {
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-        return res.json(data || []);
+
+        const formatted = (data || []).map(inv => ({
+            ...inv,
+            gross_amount: roundCurrency(inv.gross_amount),
+            discount_amount: roundCurrency(inv.discount_amount),
+            net_amount: roundCurrency(inv.net_amount),
+            paid_amount: roundCurrency(inv.paid_amount),
+            balance_due: roundCurrency(inv.balance_due),
+        }));
+
+        return res.json(formatted);
     } catch (err) {
         console.error('getStudentInvoices error:', err);
         return res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Prepares reconciled vector fee invoice data.
+ */
+const prepareInvoiceData = async (req, invoiceId) => {
+    const institutionId = req.institution_id || req.user?.institution_id;
+    const { data: invoice, error: invErr } = await supabase
+        .from('student_fee_invoices')
+        .select('*, fee_structures(id, title, due_date)')
+        .eq('id', invoiceId)
+        .eq('institution_id', institutionId)
+        .single();
+
+    if (invErr || !invoice) {
+        const err = new Error('Fee invoice record not found');
+        err.status = 404;
+        throw err;
+    }
+
+    const authCheck = await resolveAuthorizedStudentAccess(req, invoice.student_id);
+    if (!authCheck.authorized) {
+        const err = new Error(authCheck.reason || 'Access denied');
+        err.status = 403;
+        throw err;
+    }
+
+    const [studentRes, institutionRes, currency] = await Promise.all([
+        supabase
+            .from('students')
+            .select('id, admission_number, grade_level, form_level, users:user_id(first_name, last_name, full_name), classes:class_id(name)')
+            .eq('id', invoice.student_id)
+            .maybeSingle(),
+        supabase
+            .from('institutions')
+            .select('name, logo_url, address, contact_email, phone, settings')
+            .eq('id', institutionId)
+            .maybeSingle(),
+        getInstitutionCurrency(institutionId)
+    ]);
+
+    const student = studentRes.data;
+    const institution = institutionRes.data;
+
+    const studentUser = student?.users;
+    const studentName = studentUser?.first_name
+        ? `${studentUser.first_name} ${studentUser.last_name || ''}`.trim()
+        : (studentUser?.full_name || `Student ${student?.admission_number || student?.id || ''}`.trim());
+
+    let breakdown = [];
+    if (Array.isArray(invoice.itemized_breakdown) && invoice.itemized_breakdown.length > 0) {
+        breakdown = invoice.itemized_breakdown.map(item => ({
+            fee_component_name: item.fee_component_name || item.name || item.title || 'Tuition & Academic Fees',
+            original_amount: roundCurrency(item.original_amount ?? item.amount ?? item.gross_amount ?? 0),
+            discount_amount: roundCurrency(item.discount_amount ?? item.discount ?? 0),
+            net_amount: roundCurrency(item.net_amount ?? item.amount ?? 0),
+            due_date: item.due_date || invoice.due_date || null
+        }));
+    } else {
+        breakdown = [
+            {
+                fee_component_name: invoice.fee_structures?.title || 'Tuition Fee Assessment',
+                original_amount: roundCurrency(invoice.gross_amount),
+                discount_amount: roundCurrency(invoice.discount_amount),
+                net_amount: roundCurrency(invoice.net_amount),
+                due_date: invoice.due_date || null
+            }
+        ];
+    }
+
+    const instSettings = institution?.settings || {};
+    const bankDetails = instSettings?.payment_details || instSettings?.banking || {};
+
+    return {
+        institution: {
+            name: institution?.name || 'SuiteIvy Institution',
+            logo_url: institution?.logo_url || null,
+            address: institution?.address || 'P.O. Box Nairobi, Kenya',
+            contact_email: institution?.contact_email || 'bursar@suiteivy.edu',
+            phone: institution?.phone || '+254 700 000 000'
+        },
+        invoice: {
+            invoice_number: invoice.invoice_number || `INV-${invoice.id.slice(0, 8).toUpperCase()}`,
+            issue_date: invoice.issue_date || invoice.created_at?.slice(0, 10),
+            due_date: invoice.due_date || invoice.fee_structures?.due_date || null,
+            status: invoice.status || 'issued',
+            notes: invoice.notes || 'Please remit payment by the indicated due date.'
+        },
+        student: {
+            full_name: studentName,
+            admission_number: student?.admission_number || 'N/A',
+            grade_level: student?.grade_level || student?.form_level || 'N/A',
+            form_level: student?.form_level || null,
+            class_name: student?.classes?.name || 'N/A'
+        },
+        currency: {
+            symbol: currency?.symbol || 'KSh',
+            code: currency?.code || 'KES',
+            decimal_places: currency?.decimal_places ?? 2
+        },
+        breakdown,
+        summary: {
+            gross_amount: roundCurrency(invoice.gross_amount),
+            discount_amount: roundCurrency(invoice.discount_amount),
+            net_amount: roundCurrency(invoice.net_amount),
+            paid_amount: roundCurrency(invoice.paid_amount),
+            balance_due: roundCurrency(invoice.balance_due)
+        },
+        payment_instructions: {
+            bank_name: bankDetails?.bank_name || 'Standard Chartered Bank',
+            account_number: bankDetails?.account_number || '010203040506',
+            account_name: bankDetails?.account_name || institution?.name || 'SuiteIvy Academy',
+            paybill_number: bankDetails?.paybill_number || '247247'
+        }
+    };
+};
+
+/**
+ * Compiles and downloads a genuine ReportLab vector Fee Invoice PDF.
+ */
+exports.compileInvoicePdf = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ error: 'Invoice id is required' });
+
+        const invoiceData = await prepareInvoiceData(req, id);
+        const pdfBuffer = await compilePdfBuffer({
+            document_type: 'fee_invoice',
+            data: invoiceData
+        });
+
+        const filename = `Invoice-${invoiceData.invoice.invoice_number || id}`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.pdf"`);
+        return res.status(200).send(pdfBuffer);
+    } catch (err) {
+        console.error('compileInvoicePdf error:', err);
+        return res.status(err.status || 500).json({ error: err.message || 'Failed to compile fee invoice PDF' });
+    }
+};
+
+/**
+ * Compiles a base64 ReportLab vector Fee Invoice PDF for in-app preview modal.
+ */
+exports.compileInvoicePdfBase64 = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ error: 'Invoice id is required' });
+
+        const invoiceData = await prepareInvoiceData(req, id);
+        const pdfBuffer = await compilePdfBuffer({
+            document_type: 'fee_invoice',
+            data: invoiceData
+        });
+
+        const filename = `Invoice-${invoiceData.invoice.invoice_number || id}.pdf`;
+        return res.status(200).json({
+            success: true,
+            base64: pdfBuffer.toString('base64'),
+            filename
+        });
+    } catch (err) {
+        console.error('compileInvoicePdfBase64 error:', err);
+        return res.status(err.status || 500).json({ error: err.message || 'Failed to preview fee invoice PDF' });
     }
 };
 

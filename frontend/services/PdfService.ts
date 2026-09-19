@@ -5,11 +5,12 @@ import { File, Paths } from 'expo-file-system';
 import { api } from '@/services/api';
 
 export interface PdfDocumentPayload {
-  documentType: 'clearance_confirmation' | 'violation_summary' | 'institutional_summary' | 'report_card' | 'timetable' | 'receipt' | 'generic';
+  documentType: 'clearance_confirmation' | 'violation_summary' | 'institutional_summary' | 'report_card' | 'timetable' | 'receipt' | 'fee_invoice' | 'payment_receipt' | 'academic_transcript' | 'generic';
   data: Record<string, any>;
   title: string;
   fileName?: string;
   html?: string;
+  pdfBase64?: string;
 }
 
 export const PdfService = {
@@ -58,6 +59,18 @@ export const PdfService = {
 
     if (Platform.OS === 'web') {
       try {
+        if (payload.pdfBase64) {
+          const byteCharacters = atob(payload.pdfBase64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/pdf' });
+          this.downloadBlob(blob, fileName);
+          return;
+        }
+
         // Try backend compilation first for high-fidelity vector PDF
         const blob = await this.compileVectorPdf(payload.documentType, payload.data);
         this.downloadBlob(blob, fileName);
@@ -108,8 +121,8 @@ export const PdfService = {
         await Print.printAsync({ uri });
       }
     } else {
-      // Fetch base64 from backend and share
-      const b64 = await this.compileVectorPdfBase64(payload.documentType, payload.data);
+      // Use existing base64 if available, or fetch from backend and share
+      const b64 = payload.pdfBase64 || await this.compileVectorPdfBase64(payload.documentType, payload.data);
       const tempPath = `${Paths.cache.uri}/${fileName}`;
       const file = new File(tempPath);
       await file.write(b64);

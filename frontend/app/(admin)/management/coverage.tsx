@@ -1159,11 +1159,11 @@ export default function AdminCoveragePlanner() {
                                 }}
                             />
 
-                            {/* Strand & Sub-strand */}
+                            {/* Main Topic & Sub-topic */}
                             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={{ fontSize: 12, fontWeight: '600', color: isDark ? '#f0f6fc' : '#0f172a', marginBottom: 6 }}>
-                                        Strand (Optional)
+                                        Main Topic (Optional)
                                     </Text>
                                     <TextInput
                                         placeholder="e.g. Algebra"
@@ -1183,7 +1183,7 @@ export default function AdminCoveragePlanner() {
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={{ fontSize: 12, fontWeight: '600', color: isDark ? '#f0f6fc' : '#0f172a', marginBottom: 6 }}>
-                                        Sub-strand (Optional)
+                                        Sub-topic (Optional)
                                     </Text>
                                     <TextInput
                                         placeholder="e.g. Linear Relations"

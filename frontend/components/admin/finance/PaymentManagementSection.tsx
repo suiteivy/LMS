@@ -30,6 +30,7 @@ import Toast from 'react-native-toast-message';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { File, Paths } from 'expo-file-system';
+import { InvoiceReceiptService } from "@/services/InvoiceReceiptService";
 
 
 interface PaymentManagementSectionProps {
@@ -158,6 +159,13 @@ export const PaymentManagementSection: React.FC<
   const openPaymentReceipt = async (paymentId: string) => {
     try {
       setDownloadingReceiptId(paymentId);
+      // Attempt ReportLab vector PDF compilation first
+      try {
+        await InvoiceReceiptService.downloadPaymentReceiptPdf(paymentId);
+        return;
+      } catch (vectorErr) {
+        console.warn('ReportLab vector receipt download fallback to html:', vectorErr);
+      }
       const html = await FinanceService.getAnyReceiptHtml(paymentId);
       const { uri } = await Print.printToFileAsync({ html });
 

@@ -137,7 +137,7 @@ export default function AdminManagement() {
         {
             icon: Award,
             title: "Student Rankings & Leaderboards",
-            description: "School-wide, cohort, and subject performance rankings and CBC bands",
+            description: "School-wide, cohort, and subject performance rankings and grades",
             color: "#eab308",
             bgColor: "#fef9c3",
             darkBgColor: "#3d3000",

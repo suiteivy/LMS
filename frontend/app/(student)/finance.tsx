@@ -14,18 +14,24 @@ import {
     ArrowUpRight,
     Award,
     CreditCard,
+    Download,
+    Eye,
+    FileText,
     Info,
     Receipt,
     Wallet
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
+    ActivityIndicator,
     Alert,
     ScrollView,
     Text,
     TouchableOpacity,
     View
 } from "react-native";
+import { PdfPreviewModal } from "@/components/pdf/PdfPreviewModal";
+import { InvoiceReceiptService } from "@/services/InvoiceReceiptService";
 
 export default function StudentFinancePage() {
     const { studentId, isDemo } = useAuth();
@@ -37,6 +43,70 @@ export default function StudentFinancePage() {
     const [bursaries, setBursaries] = useState<any[]>([]);
     const [bursaryLoading, setBursaryLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'fees' | 'bursaries'>('fees');
+    const [previewPayload, setPreviewPayload] = useState<any | null>(null);
+    const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+    const handlePreviewInvoice = async (invoiceId: string, invoiceNumber?: string) => {
+        try {
+            setActionLoadingId(`inv-prev-${invoiceId}`);
+            const preview = await InvoiceReceiptService.previewInvoicePdf(invoiceId);
+            setPreviewPayload({
+                documentType: 'fee_invoice',
+                data: {},
+                title: `Fee Invoice ${invoiceNumber || ''}`.trim(),
+                fileName: preview.filename,
+                pdfBase64: preview.base64,
+            });
+        } catch (err: any) {
+            console.error('Invoice preview error:', err);
+            Alert.alert('Preview Error', err?.response?.data?.error || 'Failed to preview invoice PDF.');
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
+
+    const handleDownloadInvoice = async (invoiceId: string, invoiceNumber?: string) => {
+        try {
+            setActionLoadingId(`inv-dl-${invoiceId}`);
+            await InvoiceReceiptService.downloadInvoicePdf(invoiceId, invoiceNumber);
+        } catch (err: any) {
+            console.error('Invoice download error:', err);
+            Alert.alert('Download Error', err?.response?.data?.error || 'Failed to download invoice PDF.');
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
+
+    const handlePreviewReceipt = async (paymentId: string, refNumber?: string) => {
+        try {
+            setActionLoadingId(`rcp-prev-${paymentId}`);
+            const preview = await InvoiceReceiptService.previewPaymentReceiptPdf(paymentId);
+            setPreviewPayload({
+                documentType: 'payment_receipt',
+                data: {},
+                title: `Payment Receipt ${refNumber || ''}`.trim(),
+                fileName: preview.filename,
+                pdfBase64: preview.base64,
+            });
+        } catch (err: any) {
+            console.error('Receipt preview error:', err);
+            Alert.alert('Preview Error', err?.response?.data?.error || 'Failed to preview payment receipt PDF.');
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
+
+    const handleDownloadReceipt = async (paymentId: string, refNumber?: string) => {
+        try {
+            setActionLoadingId(`rcp-dl-${paymentId}`);
+            await InvoiceReceiptService.downloadPaymentReceiptPdf(paymentId, refNumber);
+        } catch (err: any) {
+            console.error('Receipt download error:', err);
+            Alert.alert('Download Error', err?.response?.data?.error || 'Failed to download payment receipt PDF.');
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
 
     useEffect(() => {
         fetchData();
@@ -226,6 +296,112 @@ export default function StudentFinancePage() {
                                 </View>
                             )}
 
+                            {/* Official Invoices & Billing Statements */}
+                            <View className="mb-8">
+                                <View className="px-2 mb-3 flex-row items-center justify-between">
+                                    <View className="flex-row items-center gap-2">
+                                        <FileText size={18} color="#FF6900" />
+                                        <Text className="text-gray-900 dark:text-white font-bold text-lg tracking-tight">Official Invoices</Text>
+                                    </View>
+                                    <Text className="text-gray-400 text-xs font-semibold">
+                                        {(financeData?.invoices || []).length} Statement{((financeData?.invoices || []).length === 1) ? '' : 's'}
+                                    </Text>
+                                </View>
+
+                                {(financeData?.invoices || []).length === 0 ? (
+                                    <View className="bg-white dark:bg-[#161B22] p-6 rounded-xl border border-dashed border-[#D0D7DE] dark:border-[#21262D]">
+                                        <Text className="text-gray-400 text-xs font-medium text-center">
+                                            No billing statements have been issued for this account yet.
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    financeData.invoices.map((inv: any) => {
+                                        const isPartial = inv.status === 'partial';
+                                        const isPaid = inv.status === 'paid' || inv.status === 'cleared';
+                                        const statusBg = isPaid
+                                            ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                                            : isPartial
+                                            ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                                            : 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800';
+
+                                        return (
+                                            <View
+                                                key={inv.id}
+                                                className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl mb-3 border border-[#D0D7DE] dark:border-[#21262D]"
+                                            >
+                                                <View className="flex-row justify-between items-start mb-3">
+                                                    <View className="flex-1 mr-3">
+                                                        <View className="flex-row items-center gap-2">
+                                                            <Text className="text-gray-900 dark:text-white font-bold text-sm tracking-tight">
+                                                                {inv.invoice_number}
+                                                            </Text>
+                                                            <View className={`px-2 py-0.5 rounded-full border ${statusBg}`}>
+                                                                <Text className="text-[10px] font-extrabold uppercase tracking-wider">
+                                                                    {inv.status}
+                                                                </Text>
+                                                            </View>
+                                                        </View>
+                                                        <Text className="text-gray-400 text-[10px] font-semibold mt-1">
+                                                            Issued: {inv.issue_date || 'Current Session'} · Due: {inv.due_date || 'Term Due Date'}
+                                                        </Text>
+                                                    </View>
+                                                    <Text className="text-gray-900 dark:text-white font-black text-base">
+                                                        {formatKES(inv.net_amount || 0)}
+                                                    </Text>
+                                                </View>
+
+                                                <View className="flex-row justify-between py-2 border-t border-b border-gray-100 dark:border-gray-800 my-2">
+                                                    <View>
+                                                        <Text className="text-gray-400 text-[9px] font-bold uppercase tracking-wider">Gross</Text>
+                                                        <Text className="text-gray-600 dark:text-gray-300 text-xs font-semibold">{formatKES(inv.gross_amount || 0)}</Text>
+                                                    </View>
+                                                    <View>
+                                                        <Text className="text-gray-400 text-[9px] font-bold uppercase tracking-wider">Discount</Text>
+                                                        <Text className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold">-{formatKES(inv.discount_amount || 0)}</Text>
+                                                    </View>
+                                                    <View>
+                                                        <Text className="text-gray-400 text-[9px] font-bold uppercase tracking-wider">Paid</Text>
+                                                        <Text className="text-gray-600 dark:text-gray-300 text-xs font-semibold">{formatKES(inv.paid_amount || 0)}</Text>
+                                                    </View>
+                                                    <View>
+                                                        <Text className="text-gray-400 text-[9px] font-bold uppercase tracking-wider">Balance Due</Text>
+                                                        <Text className="text-red-600 dark:text-red-400 text-xs font-bold">{formatKES(inv.balance_due || 0)}</Text>
+                                                    </View>
+                                                </View>
+
+                                                <View className="flex-row justify-end gap-2 mt-3">
+                                                    <TouchableOpacity
+                                                        onPress={() => handlePreviewInvoice(inv.id, inv.invoice_number)}
+                                                        disabled={actionLoadingId === `inv-prev-${inv.id}`}
+                                                        className="flex-row items-center bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-lg gap-1.5 border border-gray-200 dark:border-gray-700"
+                                                    >
+                                                        {actionLoadingId === `inv-prev-${inv.id}` ? (
+                                                            <ActivityIndicator size="small" color="#FF6900" />
+                                                        ) : (
+                                                            <Eye size={13} color="#FF6900" />
+                                                        )}
+                                                        <Text className="text-gray-800 dark:text-gray-200 text-xs font-bold">Preview</Text>
+                                                    </TouchableOpacity>
+
+                                                    <TouchableOpacity
+                                                        onPress={() => handleDownloadInvoice(inv.id, inv.invoice_number)}
+                                                        disabled={actionLoadingId === `inv-dl-${inv.id}`}
+                                                        className="flex-row items-center bg-[#FF6900] px-3 py-1.5 rounded-lg gap-1.5"
+                                                    >
+                                                        {actionLoadingId === `inv-dl-${inv.id}` ? (
+                                                            <ActivityIndicator size="small" color="white" />
+                                                        ) : (
+                                                            <Download size={13} color="white" />
+                                                        )}
+                                                        <Text className="text-white text-xs font-bold">Download PDF</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </View>
+                                        );
+                                    })
+                                )}
+                            </View>
+
                             {/* Status Info */}
                              <View className={`p-6 rounded-xl mb-8 flex-row items-center border ${financeData?.balance > 0 ? 'bg-orange-50 dark:bg-orange-950/30 border-orange-100 dark:border-orange-900' : 'bg-green-50 dark:bg-green-950/30 border-green-100 dark:border-green-900'}`}>
                                  <View 
@@ -297,20 +473,55 @@ export default function StudentFinancePage() {
                                              }],
                                              shadowOpacity: isDark ? 0.4 : 0.08,
                                              }}
-                                         className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl mb-4 flex-row items-center border border-[#D0D7DE] dark:border-[#21262D]"
+                                         className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl mb-4 border border-[#D0D7DE] dark:border-[#21262D]"
                                      >
-                                        <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${tx.direction === 'inflow' ? 'bg-green-50' : 'bg-red-50'}`}>
-                                            {tx.direction === 'inflow' ? <ArrowDownLeft size={20} color="#16a34a" /> : <ArrowUpRight size={20} color="#dc2626" />}
+                                        <View className="flex-row items-center">
+                                            <View className={`w-12 h-12 rounded-xl items-center justify-center mr-4 ${tx.direction === 'inflow' ? 'bg-green-50 dark:bg-green-950/40' : 'bg-red-50 dark:bg-red-950/40'}`}>
+                                                {tx.direction === 'inflow' ? <ArrowDownLeft size={20} color="#16a34a" /> : <ArrowUpRight size={20} color="#dc2626" />}
+                                            </View>
+                                            <View className="flex-1">
+                                                <Text className="text-gray-900 dark:text-white font-bold text-sm tracking-tight">{tx.type.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</Text>
+                                                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">{new Date(tx.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
+                                                {tx.reference_number && (
+                                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-mono mt-0.5">Ref: {tx.reference_number}</Text>
+                                                )}
+                                            </View>
+                                            <View className="items-end">
+                                                <Text className={`font-bold text-base ${tx.direction === 'inflow' ? 'text-green-600' : 'text-gray-900 dark:text-white'}`}>
+                                                    {tx.direction === 'inflow' ? '+' : '-'}{formatKES(tx.amount)}
+                                                </Text>
+                                            </View>
                                         </View>
-                                        <View className="flex-1">
-                                            <Text className="text-gray-900 dark:text-white font-bold text-sm tracking-tight">{tx.type.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</Text>
-                                            <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">{new Date(tx.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
-                                        </View>
-                                        <View className="items-end">
-                                            <Text className={`font-bold text-base ${tx.direction === 'inflow' ? 'text-green-600' : 'text-gray-900 dark:text-white'}`}>
-                                                {tx.direction === 'inflow' ? '+' : '-'}{formatKES(tx.amount)}
-                                            </Text>
-                                        </View>
+
+                                        {tx.direction === 'inflow' && (
+                                            <View className="flex-row justify-end gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+                                                <TouchableOpacity
+                                                    onPress={() => handlePreviewReceipt(tx.id, tx.reference_number)}
+                                                    disabled={actionLoadingId === `rcp-prev-${tx.id}`}
+                                                    className="flex-row items-center bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-lg gap-1.5 border border-gray-200 dark:border-gray-700"
+                                                >
+                                                    {actionLoadingId === `rcp-prev-${tx.id}` ? (
+                                                        <ActivityIndicator size="small" color="#10B981" />
+                                                    ) : (
+                                                        <Eye size={12} color="#10B981" />
+                                                    )}
+                                                    <Text className="text-gray-800 dark:text-gray-200 text-xs font-bold">Receipt</Text>
+                                                </TouchableOpacity>
+
+                                                <TouchableOpacity
+                                                    onPress={() => handleDownloadReceipt(tx.id, tx.reference_number)}
+                                                    disabled={actionLoadingId === `rcp-dl-${tx.id}`}
+                                                    className="flex-row items-center bg-emerald-600 px-3 py-1.5 rounded-lg gap-1.5"
+                                                >
+                                                    {actionLoadingId === `rcp-dl-${tx.id}` ? (
+                                                        <ActivityIndicator size="small" color="white" />
+                                                    ) : (
+                                                        <Download size={12} color="white" />
+                                                    )}
+                                                    <Text className="text-white text-xs font-bold">PDF</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
                                     </View>
                                 ))
                             ) : (
@@ -399,6 +610,12 @@ export default function StudentFinancePage() {
                     )}
                 </View>
             </ScrollView>
+
+            <PdfPreviewModal
+                visible={!!previewPayload}
+                payload={previewPayload}
+                onClose={() => setPreviewPayload(null)}
+            />
         </View>
     );
 }
