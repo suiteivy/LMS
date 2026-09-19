@@ -43,6 +43,11 @@ const masterAdminRoutes = require("./routes/master_admin.route.js");
 const addonRequestRoutes = require("./routes/addon_request.routes.js");
 const settingsController = require("./controllers/settings.controller.js");
 const masterAdminController = require("./controllers/master_admin.controller.js");
+const metricsMiddleware = require("./middleware/metrics.middleware.js");
+const metricsCollector = require("./utils/metrics.js");
+const outboxService = require("./services/outbox.service.js");
+const jobQueueService = require("./services/jobQueue.service.js");
+const supabase = require("./utils/supabaseClient.js");
 
 const app = express();
 
@@ -55,6 +60,7 @@ app.use(express.json({ limit: '10mb' }));
 const { nullStringSanitizer } = require("./middleware/sanitizer.middleware.js");
 app.use(nullStringSanitizer);
 app.use(express.urlencoded({ extended: true }));
+app.use(metricsMiddleware);
 
 // Apply rate limiting to public endpoints
 app.use("/api/auth", rateLimiters.authPublic);
@@ -268,9 +274,66 @@ cron.schedule('0 3 * * *', async () => {
   }
 });
 
-// health check
+// Health and Readiness Checks (Part D2)
+async function checkHealthStatus() {
+  const checks = {
+    database: 'unknown',
+    auth: 'unknown',
+  };
+
+  try {
+    const { error: dbErr } = await supabase.from('institutions').select('id').limit(1);
+    checks.database = dbErr ? 'degraded' : 'up';
+  } catch (_e) {
+    checks.database = 'down';
+  }
+
+  try {
+    const { error: authErr } = await supabase.auth.getSession();
+    checks.auth = authErr ? 'degraded' : 'up';
+  } catch (_e) {
+    checks.auth = 'down';
+  }
+
+  const isHealthy = checks.database !== 'down';
+  const mem = process.memoryUsage();
+
+  return {
+    status: isHealthy ? 'ok' : 'degraded',
+    timestamp: new Date().toISOString(),
+    uptime_seconds: Math.floor(process.uptime()),
+    memory: {
+      heap_used_mb: Math.round((mem.heapUsed / 1024 / 1024) * 100) / 100,
+      heap_total_mb: Math.round((mem.heapTotal / 1024 / 1024) * 100) / 100,
+      rss_mb: Math.round((mem.rss / 1024 / 1024) * 100) / 100,
+    },
+    services: checks,
+  };
+}
+
+// Basic root ping
 app.get("/", (_req, res) => {
   res.status(200).json({ message: "LMS API is running" });
+});
+
+// Production Health & Readiness Endpoints
+app.get(['/health', '/api/health', '/health/ready'], async (_req, res) => {
+  const result = await checkHealthStatus();
+  const statusCode = result.status === 'ok' ? 200 : 503;
+  res.status(statusCode).json(result);
+});
+
+// Process Liveness Endpoint
+app.get('/health/live', (_req, res) => {
+  res.status(200).json({ status: 'alive', uptime_seconds: Math.floor(process.uptime()) });
+});
+
+// 4 Golden Signals Metrics Endpoint (Part D3)
+app.get('/api/metrics', (_req, res) => {
+  res.json({
+    success: true,
+    data: metricsCollector.getMetrics(),
+  });
 });
 
 // Favicon handler - prevent 404/500 errors on favicon requests
@@ -343,6 +406,10 @@ const server = app.listen(PORT, "0.0.0.0", () => {
   if (settingsController && typeof settingsController.checkAndAutoUpdateRates === 'function') {
     settingsController.checkAndAutoUpdateRates();
   }
+
+  // Start background Outbox and Job Queue workers
+  outboxService.startWorker(5000);
+  jobQueueService.startWorker(5000);
 });
 
 // DEBUG: Keep process alive
@@ -354,6 +421,8 @@ process.on('exit', (code) => {
 
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received, closing server');
+  outboxService.stopWorker();
+  jobQueueService.stopWorker();
   server.close(() => {
     logger.info('Server closed');
   });

@@ -2,7 +2,15 @@ const supabase = require("../utils/supabaseClient.js");
 const { canonicalRoleFrom } = require("../utils/roleAlias.js");
 const { isTransientSupabaseError, withSupabaseRetry } = require('../utils/supabaseRetry.js');
 const { runWithTenantContext } = require('../utils/tenantContext.js');
+const { CircuitBreaker } = require('../utils/circuitBreaker.js');
 const logger = require('../utils/logger');
+
+const authCircuitBreaker = new CircuitBreaker({
+  name: 'supabase_auth',
+  failureThreshold: 5,
+  cooldownMs: 15000,
+  isFailure: (err) => isTransientSupabaseError(err || err?.message),
+});
 
 // Simple in-memory cache for profiles: userId -> { profile, timestamp }
 const profileCache = new Map();
@@ -92,10 +100,26 @@ async function authMiddleware(req, res, next) {
       return res.status(401).json({ error: "No token provided" });
     }
 
+    let authResult;
+    try {
+      authResult = await authCircuitBreaker.execute(() =>
+        withSupabaseRetry(() => supabase.auth.getUser(token), { attempts: 2, delaysMs: [300] })
+      );
+    } catch (cbErr) {
+      if (cbErr.isCircuitBreaker) {
+        res.setHeader('Retry-After', '15');
+        return res.status(503).json({
+          error: 'Authentication service temporarily degraded (Circuit Breaker OPEN)',
+          code: 'AUTH_CIRCUIT_OPEN',
+        });
+      }
+      throw cbErr;
+    }
+
     const {
-      data: { user },
+      data: { user } = {},
       error,
-    } = await withSupabaseRetry(() => supabase.auth.getUser(token), { attempts: 2, delaysMs: [300] });
+    } = authResult || {};
 
     if (error || !user) {
       if (isLogoutPath) {

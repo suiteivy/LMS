@@ -1,6 +1,7 @@
 const supabase = require('../utils/supabaseClient.js');
 const { withSupabaseRetry } = require('../utils/supabaseRetry.js');
 const logger = require('../utils/logger.js');
+const outboxService = require('../services/outbox.service.js');
 
 function isValidDateOnlyString(value) {
   if (typeof value !== 'string') return false;
@@ -330,12 +331,10 @@ exports.createEvent = async (req, res) => {
 
     const isCancelClasses = Boolean(cancel_classes);
 
-    // 1. Auto-generate corresponding Announcement
-    let announcementId = null;
-    try {
-      const annTitle = isCancelClasses
-        ? `🚨 [Classes Cancelled] ${title.trim()}`
-        : `📅 [School Event] ${title.trim()}`;
+    // Build corresponding Announcement fields if requested
+    const annTitle = isCancelClasses
+      ? `🚨 [Classes Cancelled] ${title.trim()}`
+      : `📅 [School Event] ${title.trim()}`;
 
       const dateLabel = finalStartDate === finalEndDate
         ? finalStartDate
@@ -366,26 +365,7 @@ exports.createEvent = async (req, res) => {
         }
       }
 
-      const { data: annData, error: annError } = await supabase
-        .from('announcements')
-        .insert({
-          title: annTitle,
-          message: annMessage,
-          target_audience: validatedAudience,
-          institution_id: institutionId,
-          expires_at: expiresAt,
-        })
-        .select('id')
-        .maybeSingle();
-
-      if (!annError && annData?.id) {
-        announcementId = annData.id;
-      }
-    } catch (annErr) {
-      logger.warn('Auto announcement creation non-fatal error:', { error: annErr?.message || annErr });
-    }
-
-    // 2. Insert calendar event
+    // 1. Insert calendar event first
     const { data: eventData, error: insertError } = await supabase
       .from('calendar_events')
       .insert({
@@ -400,16 +380,41 @@ exports.createEvent = async (req, res) => {
         end_time: end_time || null,
         event_type,
         cancel_classes: isCancelClasses,
-        announcement_id: announcementId,
+        announcement_id: null,
       })
       .select('*')
       .single();
 
     if (insertError) throw insertError;
 
+    // 2. Stage Outbox event for guaranteed announcement delivery
+    let announcementQueued = false;
+    if (create_announcement && eventData?.id) {
+      try {
+        await outboxService.stageEvent({
+          eventType: 'calendar_event.announcement_requested',
+          aggregateType: 'calendar_event',
+          aggregateId: eventData.id,
+          payload: {
+            title: annTitle,
+            message: annMessage,
+            target_audience: validatedAudience,
+            institution_id: institutionId,
+            expires_at: expiresAt,
+            calendar_event_id: eventData.id,
+          },
+        });
+        announcementQueued = true;
+        // Trigger background processing cycle
+        outboxService.runWorkerCycle().catch(() => {});
+      } catch (outboxErr) {
+        logger.warn('Failed staging outbox event for calendar announcement:', { error: outboxErr?.message || outboxErr });
+      }
+    }
+
     return res.status(201).json({
       event: eventData,
-      announcement_created: Boolean(announcementId),
+      announcement_created: announcementQueued,
     });
   } catch (err) {
     console.error('createEvent error:', err);

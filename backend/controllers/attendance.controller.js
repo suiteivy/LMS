@@ -1023,6 +1023,11 @@ exports.getStaffPresence = async (req, res) => {
                 confirmationStatus = null;
             }
 
+            const isOnline = Boolean(
+                att?.is_online ||
+                (att?.last_heartbeat_at && (Date.now() - new Date(att.last_heartbeat_at).getTime() <= 5 * 60 * 1000))
+            );
+
             return {
                 teacher_id: t.id,
                 name: t.users?.full_name || `${t.users?.first_name || ''} ${t.users?.last_name || ''}`.trim() || 'Teacher',
@@ -1035,6 +1040,8 @@ exports.getStaffPresence = async (req, res) => {
                 confirmation_status: confirmationStatus,
                 check_in_time: att?.check_in_time || att?.recorded_at || null,
                 is_scheduled: isScheduled,
+                is_online: isOnline,
+                last_heartbeat_at: att?.last_heartbeat_at || null,
                 notes: att?.notes || null
             };
         });
@@ -1043,5 +1050,69 @@ exports.getStaffPresence = async (req, res) => {
     } catch (err) {
         console.error("getStaffPresence error:", err);
         res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * TTL-Based Teacher Presence Heartbeat (Part C2)
+ * Active teacher clients record a periodic heartbeat (e.g. every 60-120 seconds).
+ * Missing heartbeats for >5 minutes designates the client as offline.
+ */
+exports.recordTeacherHeartbeat = async (req, res) => {
+    try {
+        const { userRole, institution_id, user } = req;
+        const userId = user?.id || req.userId;
+
+        if (userRole !== 'teacher') {
+            return res.status(403).json({ error: "Only teachers can send presence heartbeats" });
+        }
+
+        const { data: teacher } = await supabase
+            .from('teachers')
+            .select('id')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+        if (!teacher) {
+            return res.status(404).json({ error: "Teacher profile not found" });
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const nowIso = new Date().toISOString();
+
+        try {
+            await supabase
+                .from('teacher_attendance')
+                .upsert({
+                    institution_id,
+                    teacher_id: teacher.id,
+                    date: today,
+                    status: 'present',
+                    confirmation_status: 'self_reported',
+                    last_heartbeat_at: nowIso,
+                    is_online: true,
+                    recorded_at: nowIso,
+                }, { onConflict: 'institution_id,teacher_id,date' });
+        } catch (_upsertErr) {
+            await supabase
+                .from('teacher_attendance')
+                .update({
+                    last_heartbeat_at: nowIso,
+                    is_online: true,
+                })
+                .eq('institution_id', institution_id)
+                .eq('teacher_id', teacher.id)
+                .eq('date', today);
+        }
+
+        return res.json({
+            success: true,
+            message: "Heartbeat acknowledged",
+            timestamp: nowIso,
+            ttl_seconds: 300,
+        });
+    } catch (err) {
+        console.error("recordTeacherHeartbeat error:", err);
+        return res.status(500).json({ error: err.message });
     }
 };

@@ -110,7 +110,10 @@ export function useRealtimeQuery(
               startPolling();
               return;
             }
-            const delay = Math.min(INITIAL_BACKOFF_MS * Math.pow(2, retriesRef.current - 1), MAX_BACKOFF_MS);
+            const rawDelay = Math.min(INITIAL_BACKOFF_MS * Math.pow(2, retriesRef.current - 1), MAX_BACKOFF_MS);
+            // Full randomized jitter (0.5x to 1.5x) to prevent thundering herds on reconnect
+            const jitter = 0.5 + Math.random();
+            const delay = Math.round(rawDelay * jitter);
             // Remove failed channel and retry after delay
             supabase.removeChannel(channel);
             if (mountedRef.current) {

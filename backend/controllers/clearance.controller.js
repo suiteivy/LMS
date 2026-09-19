@@ -359,7 +359,40 @@ exports.initiateClearance = async (req, res) => {
         .select()
         .single();
 
-      if (insertErr) throw insertErr;
+      if (insertErr) {
+        if (
+          insertErr.code === '23505' ||
+          insertErr.message?.includes('uq_active_user_clearance') ||
+          insertErr.message?.includes('unique constraint')
+        ) {
+          const { data: racedActive } = await supabase
+            .from("clearance_processes")
+            .select("*")
+            .eq("institution_id", institution_id)
+            .eq("user_id", uid)
+            .eq("status", "in_progress")
+            .maybeSingle();
+
+          if (racedActive) {
+            if (!isAdmin && (initiatedBy === "self" || initiatedBy === "parent")) {
+              if (racedActive.initiated_by === "admin" && !racedActive.allow_user_continuation) {
+                return res.status(403).json({
+                  error: "An administrative clearance process has been initiated for this account. Please contact your administrator.",
+                });
+              }
+              return res.json({
+                message: "Clearance process already in progress. Resuming active process.",
+                process: racedActive,
+                resumed: true,
+              });
+            }
+            return res.status(400).json({
+              error: `An active clearance process is already in progress for ${targetUser.full_name}`,
+            });
+          }
+        }
+        throw insertErr;
+      }
       createdProcesses.push(newProcess);
     }
 

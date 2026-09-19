@@ -1,4 +1,5 @@
 const supabase = require('../utils/supabaseClient.js');
+const notificationDeduplication = require('./notificationDeduplication.service.js');
 
 const MAX_RETRY_ATTEMPTS_DEFAULT = 3;
 
@@ -135,6 +136,21 @@ const sendInAppNotificationWithHistory = async ({
       institutionId: institution_id,
     });
     return { ok: true, skipped: true };
+  }
+
+  // Deduplication check if idempotencyKey or messageId is provided
+  if (data?.idempotency_key || data?.message_id) {
+    const dedupKey = notificationDeduplication.deriveKey({
+      messageId: data.message_id,
+      idempotencyKey: data.idempotency_key,
+      userId: user_id,
+      title,
+      message,
+      institutionId: institution_id,
+    });
+    if (dedupKey && notificationDeduplication.isDuplicate(dedupKey)) {
+      return { ok: true, duplicate: true, skipped: true };
+    }
   }
 
   const payload = {

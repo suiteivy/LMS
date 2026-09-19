@@ -1,4 +1,5 @@
 const supabase = require('../utils/supabaseClient.js');
+const configCache = require('../utils/configCache.js');
 
 const getGradingScales = async (req, res) => {
   try {
@@ -8,6 +9,12 @@ const getGradingScales = async (req, res) => {
     }
 
     const { name } = req.query;
+    const cacheKey = `${institution_id}:grading_scales:${name || 'all'}`;
+
+    const cached = configCache.get(cacheKey);
+    if (cached) {
+      return res.status(200).json({ success: true, data: cached });
+    }
 
     let query = supabase
       .from('grading_scales')
@@ -25,6 +32,8 @@ const getGradingScales = async (req, res) => {
     if (error) {
       return res.status(500).json({ success: false, error: error.message });
     }
+
+    configCache.set(cacheKey, data, 300);
 
     return res.status(200).json({ success: true, data });
   } catch (err) {
@@ -104,6 +113,7 @@ const createGradingScale = async (req, res) => {
       return res.status(500).json({ success: false, error: error.message });
     }
 
+    configCache.invalidateGradingScales(institution_id);
     return res.status(201).json({ success: true, data });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
@@ -176,6 +186,7 @@ const updateGradingScale = async (req, res) => {
       return res.status(500).json({ success: false, error: error.message });
     }
 
+    configCache.invalidateGradingScales(institution_id);
     return res.status(200).json({ success: true, data });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
@@ -226,6 +237,7 @@ const deleteGradingScale = async (req, res) => {
       return res.status(500).json({ success: false, error: error.message });
     }
 
+    configCache.invalidateGradingScales(institution_id);
     return res.status(200).json({ success: true, data: { message: 'Grading scale deleted successfully' } });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });

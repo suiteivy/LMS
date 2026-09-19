@@ -5,6 +5,7 @@ const {
     markTeacherAttendance,
     confirmTeacherAttendance,
     selfMarkTeacherPresence,
+    recordTeacherHeartbeat,
     getStaffPresence,
     getStudentAttendance,
     markStudentAttendance,
@@ -23,6 +24,7 @@ router.get("/teachers", authorizeRoles(["admin", "master_admin"]), getTeacherAtt
 router.post("/teachers", authorizeRoles(["admin", "master_admin"]), markTeacherAttendance);
 router.post("/teachers/confirm", authorizeRoles(["admin", "master_admin"]), confirmTeacherAttendance);
 router.post("/teachers/self-checkin", authorizeRoles(["teacher"]), selfMarkTeacherPresence);
+router.post("/teachers/heartbeat", authorizeRoles(["teacher"]), recordTeacherHeartbeat);
 router.get("/staff-presence", authorizeRoles(["teacher", "admin", "master_admin"]), getStaffPresence);
 
 // Student Attendance Routes

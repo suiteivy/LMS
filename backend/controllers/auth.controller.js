@@ -540,7 +540,19 @@ exports.login = async (req, res) => {
 
     if (authError) {
       if (userProfile) {
-        const currentFailed = (Number(userProfile.failed_login_attempts) || 0) + 1;
+        let currentFailed = (Number(userProfile.failed_login_attempts) || 0) + 1;
+        try {
+          const { data: latestUser } = await supabase
+            .from('users')
+            .select('failed_login_attempts')
+            .eq('id', userProfile.id)
+            .maybeSingle();
+          if (latestUser && latestUser.failed_login_attempts !== undefined) {
+            currentFailed = (Number(latestUser.failed_login_attempts) || 0) + 1;
+          }
+        } catch {
+          // Fallback to userProfile.failed_login_attempts
+        }
         const nowIso = new Date().toISOString();
         const { ip_address: ipAddress, user_agent: userAgent } = getRequestContext(req);
 

@@ -168,48 +168,50 @@ const getReportCards = async (req, res) => {
 
     if (error) throw error;
 
-    // Enrich with related data using separate queries
-    const enriched = [];
-    for (const rc of (data || [])) {
-      let studentInfo = null;
-      let classInfo = null;
-      let termInfo = null;
-      let items = [];
+    // Batch-enrich related data to eliminate N+1 queries
+    const records = data || [];
+    let enriched = [];
 
-      if (rc.student_id) {
-        const { data: s } = await supabase
-          .from('students')
-          .select('id, user_id, users(first_name, last_name)')
-          .eq('id', rc.student_id)
-          .single();
-        studentInfo = s;
+    if (records.length > 0) {
+      const studentIds = [...new Set(records.map(r => r.student_id).filter(Boolean))];
+      const classIds = [...new Set(records.map(r => r.class_id).filter(Boolean))];
+      const termIds = [...new Set(records.map(r => r.term_id).filter(Boolean))];
+      const reportCardIds = records.map(r => r.id);
+
+      const [studentsRes, classesRes, termsRes, itemsRes] = await Promise.all([
+        studentIds.length > 0
+          ? supabase.from('students').select('id, user_id, users(first_name, last_name)').in('id', studentIds)
+          : { data: [] },
+        classIds.length > 0
+          ? supabase.from('classes').select('id, grade_level, form_level, stream, cbc_band').in('id', classIds)
+          : { data: [] },
+        termIds.length > 0
+          ? supabase.from('terms').select('id, name').in('id', termIds)
+          : { data: [] },
+        reportCardIds.length > 0
+          ? supabase.from('report_card_items').select('*, subjects(title)').in('report_card_id', reportCardIds)
+          : { data: [] }
+      ]);
+
+      const studentMap = new Map((studentsRes.data || []).map(s => [s.id, s]));
+      const classMap = new Map((classesRes.data || []).map(c => [c.id, c]));
+      const termMap = new Map((termsRes.data || []).map(t => [t.id, t]));
+
+      const itemsByCardId = new Map();
+      for (const item of (itemsRes.data || [])) {
+        if (!itemsByCardId.has(item.report_card_id)) {
+          itemsByCardId.set(item.report_card_id, []);
+        }
+        itemsByCardId.get(item.report_card_id).push(item);
       }
 
-      if (rc.class_id) {
-        const { data: c } = await supabase
-          .from('classes')
-          .select('grade_level, form_level, stream')
-          .eq('id', rc.class_id)
-          .single();
-        classInfo = c;
+      for (const rc of records) {
+        const studentInfo = rc.student_id ? studentMap.get(rc.student_id) || null : null;
+        const classInfo = rc.class_id ? classMap.get(rc.class_id) || null : null;
+        const termInfo = rc.term_id ? termMap.get(rc.term_id) || null : null;
+        const items = itemsByCardId.get(rc.id) || [];
+        enriched.push(mapReportCardForClient(rc, studentInfo, classInfo, termInfo, items));
       }
-
-      if (rc.term_id) {
-        const { data: t } = await supabase
-          .from('terms')
-          .select('name')
-          .eq('id', rc.term_id)
-          .single();
-        termInfo = t;
-      }
-
-      const { data: rcItems } = await supabase
-        .from('report_card_items')
-        .select('*, subjects(title)')
-        .eq('report_card_id', rc.id);
-      items = rcItems || [];
-
-      enriched.push(mapReportCardForClient(rc, studentInfo, classInfo, termInfo, items));
     }
 
     const sorted = enriched.sort((a, b) => {

@@ -3,6 +3,9 @@ const { toNumber, buildPromotionDecisions } = require('../services/promotionElig
 const { assignStudentToSingleClass } = require('../utils/studentClassEnrollment');
 const { buildClassLabel } = require('../utils/classLabel');
 
+// In-memory concurrency guard to prevent overlapping class promotions
+const activePromotionLocks = new Set();
+
 const getPromotionCycles = async (req, res) => {
   try {
     const institution_id = req.user?.institution_id;
@@ -427,21 +430,32 @@ const promoteIndividualStudent = async (req, res) => {
 };
 
 const promoteClass = async (req, res) => {
-  try {
-    const institution_id = req.user?.institution_id;
-    const {
-      from_class_id,
-      to_class_id,
-      reshuffle = false,
-      student_ids,
-      track_id,
-      elective_subject_ids,
-      student_tracks,
-    } = req.body;
+  const institution_id = req.user?.institution_id;
+  const {
+    from_class_id,
+    to_class_id,
+    reshuffle = false,
+    student_ids,
+    track_id,
+    elective_subject_ids,
+    student_tracks,
+  } = req.body;
 
-    if (!from_class_id) {
-      return res.status(400).json({ success: false, error: 'from_class_id is required' });
-    }
+  if (!from_class_id) {
+    return res.status(400).json({ success: false, error: 'from_class_id is required' });
+  }
+
+  const lockKey = `${institution_id}:${from_class_id}`;
+  if (activePromotionLocks.has(lockKey)) {
+    return res.status(409).json({
+      success: false,
+      error: 'A promotion process for this class is currently in progress. Please wait for it to complete.',
+    });
+  }
+
+  activePromotionLocks.add(lockKey);
+
+  try {
 
     // 1. Get source class details
     const { data: srcClass, error: srcErr } = await supabase
@@ -593,6 +607,8 @@ const promoteClass = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
+  } finally {
+    activePromotionLocks.delete(lockKey);
   }
 };
 

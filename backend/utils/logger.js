@@ -21,13 +21,33 @@ if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR, { recursive: true });
 }
 
+const SENSITIVE_KEYS = new Set([
+    'password', 'token', 'access_token', 'refresh_token', 'secret', 'authorization', 'api_key', 'apikey', 'credential'
+]);
+
+const redactMeta = (obj, depth = 0) => {
+    if (!obj || typeof obj !== 'object' || depth > 3) return obj;
+    if (Array.isArray(obj)) return obj.map(item => redactMeta(item, depth + 1));
+    const clean = {};
+    for (const [k, v] of Object.entries(obj)) {
+        if (SENSITIVE_KEYS.has(k.toLowerCase())) {
+            clean[k] = '[REDACTED]';
+        } else if (typeof v === 'object' && v !== null) {
+            clean[k] = redactMeta(v, depth + 1);
+        } else {
+            clean[k] = v;
+        }
+    }
+    return clean;
+};
+
 const formatLog = (level, message, meta = {}) => {
     const timestamp = new Date().toISOString();
     return JSON.stringify({
         timestamp,
         level,
         message,
-        ...meta
+        ...redactMeta(meta)
     }) + '\n';
 };
 
