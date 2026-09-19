@@ -147,7 +147,7 @@ test('updateSubject syncs teacher/class links and returns enriched subject', asy
             return this;
           },
           async single() {
-            if (this._select === 'id, metadata') {
+            if (String(this._select).startsWith('id, metadata')) {
               return {
                 data: { id: 'sub-1', metadata: { class_ids: ['class-old'] } },
                 error: null,

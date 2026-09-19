@@ -33,8 +33,11 @@ exports.getReports = async (req, res) => {
             .range(from, to);
 
         // Institutional Isolation
-        if (user.role !== 'master_admin') {
-            query = query.eq('institution_id', user.institution_id);
+        const targetInstitutionId = user.institution_id || req.institution_id || req.query.institution_id;
+        if (targetInstitutionId) {
+            query = query.eq('institution_id', targetInstitutionId);
+        } else if (user.role === 'master_admin') {
+            return res.status(400).json({ success: false, message: "Institution ID is required for school-level academic reports" });
         }
 
         // Parent Logic: If role is parent, ensure they can only fetch linked students

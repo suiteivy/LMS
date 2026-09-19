@@ -23,7 +23,7 @@ setInterval(() => {
             rateLimitLogStore.delete(key);
         }
     }
-}, 5 * 60 * 1000);
+}, 5 * 60 * 1000).unref();
 
 const shouldEmitRateLimitLog = (key, cooldownMs = 30 * 1000) => {
     const now = Date.now();

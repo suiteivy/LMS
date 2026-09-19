@@ -1,6 +1,7 @@
 const supabase = require("../utils/supabaseClient.js");
 const { canonicalRoleFrom } = require("../utils/roleAlias.js");
 const { isTransientSupabaseError, withSupabaseRetry } = require('../utils/supabaseRetry.js');
+const { runWithTenantContext } = require('../utils/tenantContext.js');
 const logger = require('../utils/logger');
 
 // Simple in-memory cache for profiles: userId -> { profile, timestamp }
@@ -390,8 +391,22 @@ async function authMiddleware(req, res, next) {
         return res.status(401).json({ error: "Invalid session or user profile not found", code: "SESSION_INVALID" });
       }
 
-      // Check if account is disabled
-      if (profileData.is_active === false) {
+      // Check account data retention period expiration
+      if (profileData.retention_until) {
+        const retentionTime = new Date(profileData.retention_until).getTime();
+        if (!isNaN(retentionTime) && Date.now() > retentionTime) {
+          if (isLogoutPath) return res.status(200).json({ message: "Already logged out" });
+          return res.status(403).json({
+            error: "Account data retention period has expired. Access is revoked.",
+            code: "ACCOUNT_RETENTION_EXPIRED"
+          });
+        }
+      }
+
+      // Check if account is disabled (leaver accounts within active retention period are permitted read-only historical access)
+      const hasActiveRetentionWindow = profileData.retention_until && !isNaN(new Date(profileData.retention_until).getTime()) && Date.now() <= new Date(profileData.retention_until).getTime();
+
+      if (profileData.is_active === false && !hasActiveRetentionWindow) {
         if (isLogoutPath) return res.status(200).json({ message: "Already logged out" });
         if (profileData.disabled_reason === 'failed_login_lockout') {
           return res.status(403).json({
@@ -405,18 +420,6 @@ async function authMiddleware(req, res, next) {
             : "Your account has been disabled. Please contact your administrator.",
           code: "ACCOUNT_DISABLED",
         });
-      }
-
-      // Check account data retention period expiration
-      if (profileData.retention_until) {
-        const retentionTime = new Date(profileData.retention_until).getTime();
-        if (!isNaN(retentionTime) && Date.now() > retentionTime) {
-          if (isLogoutPath) return res.status(200).json({ message: "Already logged out" });
-          return res.status(403).json({
-            error: "Account data retention period has expired. Access is revoked.",
-            code: "ACCOUNT_RETENTION_EXPIRED"
-          });
-        }
       }
 
       // Detect leaver status (graduated/withdrawn/transferred/resigned/terminated/inactive)
@@ -756,7 +759,15 @@ async function authMiddleware(req, res, next) {
       }
     }
 
-    next();
+    const tenantCtx = {
+      institution_id: req.institution_id,
+      userId: req.userId,
+      userRole: req.userRole,
+      isPlatformAdmin: req.isPlatformAdmin,
+      bypass: false,
+    };
+
+    return runWithTenantContext(tenantCtx, () => next());
   } catch (err) {
     const msg = err?.message || String(err);
     const timeoutLike = /fetch failed|timeout|und_err_connect_timeout/i.test(msg);
