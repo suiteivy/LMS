@@ -101,7 +101,7 @@ const ResourceCard = ({
 };
 
 export default function ResourcesPage() {
-    const { teacherId, isDemo } = useAuth();
+    const { teacherId, isDemo, profile } = useAuth();
     const [showModal, setShowModal] = useState(false);
     const [modalStep, setModalStep] = useState<1 | 2 | 3 | 4>(1);
     const [loading, setLoading] = useState(true);
@@ -159,18 +159,49 @@ export default function ResourcesPage() {
         return resources.filter(r => r.target_audience === filterAudience);
     }, [resources, filterAudience]);
 
+    const ALLOWED_DOCUMENT_MIME_TYPES = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'text/plain',
+        'text/csv',
+        'application/rtf'
+    ];
+
     const pickDocument = async () => {
         try {
             const result = await DocumentPicker.getDocumentAsync({
-                type: '*/*',
+                type: ALLOWED_DOCUMENT_MIME_TYPES,
                 copyToCacheDirectory: true,
             });
             if (result.canceled) return;
             if (result.assets && result.assets.length > 0) {
-                setSelectedFile(result.assets[0]);
+                const picked = result.assets[0];
+                const mime = (picked.mimeType || '').toLowerCase();
+                const ext = (picked.name.split('.').pop() || '').toLowerCase();
+                const videoExts = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'flv', 'm4v', '3gp'];
+
+                if (mime.startsWith('video/') || videoExts.includes(ext)) {
+                    Alert.alert(
+                        "Video Not Supported",
+                        "Video uploads are not supported yet. For video materials, please share an external web link (e.g. YouTube or Google Drive) or upload documents (PDF, Word, etc.)."
+                    );
+                    return;
+                }
+
+                if (picked.size && picked.size > 10 * 1024 * 1024) {
+                    Alert.alert("File Too Large", "File exceeds the maximum allowed size of 10 MB. Please choose a smaller document.");
+                    return;
+                }
+
+                setSelectedFile(picked);
                 if (!title) {
                     // Pre-fill title from filename
-                    setTitle(result.assets[0].name.replace(/\.[^/.]+$/, ""));
+                    setTitle(picked.name.replace(/\.[^/.]+$/, ""));
                 }
             }
         } catch (err) {
@@ -227,8 +258,9 @@ export default function ResourcesPage() {
             // Handle file upload if picked
             if (selectedFile) {
                 try {
-                    const fileExt = selectedFile.name.split('.').pop();
-                    const filePath = `vault/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                    const cleanName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                    const instId = profile?.institution_id || 'general';
+                    const filePath = `${instId}/resources/${Date.now()}_${cleanName}`;
 
                     const file = new File(selectedFile.uri);
                     const base64 = await file.base64();
@@ -238,11 +270,12 @@ export default function ResourcesPage() {
                         .from('course_materials')
                         .upload(filePath, fileBody, {
                             contentType: selectedFile.mimeType || 'application/octet-stream',
+                            upsert: false
                         });
 
                     if (uploadError) {
                         console.error('[handleAddResource] Storage upload error:', uploadError);
-                        Alert.alert("Upload Error", "Failed to upload file to storage.");
+                        Alert.alert("Upload Error", "Failed to upload file to storage: " + uploadError.message);
                         setUploading(false);
                         return;
                     }
@@ -443,15 +476,22 @@ export default function ResourcesPage() {
                                         {[
                                             { id: 'pdf', label: 'PDF Document' },
                                             { id: 'doc', label: 'Word / Office Document' },
-                                            { id: 'video', label: 'Video Lecture / Media' },
                                             { id: 'link', label: 'Web Link / Tool' },
-                                            { id: 'other', label: 'Other File' }
+                                            { id: 'video', label: 'Video (Web Link Only)' }
                                         ].map(item => {
                                             const isSelected = type === item.id;
                                             return (
                                                 <TouchableOpacity
                                                     key={item.id}
-                                                    onPress={() => setType(item.id as any)}
+                                                    onPress={() => {
+                                                        if (item.id === 'video') {
+                                                            Alert.alert(
+                                                                "Video via Web Link",
+                                                                "Direct video file uploads are not supported yet. You can share video materials by entering a web link (YouTube, Drive, etc.) in the next step."
+                                                            );
+                                                        }
+                                                        setType(item.id as any);
+                                                    }}
                                                     activeOpacity={0.7}
                                                     className={`px-3.5 py-2.5 rounded-xl border ${isSelected ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-gray-50 dark:bg-[#0D1117] border-[#D0D7DE] dark:border-[#21262D]'}`}
                                                 >

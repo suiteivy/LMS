@@ -88,6 +88,7 @@ app.use("/api/exams", authMiddleware, checkSubscription, require("./routes/exams
 app.use("/api/parent", authMiddleware, checkSubscription, require("./routes/parent.route.js"));
 app.use("/api/messages", authMiddleware, checkSubscription, require("./routes/messaging.route.js"));
 app.use("/api/resources", authMiddleware, checkSubscription, require("./routes/resources.route.js"));
+app.use("/api/upload", authMiddleware, checkSubscription, require("./routes/upload.route.js"));
 app.use("/api/teacher", authMiddleware, checkSubscription, require("./routes/teacher.route.js"));
 app.use("/api/student", authMiddleware, checkSubscription, require("./routes/student.route.js"));
 app.use("/api/classes", authMiddleware, checkSubscription, require("./routes/class.route.js"));

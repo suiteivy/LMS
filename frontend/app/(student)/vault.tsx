@@ -101,7 +101,6 @@ export default function StudentAcademicVault() {
                             { id: "all", label: "All Formats" },
                             { id: "pdf", label: "PDFs" },
                             { id: "doc", label: "Documents" },
-                            { id: "video", label: "Videos" },
                             { id: "link", label: "Web Links" },
                         ].map(tab => (
                             <TouchableOpacity

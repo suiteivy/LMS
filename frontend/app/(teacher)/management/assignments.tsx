@@ -228,7 +228,7 @@ const AssignmentCard = ({
 };
 
 export default function AssignmentsPage() {
-    const { teacherId, isDemo } = useAuth();
+    const { teacherId, isDemo, profile } = useAuth();
     const { isDark } = useTheme();
     const tier = useSubscriptionTier();
     const [showModal, setShowModal] = useState(false);
@@ -559,15 +559,46 @@ export default function AssignmentsPage() {
         }
     };
 
+    const ALLOWED_DOCUMENT_MIME_TYPES = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'text/plain',
+        'text/csv',
+        'application/rtf'
+    ];
+
     const pickDocument = async () => {
         try {
             const result = await DocumentPicker.getDocumentAsync({
-                type: '*/*',
+                type: ALLOWED_DOCUMENT_MIME_TYPES,
                 copyToCacheDirectory: true,
             });
             if (result.canceled) return;
             if (result.assets && result.assets.length > 0) {
-                setSelectedFile(result.assets[0]);
+                const picked = result.assets[0];
+                const mime = (picked.mimeType || '').toLowerCase();
+                const ext = (picked.name.split('.').pop() || '').toLowerCase();
+                const videoExts = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'flv', 'm4v', '3gp'];
+
+                if (mime.startsWith('video/') || videoExts.includes(ext)) {
+                    Alert.alert(
+                        "Video Not Supported",
+                        "Video uploads are not supported yet. Please upload assignment documents (PDF, DOCX, etc.)."
+                    );
+                    return;
+                }
+
+                if (picked.size && picked.size > 10 * 1024 * 1024) {
+                    Alert.alert("File Too Large", "File exceeds the maximum allowed size of 10 MB. Please choose a smaller document.");
+                    return;
+                }
+
+                setSelectedFile(picked);
             }
         } catch (err) {
             console.error("Error picking document:", err);
@@ -687,25 +718,27 @@ export default function AssignmentsPage() {
         try {
             if (selectedFile) {
                 try {
-                    const fileExt = selectedFile.name.split('.').pop();
-                    const filePath = `${teacherId}/${Date.now()}.${fileExt}`;
+                    const cleanName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                    const instId = profile?.institution_id || 'general';
+                    const filePath = `${instId}/assignments/${Date.now()}_${cleanName}`;
 
                     const file = new File(selectedFile.uri);
                     const base64 = await file.base64();
                     const fileBody = decode(base64);
 
                     const { error: uploadError } = await supabase.storage
-                        .from('course_materials')
+                        .from('assignments')
                         .upload(filePath, fileBody, {
                             contentType: selectedFile.mimeType || 'application/octet-stream',
+                            upsert: false
                         });
 
                     if (uploadError) {
                         console.error('[saveAssignment] Storage upload error:', uploadError);
-                        Alert.alert("Upload Warning", "File upload failed. The assignment will be saved without attachment.");
+                        Alert.alert("Upload Warning", "File upload failed: " + uploadError.message + ". The assignment will be saved without attachment.");
                     } else {
                         const { data: urlData } = supabase.storage
-                            .from('course_materials')
+                            .from('assignments')
                             .getPublicUrl(filePath);
                         attachmentUrl = urlData.publicUrl;
                         attachmentName = selectedFile.name;

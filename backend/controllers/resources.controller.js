@@ -1,6 +1,12 @@
 const supabase = require("../utils/supabaseClient.js");
 const { parsePagination, paginatedResponse } = require("../utils/pagination.js");
 const { resolveTeacherScope } = require("../middleware/teacherScope.js");
+const {
+    isVideo,
+    VIDEO_ERROR_MESSAGE,
+    SIZE_ERROR_MESSAGE,
+    MAX_FILE_SIZE_BYTES
+} = require("../services/upload.service.js");
 
 /**
  * Create a resource (status is always 'approved' — no approval gate)
@@ -13,6 +19,47 @@ exports.createResource = async (req, res) => {
 
         if (!title || !url || !type) {
             return res.status(400).json({ error: "Title, url, and resource type are required" });
+        }
+
+        // 1. Enforce Scope: Disallow video uploads; allow only documents and web links
+        const normalizedType = String(type).toLowerCase().trim();
+        if (normalizedType === 'video' || isVideo(null, url)) {
+            return res.status(400).json({
+                error: VIDEO_ERROR_MESSAGE,
+                code: 'VIDEO_NOT_SUPPORTED'
+            });
+        }
+
+        const ALLOWED_RESOURCE_TYPES = new Set(['pdf', 'doc', 'docx', 'document', 'link', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv']);
+        if (!ALLOWED_RESOURCE_TYPES.has(normalizedType)) {
+            return res.status(400).json({
+                error: "Unsupported resource type. Allowed formats for Academic Vault are documents (PDF, Word, Excel, PowerPoint, Text) and web links.",
+                code: 'INVALID_RESOURCE_TYPE'
+            });
+        }
+
+        // 2. Enforce File Size Limit (10MB)
+        if (size) {
+            let bytes = null;
+            if (typeof size === 'number') {
+                bytes = size;
+            } else if (typeof size === 'string') {
+                const m = size.match(/^([\d.]+)\s*(kb|mb|gb|bytes)?$/i);
+                if (m) {
+                    const num = parseFloat(m[1]);
+                    const unit = (m[2] || '').toLowerCase();
+                    if (unit === 'mb') bytes = num * 1024 * 1024;
+                    else if (unit === 'gb') bytes = num * 1024 * 1024 * 1024;
+                    else if (unit === 'kb') bytes = num * 1024;
+                    else bytes = num;
+                }
+            }
+            if (bytes && bytes > MAX_FILE_SIZE_BYTES) {
+                return res.status(400).json({
+                    error: SIZE_ERROR_MESSAGE,
+                    code: 'FILE_TOO_LARGE'
+                });
+            }
         }
 
         if (!['everyone', 'staff_only'].includes(target_audience)) {
@@ -183,3 +230,56 @@ exports.deleteResource = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+/**
+ * Download / retrieve resource verifying original format and tenant access
+ */
+exports.downloadResource = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId, userRole, institution_id } = req;
+
+        const { data: resource, error } = await supabase
+            .from('resources')
+            .select('*, subject:subjects(title)')
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .maybeSingle();
+
+        if (error || !resource) {
+            return res.status(404).json({ error: "Resource not found" });
+        }
+
+        // Role-based visibility check: students and parents cannot access staff_only resources
+        if ((userRole === 'student' || userRole === 'parent') && (resource.target_audience === 'staff_only' || resource.status !== 'approved')) {
+            return res.status(403).json({ error: "Access denied: this resource is restricted to staff" });
+        }
+
+        // If resource is external link
+        if (resource.type === 'link') {
+            return res.json({
+                id: resource.id,
+                title: resource.title,
+                url: resource.url,
+                type: 'link',
+                download_url: resource.url
+            });
+        }
+
+        // Return verified download details with original format metadata
+        return res.json({
+            id: resource.id,
+            title: resource.title,
+            url: resource.url,
+            type: resource.type,
+            size: resource.size,
+            download_url: resource.url,
+            original_format_preserved: true,
+            institution_id: resource.institution_id
+        });
+    } catch (err) {
+        console.error("downloadResource error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+

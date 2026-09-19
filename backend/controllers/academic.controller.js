@@ -1,5 +1,10 @@
 const supabase = require("../utils/supabaseClient.js");
 const { resolveTeacher, authorizeTeacherForSubject } = require("../middleware/resolveTeacher.js");
+const {
+    isVideo,
+    validateUpload,
+    VIDEO_ERROR_MESSAGE
+} = require("../services/upload.service.js");
 
 const ANNOUNCEMENT_EXPIRY_DAYS = Number(process.env.ANNOUNCEMENT_EXPIRY_DAYS || 3);
 
@@ -123,6 +128,20 @@ exports.createAssignment = async (req, res) => {
             effectiveTeacherId = result.teacherId;
         } else if (userRole !== 'admin') {
             return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        // Validate attachment file type and size if provided
+        if (attachment_url || attachment_name) {
+            try {
+                validateUpload({
+                    fileName: attachment_name || attachment_url
+                });
+            } catch (vErr) {
+                return res.status(vErr.statusCode || 400).json({
+                    error: vErr.message,
+                    code: vErr.code || 'INVALID_ATTACHMENT'
+                });
+            }
         }
 
         const { data, error } = await supabase
@@ -288,6 +307,20 @@ exports.submitAssignment = async (req, res) => {
             .eq('id', assignment_id)
             .single();
         if (!assignment) return res.status(404).json({ error: "Assignment not found" });
+
+        // Validate submission file format if file_url is provided
+        if (file_url) {
+            try {
+                validateUpload({
+                    fileName: file_url
+                });
+            } catch (vErr) {
+                return res.status(vErr.statusCode || 400).json({
+                    error: vErr.message,
+                    code: vErr.code || 'INVALID_SUBMISSION_FILE'
+                });
+            }
+        }
 
         // Check BOTH enrollment tables
         let isEnrolled = false;
@@ -488,3 +521,107 @@ exports.deleteAnnouncement = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+/**
+ * Retrieve / download assignment attachment in original format
+ */
+exports.downloadAssignmentAttachment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { institution_id, userId, userRole } = req;
+
+        const { data: assignment, error } = await supabase
+            .from("assignments")
+            .select("id, title, attachment_url, attachment_name, subject_id, class_id")
+            .eq("id", id)
+            .eq("institution_id", institution_id)
+            .maybeSingle();
+
+        if (error || !assignment) {
+            return res.status(404).json({ error: "Assignment not found" });
+        }
+
+        if (!assignment.attachment_url) {
+            return res.status(404).json({ error: "No attachment found for this assignment" });
+        }
+
+        // Student access validation: must be enrolled in the subject/class
+        if (userRole === 'student') {
+            const { data: student } = await supabase.from('students').select('id, class_id').eq('user_id', userId).maybeSingle();
+            if (!student) return res.status(403).json({ error: "Student profile not found" });
+
+            const { data: enrollment } = await supabase
+                .from('enrollments')
+                .select('id')
+                .eq('student_id', student.id)
+                .eq('subject_id', assignment.subject_id)
+                .eq('status', 'enrolled')
+                .maybeSingle();
+
+            if (!enrollment && assignment.class_id && assignment.class_id !== student.class_id) {
+                return res.status(403).json({ error: "Access denied: Not enrolled in this assignment subject/class" });
+            }
+        }
+
+        return res.json({
+            id: assignment.id,
+            title: assignment.title,
+            attachment_name: assignment.attachment_name || "attachment",
+            attachment_url: assignment.attachment_url,
+            original_format_preserved: true
+        });
+    } catch (err) {
+        console.error("downloadAssignmentAttachment error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Retrieve / download student submission file in original format
+ */
+exports.downloadSubmission = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { institution_id, userId, userRole } = req;
+
+        const { data: submission, error } = await supabase
+            .from("submissions")
+            .select("id, file_url, student_id, assignment:assignments(id, title, subject_id)")
+            .eq("id", id)
+            .eq("institution_id", institution_id)
+            .maybeSingle();
+
+        if (error || !submission) {
+            return res.status(404).json({ error: "Submission not found" });
+        }
+
+        if (!submission.file_url) {
+            return res.status(404).json({ error: "No file was attached to this submission" });
+        }
+
+        // Check authorization: Student can only download own submission
+        if (userRole === 'student') {
+            const { data: student } = await supabase.from('students').select('id').eq('user_id', userId).maybeSingle();
+            if (!student || student.id !== submission.student_id) {
+                return res.status(403).json({ error: "Access denied: cannot view other students' submissions" });
+            }
+        } else if (userRole === 'teacher') {
+            // Teacher must teach the subject of the assignment
+            const result = await authorizeTeacherForSubject(userId, submission.assignment?.subject_id, res);
+            if (!result) return;
+        } else if (userRole !== 'admin' && userRole !== 'master_admin') {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        return res.json({
+            id: submission.id,
+            file_url: submission.file_url,
+            original_format_preserved: true,
+            assignment_title: submission.assignment?.title
+        });
+    } catch (err) {
+        console.error("downloadSubmission error:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+

@@ -5,9 +5,9 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/libs/supabase";
 import { Database } from "@/types/database";
 import { router, useLocalSearchParams } from "expo-router";
-import { Check, Edit2, FileText, User, X } from 'lucide-react-native';
+import { Check, Download, Edit2, FileText, User, X } from 'lucide-react-native';
 import React, { useEffect, useState } from "react";
-import { Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { showFetchError } from '@/utils/toast';
 
@@ -21,6 +21,7 @@ interface SubmissionEntry {
     score: number | null;
     submittedAt: string | null;
     feedback?: string | null;
+    file_url?: string | null;
 }
 
 interface JoinedAssignment {
@@ -184,7 +185,8 @@ export default function SubmissionsPage() {
                     status,
                     score: sub?.grade || null,
                     submittedAt: sub?.submitted_at ? new Date(sub.submitted_at).toLocaleDateString() : null,
-                    feedback: sub?.feedback
+                    feedback: sub?.feedback,
+                    file_url: sub?.file_url || null
                 };
             });
 
@@ -194,6 +196,23 @@ export default function SubmissionsPage() {
             showFetchError("submissions", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDownloadSubmission = async (fileUrl: string | null | undefined) => {
+        if (!fileUrl) {
+            Alert.alert("No File", "No file attachment found for this submission.");
+            return;
+        }
+        try {
+            await Linking.openURL(fileUrl);
+        } catch (err: any) {
+            console.error("Error opening submission file:", err);
+            if (typeof window !== 'undefined' && (window as any).open) {
+                (window as any).open(fileUrl, '_blank');
+            } else {
+                Alert.alert("Open File", "Could not open file. " + (err?.message || ''));
+            }
         }
     };
 
@@ -425,6 +444,16 @@ export default function SubmissionsPage() {
                                     </View>
                                 </View>
 
+                                {entry.file_url && (
+                                    <TouchableOpacity
+                                        className="w-10 h-10 rounded-xl items-center justify-center bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 mr-2 active:bg-blue-100"
+                                        onPress={() => handleDownloadSubmission(entry.file_url)}
+                                        accessibilityLabel="Download submission file"
+                                    >
+                                        <Download size={18} color="#2563EB" />
+                                    </TouchableOpacity>
+                                )}
+
                                 <TouchableOpacity
                                     className={`w-10 h-10 rounded-xl items-center justify-center ${entry.status === "missing" ? "bg-gray-100" : "bg-[#FF6900] active:bg-orange-600"}`}
                                     onPress={() => handleGradeClick(entry)}
@@ -460,6 +489,27 @@ export default function SubmissionsPage() {
                                 <Text className={`${isDark ? 'text-gray-300' : 'text-gray-400'} text-[10px] font-bold uppercase tracking-wider mb-1`}>Student</Text>
                                 <Text className={`${isDark ? 'text-white' : 'text-gray-900'} font-bold text-lg`}>{currentEntry?.student_name}</Text>
                             </View>
+
+                            {currentEntry?.file_url && (
+                                <View className="mb-4 pt-3 border-t border-gray-200 dark:border-white/10">
+                                    <Text className={`${isDark ? 'text-gray-300' : 'text-gray-400'} text-[10px] font-bold uppercase tracking-wider mb-2`}>
+                                        Submitted Document
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={() => handleDownloadSubmission(currentEntry.file_url)}
+                                        className="flex-row items-center justify-between p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800"
+                                        activeOpacity={0.8}
+                                    >
+                                        <View className="flex-row items-center flex-1 mr-2">
+                                            <FileText size={18} color="#2563EB" />
+                                            <Text className="ml-2.5 text-xs font-bold text-blue-700 dark:text-blue-400" numberOfLines={1}>
+                                                {currentEntry.file_url.split('/').pop()?.split('_').slice(1).join('_') || 'Download Original Document'}
+                                            </Text>
+                                        </View>
+                                        <Download size={16} color="#2563EB" />
+                                    </TouchableOpacity>
+                                </View>
+                            )}
 
                             {assignment?.grading_style === 'rubric' ? (
                                 <View className="mb-4">

@@ -24,7 +24,7 @@ interface Assignments {
 }
 
 export default function StudentsAssignments() {
-  const { studentId } = useAuth()
+  const { studentId, profile } = useAuth()
   const tier = useSubscriptionTier();
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<"pending" | "completed" | "overdue">('pending')
@@ -95,6 +95,19 @@ export default function StudentsAssignments() {
     fetchStudentsAssignments()
   }, [studentId])
 
+  const ALLOWED_DOCUMENT_MIME_TYPES = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain',
+    'text/csv',
+    'application/rtf'
+  ];
+
   const handleDownload = async (url: string) => {
     try {
       if (!url) return;
@@ -108,27 +121,56 @@ export default function StudentsAssignments() {
   const handleUpload = async () => {
     if (!selectedAssignment || !studentId) return
     try {
-      const result = await DocumentPicker.getDocumentAsync({ type: "*/*", copyToCacheDirectory: true })
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ALLOWED_DOCUMENT_MIME_TYPES,
+        copyToCacheDirectory: true
+      })
       if (result.canceled) return
-      setIsUploading(true)
+
       const file = result.assets[0]
+      const mime = (file.mimeType || '').toLowerCase();
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+      const videoExts = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'flv', 'm4v', '3gp'];
+
+      if (mime.startsWith('video/') || videoExts.includes(ext)) {
+        Alert.alert(
+          "Video Not Supported",
+          "Video uploads are not supported yet. Please submit assignments as documents (PDF, Word, etc.)."
+        );
+        return;
+      }
+
+      if (file.size && file.size > 10 * 1024 * 1024) {
+        Alert.alert("File Too Large", "File exceeds the maximum allowed size of 10 MB. Please choose a smaller document.");
+        return;
+      }
+
+      setIsUploading(true)
       const response = await fetch(file.uri)
       const blob = await response.blob()
       const arraybuffer = await new Response(blob).arrayBuffer()
-      const fileName = `${selectedAssignment.id}/${studentId}_${file.name}`
-      const filePath = `submissions/${fileName}`
 
-      const { error } = await supabase.storage.from('assignments').upload(filePath, arraybuffer, { contentType: file.mimeType, upsert: true })
+      const instId = profile?.institution_id || 'general';
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const filePath = `${instId}/submissions/${selectedAssignment.id}/${studentId}/${Date.now()}_${safeName}`;
+
+      const { error } = await supabase.storage
+        .from('assignments')
+        .upload(filePath, arraybuffer, { contentType: file.mimeType || 'application/octet-stream', upsert: false })
       if (error) throw error
+
+      const { data: urlData } = supabase.storage.from('assignments').getPublicUrl(filePath);
+      const storedUrl = urlData?.publicUrl || filePath;
+
       const { error: dbError } = await supabase.from('submissions').insert({
         assignment_id: selectedAssignment.id,
         student_id: studentId,
-        file_url: filePath,
+        file_url: storedUrl,
         status: 'submitted',
         submitted_at: new Date().toISOString()
       } as any)
       if (dbError) throw dbError
-      Alert.alert('Success', "Assignment submitted successfully!")
+      Alert.alert('Success', "Assignment submitted successfully in original format!")
       setSelectedAssignment(null)
       fetchStudentsAssignments()
     } catch (error: any) {
