@@ -172,7 +172,7 @@ function GlobalNotifications() {
 
 // AuthHandler 
 function AuthHandler() {
-  const { loading, isInitializing, isNavReady, resetSessionTimer, session, profile, isPlatformAdmin, getRoleRedirect, signOut, wasDemo, clearWasDemo, maintenanceModeEnabled, maintenanceModeMessage, isDemoExiting } = useAuth();
+  const { loading, isInitializing, isNavReady, resetSessionTimer, session, profile, isPlatformAdmin, activeRole, availableRoles, getRoleRedirect, signOut, wasDemo, clearWasDemo, maintenanceModeEnabled, maintenanceModeMessage, isDemoExiting } = useAuth();
   const { isDark } = useTheme();
   const segments = useSegments();
   const router = useRouter();
@@ -292,7 +292,7 @@ function AuthHandler() {
         if (wasDemo) {
           handleRedirect("/(auth)/demo");
         } else {
-          handleRedirect("/+not-found");
+          handleRedirect("/(auth)/signIn");
         }
       }
     } else if (profile) {
@@ -304,9 +304,18 @@ function AuthHandler() {
 
       // Check role authorization for protected route groups
       if (!isPlatformAdmin && routeGroup && protectedRoleGroups.includes(routeGroup)) {
-        const userRole = String(profile.role || '').toLowerCase();
-        const allowedGroups = ROLE_PERMITTED_GROUPS[userRole] || [];
-        if (!allowedGroups.includes(routeGroup)) {
+        const userRoles = [
+          String(profile.role || '').toLowerCase(),
+          activeRole ? String(activeRole).toLowerCase() : null,
+          ...(Array.isArray(availableRoles) ? availableRoles.map((r: any) => String(r).toLowerCase()) : []),
+        ].filter(Boolean) as string[];
+
+        const isAllowed = userRoles.some((roleName) => {
+          const allowedGroups = ROLE_PERMITTED_GROUPS[roleName] || [];
+          return allowedGroups.includes(routeGroup);
+        });
+
+        if (!isAllowed) {
           handleRedirect('/+not-found');
           return;
         }
@@ -323,7 +332,7 @@ function AuthHandler() {
         }
       }
     }
-  }, [session, profile, isInitializing, isNavReady, segments, isPlatformAdmin, isAuthPath, currentPath, wasDemo, clearWasDemo, getRoleRedirect, router, normalizePath, canonicalizePath, routePath, authPublicPaths]);
+  }, [session, profile, isInitializing, isNavReady, segments, isPlatformAdmin, activeRole, availableRoles, isAuthPath, currentPath, wasDemo, clearWasDemo, getRoleRedirect, router, normalizePath, canonicalizePath, routePath, authPublicPaths]);
 
   const handleInteraction = React.useCallback(() => {
     if (session) resetSessionTimer();

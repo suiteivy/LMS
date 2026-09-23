@@ -16,6 +16,8 @@ import {
   Bell,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Clock,
   Edit2,
   Plus,
@@ -242,6 +244,14 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
     setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
   };
 
+  const handlePrevYear = () => {
+    setCurrentDate(new Date(currentYear - 1, currentMonth, 1));
+  };
+
+  const handleNextYear = () => {
+    setCurrentDate(new Date(currentYear + 1, currentMonth, 1));
+  };
+
   const handleOpenCreateModal = (dateStr?: string) => {
     setEditingEvent(null);
     setFormTitle('');
@@ -401,11 +411,19 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
             contentStyle={{ paddingHorizontal: 16, paddingVertical: 14 }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <ActionTooltip label="Previous Month" description="Navigate to preceding month's calendar view." learnMoreAnchor="school-calendar">
-                <TouchableOpacity onPress={handlePrevMonth} style={[styles.monthNavBtn, { borderColor: colors.border, backgroundColor: colors.surface2 }]} accessibilityLabel="Previous month">
-                  <ChevronLeft size={18} color={colors.text} />
-                </TouchableOpacity>
-              </ActionTooltip>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <ActionTooltip label="Previous Year" description="Jump backward by one full year." learnMoreAnchor="school-calendar">
+                  <TouchableOpacity onPress={handlePrevYear} style={[styles.monthNavBtn, { borderColor: colors.border, backgroundColor: colors.surface2 }]} accessibilityLabel="Previous year">
+                    <ChevronsLeft size={18} color={colors.text} />
+                  </TouchableOpacity>
+                </ActionTooltip>
+
+                <ActionTooltip label="Previous Month" description="Navigate to preceding month's calendar view." learnMoreAnchor="school-calendar">
+                  <TouchableOpacity onPress={handlePrevMonth} style={[styles.monthNavBtn, { borderColor: colors.border, backgroundColor: colors.surface2 }]} accessibilityLabel="Previous month">
+                    <ChevronLeft size={18} color={colors.text} />
+                  </TouchableOpacity>
+                </ActionTooltip>
+              </View>
 
               <View style={{ alignItems: 'center', gap: 2 }}>
                 <Text style={{ color: colors.text, fontWeight: '900', fontSize: isTablet ? 22 : 18 }}>
@@ -416,11 +434,19 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
                 </Text>
               </View>
 
-              <ActionTooltip label="Next Month" description="Navigate to subsequent month's calendar view." learnMoreAnchor="school-calendar">
-                <TouchableOpacity onPress={handleNextMonth} style={[styles.monthNavBtn, { borderColor: colors.border, backgroundColor: colors.surface2 }]} accessibilityLabel="Next month">
-                  <ChevronRight size={18} color={colors.text} />
-                </TouchableOpacity>
-              </ActionTooltip>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <ActionTooltip label="Next Month" description="Navigate to subsequent month's calendar view." learnMoreAnchor="school-calendar">
+                  <TouchableOpacity onPress={handleNextMonth} style={[styles.monthNavBtn, { borderColor: colors.border, backgroundColor: colors.surface2 }]} accessibilityLabel="Next month">
+                    <ChevronRight size={18} color={colors.text} />
+                  </TouchableOpacity>
+                </ActionTooltip>
+
+                <ActionTooltip label="Next Year" description="Jump forward by one full year." learnMoreAnchor="school-calendar">
+                  <TouchableOpacity onPress={handleNextYear} style={[styles.monthNavBtn, { borderColor: colors.border, backgroundColor: colors.surface2 }]} accessibilityLabel="Next year">
+                    <ChevronsRight size={18} color={colors.text} />
+                  </TouchableOpacity>
+                </ActionTooltip>
+              </View>
             </View>
 
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>

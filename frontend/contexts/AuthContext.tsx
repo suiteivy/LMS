@@ -909,8 +909,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (!newRole) return;
     const normalized = newRole.toLowerCase();
     if (!availableRoles.includes(normalized)) {
-      console.warn(`[AuthContext] Cannot switch to role "${newRole}" because it is not in availableRoles:`, availableRoles);
-      return;
+      if (normalized === 'teacher' && user?.id) {
+        const { data: teacherRec } = await supabase
+          .from('teachers')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (teacherRec?.id) {
+          setAvailableRoles(prev => Array.from(new Set([...prev, 'teacher'])));
+          setRoleInfo(prev => ({ ...prev, teacherId: teacherRec.id, displayId: prev.displayId || teacherRec.id }));
+        } else {
+          console.warn(`[AuthContext] Cannot switch to role "${newRole}" because it is not in availableRoles:`, availableRoles);
+          return;
+        }
+      } else {
+        console.warn(`[AuthContext] Cannot switch to role "${newRole}" because it is not in availableRoles:`, availableRoles);
+        return;
+      }
     }
 
     setActiveRole(normalized);

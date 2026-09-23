@@ -6,7 +6,7 @@ import { api } from '@/services/api';
 import { formatClassLabel } from '@/utils/classLabel';
 import { formatCredentialExpiry } from '@/utils/formatExpiry';
 import { showSuccess } from '@/utils/toast';
-import { EDUCATION_LEVELS } from '@/constants/educationLevels';
+import { EDUCATION_LEVELS, parseLevelValue } from '@/constants/educationLevels';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -210,7 +210,7 @@ export default function CreateUserScreen() {
 
         const [classRes, subjectRes, studentRes, parentRes, classOptionsRes, yearsRes, gendersRes, positionsRes, slotCapacityRes] = await Promise.all([
             supabase.from('classes')
-                .select('id, grade_level, form_level, stream, display_name, level_id, stream_id')
+                .select('id, grade_level, form_level, stream, display_name, level_id, stream_id, teacher_id, teachers:teacher_id(id, users:user_id(full_name, first_name, last_name))')
                 .eq('institution_id', profile.institution_id)
                 .order('grade_level', { ascending: true })
                 .order('form_level', { ascending: true })
@@ -229,6 +229,7 @@ export default function CreateUserScreen() {
                 classRes.data.map((cls: any) => ({
                     ...cls,
                     name: formatClassLabel(cls),
+                    teacher_name: cls.teachers?.users?.full_name || (cls.teachers?.users?.first_name ? `${cls.teachers.users.first_name} ${cls.teachers.users.last_name || ''}`.trim() : null),
                 }))
             );
         }
@@ -370,7 +371,7 @@ export default function CreateUserScreen() {
         const levelStr = form.grade_level || form.form_level;
         if (!levelStr) return [];
 
-        const numLevel = parseInt(levelStr.replace(/[^0-9]/g, ''), 10);
+        const numLevel = parseLevelValue(levelStr);
         return classes.filter(c => {
             const classLevel = isSecondary ? c.form_level : c.grade_level;
             return classLevel === numLevel;
@@ -483,7 +484,8 @@ export default function CreateUserScreen() {
             setLoading(true);
             // Map the selected level string (e.g. "Grade 1") to numeric fields for the backend
             const levelStr = form.grade_level || form.form_level;
-            const numLevel = levelStr ? parseInt(levelStr.replace(/[^0-9]/g, ''), 10) : null;
+            const parsed = parseLevelValue(levelStr);
+            const numLevel = parsed !== undefined ? parsed : null;
             
             const isAutoAssign = !!(form.auto_assign_class || form.class_id === 'auto');
 
@@ -598,7 +600,7 @@ export default function CreateUserScreen() {
                 return hasCoreStudentFields && hasParentRelationship && hasParentSelection;
             }
             if (form.role === 'teacher') {
-                return !!form.position;
+                return true;
             }
             return true;
         }
@@ -627,7 +629,7 @@ export default function CreateUserScreen() {
                 return hasCoreStudentFields && hasParentRelationship && hasParentSelection;
             }
             if (form.role === 'teacher') {
-                return !!form.position;
+                return true;
             }
             return true;
         }
@@ -1071,18 +1073,42 @@ export default function CreateUserScreen() {
         return (
             <View>
                 <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}>Teacher Details</Text>
-                <RenderInput label="Department (Optional)" value={form.department} onChangeText={(v: string) => updateFormSanitized('department', v)} placeholder="e.g. Mathematics" isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} inputBg={inputBg} inputBorder={inputBorder} />
-                <RenderPicker label="Position *" options={resolvedPositionOptions} selected={form.position} onSelect={(v: string) => updateForm('position', v)} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
                 <RenderMultiSelect label="Assign Subjects (unassigned only)" items={unassignedSubjects} selectedIds={form.subject_ids} toggleItem={(id: string) => toggleArrayItem('subject_ids', id)} displayFn={(s: any) => s.title} isDark={isDark} textPrimary={textPrimary} textSecondary={textSecondary} border={border} card={card} />
                 <View style={{ marginBottom: 16 }}>
                     <Text style={{ fontSize: 13, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>Assign as Class Teacher</Text>
-                    {classes.map(c => (
-                        <TouchableOpacity key={c.id} onPress={() => updateForm('class_teacher_id', form.class_teacher_id === c.id ? '' : c.id)}
-                            style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8, backgroundColor: form.class_teacher_id === c.id ? '#FF6B00' : card, borderColor: form.class_teacher_id === c.id ? '#FF6B00' : border }}>
-                            <Ionicons name={form.class_teacher_id === c.id ? 'radio-button-on' : 'radio-button-off'} size={18} color={form.class_teacher_id === c.id ? 'white' : textSecondary} />
-                            <Text style={{ marginLeft: 12, fontWeight: '500', color: form.class_teacher_id === c.id ? 'white' : textPrimary }}>{c.name}</Text>
-                        </TouchableOpacity>
-                    ))}
+                    {classes.map(c => {
+                        const isAssigned = !!c.teacher_id;
+                        const teacherName = c.teacher_name || 'Another Teacher';
+                        const isSelected = form.class_teacher_id === c.id;
+                        return (
+                            <TouchableOpacity 
+                                key={c.id} 
+                                onPress={() => {
+                                    if (isAssigned) return;
+                                    updateForm('class_teacher_id', isSelected ? '' : c.id);
+                                }}
+                                disabled={isAssigned}
+                                style={{ 
+                                    flexDirection: 'row', 
+                                    alignItems: 'center', 
+                                    paddingHorizontal: 16, 
+                                    paddingVertical: 12, 
+                                    borderRadius: 12, 
+                                    borderWidth: 1, 
+                                    marginBottom: 8, 
+                                    backgroundColor: isSelected ? '#FF6B00' : card, 
+                                    borderColor: isSelected ? '#FF6B00' : border,
+                                    opacity: isAssigned ? 0.5 : 1,
+                                    cursor: (isAssigned ? 'not-allowed' : 'pointer') as any
+                                }}
+                            >
+                                <Ionicons name={isSelected ? 'radio-button-on' : 'radio-button-off'} size={18} color={isSelected ? 'white' : textSecondary} />
+                                <Text style={{ marginLeft: 12, fontWeight: '500', color: isSelected ? 'white' : textPrimary, flex: 1 }}>
+                                    {c.name}{isAssigned ? ` (Assigned to ${teacherName})` : ''}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
                 </View>
             </View>
         );
@@ -1234,8 +1260,6 @@ export default function CreateUserScreen() {
             {form.role === 'teacher' && (
                 <View style={{ backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16, marginBottom: 16 }}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Teacher Details</Text>
-                    {renderReviewRow('Department', form.department)}
-                    {renderReviewRow('Position', form.position?.replace(/_/g, ' '))}
                     {renderReviewRow('Subjects', form.subject_ids.length > 0 ? form.subject_ids.map(id => subjects.find(s => s.id === id)?.title || id).join(', ') : undefined)}
                     {renderReviewRow('Class Teacher', form.class_teacher_id ? classes.find(c => c.id === form.class_teacher_id)?.name : undefined)}
                 </View>

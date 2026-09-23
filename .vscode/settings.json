@@ -1,4 +1,8 @@
 {
     "deno.enable": true,
-    "deno.disablePaths": ["frontend", "backend"]
+    "deno.disablePaths": [
+        "frontend",
+        "backend"
+    ],
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

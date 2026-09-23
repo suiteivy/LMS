@@ -39,6 +39,10 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
   const { width, height } = useWindowDimensions();
   const [downloading, setDownloading] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(100);
+  const [compiledBase64, setCompiledBase64] = useState<string | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const effectivePayload: PdfDocumentPayload | null = payload || (documentType ? {
     documentType: (documentType as any) || 'generic',
@@ -46,7 +50,56 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
     title: title || 'PDF Document',
     fileName: fileName || `${documentType}.pdf`,
     html: (payload as any)?.html || (data as any)?.html,
+    pdfBase64: (payload as any)?.pdfBase64 || (data as any)?.pdfBase64,
   } : null);
+
+  const activePdfBase64 = effectivePayload?.pdfBase64 || compiledBase64;
+  const activeHtml = effectivePayload?.html;
+
+  React.useEffect(() => {
+    if (!visible || !effectivePayload) return;
+    if (effectivePayload.pdfBase64 || effectivePayload.html) {
+      setCompiledBase64(null);
+      setLoadingPreview(false);
+      setPreviewError(null);
+      return;
+    }
+
+    let isMounted = true;
+    setLoadingPreview(true);
+    setPreviewError(null);
+
+    const loadBase64 = async () => {
+      try {
+        const base64 = await PdfService.compileVectorPdfBase64(
+          effectivePayload.documentType,
+          effectivePayload.data || {}
+        );
+        if (isMounted) {
+          if (base64) {
+            setCompiledBase64(base64);
+          } else {
+            setPreviewError('The generated PDF was empty.');
+          }
+        }
+      } catch (err: any) {
+        console.error('Failed to compile PDF for preview:', err);
+        if (isMounted) {
+          setPreviewError(err?.response?.data?.error || err?.message || 'Failed to compile vector PDF preview.');
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingPreview(false);
+        }
+      }
+    };
+
+    loadBase64();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [visible, effectivePayload?.documentType, JSON.stringify(effectivePayload?.data), retryCount]);
 
   if (!visible || !effectivePayload) return null;
 
@@ -64,10 +117,15 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
   const textPrimary = isDark ? '#FFFFFF' : '#111827';
   const textSecondary = isDark ? '#9CA3AF' : '#6B7280';
 
+  const currentPayloadForExport: PdfDocumentPayload = {
+    ...effectivePayload,
+    pdfBase64: activePdfBase64 || effectivePayload.pdfBase64,
+  };
+
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      await PdfService.downloadCompiledPdf(effectivePayload);
+      await PdfService.downloadCompiledPdf(currentPayloadForExport);
     } catch (error) {
       console.error('Failed to download compiled PDF:', error);
       alert('Failed to compile and download PDF document. Please try again.');
@@ -77,8 +135,8 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
   };
 
   const handlePrint = () => {
-    if (effectivePayload.pdfBase64 && Platform.OS === 'web') {
-      const byteCharacters = atob(effectivePayload.pdfBase64);
+    if (activePdfBase64 && Platform.OS === 'web') {
+      const byteCharacters = atob(activePdfBase64);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -213,9 +271,41 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
               padding: 12,
             }}
           >
-            {effectivePayload.pdfBase64 ? (
+            {loadingPreview ? (
+              <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, gap: 14 }}>
+                <ActivityIndicator size="large" color="#FF6B00" />
+                <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 15 }}>
+                  Compiling vector PDF document...
+                </Text>
+                <Text style={{ color: textSecondary, fontSize: 12 }}>
+                  Generating high-fidelity vector preview
+                </Text>
+              </View>
+            ) : previewError ? (
+              <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, gap: 12, paddingHorizontal: 20 }}>
+                <Ionicons name="alert-circle-outline" size={54} color="#EF4444" />
+                <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 16 }}>
+                  Preview Generation Issue
+                </Text>
+                <Text style={{ color: textSecondary, fontSize: 13, textAlign: 'center', maxWidth: 400 }}>
+                  {previewError}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setRetryCount((c) => c + 1)}
+                  style={{
+                    backgroundColor: '#FF6B00',
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 8,
+                    marginTop: 4,
+                  }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Retry Preview</Text>
+                </TouchableOpacity>
+              </View>
+            ) : activePdfBase64 ? (
               <iframe
-                src={`data:application/pdf;base64,${effectivePayload.pdfBase64}`}
+                src={`data:application/pdf;base64,${activePdfBase64}`}
                 style={{
                   width: `${zoomLevel}%`,
                   height: '100%',
@@ -228,9 +318,9 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
                 }}
                 title="PDF Vector Preview"
               />
-            ) : effectivePayload.html ? (
+            ) : activeHtml ? (
               <iframe
-                srcDoc={effectivePayload.html}
+                srcDoc={activeHtml}
                 style={{
                   width: `${zoomLevel}%`,
                   height: '100%',

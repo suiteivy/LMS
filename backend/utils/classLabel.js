@@ -10,10 +10,15 @@ function isPresent(value) {
 function buildClassLabel(classLike = {}) {
   const value = classLike && typeof classLike === 'object' ? classLike : {};
 
-  // If explicit display_name exists and doesn't contain 'Form', use it
+  // If explicit display_name exists and doesn't contain 'Form', sanitize and use it
   if (isPresent(value.display_name) && !/^\s*form\s+/i.test(String(value.display_name))) {
-    // If it has display_name like "Grade 7 Simba", preserve it
-    const trimmed = String(value.display_name).trim();
+    let trimmed = String(value.display_name).trim();
+    // Sanitize buggy/legacy Early Years prefixes
+    trimmed = trimmed
+      .replace(/^grade\s*-2\b/i, 'Playgroup')
+      .replace(/^grade\s*-1\b/i, 'PP1')
+      .replace(/^grade\s*0\b/i, 'PP2');
+
     if (trimmed && !/form/i.test(trimmed)) {
       return trimmed;
     }
@@ -40,23 +45,44 @@ function buildClassLabel(classLike = {}) {
   }
 
   // Handle Early Years: Playgroup (-2), PP1 (-1), PP2 (0)
-  const strVal = String(levelValue).trim().toLowerCase();
-  if (levelValue === -2 || strVal === 'playgroup') {
+  const strVal = isPresent(levelValue) ? String(levelValue).trim().toLowerCase() : '';
+  const numVal = isPresent(levelValue) ? Number(levelValue) : NaN;
+
+  if (numVal === -2 || strVal === 'playgroup' || strVal === 'pg' || strVal === 'play group') {
     levelLabel = 'Playgroup';
     levelValue = '';
-  } else if (levelValue === -1 || strVal === 'pp1') {
+  } else if (numVal === -1 || strVal === 'pp1' || strVal === 'pre-primary 1' || strVal === 'pre primary 1') {
     levelLabel = 'PP1';
     levelValue = '';
-  } else if (levelValue === 0 || strVal === 'pp2') {
+  } else if ((isPresent(levelValue) && (numVal === 0 || strVal === '0')) || strVal === 'pp2' || strVal === 'pre-primary 2' || strVal === 'pre primary 2') {
     levelLabel = 'PP2';
     levelValue = '';
   }
 
+  const isEarlyYears = (levelLabel === 'Playgroup' || levelLabel === 'PP1' || levelLabel === 'PP2');
+  let levelPart = '';
+  if (isEarlyYears) {
+    levelPart = levelLabel;
+  } else if (isPresent(levelValue)) {
+    levelPart = `${levelLabel} ${levelValue}`;
+  } else if (isPresent(value.stream) && isPresent(value.class_type)) {
+    levelPart = levelLabel;
+  }
+
   const stream = isPresent(value.stream) ? String(value.stream).trim() : '';
-  const levelPart = isPresent(levelValue) ? `${levelLabel} ${levelValue}` : levelLabel;
   const pieces = [levelPart, stream].filter(Boolean);
 
-  return pieces.join(' ').trim() || (isPresent(value.name) ? String(value.name).trim() : null);
+  const finalLabel = pieces.join(' ').trim();
+  if (finalLabel) return finalLabel;
+
+  if (isPresent(value.name)) {
+    return String(value.name).trim()
+      .replace(/^grade\s*-2\b/i, 'Playgroup')
+      .replace(/^grade\s*-1\b/i, 'PP1')
+      .replace(/^grade\s*0\b/i, 'PP2');
+  }
+
+  return null;
 }
 
 module.exports = {

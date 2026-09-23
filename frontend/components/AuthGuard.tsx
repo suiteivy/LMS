@@ -88,8 +88,8 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
                 // Check if current active role satisfies requirements
                 let isAllowed = Array.from(currentRoleExpanded).some((r) => normalizedAllowedRoles.has(r));
 
-                // If activeRole is NOT explicitly selected, allow fallback to availableRoles
-                if (!isAllowed && !activeRole && availableRoles && availableRoles.length > 0) {
+                // If current active role does not satisfy requirements, check availableRoles
+                if (!isAllowed && availableRoles && availableRoles.length > 0) {
                     const availableExpanded = availableRoles.flatMap((r) => Array.from(expandRoles(r)));
                     isAllowed = availableExpanded.some((r) => normalizedAllowedRoles.has(r));
                 }

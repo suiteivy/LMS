@@ -10,6 +10,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { formatClassLabel } from "@/utils/classLabel";
 import { ActionTooltip } from "@/components/common/ActionTooltip";
+import { showSuccess, showError } from "@/utils/toast";
 import {
   ActivityIndicator,
   Text,
@@ -237,10 +238,10 @@ function SubjectDetailsScreen() {
       setSubject(nextSubject as any);
       setForm(nextSubject);
       setEditing(false);
-      Alert.alert("Success", "Subject updated and stream students enrolled successfully.");
+      showSuccess("Subject Updated", "Subject updated and stream students enrolled successfully.");
     } catch (error) {
       console.error("Error updating subject:", error);
-      Alert.alert("Error", "Failed to update subject.");
+      showError("Update Failed", "Failed to update subject.");
     } finally {
       setSaving(false);
     }

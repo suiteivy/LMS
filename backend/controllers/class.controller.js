@@ -35,7 +35,10 @@ function deriveStreamFromName(name, classType, gradeLevel, formLevel) {
         stream = stream.replace(numericPrefix, '').trim();
     }
 
-    if (!stream || /^grade\s+\d+$/i.test(stream) || /^form\s+\d+$/i.test(stream) || /^kg\s+\d+$/i.test(stream)) {
+    // Strip Early Years prefixes if name begins with Playgroup, PP1, PP2, etc.
+    stream = stream.replace(/^(?:playgroup|play\s*group|pg|pp1|pre-primary\s*1|pre\s*primary\s*1|pp2|pre-primary\s*2|pre\s*primary\s*2)\s*[-_]?\s*/i, '').trim();
+
+    if (!stream || /^grade\s+\d+$/i.test(stream) || /^form\s+\d+$/i.test(stream) || /^kg\s+\d+$/i.test(stream) || /^(?:playgroup|play\s*group|pg|pp1|pp2)$/i.test(stream)) {
         return undefined;
     }
 
@@ -106,9 +109,10 @@ function normalizeClassRecord(record, meta) {
         school_category_name: record.school_category_name || meta?.school_category_name || null,
         class_type: record.class_type || meta?.class_type || 'Grade',
     };
+    const formattedLabel = buildClassLabel(withMeta);
     return {
         ...withMeta,
-        name: withMeta.display_name || buildClassLabel(withMeta) || withMeta.id,
+        name: formattedLabel || withMeta.display_name || withMeta.id,
     };
 }
 
@@ -481,7 +485,9 @@ exports.createClassDomainLevel = async (req, res) => {
         if (!institution_id) return res.status(400).json({ error: 'Institution context is required' });
         
         const levelNumber = toFiniteNumber(level_number);
-        if (!levelNumber || levelNumber <= 0) return res.status(400).json({ error: 'level_number must be a positive integer' });
+        if (levelNumber === undefined || !Number.isInteger(levelNumber) || levelNumber < -2) {
+            return res.status(400).json({ error: 'level_number must be an integer greater than or equal to -2 (Playgroup: -2, PP1: -1, PP2: 0, Grade 1-12: 1-12)' });
+        }
 
         // Auto-resolve or create category if not provided
         if (!category_id) {
@@ -520,7 +526,12 @@ exports.createClassDomainLevel = async (req, res) => {
             if (categoryError || !category) return res.status(404).json({ error: 'Category not found' });
         }
 
-        const formattedName = name && String(name).trim() ? String(name).trim() : `Grade ${levelNumber}`;
+        let defaultName = `Grade ${levelNumber}`;
+        if (levelNumber === -2) defaultName = 'Playgroup';
+        else if (levelNumber === -1) defaultName = 'PP1';
+        else if (levelNumber === 0) defaultName = 'PP2';
+
+        const formattedName = name && String(name).trim() ? String(name).trim() : defaultName;
 
         // Check if an active level already exists with this number for this institution
         const { data: existingLevel } = await supabase
@@ -534,7 +545,7 @@ exports.createClassDomainLevel = async (req, res) => {
         if (existingLevel) {
             return res.status(409).json({
                 code: 'DUPLICATE_GRADE_LEVEL',
-                error: `Grade level ${levelNumber} (${existingLevel.name || 'Level ' + levelNumber}) already exists.`,
+                error: `Grade level ${levelNumber} (${existingLevel.name || defaultName}) already exists.`,
             });
         }
 
@@ -643,13 +654,21 @@ exports.createClassDomainLevel = async (req, res) => {
                         stream_id: null,
                         stream: null,
                     };
-                    if (meta.class_type === 'Form') {
+                    if (levelNumber <= 0) {
+                        insertClassData.grade_level = levelNumber;
+                        if (hasClassType) {
+                            insertClassData.class_type = levelNumber === -2 ? 'Playgroup' : (levelNumber === -1 ? 'PP1' : 'PP2');
+                        }
+                    } else if (meta.class_type === 'Form') {
                         insertClassData.form_level = levelNumber;
+                        if (hasClassType) {
+                            insertClassData.class_type = 'Form';
+                        }
                     } else {
                         insertClassData.grade_level = levelNumber;
-                    }
-                    if (hasClassType) {
-                        insertClassData.class_type = meta.class_type || 'Grade';
+                        if (hasClassType) {
+                            insertClassData.class_type = meta.class_type || 'Grade';
+                        }
                     }
                     if (capacity !== undefined) insertClassData.capacity = capacity;
                     if (teacher_id !== undefined) insertClassData.teacher_id = teacher_id || null;
@@ -684,6 +703,12 @@ exports.createClassDomainLevel = async (req, res) => {
             return res.status(409).json({
                 code: 'DUPLICATE_GRADE_LEVEL',
                 error: `This grade level already exists.`,
+            });
+        }
+        if (err?.code === '23514' || String(err?.message || '').toLowerCase().includes('check constraint')) {
+            return res.status(400).json({
+                code: 'INVALID_LEVEL_NUMBER',
+                error: 'Level number must be at least -2 (Playgroup, PP1, PP2, or Grade 1+).',
             });
         }
         res.status(500).json({ error: err.message });
@@ -1265,7 +1290,11 @@ exports.getClasses = async (req, res) => {
 
 function formatLevelOptionLabel(value, customName, defaultClassType = 'Grade') {
     if (customName && String(customName).trim()) {
-        return String(customName).trim();
+        const trimmed = String(customName).trim();
+        if (/^grade\s*-2$/i.test(trimmed)) return 'Playgroup';
+        if (/^grade\s*-1$/i.test(trimmed)) return 'PP1';
+        if (/^grade\s*0$/i.test(trimmed)) return 'PP2';
+        return trimmed;
     }
     const num = Number(value);
     if (num === -2 || String(value).toLowerCase() === 'playgroup') return 'Playgroup';
@@ -1624,8 +1653,19 @@ exports.autoAssignStudents = async (req, res) => {
         const institution_id = req.institution_id;
         const meta = await getInstitutionCategoryMeta(institution_id);
         const hasDeletedAt = await supportsClassesDeletedAt();
-        const normalizedGradeLevel = toFiniteNumber(grade_level);
-        const normalizedFormLevel = toFiniteNumber(form_level);
+
+        // Robust parsing for early years string levels (e.g. "Playgroup", "PP1", "PP2", "PG")
+        const parseLevelInput = (val) => {
+            if (val === null || val === undefined || val === '') return undefined;
+            const strLower = String(val).trim().toLowerCase();
+            if (strLower === 'playgroup' || strLower === 'pg' || strLower === 'play group' || /^grade\s*-2$/i.test(strLower)) return -2;
+            if (strLower === 'pp1' || strLower === 'pre-primary 1' || strLower === 'pre primary 1' || /^grade\s*-1$/i.test(strLower)) return -1;
+            if (strLower === 'pp2' || strLower === 'pre-primary 2' || strLower === 'pre primary 2' || /^grade\s*0$/i.test(strLower)) return 0;
+            return toFiniteNumber(val);
+        };
+
+        const normalizedGradeLevel = parseLevelInput(grade_level);
+        const normalizedFormLevel = parseLevelInput(form_level);
 
         if (normalizedGradeLevel === undefined && normalizedFormLevel === undefined) {
             return res.status(400).json({ error: "grade_level or form_level is required" });
@@ -1929,7 +1969,15 @@ exports.getStudentTransfers = async (req, res) => {
         const { data, error } = await query;
         if (error) throw error;
 
-        res.json(data || []);
+        const normalized = (data || []).map((t) => ({
+            ...t,
+            student: t.student ? {
+                ...t.student,
+                admission_number: t.student.admission_number || t.student.id || t.student_id,
+            } : null,
+        }));
+
+        res.json(normalized);
     } catch (err) {
         console.error("getStudentTransfers error:", err);
         res.status(500).json({ error: err.message });

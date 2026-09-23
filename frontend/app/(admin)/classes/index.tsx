@@ -15,6 +15,7 @@ import {
     ClassStudent,
 } from '@/services/ClassService';
 import { formatClassLabel } from '@/utils/classLabel';
+import { EARLY_YEARS_PRESETS, getLevelDisplayName, getLevelShortCode, parseLevelValue } from '@/constants/educationLevels';
 import { StudentTransferModal } from '@/components/transfers/StudentTransferModal';
 import { showError, showSuccess } from '@/utils/toast';
 import { Ionicons } from '@expo/vector-icons';
@@ -202,18 +203,22 @@ export default function AdminClassManagement() {
 
     // ─── Grade helper ──────────────────────────────────────
     const gradeToNumber = (grade: string): number | undefined => {
-        const match = grade.match(/\d+/);
-        return match ? parseInt(match[0]) : undefined;
+        return parseLevelValue(grade);
     };
 
     const handleCreateLevel = async () => {
         const levelNumber = Number(newLevelNumber);
-        if (!Number.isFinite(levelNumber) || levelNumber <= 0) {
-            showError('Validation', 'Please enter a valid positive level number (e.g. 1, 2, 3)');
+        if (!Number.isFinite(levelNumber) || !Number.isInteger(levelNumber) || levelNumber < -2) {
+            showError('Validation', 'Please enter a valid level number (-2 for Playgroup, -1 for PP1, 0 for PP2, or a positive integer)');
             return;
         }
 
-        const candidateName = newLevelName.trim() || `${safeLevelLabel} ${levelNumber}`;
+        let defaultName = `${safeLevelLabel} ${levelNumber}`;
+        if (levelNumber === -2) defaultName = 'Playgroup';
+        else if (levelNumber === -1) defaultName = 'PP1';
+        else if (levelNumber === 0) defaultName = 'PP2';
+
+        const candidateName = newLevelName.trim() || defaultName;
 
         // Client-side pre-check against already loaded domain levels
         const existingLevel = domainLevels.find(
@@ -345,8 +350,8 @@ export default function AdminClassManagement() {
                 class_type: formClassType,
                 level_id: level.id,
                 category_id: level.category_id || undefined,
-                grade_level: (safeLevelLabel === 'Grade' || safeLevelLabel === 'KG') ? level.level_number : undefined,
-                form_level: (safeLevelLabel === 'Form') ? level.level_number : undefined,
+                grade_level: (safeLevelLabel === 'Grade' || safeLevelLabel === 'KG' || level.level_number <= 0) ? level.level_number : undefined,
+                form_level: (safeLevelLabel === 'Form' && level.level_number > 0) ? level.level_number : undefined,
             });
             await Promise.all([loadClassOptions(), loadClasses()]);
             showSuccess('Class Created', `${level.name || `${safeLevelLabel} ${level.level_number}`} is now active as a single class.`);
@@ -376,8 +381,8 @@ export default function AdminClassManagement() {
         setEditingClass(cls);
         const clsType = cls.class_type || safeLevelLabel;
         setFormClassType(clsType);
-        const level = cls.grade_level || cls.form_level;
-        setFormLevel(level ? `${clsType} ${level}` : '');
+        const level = cls.grade_level !== undefined && cls.grade_level !== null ? cls.grade_level : cls.form_level;
+        setFormLevel(level !== undefined && level !== null ? getLevelDisplayName(level, clsType) : '');
         setFormStream(cls.stream || '');
         setFormStructure(cls.stream || cls.stream_id ? 'stream' : 'single');
         setFormCategoryId(cls.category_id || '');
@@ -393,11 +398,11 @@ export default function AdminClassManagement() {
         setSaving(true);
         try {
             const isSingle = formStructure === 'single';
-            const levelNum = gradeToNumber(formLevel);
+            const levelNum = parseLevelValue(formLevel);
             const payload: any = {
-                class_type: formClassType,
-                grade_level: (safeLevelLabel === 'Grade' || safeLevelLabel === 'KG') ? levelNum : undefined,
-                form_level: (safeLevelLabel === 'Form') ? levelNum : undefined,
+                class_type: (levelNum !== undefined && levelNum <= 0) ? (levelNum === -2 ? 'Playgroup' : (levelNum === -1 ? 'PP1' : 'PP2')) : formClassType,
+                grade_level: (levelNum !== undefined && (levelNum <= 0 || safeLevelLabel === 'Grade' || safeLevelLabel === 'KG')) ? levelNum : undefined,
+                form_level: (levelNum !== undefined && levelNum > 0 && safeLevelLabel === 'Form') ? levelNum : undefined,
                 category_id: formCategoryId || undefined,
                 level_id: formLevelId || undefined,
                 stream_id: isSingle ? null : (formStreamId || undefined),
@@ -541,10 +546,15 @@ export default function AdminClassManagement() {
         }
         setAutoAssigning(true);
         try {
-            const numLevel = parseInt(autoAssignLevel.replace(/[^0-9]/g, ''), 10);
+            const numLevel = parseLevelValue(autoAssignLevel);
+            if (numLevel === undefined) {
+                Alert.alert('Validation', 'Select a valid level');
+                return;
+            }
+            const isEarlyYears = numLevel <= 0;
             const result: AutoAssignResult = await ClassService.autoAssign({
-                grade_level: !isSecondary ? numLevel : undefined,
-                form_level: isSecondary ? numLevel : undefined,
+                grade_level: (!isSecondary || isEarlyYears) ? numLevel : undefined,
+                form_level: (isSecondary && !isEarlyYears) ? numLevel : undefined,
             });
             setShowAutoAssignModal(false);
             await loadClasses();
@@ -566,13 +576,12 @@ export default function AdminClassManagement() {
     // ─── Derived ───────────────────────────────────────────
     const filteredClasses = levelFilter
         ? classes.filter((c) => {
-            const selectedLevel = gradeToNumber(levelFilter);
+            const selectedLevel = parseLevelValue(levelFilter);
             if (selectedLevel === undefined) return true;
-            const selectedType = levelFilter.split(' ')[0]?.trim();
-            const classType = (c.class_type || safeLevelLabel || '').trim();
-            const matchesType = selectedType ? classType.toLowerCase() === selectedType.toLowerCase() : true;
-            const matchesLevel = c.grade_level === selectedLevel || c.form_level === selectedLevel;
-            return matchesType && matchesLevel;
+            const classLevel = c.grade_level !== undefined && c.grade_level !== null
+                ? Number(c.grade_level)
+                : (c.form_level !== undefined && c.form_level !== null ? Number(c.form_level) : undefined);
+            return classLevel === selectedLevel;
         })
         : classes;
 
@@ -793,9 +802,11 @@ export default function AdminClassManagement() {
                                         <View style={{ flex: 1 }}>
                                             <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 15 }}>{formatClassLabel(cls)}</Text>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, flexWrap: 'wrap', gap: 6 }}>
-                                                {(cls.class_type || cls.grade_level || cls.form_level) && (
+                                                {((cls.grade_level !== undefined && cls.grade_level !== null) || (cls.form_level !== undefined && cls.form_level !== null) || cls.class_type) && (
                                                     <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 }}>
-                                                        <Text style={{ color: textSecondary, fontSize: 11, fontWeight: '600' }}>{cls.class_type || safeLevelLabel} {cls.grade_level || cls.form_level}</Text>
+                                                        <Text style={{ color: textSecondary, fontSize: 11, fontWeight: '600' }}>
+                                                            {getLevelDisplayName(cls.grade_level !== undefined && cls.grade_level !== null ? cls.grade_level : cls.form_level, cls.class_type || safeLevelLabel)}
+                                                        </Text>
                                                     </View>
                                                 )}
                                                 {!cls.stream && !cls.stream_id && (
@@ -984,6 +995,7 @@ export default function AdminClassManagement() {
                     <View style={{
                         backgroundColor: modalBg,
                         borderTopLeftRadius: 28, borderTopRightRadius: 28,
+                        maxHeight: '88%',
                         paddingBottom: Platform.OS === 'ios' ? 40 : 24,
                     }}>
                         {/* Modal Header */}
@@ -996,7 +1008,7 @@ export default function AdminClassManagement() {
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView style={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+                        <ScrollView style={{ padding: 20, flex: 1 }} keyboardShouldPersistTaps="handled">
 
                             {/* Dynamic Level Selection */}
                             <View style={{ marginBottom: 20 }}>
@@ -1457,7 +1469,7 @@ export default function AdminClassManagement() {
                                 ) : (
                                     <View style={{ gap: 8 }}>
                                         {domainLevels.slice().sort((a, b) => a.level_number - b.level_number).map((level) => {
-                                            const label = level.name || `${safeLevelLabel} ${level.level_number}`;
+                                            const label = level.name || getLevelDisplayName(level.level_number, safeLevelLabel);
                                             const levelStreams = domainStreams.filter(s => s.level_id === level.id);
                                             const hasStandalone = level.has_standalone_class || classes.some(c => c.level_id === level.id && !c.stream && !c.stream_id);
                                             return (
@@ -1477,13 +1489,13 @@ export default function AdminClassManagement() {
                                                 >
                                                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
                                                         <View style={{
-                                                            width: 34, height: 34, borderRadius: 10,
+                                                            width: 36, height: 34, borderRadius: 10,
                                                             backgroundColor: isDark ? '#082F49' : '#E0F2FE',
                                                             alignItems: 'center', justifyContent: 'center',
                                                             marginRight: 12,
                                                         }}>
-                                                            <Text style={{ fontWeight: '800', color: '#0284C7', fontSize: 15 }}>
-                                                                {level.level_number}
+                                                            <Text style={{ fontWeight: '800', color: '#0284C7', fontSize: 13 }}>
+                                                                {getLevelShortCode(level.level_number)}
                                                             </Text>
                                                         </View>
                                                         <View style={{ flex: 1 }}>
@@ -1548,6 +1560,63 @@ export default function AdminClassManagement() {
                                 <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                                     + Add New Grade Level
                                 </Text>
+
+                                {/* Early Years Quick Presets */}
+                                <View style={{ marginBottom: 14 }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '600', color: textSecondary, marginBottom: 6 }}>
+                                        Early Years Quick Presets:
+                                    </Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                                        {EARLY_YEARS_PRESETS.map((preset) => {
+                                            const isAlreadyActive = domainLevels.some((l) => l.level_number === preset.levelNumber);
+                                            const isSelected = newLevelNumber === String(preset.levelNumber);
+                                            return (
+                                                <TouchableOpacity
+                                                    key={preset.levelNumber}
+                                                    disabled={isAlreadyActive}
+                                                    onPress={() => {
+                                                        setNewLevelNumber(String(preset.levelNumber));
+                                                        setNewLevelName(preset.name);
+                                                        setNewLevelAsSingleClass(true);
+                                                    }}
+                                                    style={{
+                                                        paddingHorizontal: 10,
+                                                        paddingVertical: 6,
+                                                        borderRadius: 10,
+                                                        borderWidth: 1,
+                                                        backgroundColor: isAlreadyActive
+                                                            ? (isDark ? 'rgba(16,185,129,0.12)' : '#ECFDF5')
+                                                            : (isSelected ? '#FF6B00' : pillInactive),
+                                                        borderColor: isAlreadyActive
+                                                            ? (isDark ? 'rgba(16,185,129,0.35)' : '#A7F3D0')
+                                                            : (isSelected ? '#FF6B00' : pillInactiveBorder),
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        opacity: isAlreadyActive ? 0.75 : 1,
+                                                    }}
+                                                >
+                                                    <Ionicons
+                                                        name={isAlreadyActive ? "checkmark-circle" : "add-circle-outline"}
+                                                        size={14}
+                                                        color={isAlreadyActive ? '#059669' : (isSelected ? 'white' : '#FF6B00')}
+                                                        style={{ marginRight: 4 }}
+                                                    />
+                                                    <Text style={{
+                                                        fontSize: 11,
+                                                        fontWeight: '700',
+                                                        color: isAlreadyActive
+                                                            ? '#059669'
+                                                            : (isSelected ? 'white' : textPrimary)
+                                                    }}>
+                                                        {preset.name} ({preset.shortCode})
+                                                        {isAlreadyActive ? ' • Added' : ''}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+
                                 {domainCategories.length > 1 && (
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
                                         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -1584,7 +1653,7 @@ export default function AdminClassManagement() {
                                             placeholder="Level #"
                                             value={newLevelNumber}
                                             onChangeText={setNewLevelNumber}
-                                            keyboardType="number-pad"
+                                            keyboardType="numbers-and-punctuation"
                                             placeholderTextColor={textMuted}
                                         />
                                         <TextInput

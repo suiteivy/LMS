@@ -1043,6 +1043,19 @@ exports.enrollUser = async (req, res) => {
         label: 'Primary',
         is_primary: true,
       }];
+      if (req.body.secondary_phone && String(req.body.secondary_phone).trim()) {
+        finalPhoneNumbers.push({
+          number: String(req.body.secondary_phone).trim(),
+          label: 'Secondary',
+          is_primary: false,
+        });
+      }
+    } else if (req.body.secondary_phone && String(req.body.secondary_phone).trim()) {
+      finalPhoneNumbers = [{
+        number: String(req.body.secondary_phone).trim(),
+        label: 'Secondary',
+        is_primary: true,
+      }];
     }
     const primaryPhone = finalPhoneNumbers.find(p => p.is_primary)?.number || (phone ? String(phone).trim() : null);
 
@@ -1338,7 +1351,7 @@ exports.enrollUser = async (req, res) => {
       const updateFields = {};
       if (department) updateFields.department = department;
       if (qualification) updateFields.qualification = qualification;
-      if (position) updateFields.position = position;
+      updateFields.position = position || (class_teacher_id ? 'class_teacher' : 'teacher');
 
       if (Object.keys(updateFields).length > 0) {
         await supabase.from('teachers').update(updateFields).eq('user_id', uid);
@@ -1481,7 +1494,7 @@ exports.adminUpdateUser = async (req, res) => {
   try {
     const { data: targetUser, error: targetUserError } = await supabase
       .from('users')
-      .select('id, role, institution_id, first_name, last_name')
+      .select('id, role, institution_id, first_name, last_name, email, full_name')
       .eq('id', id)
       .single();
 
@@ -1514,18 +1527,27 @@ exports.adminUpdateUser = async (req, res) => {
       });
     }
 
-    if (!requesterIsPlatformAdmin && (first_name !== undefined || last_name !== undefined || full_name !== undefined || email !== undefined)) {
-      return res.status(403).json({
-        error: 'Only Master Admin can edit first name, last name, full name, or email.',
-      });
-    }
-
     // 1. Build users table update
     const userUpdates = {};
     if (first_name !== undefined) userUpdates.first_name = String(first_name || '').trim();
     if (last_name !== undefined) userUpdates.last_name = String(last_name || '').trim();
     if (full_name !== undefined) userUpdates.full_name = String(full_name || '').trim();
-    if (email !== undefined) userUpdates.email = String(email || '').trim().toLowerCase();
+    if (email !== undefined) {
+      const normalizedEmail = String(email || '').trim().toLowerCase();
+      if (normalizedEmail && normalizedEmail !== String(targetUser.email || '').trim().toLowerCase()) {
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('id')
+          .ilike('email', normalizedEmail)
+          .neq('id', id)
+          .maybeSingle();
+
+        if (existingUser) {
+          return res.status(400).json({ error: 'The email address is already in use by another account' });
+        }
+      }
+      userUpdates.email = normalizedEmail;
+    }
     if (phone_numbers !== undefined) {
       let finalPhoneNumbers = [];
       if (Array.isArray(phone_numbers)) {
@@ -1573,38 +1595,52 @@ exports.adminUpdateUser = async (req, res) => {
     if (institution_id !== undefined) userUpdates.institution_id = institution_id || req.institution_id;
     if (avatar_url !== undefined) userUpdates.avatar_url = avatar_url || null;
 
-    // Derived full_name if first_name and last_name are provided but full_name is not
+    // Derived full_name if first_name or last_name is provided but full_name is not
     if (full_name === undefined && (first_name !== undefined || last_name !== undefined)) {
-       // Best effort to construct it from the request body
-       const fName = first_name !== undefined ? (first_name || '') : '';
-       const lName = last_name !== undefined ? (last_name || '') : '';
-       if (fName || lName) {
-           userUpdates.full_name = `${fName} ${lName}`.trim();
-        }
+      const fName = first_name !== undefined ? String(first_name || '').trim() : String(targetUser.first_name || '').trim();
+      const lName = last_name !== undefined ? String(last_name || '').trim() : String(targetUser.last_name || '').trim();
+      if (fName || lName) {
+        userUpdates.full_name = `${fName} ${lName}`.trim();
+      }
     }
 
-    // For master admin identity edits, regenerate institution-domain email from names.
-    if (requesterIsPlatformAdmin && (first_name !== undefined || last_name !== undefined) && targetUser.institution_id) {
+    // For admin identity edits, regenerate institution-domain email from names when email is not explicitly provided,
+    // or when regenerate_email is requested, or when first/last name changed and email was not manually specified.
+    const nameChanged = (
+      (first_name !== undefined && String(first_name || '').trim().toLowerCase() !== String(targetUser.first_name || '').trim().toLowerCase()) ||
+      (last_name !== undefined && String(last_name || '').trim().toLowerCase() !== String(targetUser.last_name || '').trim().toLowerCase())
+    );
+    const shouldRegenerateEmail = targetUser.institution_id && (
+      (requesterIsPlatformAdmin && (first_name !== undefined || last_name !== undefined) && email === undefined) ||
+      (nameChanged && email === undefined) ||
+      req.body.regenerate_email === true
+    );
+
+    if (shouldRegenerateEmail) {
       const nextFirst = first_name !== undefined ? String(first_name || '').trim() : String(targetUser.first_name || '').trim();
       const nextLast = last_name !== undefined ? String(last_name || '').trim() : String(targetUser.last_name || '').trim();
 
       if (nextFirst) {
         const { data: institution, error: institutionError } = await supabase
           .from('institutions')
-          .select('email_domain')
+          .select('email_domain, slug')
           .eq('id', targetUser.institution_id)
           .single();
         if (institutionError) throw institutionError;
 
-        const nextEmail = await generateUniqueInstitutionEmail({
-          firstName: nextFirst,
-          lastName: nextLast,
-          emailDomain: institution?.email_domain,
-          excludeUserId: id,
-        });
+        const effectiveDomain = institution?.email_domain || (institution?.slug ? `${institution.slug}.suiteivy.com` : null);
 
-        userUpdates.email = nextEmail;
-        userUpdates.full_name = `${nextFirst} ${nextLast}`.trim();
+        if (effectiveDomain) {
+          const nextEmail = await generateUniqueInstitutionEmail({
+            firstName: nextFirst,
+            lastName: nextLast,
+            emailDomain: effectiveDomain,
+            excludeUserId: id,
+          });
+
+          userUpdates.email = nextEmail;
+          userUpdates.full_name = `${nextFirst} ${nextLast}`.trim();
+        }
       }
     }
 
@@ -1735,7 +1771,8 @@ exports.adminUpdateUser = async (req, res) => {
         qualification !== undefined ||
         position !== undefined ||
         subject_ids !== undefined ||
-        req.body.class_teacher_id !== undefined
+        req.body.class_teacher_id !== undefined ||
+        req.body.class_id !== undefined
       ));
 
     if (shouldUpdateTeacher) {
@@ -1761,8 +1798,16 @@ exports.adminUpdateUser = async (req, res) => {
           .eq('user_id', id)
           .maybeSingle();
 
+        const classTeacherIdVal = req.body.class_teacher_id !== undefined
+          ? req.body.class_teacher_id
+          : (role === 'teacher' && req.body.class_id !== undefined ? req.body.class_id : undefined);
+
         if (!teacherData) {
           const targetInstId = targetUser.institution_id || req.institution_id;
+          const derivedPos = position !== undefined
+            ? (position || 'teacher')
+            : (classTeacherIdVal ? 'class_teacher' : 'teacher');
+
           const { data: insertedTeacher, error: insertTeacherError } = await supabase
             .from('teachers')
             .insert({
@@ -1770,7 +1815,7 @@ exports.adminUpdateUser = async (req, res) => {
               institution_id: targetInstId,
               department: department || null,
               qualification: qualification || null,
-              position: position || 'teacher',
+              position: derivedPos,
             })
             .select('id')
             .single();
@@ -1785,7 +1830,11 @@ exports.adminUpdateUser = async (req, res) => {
         const updates = {};
         if (department !== undefined) updates.department = department || null;
         if (qualification !== undefined) updates.qualification = qualification || null;
-        if (position !== undefined) updates.position = position || null;
+        if (position !== undefined) {
+          updates.position = position || null;
+        } else if (classTeacherIdVal !== undefined) {
+          updates.position = classTeacherIdVal ? 'class_teacher' : 'teacher';
+        }
 
         if (Object.keys(updates).length > 0 && teacherData?.id) {
           await supabase.from('teachers').update(updates).eq('id', teacherData.id);
@@ -1804,13 +1853,12 @@ exports.adminUpdateUser = async (req, res) => {
         }
 
         // Update class teacher assignment
-        if (req.body.class_teacher_id !== undefined && customTeacherId) {
-          const class_teacher_id = req.body.class_teacher_id;
+        if (classTeacherIdVal !== undefined && customTeacherId) {
           // Reset old classes where this teacher was class teacher
           await supabase.from('classes').update({ teacher_id: null }).eq('teacher_id', customTeacherId);
           // Assign new one
-          if (class_teacher_id) {
-            await supabase.from('classes').update({ teacher_id: customTeacherId }).eq('id', class_teacher_id);
+          if (classTeacherIdVal) {
+            await supabase.from('classes').update({ teacher_id: customTeacherId }).eq('id', classTeacherIdVal);
           }
         }
       }
@@ -1846,21 +1894,64 @@ exports.adminUpdateUser = async (req, res) => {
       }
     }
 
-    if (requesterIsPlatformAdmin && (userUpdates.email !== undefined || userUpdates.first_name !== undefined || userUpdates.last_name !== undefined || userUpdates.full_name !== undefined)) {
+    const emailChanged = userUpdates.email && userUpdates.email.toLowerCase() !== String(targetUser.email || '').toLowerCase();
+    let tempCredentialPackage = null;
+    let temporaryPassword = null;
+
+    if (emailChanged) {
+      temporaryPassword = `Temp-${crypto.randomBytes(3).toString('hex').toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      await supabase
+        .from('users')
+        .update({ must_change_password: true })
+        .eq('id', id);
+    }
+
+    if (userUpdates.email !== undefined || userUpdates.first_name !== undefined || userUpdates.last_name !== undefined || userUpdates.full_name !== undefined || emailChanged) {
       const { data: updatedUserForAuth } = await supabase
         .from('users')
         .select('email, first_name, last_name, full_name')
         .eq('id', id)
         .single();
 
-      await supabase.auth.admin.updateUserById(id, {
+      const authPayload = {
         ...(updatedUserForAuth?.email ? { email: updatedUserForAuth.email } : {}),
         user_metadata: {
           full_name: updatedUserForAuth?.full_name || '',
           first_name: updatedUserForAuth?.first_name || '',
           last_name: updatedUserForAuth?.last_name || '',
         },
-      });
+      };
+
+      if (emailChanged && temporaryPassword) {
+        authPayload.password = temporaryPassword;
+        authPayload.email_confirm = true;
+      }
+
+      try {
+        await supabase.auth.admin.updateUserById(id, authPayload);
+      } catch (authErr) {
+        console.warn('adminUpdateUser auth update notice:', authErr?.message);
+      }
+
+      if (emailChanged && temporaryPassword) {
+        try {
+          const { clearUserCache } = require('../middleware/auth.middleware.js');
+          clearUserCache(id);
+        } catch (_) {}
+        const sessionQuery = supabase.from('user_sessions');
+        if (sessionQuery && typeof sessionQuery.update === 'function') {
+          await sessionQuery.update({ is_revoked: true }).eq('user_id', id);
+        }
+
+        tempCredentialPackage = {
+          email: updatedUserForAuth?.email || userUpdates.email,
+          password: temporaryPassword,
+          temporary_password: temporaryPassword,
+          login_url: process.env.FRONTEND_URL || 'https://lms.suiteivy.com',
+          message: 'Institutional email and temporary password generated following name update.',
+          copy_text: `Cloudora LMS Account Credentials\nName: ${updatedUserForAuth?.full_name || userUpdates.full_name || targetUser.full_name || 'User'}\nEmail: ${updatedUserForAuth?.email || userUpdates.email}\nTemporary Password: ${temporaryPassword}\n\nNote: Please log in and update your password immediately.`,
+        };
+      }
     }
 
     try {
@@ -1868,7 +1959,11 @@ exports.adminUpdateUser = async (req, res) => {
       clearUserCache(id);
     } catch (_) {}
 
-    res.status(200).json({ message: "User updated successfully" });
+    res.status(200).json({
+      message: "User updated successfully",
+      email_regenerated: !!(emailChanged && tempCredentialPackage),
+      temp_credential: tempCredentialPackage,
+    });
   } catch (err) {
     console.error('Admin update error:', err);
     res.status(500).json({ error: err.message });

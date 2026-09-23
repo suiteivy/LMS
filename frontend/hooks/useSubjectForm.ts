@@ -4,6 +4,7 @@ import { SubjectFormData } from "../types/types";
 import { SubjectAPI } from "../services/SubjectService";
 import { useAuth } from "../contexts/AuthContext";
 import { useRouter } from "expo-router";
+import { showSuccess, showError } from "@/utils/toast";
 
 // hook to manage Subject form state and actions
 export const useSubjectForm = () => {
@@ -32,11 +33,13 @@ export const useSubjectForm = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const isValid = Boolean(formData.title && formData.title.trim().length > 0);
+
   // Validate required form fields (Title only, description is optional)
   const validateForm = () => {
     const { title } = formData;
     if (!title || !title.trim()) {
-      Alert.alert("Error", "Please enter a subject title");
+      showError("Validation Error", "Please enter a subject title");
       return false;
     }
     return true;
@@ -60,10 +63,11 @@ export const useSubjectForm = () => {
         fee_amount: 0,
       });
 
-      Alert.alert("Success", "Subject created successfully!");
+      showSuccess("Subject Created", "Subject created successfully!");
       router.back();
     } catch (err: any) {
       console.error("Submit failed:", err);
+      showError("Creation Failed", err?.response?.data?.error || err?.message || "Could not create subject.");
     } finally {
       setIsSubmitting(false);
     }
@@ -76,6 +80,7 @@ export const useSubjectForm = () => {
 
   return {
     formData,
+    isValid,
     isSubmitting,
     handleInputChange,
     handleSubmit,

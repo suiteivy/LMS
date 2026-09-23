@@ -207,32 +207,77 @@ const MasterRecordController = {
             guardiansData = gList || [];
           }
         }
-      } else if (targetUser.role === 'teacher') {
+      } else if (targetUser.role === 'teacher' || targetUser.role === 'admin') {
         const { data: tRec } = await supabase
           .from('teachers')
-          .select('*, classes!classes_class_teacher_id_fkey(id, name, grade_level)')
+          .select('*')
           .eq('user_id', targetUser.id)
           .maybeSingle();
 
         targetTeacher = tRec;
 
-        // Fetch subjects assigned to teacher
-        let teacherSubjects = [];
         if (targetTeacher) {
-          const { data: subjs } = await supabase
+          // Fetch assigned class where teacher is the class teacher
+          const { data: assignedClassData } = await supabase
+            .from('classes')
+            .select('id, display_name, grade_level, form_level, stream')
+            .or(`teacher_id.eq.${targetTeacher.id},class_teacher_id.eq.${targetTeacher.id}`)
+            .maybeSingle();
+
+          const formattedAssignedClass = assignedClassData ? {
+            id: assignedClassData.id,
+            name: assignedClassData.display_name || `Grade ${assignedClassData.grade_level || ''} ${assignedClassData.stream || ''}`.trim(),
+            display_name: assignedClassData.display_name,
+            grade_level: assignedClassData.grade_level,
+            form_level: assignedClassData.form_level,
+            stream: assignedClassData.stream,
+          } : null;
+
+          // Fetch subjects assigned to teacher:
+          // 1) Direct subjects where teacher_id = targetTeacher.id
+          // 2) Many-to-many subjects via subject_teachers
+          const { data: directSubjects } = await supabase
             .from('subjects')
-            .select('id, title, code, class:classes(id, name)')
+            .select('id, title, class_id, hod_teacher_id, classes:class_id(id, display_name)')
             .eq('teacher_id', targetTeacher.id);
 
-          teacherSubjects = subjs || [];
-        }
+          const { data: assocSubjects } = await supabase
+            .from('subject_teachers')
+            .select('subject_id, is_hod, subjects:subject_id(id, title, class_id, hod_teacher_id, classes:class_id(id, display_name))')
+            .eq('teacher_id', targetTeacher.id);
 
-        academicData = {
-          teacher_id: targetTeacher?.id,
-          specialization: targetTeacher?.specialization,
-          assigned_class: targetTeacher?.classes,
-          subjects_taught: teacherSubjects,
-        };
+          const subjectMap = new Map();
+          (directSubjects || []).forEach(s => {
+            const className = s.classes?.display_name || null;
+            subjectMap.set(s.id, {
+              id: s.id,
+              title: s.title,
+              is_hod: s.hod_teacher_id === targetTeacher.id,
+              class: { id: s.class_id, name: className }
+            });
+          });
+
+          (assocSubjects || []).forEach(assoc => {
+            if (assoc.subjects) {
+              const s = assoc.subjects;
+              const className = s.classes?.display_name || null;
+              const existing = subjectMap.get(s.id) || {};
+              subjectMap.set(s.id, {
+                id: s.id,
+                title: s.title,
+                is_hod: assoc.is_hod || s.hod_teacher_id === targetTeacher.id || existing.is_hod || false,
+                class: { id: s.class_id, name: className }
+              });
+            }
+          });
+
+          academicData = {
+            teacher_id: targetTeacher.id,
+            specialization: targetTeacher.specialization,
+            assigned_class: formattedAssignedClass,
+            subjects_taught: Array.from(subjectMap.values()),
+          };
+        }
       }
 
       // Clearance Records (for student or staff departure)

@@ -11,6 +11,8 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { api } from '@/services/api';
+import { supabase } from '@/libs/supabase';
+import { resolveDisplayId } from '@/utils/displayId';
 import { PdfPreviewModal } from '@/components/pdf/PdfPreviewModal';
 import { RecordViolationModal } from '@/components/violations/RecordViolationModal';
 import { ViolationList } from '@/components/violations/ViolationList';
@@ -46,6 +48,7 @@ export default function MasterRecordScreen() {
 
   const [loading, setLoading] = useState(true);
   const [recordData, setRecordData] = useState<any>(null);
+  const [displayId, setDisplayId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'attendance' | 'conduct' | 'clearance' | 'guardians'>('overview');
 
   // Modals
@@ -76,6 +79,33 @@ export default function MasterRecordScreen() {
 
   useEffect(() => {
     if (id) fetchMasterRecord();
+  }, [id]);
+
+  // Resolve the role-specific display ID (admission number, teacher ID, etc.)
+  // for the record owner. Must stay above the early returns below.
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+
+    (async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select(
+          `id, role,
+           students(id, admission_number, id_number),
+           teachers(id),
+           admins(id),
+           parents(id)`
+        )
+        .eq('id', id)
+        .maybeSingle();
+
+      if (!cancelled && !error && data) setDisplayId(resolveDisplayId(data));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   if (loading) {
@@ -235,7 +265,7 @@ export default function MasterRecordScreen() {
                   {academic?.current_class && ` • Class: ${academic.current_class.name}`}
                 </Text>
                 <Text style={{ color: textSecondary, fontSize: 11, marginTop: 2 }}>
-                  Registered Email: {user.email} • ID: {user.id}
+                  {`Registered Email: ${user.email}\nID: ${displayId ?? 'N/A'}`}
                 </Text>
               </View>
             </View>
@@ -256,12 +286,14 @@ export default function MasterRecordScreen() {
                   </Text>
                 </View>
               )}
-              <View style={{ backgroundColor: isDark ? '#0F141C' : '#F6F8FA', padding: 12, borderRadius: 12, alignItems: 'center', minWidth: 80, borderWidth: 1, borderColor: border }}>
-                <Text style={{ color: textSecondary, fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>Violations</Text>
-                <Text style={{ color: disciplinary.length > 0 ? '#EF4444' : '#10B981', fontSize: 16, fontWeight: '900', marginTop: 2 }}>
-                  {disciplinary.length}
-                </Text>
-              </View>
+              {user.role === 'student' && (
+                <View style={{ backgroundColor: isDark ? '#0F141C' : '#F6F8FA', padding: 12, borderRadius: 12, alignItems: 'center', minWidth: 80, borderWidth: 1, borderColor: border }}>
+                  <Text style={{ color: textSecondary, fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>Violations</Text>
+                  <Text style={{ color: disciplinary.length > 0 ? '#EF4444' : '#10B981', fontSize: 16, fontWeight: '900', marginTop: 2 }}>
+                    {disciplinary.length}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -271,7 +303,7 @@ export default function MasterRecordScreen() {
           {[
             { key: 'overview', label: 'Academic Dossier' },
             { key: 'attendance', label: `Attendance (${attendance?.total_records || 0})` },
-            { key: 'conduct', label: `Disciplinary (${disciplinary?.length || 0})` },
+            ...(user.role === 'student' ? [{ key: 'conduct', label: `Disciplinary (${disciplinary?.length || 0})` }] : []),
             { key: 'clearance', label: `Clearance (${clearance?.length || 0})` },
             ...(guardians?.length > 0 ? [{ key: 'guardians', label: `Guardians (${guardians.length})` }] : []),
           ].map((tab) => {
@@ -328,13 +360,13 @@ export default function MasterRecordScreen() {
               </View>
             )}
 
-            {user.role === 'teacher' && academic && (
+            {(user.role === 'teacher' || academic?.teacher_id) && academic && (
               <View style={{ backgroundColor: card, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: border, gap: 12 }}>
                 <Text style={{ color: textPrimary, fontSize: 15, fontWeight: '800' }}>Faculty Appointments & Subjects</Text>
                 <View style={{ gap: 8 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: border }}>
                     <Text style={{ color: textSecondary, fontSize: 12, fontWeight: '600' }}>Class Teacher Assignment</Text>
-                    <Text style={{ color: textPrimary, fontSize: 13, fontWeight: '800' }}>{academic.assigned_class?.name || 'None'}</Text>
+                    <Text style={{ color: textPrimary, fontSize: 13, fontWeight: '800' }}>{academic.assigned_class?.name || academic.assigned_class?.display_name || 'None'}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
                     <Text style={{ color: textSecondary, fontSize: 12, fontWeight: '600' }}>Specialization</Text>
@@ -349,10 +381,15 @@ export default function MasterRecordScreen() {
                     </Text>
                     <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
                       {academic.subjects_taught.map((subj: any) => (
-                        <View key={subj.id} style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: isDark ? '#0F141C' : '#F6F8FA', borderWidth: 1, borderColor: border }}>
+                        <View key={subj.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: isDark ? '#0F141C' : '#F6F8FA', borderWidth: 1, borderColor: border }}>
                           <Text style={{ color: textPrimary, fontSize: 12, fontWeight: '700' }}>
-                            {subj.title} ({subj.class?.name || 'All'})
+                            {subj.title} ({subj.class?.name || subj.class?.display_name || 'All'})
                           </Text>
+                          {subj.is_hod && (
+                            <View style={{ backgroundColor: '#FF6B00', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
+                              <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '800' }}>HOD</Text>
+                            </View>
+                          )}
                         </View>
                       ))}
                     </View>

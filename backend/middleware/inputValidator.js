@@ -133,9 +133,12 @@ const validate = (schema) => {
         const errors = [];
         const data = { ...req.params, ...req.query, ...req.body };
 
-        // Check for unexpected fields (optional - can be strict)
-        const allowedFields = Object.keys(schema);
-        const unexpectedFields = Object.keys(data).filter(key => !allowedFields.includes(key));
+        // Check for unexpected fields in body (ignoring route params and query string)
+        const allowedFields = new Set(Object.keys(schema));
+        const bodyKeys = Object.keys(req.body || {});
+        const paramKeys = new Set(Object.keys(req.params || {}));
+        const queryKeys = new Set(Object.keys(req.query || {}));
+        const unexpectedFields = bodyKeys.filter(key => !allowedFields.has(key) && !paramKeys.has(key) && !queryKeys.has(key));
 
         if (unexpectedFields.length > 0) {
             logger.warn('Unexpected fields in request', {
@@ -143,8 +146,6 @@ const validate = (schema) => {
                 method: req.method,
                 unexpectedFields
             });
-            // In strict mode, you could reject the request here
-            // For now, we just log it
         }
 
         // Validate each field in schema
@@ -219,7 +220,11 @@ const schemas = {
         existing_parent_id: { ...commonRules.uuid, required: false },
         parent_relationship: { type: 'string', required: false },
         linked_parents: { type: 'array', required: false },
-        phone_numbers: { type: 'array', required: false }
+        phone_numbers: { type: 'array', required: false },
+        secondary_phone: { ...commonRules.phone, required: false },
+        auto_assign_class: { type: 'boolean', required: false },
+        track_id: { ...commonRules.uuid, required: false },
+        elective_subject_ids: { type: 'array', required: false },
     },
 
     createInstitution: {
@@ -230,19 +235,38 @@ const schemas = {
     },
 
     updateUser: {
+        id: { ...commonRules.uuid, required: false },
         first_name: { ...commonRules.name, required: false },
         last_name: { ...commonRules.name, required: false },
+        full_name: { type: 'string', maxLength: 255, required: false },
+        email: { ...commonRules.email, required: false },
         phone: { ...commonRules.phone, required: false },
+        secondary_phone: { ...commonRules.phone, required: false },
         phone_numbers: { type: 'array', required: false },
         is_active: { type: 'boolean', required: false },
         gender: { type: 'string', enum: ['male', 'female', 'other'], required: false },
+        date_of_birth: { type: 'string', required: false },
         address: { type: 'string', maxLength: 500, required: false },
         teacher_role_enabled: { type: 'boolean', required: false },
         department: { type: 'string', required: false },
         qualification: { type: 'string', required: false },
         position: { type: 'string', required: false },
         subject_ids: { type: 'array', required: false },
-        class_teacher_id: { ...commonRules.uuid, required: false }
+        class_teacher_id: { ...commonRules.uuid, required: false },
+        class_id: { ...commonRules.uuid, required: false },
+        auto_assign_class: { type: 'boolean', required: false },
+        regenerate_email: { type: 'boolean', required: false },
+        grade_level: { type: 'number', required: false },
+        form_level: { type: 'number', required: false },
+        academic_year: { type: 'string', required: false },
+        parent_contact: { ...commonRules.phone, required: false },
+        emergency_contact_name: { ...commonRules.name, required: false },
+        emergency_contact_phone: { ...commonRules.phone, required: false },
+        admission_date: { type: 'string', required: false },
+        linked_parents: { type: 'array', required: false },
+        linked_students: { type: 'array', required: false },
+        occupation: { type: 'string', required: false },
+        parent_address: { type: 'string', maxLength: 500, required: false }
     },
 
     updateInstitution: {

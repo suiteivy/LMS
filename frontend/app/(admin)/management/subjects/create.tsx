@@ -26,6 +26,7 @@ const CreateSubject = () => {
     const insets = useSafeAreaInsets();
     const {
         formData,
+        isValid,
         isSubmitting,
         handleInputChange,
         handleSubmit,
@@ -475,13 +476,26 @@ const CreateSubject = () => {
                             flexDirection: 'row',
                             gap: 12,
                         }}>
-                    <ActionTooltip text="Save and create new subject" style={{ flex: 2 }}>
-                        <TouchableOpacity
+                    <ActionTooltip
+                        text={!isValid ? "Enter a subject title to create subject" : "Save and create new subject"}
+                        style={{ flex: 2 }}
+                    >
+                       <TouchableOpacity
                             onPress={handleSubmit}
-                            disabled={isSubmitting}
-                            style={{ flex: 1, paddingVertical: 14, borderRadius: 16, alignItems: 'center', backgroundColor: '#FF6B00', opacity: isSubmitting ? 0.5 : 1 }}
+                            disabled={!isValid || isSubmitting}
+                            style={{
+                                alignSelf: 'center',
+                                paddingVertical: 14,
+                                paddingHorizontal: 24,
+                                borderRadius: 16,
+                                alignItems: 'center',
+                                backgroundColor: (!isValid || isSubmitting) ? (isDark ? '#374151' : '#D1D5DB') : '#FF6B00',
+                                opacity: (!isValid || isSubmitting) ? 0.6 : 1,
+                                // @ts-ignore - web-specific
+                                cursor: (!isValid || isSubmitting) ? 'not-allowed' : 'pointer',
+                            }}
                         >
-                            <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>
+                            <Text style={{ color: (!isValid || isSubmitting) ? (isDark ? '#9CA3AF' : '#6B7280') : 'white', fontWeight: '700', fontSize: 15 }}>
                                 {isSubmitting ? "Creating..." : "Create Subject"}
                             </Text>
                         </TouchableOpacity>

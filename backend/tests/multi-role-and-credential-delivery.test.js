@@ -355,3 +355,365 @@ test('adminUpdateUser allows assigning teacher role and class teacher position t
   assert.equal(teacherUpserted.department, 'Sciences');
   assert.equal(classTeacherAssigned?.teacher_id, 'tea-generated-1');
 });
+
+test('adminUpdateUser allows institution admin to update user first_name, last_name, and email without 403', async () => {
+  let userUpdated = null;
+
+  const mockSupabase = {
+    from(table) {
+      if (table === 'users') {
+        return {
+          select() {
+            return this;
+          },
+          eq(col, val) {
+            return {
+              async single() {
+                return {
+                  data: {
+                    id: 'teacher-user-1',
+                    institution_id: 'school-inst-1',
+                    email: 'old.email@school.com',
+                    first_name: 'OldFirst',
+                    last_name: 'OldLast',
+                    full_name: 'OldFirst OldLast',
+                    role: 'teacher',
+                  },
+                  error: null,
+                };
+              },
+            };
+          },
+          ilike() {
+            return this;
+          },
+          neq() {
+            return {
+              async maybeSingle() {
+                return { data: null, error: null }; // no duplicate email found
+              },
+            };
+          },
+          update(data) {
+            userUpdated = { ...(userUpdated || {}), ...data };
+            return {
+              eq() {
+                return Promise.resolve({ data: null, error: null });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === 'teachers') {
+        return {
+          select() {
+            return this;
+          },
+          eq() {
+            return {
+              async maybeSingle() {
+                return { data: { id: 'tea-1', user_id: 'teacher-user-1' }, error: null };
+              },
+              async single() {
+                return { data: { id: 'tea-1', user_id: 'teacher-user-1' }, error: null };
+              },
+            };
+          },
+          update() {
+            return {
+              eq() {
+                return Promise.resolve({ data: null, error: null });
+              },
+            };
+          },
+        };
+      }
+
+      return {
+        select() {
+          return this;
+        },
+        eq() {
+          return this;
+        },
+        async single() {
+          return { data: null, error: null };
+        },
+      };
+    },
+  };
+
+  const { adminUpdateUser } = loadWithSupabaseMock(
+    '../controllers/auth.controller.js',
+    mockSupabase
+  );
+
+  const req = {
+    userId: 'admin-inst-mgr',
+    userRole: 'admin',
+    institution_id: 'school-inst-1',
+    isMain: true,
+    params: { id: 'teacher-user-1' },
+    body: {
+      first_name: 'Laura',
+      last_name: 'Masinde',
+      email: 'laura.masinde@cpcprimary.edu',
+      phone: '+254711537600',
+    },
+  };
+
+  const res = createRes();
+  await adminUpdateUser(req, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.ok(userUpdated, 'User should be updated in database');
+  assert.equal(userUpdated.first_name, 'Laura');
+  assert.equal(userUpdated.last_name, 'Masinde');
+  assert.equal(userUpdated.full_name, 'Laura Masinde');
+  assert.equal(userUpdated.email, 'laura.masinde@cpcprimary.edu');
+  assert.equal(userUpdated.phone, '+254711537600');
+});
+
+test('adminUpdateUser rejects duplicate email when institution admin changes user email', async () => {
+  const mockSupabase = {
+    from(table) {
+      if (table === 'users') {
+        return {
+          select() {
+            return this;
+          },
+          eq(col, val) {
+            return {
+              async single() {
+                return {
+                  data: {
+                    id: 'teacher-user-1',
+                    institution_id: 'school-inst-1',
+                    email: 'old.email@school.com',
+                    first_name: 'OldFirst',
+                    last_name: 'OldLast',
+                    role: 'teacher',
+                  },
+                  error: null,
+                };
+              },
+            };
+          },
+          ilike() {
+            return this;
+          },
+          neq() {
+            return {
+              async maybeSingle() {
+                // Email is already used by another user
+                return { data: { id: 'other-user-99' }, error: null };
+              },
+            };
+          },
+        };
+      }
+
+      return {
+        select() {
+          return this;
+        },
+        eq() {
+          return this;
+        },
+        async single() {
+          return { data: null, error: null };
+        },
+      };
+    },
+  };
+
+  const { adminUpdateUser } = loadWithSupabaseMock(
+    '../controllers/auth.controller.js',
+    mockSupabase
+  );
+
+  const req = {
+    userId: 'admin-inst-mgr',
+    userRole: 'admin',
+    institution_id: 'school-inst-1',
+    isMain: true,
+    params: { id: 'teacher-user-1' },
+    body: {
+      email: 'taken@school.com',
+    },
+  };
+
+  const res = createRes();
+  await adminUpdateUser(req, res);
+
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.payload.error, 'The email address is already in use by another account');
+});
+
+test('adminUpdateUser automatically regenerates email and returns temp_credential when name changes without email override', async () => {
+  let updatedUserData = null;
+  let authUserUpdated = null;
+
+  const mockSupabase = {
+    auth: {
+      admin: {
+        async updateUserById(userId, payload) {
+          authUserUpdated = { userId, ...payload };
+          return { data: { user: { id: userId, email: payload.email } }, error: null };
+        },
+      },
+    },
+    from(table) {
+      if (table === 'institutions') {
+        return {
+          select() {
+            return this;
+          },
+          eq() {
+            return {
+              async single() {
+                return {
+                  data: {
+                    id: 'school-inst-1',
+                    slug: 'greenwood',
+                    domain: null,
+                    school_categories: { class_type: 'Grade' },
+                  },
+                  error: null,
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === 'users') {
+        return {
+          select() {
+            return this;
+          },
+          eq(col, val) {
+            return {
+              async single() {
+                return {
+                  data: {
+                    id: 'student-user-1',
+                    institution_id: 'school-inst-1',
+                    email: updatedUserData?.email || 'john.doe@greenwood.suiteivy.com',
+                    first_name: updatedUserData?.first_name || 'John',
+                    last_name: updatedUserData?.last_name || 'Doe',
+                    full_name: updatedUserData?.full_name || 'John Doe',
+                    role: 'student',
+                  },
+                  error: null,
+                };
+              },
+            };
+          },
+          ilike() {
+            return this;
+          },
+          limit() {
+            return Promise.resolve({ data: [], error: null });
+          },
+          neq() {
+            return {
+              async maybeSingle() {
+                // Email is unique
+                return { data: null, error: null };
+              },
+            };
+          },
+          update(payload) {
+            updatedUserData = { ...updatedUserData, ...payload };
+            return {
+              eq() {
+                return Promise.resolve({ data: null, error: null });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === 'students') {
+        return {
+          select() {
+            return this;
+          },
+          eq() {
+            return {
+              async maybeSingle() {
+                return { data: { id: 'STU-001' }, error: null };
+              },
+              async single() {
+                return { data: { id: 'STU-001' }, error: null };
+              },
+            };
+          },
+          update() {
+            return {
+              eq() {
+                return Promise.resolve({ data: null, error: null });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === 'user_sessions') {
+        return {
+          update() {
+            return {
+              eq() {
+                return Promise.resolve({ data: null, error: null });
+              },
+            };
+          },
+        };
+      }
+
+      return {
+        select() {
+          return this;
+        },
+        eq() {
+          return this;
+        },
+        async single() {
+          return { data: null, error: null };
+        },
+      };
+    },
+  };
+
+  const { adminUpdateUser } = loadWithSupabaseMock(
+    '../controllers/auth.controller.js',
+    mockSupabase
+  );
+
+  const req = {
+    userId: 'admin-inst-mgr',
+    userRole: 'admin',
+    institution_id: 'school-inst-1',
+    isMain: true,
+    params: { id: 'student-user-1' },
+    body: {
+      first_name: 'Jonathan',
+      last_name: 'Doe',
+    },
+  };
+
+  const res = createRes();
+  await adminUpdateUser(req, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.email_regenerated, true);
+  assert.ok(res.payload.temp_credential, 'temp_credential must be returned');
+  assert.ok(res.payload.temp_credential.email.includes('jonathan.doe'), `New email must contain jonathan.doe: ${res.payload.temp_credential.email}`);
+  assert.ok(res.payload.temp_credential.password, 'Temporary password must be generated');
+  assert.equal(authUserUpdated.email, res.payload.temp_credential.email, 'Supabase Auth user email must be updated');
+  assert.equal(authUserUpdated.password, res.payload.temp_credential.password, 'Supabase Auth user password must be updated');
+});
+
+

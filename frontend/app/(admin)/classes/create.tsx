@@ -3,7 +3,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { ClassService } from "@/services/ClassService";
-import { EDUCATION_LEVELS } from "@/constants/educationLevels";
+import { EDUCATION_LEVELS, getLevelDisplayName, parseLevelValue } from "@/constants/educationLevels";
 import { supabase } from "@/libs/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from 'expo-router';
@@ -147,9 +147,14 @@ export default function CreateClassScreen() {
     const handleCreate = async () => {
         try {
             setLoading(true);
-            const numLevel = gradeLevel ? parseInt(gradeLevel.replace(/[^0-9]/g, '')) : undefined;
+            const numLevel = gradeLevel ? parseLevelValue(gradeLevel) : undefined;
+            const isEarlyYears = numLevel !== undefined && numLevel <= 0;
+            const resolvedClassType = isEarlyYears
+                ? (numLevel === -2 ? 'Playgroup' : (numLevel === -1 ? 'PP1' : 'PP2'))
+                : classType;
+
             await ClassService.createClass({
-                class_type: classType,
+                class_type: resolvedClassType,
                 category_id: categoryId || undefined,
                 level_id: levelId || undefined,
                 stream_id: structure === 'single' ? undefined : (streamId || undefined),
@@ -296,7 +301,7 @@ export default function CreateClassScreen() {
                                             setLevelId(nextLevelId);
                                             setStreamId('');
                                             if (nextLevelId) {
-                                                setGradeLevel(`${instLevelLabel} ${level.level_number}`);
+                                                setGradeLevel(level.name || getLevelDisplayName(level.level_number, instLevelLabel));
                                             }
                                         }}
                                         style={{
@@ -309,7 +314,7 @@ export default function CreateClassScreen() {
                                         }}
                                     >
                                         <Text style={{ fontSize: 12, fontWeight: "700", color: levelId === level.id ? "white" : textPrimary }}>
-                                            {level.name || `${instLevelLabel} ${level.level_number}`}
+                                            {level.name || getLevelDisplayName(level.level_number, instLevelLabel)}
                                         </Text>
                                     </TouchableOpacity>
                                 ))}

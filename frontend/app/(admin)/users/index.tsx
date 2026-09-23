@@ -241,7 +241,7 @@ export default function UsersManagementScreen() {
 
             let query = supabase
                 .from('users')
-                .select(`id, full_name, first_name, last_name, email, role, is_active, created_at, students(id, enrollment_status), teachers(id, employment_status), admins(id), parents(id)`);
+                .select(`id, full_name, first_name, last_name, email, role, is_active, created_at, students(id, admission_number, id_number, enrollment_status), teachers(id, employment_status), admins(id), parents(id)`);
 
             if (instId) {
                 query = query.eq('institution_id', instId);
@@ -261,19 +261,25 @@ export default function UsersManagementScreen() {
             if (data) {
                 const formattedUsers = data.map((u: any) => {
                     try {
-                        const getRoleId = (roleData: any) => {
-                            if (!roleData) return null;
-                            if (Array.isArray(roleData)) return roleData[0]?.id || null;
-                            return roleData?.id || null;
-                        };
+                        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
                         let displayId = null;
-                        if (u.role === 'student') displayId = getRoleId(u.students);
-                        else if (u.role === 'teacher') displayId = getRoleId(u.teachers);
-                        else if (u.role === 'admin') displayId = getRoleId(u.admins);
-                        else if (u.role === 'parent') displayId = getRoleId(u.parents);
-
                         const studentObj = Array.isArray(u.students) ? u.students[0] : u.students;
                         const teacherObj = Array.isArray(u.teachers) ? u.teachers[0] : u.teachers;
+                        if (u.role === 'student' && studentObj) {
+                            // Always show admission_number — it IS the official student ID even if it's a UUID
+                            displayId = studentObj.admission_number || studentObj.id_number || null;
+                        } else if (u.role === 'teacher' && teacherObj) {
+                            const tid = teacherObj?.id;
+                            displayId = tid && !uuidRegex.test(String(tid)) ? tid : null;
+                        } else {
+                            const getRoleId = (roleData: any) => {
+                                if (!roleData) return null;
+                                const rid = Array.isArray(roleData) ? roleData[0]?.id : roleData?.id;
+                                return rid && !uuidRegex.test(String(rid)) ? rid : null;
+                            };
+                            if (u.role === 'admin') displayId = getRoleId(u.admins);
+                            else if (u.role === 'parent') displayId = getRoleId(u.parents);
+                        }
                         let status: string | undefined = undefined;
                         if (u.role === 'student' && studentObj?.enrollment_status && studentObj.enrollment_status !== 'active') {
                             status = studentObj.enrollment_status;

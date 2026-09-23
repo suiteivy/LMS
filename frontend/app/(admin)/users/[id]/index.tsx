@@ -21,9 +21,11 @@ import { SettingsService } from '@/services/SettingsService';
 import { RoleAPI, CustomRole } from '@/services/RoleService';
 import { AdminPasswordResetModal, VerificationDetails } from '@/components/auth/AdminPasswordResetModal';
 import { formatClassLabel } from '@/utils/classLabel';
+import { parseLevelValue } from '@/constants/educationLevels';
 import { formatCredentialExpiry } from '@/utils/formatExpiry';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import { showSuccess, showError } from '@/utils/toast';
 
 type UserRow = Database['public']['Tables']['users']['Row'];
 
@@ -105,7 +107,9 @@ export default function UserDetailsScreen() {
     const [parentAddress, setParentAddress] = useState('');
 
     const [classId, setClassId] = useState<string | null>(null);
+    const [savedClassId, setSavedClassId] = useState<string | null>(null);
     const [subjectIds, setSubjectIds] = useState<string[]>([]);
+    const [savedSubjectIds, setSavedSubjectIds] = useState<string[]>([]);
     const [linkedStudents, setLinkedStudents] = useState<string[]>([]);
     const [linkedParents, setLinkedParents] = useState<string[]>([]);
 
@@ -151,7 +155,15 @@ export default function UserDetailsScreen() {
         email: user.email || '',
         role: user.role, 
         joinDate: user.created_at || new Date().toISOString(),
-        displayId: roleData?.id || undefined, 
+        displayId: (() => {
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (user.role === 'student') {
+                // Always show — admission_number is the official student ID even if it looks like a UUID
+                return roleData?.admission_number || roleData?.id_number || undefined;
+            }
+            const rid = roleData?.id;
+            return rid && !uuidRegex.test(String(rid)) ? rid : undefined;
+        })(),
         avatar: user.avatar_url || undefined,
         is_active: (user as any).is_active !== false,
     } : null;
@@ -167,13 +179,11 @@ export default function UserDetailsScreen() {
 
     const loadLookupData = async () => {
         if (!profile?.institution_id) return;
-        let classQuery = supabase.from('classes').select('id, name').order('name');
         let subjectQuery = supabase.from('subjects').select('id, title').order('title');
         let studentQuery = supabase.from('students').select('id, user_id, users!inner(first_name, last_name, institution_id), parent_students(parent_id, parents(users(first_name, last_name, full_name)))').order('id') as any;
         let parentQuery = supabase.from('parents').select('id, user_id, users!inner(first_name, last_name, institution_id)').order('id') as any;
 
         if (profile?.institution_id) {
-            classQuery = classQuery.eq('institution_id', profile.institution_id);
             subjectQuery = subjectQuery.eq('institution_id', profile.institution_id);
             studentQuery = studentQuery.eq('users.institution_id', profile.institution_id);
             parentQuery = parentQuery.eq('users.institution_id', profile.institution_id);
@@ -182,8 +192,9 @@ export default function UserDetailsScreen() {
         const [classRes, subjectRes, studentRes, parentRes] = await Promise.all([
             supabase
                 .from('classes')
-                .select('id, name, grade_level, form_level, stream')
+                .select('id, display_name, grade_level, form_level, stream, teacher_id, teachers:teacher_id(id, users:user_id(full_name, first_name, last_name))')
                 .eq('institution_id', profile?.institution_id || '')
+                .is('deleted_at', null)
                 .order('grade_level', { ascending: true })
                 .order('form_level', { ascending: true })
                 .order('stream', { ascending: true }),
@@ -196,6 +207,7 @@ export default function UserDetailsScreen() {
                 classRes.data.map((cls: any) => ({
                     ...cls,
                     name: formatClassLabel(cls),
+                    teacher_name: cls.teachers?.users?.full_name || (cls.teachers?.users?.first_name ? `${cls.teachers.users.first_name} ${cls.teachers.users.last_name || ''}`.trim() : null),
                 }))
             );
         }
@@ -283,8 +295,16 @@ export default function UserDetailsScreen() {
                     }
 
                     if (role === 'teacher') {
-                        const { data: subData } = await supabase.from('subjects').select('id').eq('teacher_id', nd.id);
-                        if (subData) setSubjectIds(subData.map((s: any) => s.id));
+                        const [subRes, clsRes] = await Promise.all([
+                            supabase.from('subjects').select('id').eq('teacher_id', nd.id),
+                            supabase.from('classes').select('id').eq('teacher_id', nd.id).is('deleted_at', null)
+                        ]);
+                        const fetchedSubIds = subRes.data ? subRes.data.map((s: any) => s.id) : [];
+                        const fetchedClassId = (clsRes.data && clsRes.data.length > 0) ? clsRes.data[0].id : null;
+                        setSubjectIds(fetchedSubIds);
+                        setClassId(fetchedClassId);
+                        setSavedSubjectIds(fetchedSubIds);
+                        setSavedClassId(fetchedClassId);
                     }
 
                     if (role === 'admin') {
@@ -303,13 +323,21 @@ export default function UserDetailsScreen() {
 
                             const [subRes, clsRes] = await Promise.all([
                                 supabase.from('subjects').select('id').eq('teacher_id', tData.id),
-                                supabase.from('classes').select('id').eq('teacher_id', tData.id)
+                                supabase.from('classes').select('id').eq('teacher_id', tData.id).is('deleted_at', null)
                             ]);
-                            if (subRes.data) setSubjectIds(subRes.data.map((s: any) => s.id));
-                            if (clsRes.data && clsRes.data.length > 0) setClassId(clsRes.data[0].id);
+                            const fetchedSubIds = subRes.data ? subRes.data.map((s: any) => s.id) : [];
+                            const fetchedClassId = (clsRes.data && clsRes.data.length > 0) ? clsRes.data[0].id : null;
+                            setSubjectIds(fetchedSubIds);
+                            setClassId(fetchedClassId);
+                            setSavedSubjectIds(fetchedSubIds);
+                            setSavedClassId(fetchedClassId);
                         } else {
                             setIsTeacherRoleEnabled(false);
                             setTeacherRecord(null);
+                            setSubjectIds([]);
+                            setClassId(null);
+                            setSavedSubjectIds([]);
+                            setSavedClassId(null);
                         }
                     }
                 }
@@ -616,20 +644,14 @@ export default function UserDetailsScreen() {
     const handleCancel = () => {
         if (user) populateUserFields(user);
         if (roleData && user) populateRoleFields(user.role, roleData);
+        if (user?.role === 'teacher') {
+            setClassId(savedClassId);
+            setSubjectIds(savedSubjectIds);
+        }
         if (user?.role === 'admin') {
-            if (teacherRecord) {
-                setIsTeacherRoleEnabled(true);
-                setDepartment(teacherRecord.department || '');
-                setQualification(teacherRecord.qualification || '');
-                setPosition(teacherRecord.position || '');
-            } else {
-                setIsTeacherRoleEnabled(false);
-                setDepartment('');
-                setQualification('');
-                setPosition('');
-                setSubjectIds([]);
-                setClassId(null);
-            }
+            setIsTeacherRoleEnabled(Boolean(teacherRecord));
+            setClassId(savedClassId);
+            setSubjectIds(savedSubjectIds);
         }
         setAssignedCustomRoleIds(savedCustomRoleIds);
         setIsEditing(false);
@@ -656,10 +678,12 @@ export default function UserDetailsScreen() {
             }
 
             if (user?.role === 'student') {
-                const numericLevel = parseInt(gradeLevel.replace(/[^0-9]/g, '')) || null;
+                const parsed = parseLevelValue(gradeLevel);
+                const numericLevel = parsed !== undefined ? parsed : null;
+                const isEarlyYears = numericLevel !== null && numericLevel <= 0;
                 Object.assign(body, {
-                    grade_level: (instClassTypeLabel === 'Grade' || instClassTypeLabel === 'KG') ? numericLevel : null,
-                    form_level: (instClassTypeLabel === 'Form') ? numericLevel : null,
+                    grade_level: (isEarlyYears || instClassTypeLabel === 'Grade' || instClassTypeLabel === 'KG') ? numericLevel : null,
+                    form_level: (!isEarlyYears && instClassTypeLabel === 'Form') ? numericLevel : null,
                     academic_year: academicYear || null,
                     parent_contact: parentContact || null,
                     emergency_contact_name: emergencyName || null,
@@ -671,10 +695,10 @@ export default function UserDetailsScreen() {
             }
             else if (user?.role === 'teacher') {
                 Object.assign(body, {
-                    department: department || null,
                     qualification: qualification || null,
-                    position: position || null,
-                    subject_ids: subjectIds ?? []
+                    subject_ids: subjectIds ?? [],
+                    class_teacher_id: classId ?? null,
+                    class_id: classId ?? null,
                 });
             }
             else if (user?.role === 'parent') {
@@ -687,11 +711,10 @@ export default function UserDetailsScreen() {
             else if (user?.role === 'admin') {
                 Object.assign(body, {
                     teacher_role_enabled: isTeacherRoleEnabled,
-                    department: isTeacherRoleEnabled ? (department || null) : null,
                     qualification: isTeacherRoleEnabled ? (qualification || null) : null,
-                    position: isTeacherRoleEnabled ? (position || 'teacher') : null,
                     subject_ids: isTeacherRoleEnabled ? (subjectIds ?? []) : [],
-                    class_teacher_id: isTeacherRoleEnabled ? (classId ?? null) : null
+                    class_teacher_id: isTeacherRoleEnabled ? (classId ?? null) : null,
+                    class_id: isTeacherRoleEnabled ? (classId ?? null) : null,
                 });
             }
 
@@ -713,13 +736,29 @@ export default function UserDetailsScreen() {
                 });
             }
 
-            Alert.alert('Success', 'User updated successfully');
+            setSavedClassId(classId);
+            setSavedSubjectIds(subjectIds);
             setIsEditing(false);
+
+            if (data?.temp_credential) {
+                setResetResult({
+                    email: data.temp_credential.email,
+                    tempPassword: data.temp_credential.password,
+                    credential_delivery: data.temp_credential.login_url ? {
+                        url: data.temp_credential.login_url,
+                        expiresAt: null
+                    } : undefined,
+                    credential_document: `School Portal Login Credentials\nUser: ${firstName} ${lastName}\nRole: ${user?.role?.toUpperCase() || 'USER'}\nNew Email: ${data.temp_credential.email}\nTemporary Password: ${data.temp_credential.password}\nLogin URL: ${data.temp_credential.login_url || 'https://lms.suiteivy.com'}\n\nPlease note: The institutional email and password were regenerated following your name update. Log in with your new credentials and change your password.`,
+                });
+                setShowResultModal(true);
+            } else {
+                showSuccess('User Updated', 'User details have been saved successfully.');
+            }
 
             await fetchUserDetails();
         } catch (err: any) {
             console.error('[SAVE] ERROR:', err.message, JSON.stringify(err, null, 2));
-            Alert.alert('Error', err.message);
+            showError('Save Failed', err?.response?.data?.error || err.message);
         } finally {
             setSaving(false);
         }
@@ -934,6 +973,158 @@ export default function UserDetailsScreen() {
         );
     };
 
+    const renderClassTeacherAssignment = (accentColor: string = '#3b82f6') => {
+        const assignedClass = classes.find(c => c.id === classId);
+
+        return (
+            <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: border }}>
+                <View style={{ marginBottom: 10 }}>
+                    <Text style={{ color: textSecondary, fontWeight: '700', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        Class Teacher Assignment
+                    </Text>
+                    <Text style={{ color: textSecondary, fontSize: 11, marginTop: 2 }}>
+                        {isEditing
+                            ? 'Assign as Class Teacher to manage a class, or select None for Subject Teacher only.'
+                            : 'Assigned classroom management role'}
+                    </Text>
+                </View>
+
+                {isEditing ? (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                        <TouchableOpacity
+                            onPress={() => setClassId(null)}
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 6,
+                                paddingHorizontal: 12,
+                                paddingVertical: 8,
+                                borderRadius: 10,
+                                borderWidth: 1,
+                                backgroundColor: classId === null ? (isDark ? 'rgba(107, 114, 128, 0.2)' : '#f3f4f6') : (isDark ? '#1e1e1e' : '#f9fafb'),
+                                borderColor: classId === null ? (isDark ? '#9ca3af' : '#6b7280') : border,
+                            }}
+                        >
+                            <Ionicons
+                                name={classId === null ? "checkmark-circle" : "ellipse-outline"}
+                                size={14}
+                                color={classId === null ? (isDark ? '#f9fafb' : '#111827') : textSecondary}
+                            />
+                            <Text
+                                style={{
+                                    fontSize: 12,
+                                    fontWeight: classId === null ? '700' : '500',
+                                    color: classId === null ? textPrimary : textSecondary,
+                                }}
+                            >
+                                None (Subject Teacher only)
+                            </Text>
+                        </TouchableOpacity>
+
+                        {classes.map((cls) => {
+                            const isSelected = classId === cls.id;
+                            const currentTeacherId = teacherRecord?.id || roleData?.id;
+                            const isAssignedToOther = !!cls.teacher_id && cls.teacher_id !== currentTeacherId;
+                            const otherTeacherName = cls.teacher_name || 'Another Teacher';
+                            return (
+                                <TouchableOpacity
+                                    key={cls.id}
+                                    disabled={isAssignedToOther}
+                                    onPress={() => {
+                                        if (isAssignedToOther) return;
+                                        setClassId(isSelected ? null : cls.id);
+                                    }}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 8,
+                                        borderRadius: 10,
+                                        borderWidth: 1,
+                                        backgroundColor: isSelected ? `${accentColor}20` : (isDark ? '#1e1e1e' : '#f9fafb'),
+                                        borderColor: isSelected ? accentColor : border,
+                                        opacity: isAssignedToOther ? 0.5 : 1,
+                                        cursor: (isAssignedToOther ? 'not-allowed' : 'pointer') as any,
+                                    }}
+                                >
+                                    <Ionicons
+                                        name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+                                        size={14}
+                                        color={isSelected ? accentColor : textSecondary}
+                                    />
+                                    <Text
+                                        style={{
+                                            fontSize: 12,
+                                            fontWeight: isSelected ? '700' : '500',
+                                            color: isSelected ? accentColor : textSecondary,
+                                        }}
+                                    >
+                                        {cls.name}{isAssignedToOther ? ` (Assigned to ${otherTeacherName})` : ''}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                ) : (
+                    <View>
+                        {assignedClass ? (
+                            <View style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#eff6ff',
+                                borderWidth: 1,
+                                borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : '#bfdbfe',
+                                borderRadius: 10,
+                                paddingHorizontal: 12,
+                                paddingVertical: 10,
+                                gap: 10,
+                                alignSelf: 'flex-start'
+                            }}>
+                                <View style={{
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: 14,
+                                    backgroundColor: '#3b82f6',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}>
+                                    <Ionicons name="ribbon-outline" size={16} color="white" />
+                                </View>
+                                <View>
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Class Teacher
+                                    </Text>
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: textPrimary, marginTop: 1 }}>
+                                        {assignedClass.name}
+                                    </Text>
+                                </View>
+                            </View>
+                        ) : (
+                            <View style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: isDark ? '#1e1e1e' : '#f9fafb',
+                                borderWidth: 1,
+                                borderColor: border,
+                                borderRadius: 10,
+                                paddingHorizontal: 12,
+                                paddingVertical: 8,
+                                gap: 8,
+                                alignSelf: 'flex-start'
+                            }}>
+                                <Ionicons name="person-outline" size={15} color={textSecondary} />
+                                <Text style={{ fontSize: 12, fontWeight: '500', color: textSecondary, fontStyle: 'italic' }}>
+                                    Subject Teacher only (Not assigned as Class Teacher)
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                )}
+            </View>
+        );
+    };
+
     if (loading) {
         return (
             <View style={{ flex: 1, backgroundColor: bg, paddingHorizontal: 16, paddingTop: 20 }}>
@@ -978,27 +1169,7 @@ export default function UserDetailsScreen() {
                 <View style={{ paddingHorizontal: 24, paddingTop: 16, gap: 12 }}>
                     {!isEditing ? (
                         <>
-                            <TouchableOpacity
-                                onPress={() => router.push(`/(admin)/users/${id}/master-record`)}
-                                style={{
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#eff6ff',
-                                    paddingVertical: 14,
-                                    borderRadius: 12,
-                                    borderWidth: 1,
-                                    borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : '#bfdbfe'
-                                }}>
-                                <Ionicons name="document-text-outline" size={18} color="#3b82f6" />
-                                <Text style={{ color: '#3b82f6', fontWeight: '700', marginLeft: 8 }}>View Master Record & PDF</Text>
-                            </TouchableOpacity>
 
-                            <TouchableOpacity onPress={() => setIsEditing(true)}
-                                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FF6900', paddingVertical: 14, borderRadius: 12 }}>
-                                <Ionicons name="create-outline" size={18} color="white" />
-                                <Text style={{ color: 'white', fontWeight: '700', marginLeft: 8 }}>Edit User</Text>
-                            </TouchableOpacity>
 
                             {!isSelf && (
                                 <TouchableOpacity 
@@ -1058,7 +1229,14 @@ export default function UserDetailsScreen() {
                 {/* Profile Info */}
                 <View style={{ marginHorizontal: 24, marginTop: 16, backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16 }}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Profile Information</Text>
-                    {renderReadOnly('User ID', roleData?.id || 'N/A')}
+                    {renderReadOnly(user.role === 'student' ? 'Admission No.' : 'User ID', (() => {
+                        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                        if (user.role === 'student')
+                            // Always show — admission_number is the official student ID
+                            return roleData?.admission_number || roleData?.id_number || 'N/A';
+                        const rid = roleData?.id;
+                        return rid && !uuidRegex.test(String(rid)) ? rid : 'N/A';
+                    })())}
                     {renderReadOnly('Role', user.role)}
                     {renderReadOnly('Account Status', (user as any).is_active === false ? 'Disabled' : 'Active')}
                     {renderReadOnly('Joined', user.created_at ? format(new Date(user.created_at), 'MMM dd, yyyy') : 'N/A')}
@@ -1284,15 +1462,8 @@ export default function UserDetailsScreen() {
                 {user.role === 'teacher' && roleData && (
                     <View style={{ marginHorizontal: 24, marginTop: 16, backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16 }}>
                         <Text style={{ fontSize: 11, fontWeight: '700', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>👨‍🏫 Teacher Details</Text>
-                        {renderField('Position', position, setPosition)}
                         {renderChipList('Assigned Subjects', allSubjects, subjectIds, setSubjectIds, s => s.title, '#3b82f6')}
-                        {renderChipList('Assigned Classes', 
-                            classes, 
-                            classId ? [classId] : [], 
-                            (ids) => setClassId(ids[ids.length - 1] ?? null), 
-                            c => c.name, 
-                            '#3b82f6')
-                        }
+                        {renderClassTeacherAssignment('#3b82f6')}
                     </View>
                 )}
 
@@ -1364,17 +1535,8 @@ export default function UserDetailsScreen() {
                                 <Text style={{ fontSize: 11, fontWeight: '700', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
                                     👨‍🏫 Teacher Details & Assignments
                                 </Text>
-                                {renderField('Department', department, setDepartment)}
-                                {renderField('Position (e.g. Class Teacher, Teacher)', position, setPosition)}
                                 {renderChipList('Assigned Subjects', allSubjects, subjectIds, setSubjectIds, s => s.title, '#3b82f6')}
-                                {renderChipList(
-                                    'Class Teacher Assignment (Assigned Class)',
-                                    classes,
-                                    classId ? [classId] : [],
-                                    (ids) => setClassId(ids[ids.length - 1] ?? null),
-                                    c => c.name,
-                                    '#3b82f6'
-                                )}
+                                {renderClassTeacherAssignment('#3b82f6')}
                             </View>
                         )}
                     </View>

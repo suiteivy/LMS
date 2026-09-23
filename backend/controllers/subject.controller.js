@@ -131,7 +131,8 @@ exports.createSubject = async (req, res) => {
 
     const allTeacherIds = Array.from(new Set([
       ...(teacherId ? [teacherId] : []),
-      ...(teacher_ids || [])
+      ...(teacher_ids || []),
+      ...(hod_teacher_id ? [hod_teacher_id] : [])
     ]));
 
     if (allTeacherIds.length > 0) {
@@ -199,7 +200,7 @@ exports.createSubject = async (req, res) => {
       }
     }
 
-    // Populate subject_teachers many-to-many table
+    // Populate subject_teachers many-to-many table using upsert to avoid conflicts with auto-sync trigger
     if (allTeacherIds.length > 0) {
       const records = allTeacherIds.map(tid => ({
         subject_id: data.id,
@@ -209,8 +210,8 @@ exports.createSubject = async (req, res) => {
       }));
       const { error: assocError } = await supabase
         .from("subject_teachers")
-        .insert(records);
-      if (assocError && assocError.code !== '23505') {
+        .upsert(records, { onConflict: 'subject_id,teacher_id' });
+      if (assocError) {
         console.error("Error creating subject teacher associations:", assocError);
       }
     }
