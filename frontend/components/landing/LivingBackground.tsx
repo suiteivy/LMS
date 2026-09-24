@@ -53,7 +53,13 @@ export const LivingBackground: React.FC<LivingBackgroundProps> = ({
           lightMode={lightMode}
         />
       ) : (
-        <MobileLivingBackground colorStops={colorStops} />
+        <MobileLivingBackground
+          colorStops={colorStops}
+          amplitude={amplitude}
+          blend={blend}
+          speed={speed}
+          lightMode={lightMode}
+        />
       )}
     </View>
   );

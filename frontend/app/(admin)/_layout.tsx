@@ -111,9 +111,10 @@ function AdminTabs() {
                 })}
                 screenOptions={{
                     headerShown: false,
+                    animation: 'shift',
                     tabBarActiveTintColor: "#FF6B00",
                     tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
-                    tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+                    tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
                     tabBarStyle: {
                         backgroundColor: isDark ? '#161B22' : "#ffffff",
                         borderTopWidth: 1,
@@ -121,9 +122,8 @@ function AdminTabs() {
                         height: tabBarHeight,
                         paddingBottom: insets.bottom || 6,
                         paddingTop: 6,
-                        paddingHorizontal: 40,
-                        justifyContent: "center",
-                        gap: 32,
+                        paddingHorizontal: 12,
+                        justifyContent: "space-around",
                         elevation: 8,
                         shadowColor: "#000",
                         shadowOffset: { width: 0, height: -4 },

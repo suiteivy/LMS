@@ -53,18 +53,17 @@ interface QuickActionProps {
 
 const QuickAction = ({ icon: Icon, label, color, onPress, cols }: QuickActionProps) => {
   const { isDark } = useTheme();
-  // Tighter padding on 3-col layout, more breathing room on 2-col
-  const pad = cols >= 3 ? 14 : 18;
+  const pad = cols >= 3 ? 12 : 14;
 
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.75}
       style={{
-        width: `${Math.floor(100 / cols) - 2}%`,
-        marginBottom: 12,
+        width: cols >= 3 ? '31.5%' : '48.5%',
+        marginBottom: 10,
         padding: pad,
-        borderRadius: 20,
+        borderRadius: 16,
         backgroundColor: isDark ? '#161B22' : '#ffffff',
         borderWidth: 1,
         borderColor: isDark ? '#1f2937' : '#f1f5f9',
@@ -85,18 +84,19 @@ const QuickAction = ({ icon: Icon, label, color, onPress, cols }: QuickActionPro
       <View
         style={{
           backgroundColor: `${color}15`,
-          padding: cols >= 3 ? 10 : 12,
-          borderRadius: 14,
-          marginBottom: 8,
+          padding: cols >= 3 ? 9 : 11,
+          borderRadius: 12,
+          marginBottom: 6,
         }}
       >
-        <Icon size={cols >= 3 ? 20 : 22} color={color} strokeWidth={2} />
+        <Icon size={cols >= 3 ? 18 : 20} color={color} strokeWidth={2} />
       </View>
       <Text
+        numberOfLines={1}
         style={{
           color: isDark ? '#e2e8f0' : '#111827',
           fontWeight: '700',
-          fontSize: cols >= 3 ? 11 : 12,
+          fontSize: cols >= 3 ? 10.5 : 12,
           letterSpacing: 0.1,
           textAlign: 'center',
         }}
@@ -131,8 +131,8 @@ const MetricCard = ({ icon: Icon, value, label, dark = false, isDark }: MetricCa
       style={{
         flex: 1,
         backgroundColor: bg,
-        padding: 20,
-        borderRadius: 28,
+        padding: 16,
+        borderRadius: 20,
         borderWidth: 1,
         borderColor,
         shadowColor: dark ? '#FF6900' : '#000',
@@ -151,10 +151,10 @@ const MetricCard = ({ icon: Icon, value, label, dark = false, isDark }: MetricCa
       }}
     >
       <Icon size={18} color="#FF6900" strokeWidth={2} />
-      <Text style={{ color: valuColor, fontSize: 30, fontWeight: '800', marginTop: 12, letterSpacing: -1 }}>
+      <Text numberOfLines={1} style={{ color: valuColor, fontSize: 26, fontWeight: '800', marginTop: 10, letterSpacing: -0.5 }}>
         {value}
       </Text>
-      <Text style={{ color: labelColor, fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 2 }}>
+      <Text numberOfLines={1} style={{ color: labelColor, fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, marginTop: 2 }}>
         {label}
       </Text>
     </View>
@@ -262,8 +262,8 @@ export default function Index() {
   const router = useRouter();
   const { width } = useWindowDimensions();
 
-  // 3-col on wider phones/tablets, 2-col on compact phones
-  const quickActionCols = width >= 400 ? 3 : 2;
+  // 3-col on tablets (>560px), 2-col on all phones
+  const quickActionCols = width >= 560 ? 3 : 2;
   // Grid schedule layout on wider screens, horizontal scroll on mobile
   const useScheduleGrid = width >= 600;
 
@@ -480,7 +480,7 @@ export default function Index() {
           />
         }
       >
-        <View style={{ padding: 20 }}>
+        <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
           {/* Log out link */}
           <View className="flex-row justify-end mb-6 px-2">
             <TouchableOpacity

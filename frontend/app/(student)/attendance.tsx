@@ -103,39 +103,39 @@ export default function AttendancePage() {
                     <View className="flex-row justify-end mb-2">
                         <HelpTooltip id="student.attendance.summary" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
                     </View>
-                    <View className="bg-gray-900 p-8 rounded-[40px] shadow-xl mb-8 flex-row items-center">
+                    <View className="bg-gray-900 dark:bg-[#161B22] p-5 rounded-2xl shadow-lg mb-6 flex-row items-center border border-transparent dark:border-gray-800">
                         <View className="flex-1">
-                            <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Performance Rate</Text>
-                            <Text className="text-white text-5xl font-black tracking-tighter">{stats.percentage}%</Text>
-                            <Text className="text-gray-400 text-sm font-medium mt-2">from {stats.total} sessions recorded</Text>
+                            <Text className="text-white/40 dark:text-gray-500 text-[9px] font-bold uppercase tracking-[2px] mb-1.5">Performance Rate</Text>
+                            <Text className="text-white text-4xl font-black tracking-tighter">{stats.percentage}%</Text>
+                            <Text className="text-gray-400 text-xs font-medium mt-1.5">from {stats.total} sessions recorded</Text>
                         </View>
-                        <View className="w-16 h-16 rounded-full bg-[#FF6900] items-center justify-center shadow-lg">
-                            <Calendar size={32} color="white" />
+                        <View className="w-12 h-12 rounded-2xl bg-[#FF6900] items-center justify-center shadow-md">
+                            <Calendar size={22} color="white" />
                         </View>
                     </View>
 
                     {/* Mini Stats Grid */}
-                    <View className="flex-row flex-wrap gap-3 mb-10 px-2">
-                        <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
-                            <Text className="text-green-600 text-2xl font-bold">{stats.present}</Text>
-                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Present</Text>
+                    <View className="flex-row flex-wrap justify-between gap-y-2.5 mb-6">
+                        <View className="w-[48%] bg-[#FFFFFF] dark:bg-[#161B22] p-3.5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
+                            <Text className="text-green-600 text-xl font-bold">{stats.present}</Text>
+                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-wider mt-1">Present</Text>
                         </View>
-                        <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
-                            <Text className="text-red-600 text-2xl font-bold">{stats.absent}</Text>
-                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Absent</Text>
+                        <View className="w-[48%] bg-[#FFFFFF] dark:bg-[#161B22] p-3.5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
+                            <Text className="text-red-600 text-xl font-bold">{stats.absent}</Text>
+                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-wider mt-1">Absent</Text>
                         </View>
-                        <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
-                            <Text className="text-orange-600 text-2xl font-bold">{stats.late}</Text>
-                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Late</Text>
+                        <View className="w-[48%] bg-[#FFFFFF] dark:bg-[#161B22] p-3.5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
+                            <Text className="text-orange-600 text-xl font-bold">{stats.late}</Text>
+                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-wider mt-1">Late</Text>
                         </View>
-                        <View className="w-[47%] bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
-                            <Text className="text-gray-900 dark:text-white text-2xl font-bold">{stats.excused}</Text>
-                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-1">Excused</Text>
+                        <View className="w-[48%] bg-[#FFFFFF] dark:bg-[#161B22] p-3.5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] shadow-sm items-center">
+                            <Text className="text-gray-900 dark:text-white text-xl font-bold">{stats.excused}</Text>
+                            <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-wider mt-1">Excused</Text>
                         </View>
                     </View>
 
                     {/* Detailed Logs */}
-                    <View className="px-2 mb-4">
+                    <View className="px-1 mb-3">
                         <View className="flex-row items-center justify-between">
                             <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-[3px]">Session Logs</Text>
                             <HelpTooltip id="student.attendance.logs" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
@@ -145,27 +145,27 @@ export default function AttendancePage() {
                     {loading ? (
                         <ListItemSkeleton loading={loading} count={4} label="Loading attendance records..." />
                     ) : attendance.length === 0 ? (
-                        <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-12 rounded-xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-4">
-                            <Calendar size={48} color="#E5E7EB" />
-                            <Text className="text-gray-400 font-bold text-center mt-6">No records found</Text>
+                        <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-10 rounded-2xl items-center border border-[#D0D7DE] dark:border-[#21262D] border-dashed mt-2">
+                            <Calendar size={40} color="#E5E7EB" />
+                            <Text className="text-gray-400 font-bold text-center mt-4">No records found</Text>
                         </View>
                     ) : (
                         attendance.map((record) => {
                             const styles = getStatusStyles(record.status);
                             return (
-                                <View key={record.id} className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 flex-row justify-between items-center shadow-sm">
-                                    <View className="flex-1">
-                                        <Text className="font-bold text-gray-900 dark:text-white text-base tracking-tight mb-1">{record.classes?.display_name || record.classes?.name || 'Academic Session'}</Text>
+                                <View key={record.id} className="bg-[#FFFFFF] dark:bg-[#161B22] p-3.5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-2.5 flex-row justify-between items-center shadow-sm">
+                                    <View className="flex-1 mr-2">
+                                        <Text className="font-bold text-gray-900 dark:text-white text-sm tracking-tight mb-0.5" numberOfLines={1}>{record.classes?.display_name || record.classes?.name || 'Academic Session'}</Text>
                                         <View className="flex-row items-center">
-                                            <Calendar size={12} color="#9CA3AF" />
-                                            <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest ml-1.5">{new Date(record.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
+                                            <Calendar size={11} color="#9CA3AF" />
+                                            <Text className="text-gray-400 text-[9px] font-bold uppercase tracking-wider ml-1">{new Date(record.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
                                         </View>
                                     </View>
                                     <View className="flex-row items-center">
-                                        <View className={`${styles.bg} px-3 py-1.5 rounded-full mr-3 border border-black/5`}>
-                                            <Text className={`${styles.text} text-[8px] font-black uppercase tracking-widest`}>{record.status}</Text>
+                                        <View className={`${styles.bg} px-2.5 py-1 rounded-full mr-2 border border-black/5`}>
+                                            <Text className={`${styles.text} text-[8px] font-black uppercase tracking-wider`}>{record.status}</Text>
                                         </View>
-                                        <View className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-[#161B22] items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]">
+                                        <View className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-[#0D1117] items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]">
                                             {styles.icon}
                                         </View>
                                     </View>

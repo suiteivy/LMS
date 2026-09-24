@@ -441,7 +441,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
 
                     {/* Summary pills */}
                     {rows.length > 0 && (
-                        <View className="flex-row gap-2 mb-4">
+                        <View className="flex-row gap-1.5 mb-4">
                             {[
                                 { label: "Present", val: presentCount, color: "bg-green-50 dark:bg-green-950/30", text: "text-green-600" },
                                 { label: "Absent", val: absentCount, color: "bg-red-50 dark:bg-red-950/30", text: "text-red-500" },
@@ -450,10 +450,10 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
                             ].map((p) => (
                                 <View
                                     key={p.label}
-                                    className={`flex-1 ${p.color} rounded-2xl py-3 items-center border border-gray-100 dark:border-gray-800`}
+                                    className={`flex-1 ${p.color} rounded-xl py-2.5 items-center border border-gray-100 dark:border-gray-800`}
                                 >
-                                    <Text className={`${p.text} text-xl font-black`}>{p.val}</Text>
-                                    <Text className={`${p.text} text-[9px] font-bold uppercase tracking-widest`}>{p.label}</Text>
+                                    <Text className={`${p.text} text-lg font-black`}>{p.val}</Text>
+                                    <Text className={`${p.text} text-[8px] font-bold uppercase tracking-wider`} numberOfLines={1}>{p.label}</Text>
                                 </View>
                             ))}
                         </View>
@@ -468,7 +468,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
                             <Text className="text-gray-400 dark:text-gray-500 font-bold mt-3">No students enrolled</Text>
                         </View>
                     ) : (
-                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
                             {rows.map((r) => (
                                 <View
                                     key={r.student_id}

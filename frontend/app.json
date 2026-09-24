@@ -13,6 +13,9 @@
       "bundleIdentifier": "com.cloudora.lms",
       "buildNumber": "1",
       "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
         "NSCameraUsageDescription": "Cloudora LMS requires camera access to capture assignment submissions, scan documents, and update profile photos.",
         "NSPhotoLibraryUsageDescription": "Cloudora LMS requires photo library access to upload educational resources, coursework files, and profile images.",
         "NSMicrophoneUsageDescription": "Cloudora LMS requires microphone access for recording educational audio and classroom voice notes."
@@ -25,6 +28,7 @@
       },
       "package": "com.cloudora.lms",
       "versionCode": 1,
+      "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -59,7 +63,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 180,
+          "imageWidth": 120,
           "resizeMode": "contain",
           "backgroundColor": "#070514",
           "dark": {

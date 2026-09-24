@@ -258,74 +258,74 @@ export default function StudentGradesPage() {
           <View className="flex-row justify-end mb-2">
             <HelpTooltip id="parent.grades.summary" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/accessibility/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
           </View>
-          <View className="bg-gray-900 p-8 rounded-[48px] shadow-2xl mb-8">
-            <View className="flex-row justify-between items-start mb-10">
+          <View className="bg-gray-900 dark:bg-[#161B22] p-5 rounded-2xl shadow-lg mb-6 border border-transparent dark:border-gray-800">
+            <View className="flex-row justify-between items-start mb-6">
               <View>
-                <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Cumulative Index</Text>
-                <Text className="text-white text-6xl font-black tracking-tighter">{stats.gpa}</Text>
-                <Text className="text-[#FF6900] text-xs font-bold mt-2 uppercase tracking-widest">{stats.standing} Standing</Text>
+                <Text className="text-white/40 dark:text-gray-500 text-[9px] font-bold uppercase tracking-[2px] mb-1.5">Cumulative Index</Text>
+                <Text className="text-white text-4xl font-black tracking-tighter">{stats.gpa}</Text>
+                <Text className="text-[#FF6900] text-xs font-bold mt-1.5 uppercase tracking-wider">{stats.standing} Standing</Text>
               </View>
-              <View className="bg-[#FF6900] p-4 rounded-3xl shadow-lg">
-                <TrendingUp size={28} color="white" />
+              <View className="bg-[#FF6900] p-3 rounded-xl shadow-md">
+                <TrendingUp size={22} color="white" />
               </View>
             </View>
 
             {/* Performance Grid */}
-            <View className="flex-row justify-between pt-8 border-t border-white/10">
-              <View className="items-center">
-                <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Cohort Rank</Text>
-                <Text className="text-white font-bold text-xl mt-1">{(stats as any).rank}{(stats as any).totalStudents > 0 ? `/${(stats as any).totalStudents}` : ''}</Text>
+            <View className="flex-row justify-between pt-5 border-t border-white/10 dark:border-gray-800">
+              <View className="flex-1 items-center">
+                <Text className="text-white/30 dark:text-gray-500 text-[8px] font-bold uppercase tracking-wider">Cohort Rank</Text>
+                <Text className="text-white font-bold text-lg mt-1">{(stats as any).rank}{(stats as any).totalStudents > 0 ? `/${(stats as any).totalStudents}` : ''}</Text>
               </View>
-              <View className="items-center border-x border-white/10 px-8">
-                <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Attendance</Text>
-                <Text className="text-white font-bold text-xl mt-1">{stats.attendance_pct}%</Text>
+              <View className="flex-1 items-center border-x border-white/10 dark:border-gray-800 px-2">
+                <Text className="text-white/30 dark:text-gray-500 text-[8px] font-bold uppercase tracking-wider">Attendance</Text>
+                <Text className="text-white font-bold text-lg mt-1">{stats.attendance_pct}%</Text>
               </View>
-              <View className="items-center">
-                <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Standing</Text>
-                <Text className="text-emerald-400 font-bold text-xl mt-1">{stats.standing}</Text>
+              <View className="flex-1 items-center">
+                <Text className="text-white/30 dark:text-gray-500 text-[8px] font-bold uppercase tracking-wider">Standing</Text>
+                <Text className="text-emerald-400 font-bold text-lg mt-1">{stats.standing}</Text>
               </View>
             </View>
           </View>
 
           {/* Transcript Breakdown */}
-          <View className="px-2 flex-row justify-between items-center mb-6">
+          <View className="px-1 flex-row justify-between items-center mb-4">
             <View className="flex-row items-center">
-              <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Academic Transcript</Text>
+              <Text className="text-gray-900 dark:text-white font-bold text-lg tracking-tight">Academic Transcript</Text>
               <HelpTooltip id="parent.grades.transcript" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/accessibility/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
             </View>
             <TouchableOpacity
               className="bg-white dark:bg-[#161B22] p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm"
               onPress={handlePrint}
             >
-              <Printer size={16} color="#FF6900" />
+              <Printer size={15} color="#FF6900" />
             </TouchableOpacity>
           </View>
 
           {grades.length === 0 ? (
-            <View className="bg-white dark:bg-[#161B22] p-12 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
-              <Star size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
-              <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6">No records found</Text>
+            <View className="bg-white dark:bg-[#161B22] p-10 rounded-2xl items-center border border-gray-100 dark:border-gray-800 border-dashed mt-2">
+              <Star size={40} color="#E5E7EB" style={{ opacity: 0.3 }} />
+              <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-4">No records found</Text>
             </View>
           ) : (
             grades.map((result: any) => {
               const gc = gradeColor(result.grade);
               return (
-                <View key={result.id} className="bg-white dark:bg-[#161B22] p-6 rounded-[32px] mb-4 border border-gray-50 dark:border-gray-800 shadow-sm">
-                  <View className="flex-row justify-between items-center mb-6">
-                    <View className="flex-row items-center flex-1">
-                      <View className="w-10 h-10 rounded-2xl bg-orange-50 items-center justify-center mr-3">
-                        <BookOpen size={18} color="#FF6900" />
+                <View key={result.id} className="bg-white dark:bg-[#161B22] p-4 rounded-2xl mb-3 border border-gray-100 dark:border-gray-800 shadow-sm">
+                  <View className="flex-row justify-between items-center mb-3">
+                    <View className="flex-row items-center flex-1 mr-2">
+                      <View className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/30 items-center justify-center mr-2.5">
+                        <BookOpen size={16} color="#FF6900" />
                       </View>
-                      <View>
-                        <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight">{result.subject}</Text>
-                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-0.5">{result.title}</Text>
+                      <View className="flex-1">
+                        <Text className="text-gray-900 dark:text-white font-bold text-sm tracking-tight" numberOfLines={1}>{result.subject}</Text>
+                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-wider mt-0.5" numberOfLines={1}>{result.title}</Text>
                       </View>
                     </View>
                     <View className="items-end">
-                      <View className={`${gc.bg} px-3 py-1 rounded-full mb-1`}>
-                        <Text className={`${gc.text} font-black text-xs uppercase tracking-widest`}>{result.grade}</Text>
+                      <View className={`${gc.bg} px-2.5 py-0.5 rounded-full mb-0.5`}>
+                        <Text className={`${gc.text} font-black text-xs uppercase tracking-wider`}>{result.grade}</Text>
                       </View>
-                      <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest">{result.score}% Accuracy</Text>
+                      <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-wider">{result.score}% Accuracy</Text>
                     </View>
                   </View>
 

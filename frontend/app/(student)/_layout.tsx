@@ -72,6 +72,7 @@ function StudentTabs() {
       })}
       screenOptions={{
         headerShown: false,
+        animation: 'shift',
         tabBarActiveTintColor: "#FF6B00",
         tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
         tabBarLabelStyle: { fontSize: 10, fontWeight: "600", letterSpacing: 0.2 },

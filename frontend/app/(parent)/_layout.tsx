@@ -75,6 +75,7 @@ function ParentTabs() {
                 })}
                 screenOptions={{
                     headerShown: false,
+                    animation: 'shift',
                     tabBarStyle: {
                         backgroundColor: isDark ? '#161B22' : "#ffffff",
                         borderTopWidth: 1,

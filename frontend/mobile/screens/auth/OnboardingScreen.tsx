@@ -15,7 +15,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
-  Dimensions,
+  useWindowDimensions,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -37,7 +37,6 @@ import {
   FloatingWorkspaceMatrix,
 } from '@/mobile/components/onboarding/OnboardingVisualAnchors';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 export const ONBOARDING_COMPLETE_KEY = '@cloudora_onboarding_complete';
 
 const IconArrowRight = ArrowRight as any;
@@ -88,6 +87,7 @@ const SLIDES: OnboardingSlide[] = [
 export const OnboardingScreen: React.FC = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -130,8 +130,10 @@ export const OnboardingScreen: React.FC = () => {
 
   const handleNext = () => {
     if (activeIndex < SLIDES.length - 1) {
+      const nextIndex = activeIndex + 1;
+      setActiveIndex(nextIndex);
       scrollRef.current?.scrollTo({
-        x: (activeIndex + 1) * SCREEN_WIDTH,
+        x: nextIndex * screenWidth,
         animated: true,
       });
     } else {
@@ -141,7 +143,7 @@ export const OnboardingScreen: React.FC = () => {
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
-    const index = Math.round(x / SCREEN_WIDTH);
+    const index = Math.round(x / screenWidth);
     if (index !== activeIndex && index >= 0 && index < SLIDES.length) {
       setActiveIndex(index);
     }
@@ -186,13 +188,16 @@ export const OnboardingScreen: React.FC = () => {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         onMomentumScrollEnd={onScroll}
         style={styles.carousel}
+        contentContainerStyle={{ flexGrow: 1 }}
       >
         {SLIDES.map((slide, index) => {
           const Centerpiece = slide.component;
           return (
-            <View key={slide.id} style={styles.slide}>
+            <View key={slide.id} style={[styles.slide, { width: screenWidth }]}>
               {/* Bespoke Holographic Vector Centerpiece */}
               <View style={styles.centerpieceContainer}>
                 <Centerpiece />
@@ -307,7 +312,6 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   slide: {
-    width: SCREEN_WIDTH,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,

@@ -24,35 +24,35 @@ const localDateKey = (date: Date): string => {
 
 const TimetableCard = ({ entry, isDark }: { entry: TimetableEntry; isDark: boolean }) => {
     return (
-        <View className={`${isDark ? 'bg-navy border-white/10' : 'bg-white border-gray-100'} p-5 rounded-3xl border mb-4 shadow-sm`}>
-            <View className="flex-row justify-between items-start mb-4">
-                <View className="flex-1">
-                    <Text className={`${isDark ? 'text-white' : 'text-gray-900'} font-bold text-lg leading-tight`}>{entry.subjects?.title || "Unknown Subject"}</Text>
-                    <View className="flex-row items-center mt-2">
-                        <View className={`${isDark ? 'bg-white/10' : 'bg-gray-50'} p-1 rounded-lg mr-2`}>
-                            <Users size={14} color="#6B7280" />
+        <View className={`${isDark ? 'bg-navy border-white/10' : 'bg-white border-gray-100'} p-4 rounded-2xl border mb-3 shadow-sm`}>
+            <View className="flex-row justify-between items-start mb-3">
+                <View className="flex-1 mr-2">
+                    <Text className={`${isDark ? 'text-white' : 'text-gray-900'} font-bold text-base leading-tight`} numberOfLines={1}>{entry.subjects?.title || "Unknown Subject"}</Text>
+                    <View className="flex-row items-center mt-1.5">
+                        <View className={`${isDark ? 'bg-white/10' : 'bg-gray-50'} p-1 rounded-lg mr-1.5`}>
+                            <Users size={12} color="#6B7280" />
                         </View>
-                        <Text className={`${isDark ? 'text-gray-300' : 'text-gray-500'} text-xs font-bold`}>{entry.classes?.display_name || entry.classes?.name || "No Class"}</Text>
+                        <Text className={`${isDark ? 'text-gray-300' : 'text-gray-500'} text-xs font-bold`} numberOfLines={1}>{entry.classes?.display_name || entry.classes?.name || "No Class"}</Text>
                     </View>
                 </View>
-                <View className={`${isDark ? 'bg-orange-950/40 border-orange-900' : 'bg-orange-50 border-orange-100'} px-3 py-1 rounded-full border`}>
-                    <Text className="text-[#FF6900] font-bold text-[10px] uppercase tracking-wider">Active</Text>
+                <View className={`${isDark ? 'bg-orange-950/40 border-orange-900' : 'bg-orange-50 border-orange-100'} px-2.5 py-0.5 rounded-full border`}>
+                    <Text className="text-[#FF6900] font-bold text-[9px] uppercase tracking-wider">Active</Text>
                 </View>
             </View>
 
             <View className={`h-[1px] ${isDark ? 'bg-white/10' : 'bg-gray-50'} my-2`} />
 
-            <View className="flex-row justify-between items-center mt-2">
-                <View className={`flex-row items-center ${isDark ? 'bg-white/10' : 'bg-gray-50'} px-3 py-2 rounded-2xl`}>
-                    <Clock size={14} color="#FF6900" />
-                    <Text className={`${isDark ? 'text-gray-100' : 'text-gray-700'} font-bold text-xs ml-2`}>
+            <View className="flex-row justify-between items-center mt-1">
+                <View className={`flex-row items-center ${isDark ? 'bg-white/10' : 'bg-gray-50'} px-2.5 py-1.5 rounded-xl`}>
+                    <Clock size={12} color="#FF6900" />
+                    <Text className={`${isDark ? 'text-gray-100' : 'text-gray-700'} font-bold text-xs ml-1.5`}>
                         {entry.start_time} - {entry.end_time}
                     </Text>
                 </View>
                 {entry.room_number && (
                     <View className="flex-row items-center">
-                        <MapPin size={14} color="#9CA3AF" />
-                        <Text className={`${isDark ? 'text-gray-300' : 'text-gray-400'} text-xs font-medium ml-1.5`}>{entry.room_number}</Text>
+                        <MapPin size={12} color="#9CA3AF" />
+                        <Text className={`${isDark ? 'text-gray-300' : 'text-gray-400'} text-xs font-medium ml-1`}>{entry.room_number}</Text>
                     </View>
                 )}
             </View>
@@ -255,13 +255,13 @@ export default function TimetablePage() {
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    className="flex-row mb-4 -mx-5 px-5"
+                    className="flex-row mb-3 -mx-5 px-5"
                 >
                     {DAYS.map((day) => (
                         <TouchableOpacity
                             key={day}
                             onPress={() => setActiveDay(day)}
-                            className={`mr-3 px-6 py-3 rounded-2xl border ${activeDay === day
+                            className={`mr-2 px-4 py-2 rounded-xl border ${activeDay === day
                                 ? "bg-[#FF6900] border-[#FF6900] shadow-sm"
                                 : (isDark ? "bg-navy border-white/10" : "bg-white border-gray-100 shadow-sm")
                                 }`}
@@ -276,9 +276,9 @@ export default function TimetablePage() {
             </View>
 
             {cancelledForActiveDay && (
-                <View className="mx-5 mb-2 p-4 rounded-2xl flex-row items-center" style={{ backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' }}>
-                    <View className="w-10 h-10 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: 'rgba(239,68,68,0.2)' }}>
-                        <AlertTriangle size={20} color="#EF4444" />
+                <View className="mx-5 mb-2 p-3.5 rounded-2xl flex-row items-center" style={{ backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' }}>
+                    <View className="w-9 h-9 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: 'rgba(239,68,68,0.2)' }}>
+                        <AlertTriangle size={18} color="#EF4444" />
                     </View>
                     <View className="flex-1">
                         <Text className="text-red-600 dark:text-red-400 font-bold text-sm">Classes Cancelled: {cancelledForActiveDay.title}</Text>
@@ -287,7 +287,7 @@ export default function TimetablePage() {
                 </View>
             )}
 
-            <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
+            <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 130 }}>
                 {loading ? (
                     <View className="pt-4">
                         <ListItemSkeleton loading={loading} count={4} label="Loading schedule..." />

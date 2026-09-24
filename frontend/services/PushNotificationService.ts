@@ -12,6 +12,7 @@
 
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { supabase } from '@/libs/supabase';
 import { logger } from '@/services/LoggingService';
@@ -99,18 +100,41 @@ class PushNotificationService {
         return null;
       }
 
-      // 4. Obtain Expo Push Token
-      const tokenData = await Notifications.getExpoPushTokenAsync();
-      this.pushToken = tokenData.data;
+      // 4. Obtain Expo Push Token (graceful handling if Firebase / FCM credentials not configured)
+      try {
+        const projectId =
+          Constants?.expoConfig?.extra?.eas?.projectId ??
+          (Constants as any)?.easConfig?.projectId;
 
-      // 5. Associate token with the user on the backend
-      if (userId && this.pushToken) {
-        await this.syncTokenWithBackend(userId, this.pushToken);
+        const tokenData = await Notifications.getExpoPushTokenAsync(
+          projectId ? { projectId } : undefined
+        );
+        this.pushToken = tokenData?.data || null;
+
+        // 5. Associate token with the user on the backend
+        if (userId && this.pushToken) {
+          await this.syncTokenWithBackend(userId, this.pushToken);
+        }
+
+        return this.pushToken;
+      } catch (tokenError: any) {
+        const msg = tokenError?.message || '';
+        if (
+          msg.includes('FirebaseApp is not initialized') ||
+          msg.includes('fcm-credentials') ||
+          msg.includes('projectId')
+        ) {
+          logger.warn(
+            'Push notification token registration skipped (FCM / Firebase credentials not configured in this build):',
+            msg
+          );
+        } else {
+          logger.warn('Push notification token unavailable:', msg);
+        }
+        return null;
       }
-
-      return this.pushToken;
     } catch (error: any) {
-      logger.error('Failed to register push token:', error?.message);
+      logger.warn('Push notification setup notice:', error?.message);
       return null;
     }
   }

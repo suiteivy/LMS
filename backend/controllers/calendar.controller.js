@@ -59,7 +59,12 @@ function isMissingColumnError(errorLike, columnName) {
     .join(' ')
     .toLowerCase();
 
-  return merged.includes(`column ${needle} does not exist`) || merged.includes(`.${needle} does not exist`);
+  return (
+    merged.includes(`column ${needle} does not exist`) ||
+    merged.includes(`.${needle} does not exist`) ||
+    merged.includes(`column "${needle}" does not exist`) ||
+    (errorLike?.code === '42703' && merged.includes(needle))
+  );
 }
 
 /**
@@ -624,16 +629,28 @@ exports.getCancelledDates = async (req, res) => {
       return res.status(400).json({ error: 'Institution context missing' });
     }
 
-    let query = supabase
-      .from('calendar_events')
-      .select('id, event_date, start_date, end_date, title, description, start_time, end_time')
-      .eq('cancel_classes', true);
+    const buildQuery = (includeStartEndDate = true) => {
+      const selectFields = includeStartEndDate
+        ? 'id, event_date, start_date, end_date, title, description, start_time, end_time'
+        : 'id, event_date, title, description, start_time, end_time';
 
-    if (req.userRole !== 'master_admin') {
-      query = query.eq('institution_id', institutionId);
+      let query = supabase
+        .from('calendar_events')
+        .select(selectFields)
+        .eq('cancel_classes', true);
+
+      if (req.userRole !== 'master_admin') {
+        query = query.eq('institution_id', institutionId);
+      }
+      return query;
+    };
+
+    let { data, error } = await withSupabaseRetry(() => buildQuery(true));
+
+    if (error && (isMissingColumnError(error, 'start_date') || isMissingColumnError(error, 'end_date'))) {
+      ({ data, error } = await withSupabaseRetry(() => buildQuery(false)));
     }
 
-    const { data, error } = await withSupabaseRetry(() => query);
     if (error) throw error;
 
     // Expand multi-day cancellation ranges so daily checks match all days

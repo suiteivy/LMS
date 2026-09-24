@@ -1,13 +1,25 @@
+import { Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 const activeToasts = new Set<string>();
 
 const toastKey = (title: string, message?: string) => `${title}::${message || ''}`;
 
+const defaultTopOffset = Platform.OS === 'android' ? 52 : (Platform.OS === 'ios' ? 56 : 24);
+
+const registerToastKey = (key: string, durationMs: number) => {
+    activeToasts.add(key);
+    // Safety cleanup fallback timer so keys are never permanently trapped
+    setTimeout(() => {
+        activeToasts.delete(key);
+    }, durationMs + 1000);
+};
+
 export interface ToastOptions {
     autoHide?: boolean;
     code?: string;
     visibilityTime?: number;
+    topOffset?: number;
     onPress?: () => void;
 }
 
@@ -32,25 +44,28 @@ const resolveToastConfig = (
     title: string,
     message?: string,
     options?: ToastOptions,
-    defaultVisibility = 3000
+    defaultVisibility = 3500
 ) => {
     const isSubstantial = isSubstantialToast(title, message, options?.code);
     const autoHide = options?.autoHide !== undefined ? options.autoHide : !isSubstantial;
     const visibilityTime = options?.visibilityTime ?? (isSubstantial ? 8000 : defaultVisibility);
+    const topOffset = options?.topOffset ?? defaultTopOffset;
 
-    return { autoHide, visibilityTime };
+    return { autoHide, visibilityTime, topOffset };
 };
 
 export const showSuccess = (title: string, message?: string, options?: ToastOptions) => {
     const key = toastKey(title, message);
     if (activeToasts.has(key)) return;
-    activeToasts.add(key);
-    const { autoHide, visibilityTime } = resolveToastConfig(title, message, options, 3000);
+    const { autoHide, visibilityTime, topOffset } = resolveToastConfig(title, message, options, 3500);
+    registerToastKey(key, visibilityTime);
+
     Toast.show({
         type: 'success',
         text1: title,
         text2: message,
         position: 'top',
+        topOffset,
         autoHide,
         visibilityTime,
         onPress: () => {
@@ -65,13 +80,15 @@ export const showSuccess = (title: string, message?: string, options?: ToastOpti
 export const showError = (title: string, message?: string, options?: ToastOptions) => {
     const key = toastKey(title, message);
     if (activeToasts.has(key)) return;
-    activeToasts.add(key);
-    const { autoHide, visibilityTime } = resolveToastConfig(title, message, options, 4000);
+    const { autoHide, visibilityTime, topOffset } = resolveToastConfig(title, message, options, 4500);
+    registerToastKey(key, visibilityTime);
+
     Toast.show({
         type: 'error',
         text1: title,
         text2: message,
         position: 'top',
+        topOffset,
         autoHide,
         visibilityTime,
         onPress: () => {
@@ -86,13 +103,15 @@ export const showError = (title: string, message?: string, options?: ToastOption
 export const showWarning = (title: string, message?: string, options?: ToastOptions) => {
     const key = toastKey(title, message);
     if (activeToasts.has(key)) return;
-    activeToasts.add(key);
-    const { autoHide, visibilityTime } = resolveToastConfig(title, message, options, 4000);
+    const { autoHide, visibilityTime, topOffset } = resolveToastConfig(title, message, options, 4000);
+    registerToastKey(key, visibilityTime);
+
     Toast.show({
-        type: 'info',
+        type: 'warning',
         text1: title,
         text2: message,
         position: 'top',
+        topOffset,
         autoHide,
         visibilityTime,
         onPress: () => {
@@ -107,13 +126,15 @@ export const showWarning = (title: string, message?: string, options?: ToastOpti
 export const showInfo = (title: string, message?: string, options?: ToastOptions) => {
     const key = toastKey(title, message);
     if (activeToasts.has(key)) return;
-    activeToasts.add(key);
-    const { autoHide, visibilityTime } = resolveToastConfig(title, message, options, 3000);
+    const { autoHide, visibilityTime, topOffset } = resolveToastConfig(title, message, options, 3500);
+    registerToastKey(key, visibilityTime);
+
     Toast.show({
         type: 'info',
         text1: title,
         text2: message,
         position: 'top',
+        topOffset,
         autoHide,
         visibilityTime,
         onPress: () => {

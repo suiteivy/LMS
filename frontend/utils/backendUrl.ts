@@ -1,17 +1,34 @@
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
 /**
  * Extracts the Metro bundler host address from various Expo Constants locations
  * across different Expo SDK versions (Expo Go, dev client, bare workflow).
  */
 export const getExpoDevHost = (): string | null => {
+  // First, check React Native's NativeModules.SourceCode.scriptURL (the most reliable source in dev builds)
+  const scriptURL = (NativeModules as any)?.SourceCode?.scriptURL;
+  if (typeof scriptURL === 'string' && scriptURL.includes('://')) {
+    try {
+      const match = scriptURL.match(/:\/\/([^/:]+)/);
+      if (match && match[1]) {
+        const host = match[1].trim();
+        if (host && !host.startsWith('169.254.') && host !== 'localhost' && host !== '127.0.0.1') {
+          return host;
+        }
+      }
+    } catch {
+      // Ignore URL parse errors
+    }
+  }
+
   const candidates: Array<string | undefined | null> = [
     Constants.expoConfig?.hostUri,
     (Constants as any).expoGoConfig?.debuggerHost,
     (Constants as any).manifest2?.extra?.expoGo?.debuggerHost,
     (Constants as any).manifest2?.extra?.expoClient?.hostUri,
     (Constants as any).manifest?.debuggerHost,
+    (Constants as any).experienceUrl,
   ];
 
   for (const candidate of candidates) {
@@ -47,8 +64,8 @@ export const getExpoDevHost = (): string | null => {
  * Resolves the appropriate development host for the current runtime target:
  * - Web: 'localhost'
  * - iOS Simulator: 'localhost' (shares host network stack)
- * - Android Emulator: '10.0.2.2' (Android host loopback alias)
- * - Physical Device (Android/iOS): Metro bundler LAN IP (e.g. 192.168.x.x)
+ * - Android Physical / Device / Network: Metro bundler LAN IP (e.g. 192.168.x.x)
+ * - Android Emulator fallback: '10.0.2.2'
  */
 export const resolveDevHost = (): string => {
   if (Platform.OS === 'web') {
@@ -63,29 +80,28 @@ export const resolveDevHost = (): string => {
     if (expoHost && expoHost !== 'localhost' && expoHost !== '127.0.0.1') {
       return expoHost;
     }
-    // If expoHost is missing on physical device, warn in dev console
-    console.warn(
-      '[backendUrl] Physical device detected without Metro LAN IP. Ensure phone and dev PC are on the same Wi-Fi.'
-    );
-    return expoHost || '192.168.100.25';
+    return '192.168.100.25';
   }
 
-  // On Android Emulator:
-  // If we have a routable LAN IP from Metro, it works, but 10.0.2.2 is guaranteed
+  // On Android:
+  // Prefer the Metro LAN host if available; otherwise use workstation LAN IP (192.168.100.25) or emulator loopback
   if (Platform.OS === 'android') {
     if (expoHost && expoHost !== 'localhost' && expoHost !== '127.0.0.1' && !expoHost.startsWith('10.0.2.')) {
       return expoHost;
     }
-    return '10.0.2.2';
+    return '192.168.100.25';
   }
 
   // On iOS Simulator:
   // localhost shares host networking directly
   if (Platform.OS === 'ios') {
+    if (expoHost && expoHost !== 'localhost' && expoHost !== '127.0.0.1') {
+      return expoHost;
+    }
     return 'localhost';
   }
 
-  return expoHost || 'localhost';
+  return expoHost || '192.168.100.25';
 };
 
 /**

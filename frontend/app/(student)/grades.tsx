@@ -280,18 +280,18 @@ export default function Grades() {
                         style={{
                             boxShadow: [{
                                 offsetX: 0,
-                                offsetY: 15,
-                                blurRadius: 30,
-                                color: 'rgba(0, 0, 0, 0.3)',
+                                offsetY: 10,
+                                blurRadius: 20,
+                                color: 'rgba(0, 0, 0, 0.25)',
                             }],
                             }}
-                        className="bg-gray-900 dark:bg-[#161B22] p-8 rounded-xl mb-8 border border-transparent dark:border-gray-800"
+                        className="bg-gray-900 dark:bg-[#161B22] p-5 rounded-2xl mb-6 border border-transparent dark:border-gray-800"
                     >
-                        <View className="flex-row justify-between items-start mb-10">
+                        <View className="flex-row justify-between items-start mb-6">
                             <View>
-                                <Text className="text-white/40 dark:text-gray-500 text-[10px] font-bold uppercase tracking-[3px] mb-2">Academic Index</Text>
-                                <Text className="text-white text-6xl font-black tracking-tighter">{stats.gpa}</Text>
-                                <Text className={`text-sm font-bold mt-2 ${getPerformanceStatus(stats.gpa).color}`}>
+                                <Text className="text-white/40 dark:text-gray-500 text-[9px] font-bold uppercase tracking-[2px] mb-1.5">Academic Index</Text>
+                                <Text className="text-white text-4xl font-black tracking-tighter">{stats.gpa}</Text>
+                                <Text className={`text-xs font-bold mt-1.5 ${getPerformanceStatus(stats.gpa).color}`}>
                                     {getPerformanceStatus(stats.gpa).label}
                                 </Text>
                             </View>
@@ -304,24 +304,24 @@ export default function Grades() {
                                         color: 'rgba(255, 105, 0, 0.3)',
                                     }],
                                     }}
-                                className="bg-[#FF6900] p-4 rounded-xl"
+                                className="bg-[#FF6900] p-3 rounded-xl"
                             >
-                                <TrendingUp size={28} color="white" />
+                                <TrendingUp size={22} color="white" />
                             </View>
                         </View>
 
-                        <View className="flex-row justify-between pt-8 border-t border-white/10 dark:border-gray-800">
-                            <View className="items-center">
-                                <Text className="text-white/30 dark:text-gray-600 text-[8px] font-bold uppercase tracking-widest">Global Rank</Text>
-                                <Text className="text-white font-bold text-xl mt-1">{stats.rank}{stats.totalStudents > 0 ? `/${stats.totalStudents}` : ''}</Text>
+                        <View className="flex-row justify-between pt-5 border-t border-white/10 dark:border-gray-800">
+                            <View className="flex-1 items-center">
+                                <Text className="text-white/30 dark:text-gray-500 text-[8px] font-bold uppercase tracking-wider">Global Rank</Text>
+                                <Text className="text-white font-bold text-lg mt-1">{stats.rank}{stats.totalStudents > 0 ? `/${stats.totalStudents}` : ''}</Text>
                             </View>
-                            <View className="items-center border-x border-white/10 dark:border-gray-800 px-8">
-                                <Text className="text-white/30 dark:text-gray-600 text-[8px] font-bold uppercase tracking-widest">Credits</Text>
-                                <Text className="text-white font-bold text-xl mt-1">{stats.credits}</Text>
+                            <View className="flex-1 items-center border-x border-white/10 dark:border-gray-800 px-2">
+                                <Text className="text-white/30 dark:text-gray-500 text-[8px] font-bold uppercase tracking-wider">Credits</Text>
+                                <Text className="text-white font-bold text-lg mt-1">{stats.credits}</Text>
                             </View>
-                            <View className="items-center">
-                                <Text className="text-white/30 dark:text-gray-600 text-[8px] font-bold uppercase tracking-widest">Weighted</Text>
-                                <Text className="text-[#FF6900] font-bold text-xl mt-1">{stats.avgMark}%</Text>
+                            <View className="flex-1 items-center">
+                                <Text className="text-white/30 dark:text-gray-500 text-[8px] font-bold uppercase tracking-wider">Weighted</Text>
+                                <Text className="text-[#FF6900] font-bold text-lg mt-1">{stats.avgMark}%</Text>
                             </View>
                         </View>
                     </View>
@@ -337,20 +337,20 @@ export default function Grades() {
                             }],
                             shadowOpacity: isDark ? 0.4 : 0.05,
                             }}
-                        className="bg-[#FFFFFF] dark:bg-[#161B22] p-6 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-10"
+                        className="bg-[#FFFFFF] dark:bg-[#161B22] p-4 rounded-2xl border border-[#D0D7DE] dark:border-[#21262D] mb-6"
                     >
-                        <View className="flex-row items-center mb-6">
-                            <BarChart3 size={18} color="#FF6900" />
-                            <Text className="text-gray-900 dark:text-white font-bold text-lg tracking-tight ml-3">Analytical Overview</Text>
+                        <View className="flex-row items-center mb-4">
+                            <BarChart3 size={16} color="#FF6900" />
+                            <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight ml-2.5">Analytical Overview</Text>
                         </View>
-                        <View className="flex-row border-t border-[#D0D7DE] dark:border-[#21262D] pt-6">
+                        <View className="flex-row border-t border-[#D0D7DE] dark:border-[#21262D] pt-4">
                             <View className="flex-1">
-                                <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase tracking-widest mb-1">Raw Aggregation</Text>
-                                <Text className="text-gray-900 dark:text-gray-100 font-bold text-xl">{stats.totalMarks.toLocaleString()}</Text>
+                                <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase tracking-wider mb-1">Raw Aggregation</Text>
+                                <Text className="text-gray-900 dark:text-gray-100 font-bold text-lg">{stats.totalMarks.toLocaleString()}</Text>
                             </View>
-                            <View className="flex-1 border-l border-[#D0D7DE] dark:border-[#21262D] pl-6">
-                                <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase tracking-widest mb-1">Average Grade</Text>
-                                <Text className="text-gray-900 dark:text-gray-100 font-bold text-xl">
+                            <View className="flex-1 border-l border-[#D0D7DE] dark:border-[#21262D] pl-4">
+                                <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase tracking-wider mb-1">Average Grade</Text>
+                                <Text className="text-gray-900 dark:text-gray-100 font-bold text-lg">
                                     {(() => {
                                         const avg = stats.avgMark;
                                         if (avg >= 90) return 'A';

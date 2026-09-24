@@ -42,7 +42,7 @@ export const SettingsService = {
     },
 
     getMaintenanceStatus: async (): Promise<MaintenanceStatus> => {
-        const response = await api.get('/settings/maintenance', { skipErrorToast: true });
+        const response = await api.get('/settings/maintenance', { skipErrorToast: true, skipErrorLog: true });
         return response.data;
     },
 

@@ -165,54 +165,54 @@ export default function StudentAttendancePage() {
               <View className="flex-row justify-end mb-2">
                 <HelpTooltip id="parent.attendance.summary" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/accessibility/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
               </View>
-              <View className="bg-gray-900 p-8 rounded-[48px] shadow-2xl mb-8">
-                <View className="flex-row justify-between items-center mb-10">
+              <View className="bg-gray-900 dark:bg-[#161B22] p-5 rounded-2xl shadow-lg mb-6 border border-transparent dark:border-gray-800">
+                <View className="flex-row justify-between items-center mb-6">
                   <View>
-                    <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Academic Presence</Text>
-                    <Text className="text-white text-6xl font-black tracking-tighter">{stats.pct}</Text>
-                    <Text className="text-[#FF6900] text-xs font-bold mt-2 uppercase tracking-widest">
+                    <Text className="text-white/40 dark:text-gray-500 text-[9px] font-bold uppercase tracking-[2px] mb-1.5">Academic Presence</Text>
+                    <Text className="text-white text-4xl font-black tracking-tighter">{stats.pct}</Text>
+                    <Text className="text-[#FF6900] text-xs font-bold mt-1.5 uppercase tracking-wider">
                       {stats.total} Sessions Tracked
                     </Text>
                   </View>
-                  <View className="w-16 h-16 rounded-full bg-[#FF6900] items-center justify-center shadow-lg">
-                    <CalendarIcon size={32} color="white" />
+                  <View className="w-12 h-12 rounded-2xl bg-[#FF6900] items-center justify-center shadow-md">
+                    <CalendarIcon size={24} color="white" />
                   </View>
                 </View>
 
                 {/* Stats Grid */}
-                <View className="flex-row justify-between pt-8 border-t border-white/10">
-                  <View className="items-center">
-                    <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Present</Text>
-                    <Text className="text-emerald-400 font-bold text-xl mt-1">{stats.present}</Text>
+                <View className="flex-row justify-between pt-5 border-t border-white/10 dark:border-gray-800">
+                  <View className="flex-1 items-center">
+                    <Text className="text-white/30 dark:text-gray-500 text-[8px] font-bold uppercase tracking-wider">Present</Text>
+                    <Text className="text-emerald-400 font-bold text-lg mt-1">{stats.present}</Text>
                   </View>
-                  <View className="items-center border-x border-white/10 px-10">
-                    <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Absent</Text>
-                    <Text className="text-rose-400 font-bold text-xl mt-1">{stats.absent}</Text>
+                  <View className="flex-1 items-center border-x border-white/10 dark:border-gray-800 px-2">
+                    <Text className="text-white/30 dark:text-gray-500 text-[8px] font-bold uppercase tracking-wider">Absent</Text>
+                    <Text className="text-rose-400 font-bold text-lg mt-1">{stats.absent}</Text>
                   </View>
-                  <View className="items-center">
-                    <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest">Late</Text>
-                    <Text className="text-amber-400 font-bold text-xl mt-1">{stats.late}</Text>
+                  <View className="flex-1 items-center">
+                    <Text className="text-white/30 dark:text-gray-500 text-[8px] font-bold uppercase tracking-wider">Late</Text>
+                    <Text className="text-amber-400 font-bold text-lg mt-1">{stats.late}</Text>
                   </View>
                 </View>
               </View>
 
               {/* History Section */}
-              <View className="px-2 flex-row justify-between items-center mb-6">
+              <View className="px-1 flex-row justify-between items-center mb-4">
                 <View>
-                  <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight">Daily Log Entry</Text>
+                  <Text className="text-gray-900 dark:text-white font-bold text-lg tracking-tight">Daily Log Entry</Text>
                 </View>
                 <View className="flex-row items-center">
                   <HelpTooltip id="parent.attendance.logs" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/accessibility/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
                   <TouchableOpacity className="bg-white dark:bg-[#161B22] p-2 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm ml-2">
-                    <Search size={16} color="#FF6900" />
+                    <Search size={15} color="#FF6900" />
                   </TouchableOpacity>
                 </View>
               </View>
 
               {records.length === 0 ? (
-                <View className="bg-white dark:bg-[#161B22] p-10 rounded-[32px] border border-gray-50 dark:border-gray-800 items-center">
-                  <CalendarIcon size={32} color="#FF6900" />
-                  <Text className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-widest mt-4 text-center">
+                <View className="bg-white dark:bg-[#161B22] p-8 rounded-2xl border border-gray-100 dark:border-gray-800 items-center">
+                  <CalendarIcon size={28} color="#FF6900" />
+                  <Text className="text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-wider mt-3 text-center">
                     No attendance records yet
                   </Text>
                 </View>
@@ -221,15 +221,15 @@ export default function StudentAttendancePage() {
                   const config = getStatusConfig(item.status);
                   const subjectName = item.subject?.title ?? item.subject ?? "—";
                   return (
-                    <View key={item.id ?? idx} className="bg-white dark:bg-[#161B22] p-5 rounded-[32px] mb-4 flex-row items-center border border-gray-50 dark:border-gray-800 shadow-sm">
+                    <View key={item.id ?? idx} className="bg-white dark:bg-[#161B22] p-3.5 rounded-2xl mb-2.5 flex-row items-center border border-gray-100 dark:border-gray-800 shadow-sm">
                       <View
                         style={{ backgroundColor: config.bg }}
-                        className="w-12 h-12 rounded-2xl items-center justify-center mr-4"
+                        className="w-10 h-10 rounded-xl items-center justify-center mr-3"
                       >
                         <StatusIcon name={config.iconName} />
                       </View>
                       <View className="flex-1">
-                        <View className="flex-row justify-between items-center mb-1">
+                        <View className="flex-row justify-between items-center mb-0.5">
                           <Text className="text-gray-900 dark:text-white font-bold text-sm tracking-tight">{formatDate(item.date)}</Text>
                           <View
                             style={{ backgroundColor: config.bg }}
@@ -237,13 +237,13 @@ export default function StudentAttendancePage() {
                           >
                             <Text
                               style={{ color: config.text }}
-                              className="font-black uppercase text-[8px] tracking-widest"
+                              className="font-black uppercase text-[8px] tracking-wider"
                             >
                               {config.label}
                             </Text>
                           </View>
                         </View>
-                        <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Unit: {subjectName}</Text>
+                        <Text className="text-gray-400 text-[9px] font-bold uppercase tracking-wider" numberOfLines={1}>Unit: {subjectName}</Text>
                       </View>
                     </View>
                   );

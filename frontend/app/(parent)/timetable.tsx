@@ -150,16 +150,16 @@ export default function ParentStudentTimetablePage() {
                                 key={index}
                                 activeOpacity={0.7}
                                 onPress={() => setSelectedDay(date)}
-                                className={`mr-4 p-5 rounded-[28px] items-center min-w-[75px] shadow-sm border ${isSelected ? 'bg-gray-900 border-gray-900' : 'bg-white dark:bg-[#161B22] border-gray-100 dark:border-gray-800'}`}
+                                className={`mr-3 p-3.5 rounded-2xl items-center min-w-[62px] shadow-sm border ${isSelected ? 'bg-gray-900 border-gray-900' : 'bg-white dark:bg-[#161B22] border-gray-100 dark:border-gray-800'}`}
                             >
-                                <Text className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 ${isSelected ? 'text-white/40' : 'text-gray-400'}`}>
+                                <Text className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isSelected ? 'text-white/40' : 'text-gray-400'}`}>
                                     {format(date, 'EEE')}
                                 </Text>
-                                <Text className={`text-xl font-black ${isSelected ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                                <Text className={`text-lg font-black ${isSelected ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
                                     {format(date, 'd')}
                                 </Text>
                                 {isToday && (
-                                    <View className={`w-1.5 h-1.5 rounded-full mt-2 ${isSelected ? 'bg-[#FF6900]' : 'bg-[#FF6900]'}`} />
+                                    <View className="w-1.5 h-1.5 rounded-full mt-1.5 bg-[#FF6900]" />
                                 )}
                             </TouchableOpacity>
                         );
@@ -169,51 +169,51 @@ export default function ParentStudentTimetablePage() {
 
             <ScrollView className="flex-1 px-4 md:px-8" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150 }}>
                 {!resolvedClassId ? (
-                    <View className="bg-white dark:bg-[#161B22] p-20 rounded-[48px] items-center border border-gray-100 dark:border-gray-700 border-dashed mt-4">
-                        <Calendar size={48} color="#E5E7EB" style={{ opacity: 0.5 }} />
-                        <Text className="text-gray-500 font-bold text-center mt-6">No Active Class Assignment</Text>
-                        <Text className="text-gray-400 text-xs text-center mt-2">This student is not currently enrolled in any class stream.</Text>
+                    <View className="bg-white dark:bg-[#161B22] p-12 rounded-3xl items-center border border-gray-100 dark:border-gray-700 border-dashed mt-4">
+                        <Calendar size={40} color="#E5E7EB" style={{ opacity: 0.5 }} />
+                        <Text className="text-gray-500 font-bold text-center mt-4">No Active Class Assignment</Text>
+                        <Text className="text-gray-400 text-xs text-center mt-1">This student is not currently enrolled in any class stream.</Text>
                     </View>
                 ) : loading ? (
                     <ListItemSkeleton loading={loading} count={4} label="Loading timetable..." />
                 ) : filteredEntries.length > 0 ? (
                     filteredEntries.map((entry) => (
-                        <View key={entry.id} className="flex-row mb-6">
+                        <View key={entry.id} className="flex-row mb-4">
                             {/* Time Column */}
-                            <View className="w-16 pt-2 items-center mr-4">
-                                <Text className="font-bold text-gray-900 dark:text-white text-sm">{entry.start_time.slice(0, 5)}</Text>
-                                <View className="w-[1.5px] h-full bg-gray-100 dark:bg-[#161B22] my-3 rounded-full" />
+                            <View className="w-14 pt-1.5 items-center mr-3">
+                                <Text className="font-bold text-gray-900 dark:text-white text-xs">{entry.start_time.slice(0, 5)}</Text>
+                                <View className="w-[1.5px] h-full bg-gray-200 dark:bg-[#21262D] my-2 rounded-full" />
                             </View>
 
                             {/* Class Card */}
-                            <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-[32px] border border-gray-50 dark:border-gray-800 shadow-sm">
-                                <View className="flex-row justify-between items-start mb-4">
-                                    <View className="bg-blue-50 px-3 py-1 rounded-xl">
-                                        <Text className="text-blue-600 text-[8px] font-bold uppercase tracking-widest">
+                            <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+                                <View className="flex-row justify-between items-start mb-3">
+                                    <View className="bg-blue-50 dark:bg-blue-950/30 px-2.5 py-1 rounded-lg">
+                                        <Text className="text-blue-600 dark:text-blue-400 text-[9px] font-bold uppercase tracking-wider" numberOfLines={1}>
                                             {entry.subjects?.title || 'Academic Unit'}
                                         </Text>
                                     </View>
                                     {entry.room_number && (
-                                        <View className="flex-row items-center bg-gray-50 dark:bg-[#161B22] px-3 py-1 rounded-xl">
-                                            <MapPin size={12} color="#9CA3AF" />
-                                            <Text className="text-gray-400 text-[10px] font-bold ml-1.5 uppercase tracking-widest">{entry.room_number}</Text>
+                                        <View className="flex-row items-center bg-gray-50 dark:bg-[#21262D] px-2 py-0.5 rounded-lg">
+                                            <MapPin size={11} color="#9CA3AF" />
+                                            <Text className="text-gray-400 text-[9px] font-bold ml-1 uppercase tracking-wider">{entry.room_number}</Text>
                                         </View>
                                     )}
                                 </View>
 
-                                <Text className="text-gray-900 dark:text-white font-bold text-xl tracking-tight leading-tight mb-4">
+                                <Text className="text-gray-900 dark:text-white font-bold text-base tracking-tight leading-snug mb-3" numberOfLines={2}>
                                     {entry.subjects?.title}
                                 </Text>
 
-                                <View className="flex-row items-center border-t border-gray-50 dark:border-gray-800 pt-4">
-                                    <View className="w-10 h-10 rounded-2xl bg-orange-50 items-center justify-center mr-3">
-                                        <User size={18} color="#FF6900" />
+                                <View className="flex-row items-center border-t border-gray-100 dark:border-[#21262D] pt-3">
+                                    <View className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-950/30 items-center justify-center mr-2.5">
+                                        <User size={15} color="#FF6900" />
                                     </View>
-                                    <View>
-                                        <Text className="text-gray-900 dark:text-white font-bold text-sm tracking-tight">
+                                    <View className="flex-1">
+                                        <Text className="text-gray-900 dark:text-white font-bold text-xs tracking-tight" numberOfLines={1}>
                                             {entry.subjects?.teachers?.users?.full_name || 'Assigned Faculty'}
                                         </Text>
-                                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-0.5">Primary Instructor</Text>
+                                        <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-wider mt-0.5">Primary Instructor</Text>
                                     </View>
                                 </View>
                             </View>

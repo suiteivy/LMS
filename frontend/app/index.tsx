@@ -64,7 +64,9 @@ const ADDONS_DATA = [
   },
 ];
 
-const CUSTOM_FEATURES_DATA = [
+import NativeRootIndex from './index.native';
+
+export const CUSTOM_FEATURES_DATA = [
   'Custom curriculum, subjects & grading schemes',
   'Connects with existing accounting tools',
   'Your school branding, logos & custom reports',
@@ -73,7 +75,7 @@ const CUSTOM_FEATURES_DATA = [
   'Dedicated onboarding & staff training support',
 ];
 
-export default function Index() {
+function WebLandingIndex() {
   const { session, isInitializing, isNavReady } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
 
@@ -1211,3 +1213,11 @@ export default function Index() {
     </SafeAreaView>
   );
 }
+
+export default function Index() {
+  if (Platform.OS !== 'web') {
+    return <NativeRootIndex />;
+  }
+  return <WebLandingIndex />;
+}
+

@@ -369,22 +369,22 @@ function ParentDashboard({ user, logout }: any) {
                 shadowRadius: 30,
                 elevation: 20,
               }}
-              className="bg-gray-900 p-8 rounded-[48px] mb-8"
+              className="bg-gray-900 p-5 rounded-3xl mb-6"
             >
-              <View className="flex-row justify-between items-center mb-8">
-                <View className="flex-1 mr-4">
-                  <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Child Profile</Text>
-                  <Text className="text-white text-3xl font-black tracking-tighter" numberOfLines={1}>
+              <View className="flex-row justify-between items-center mb-6">
+                <View className="flex-1 mr-3">
+                  <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[2px] mb-1">Child Profile</Text>
+                  <Text className="text-white text-2xl font-black tracking-tight" numberOfLines={1}>
                     {selectedStudent?.users?.first_name ? `${selectedStudent.users.first_name} ${selectedStudent.users.last_name || ''}` : selectedStudent?.users?.full_name}
                   </Text>
-                  <View className="bg-[#FF6900]/20 self-start px-3 py-1 rounded-full mt-2">
-                    <Text className="text-[#FF6900] text-[10px] font-bold tracking-widest uppercase">
+                  <View className="bg-[#FF6900]/20 self-start px-2.5 py-1 rounded-full mt-2">
+                    <Text className="text-[#FF6900] text-[10px] font-bold tracking-wider uppercase">
                       {selectedStudent?.grade_level || selectedStudent?.form_level ? `${classTypeLabel} ${selectedStudent.grade_level || selectedStudent.form_level}` : `No ${classTypeLabel}`}
                     </Text>
                   </View>
                 </View>
-                <View className="w-16 h-16 rounded-full bg-white/5 items-center justify-center border border-white/10">
-                  <UserCircle size={32} color="white" />
+                <View className="w-12 h-12 rounded-full bg-white/5 items-center justify-center border border-white/10">
+                  <UserCircle size={24} color="white" />
                 </View>
               </View>
 
@@ -542,13 +542,13 @@ const MetricCard = ({ icon: Icon, value, label, color, isDark }: any) => (
       shadowRadius: 2,
       elevation: 1,
     }}
-    className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-[32px] border border-gray-50 dark:border-gray-800"
+    className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-2xl border border-gray-50 dark:border-gray-800"
   >
-    <View className={`w-10 h-10 rounded-2xl items-center justify-center mb-4`} style={{ backgroundColor: `${color}15` }}>
-      <Icon size={20} color={color} />
+    <View className={`w-9 h-9 rounded-xl items-center justify-center mb-3`} style={{ backgroundColor: `${color}15` }}>
+      <Icon size={18} color={color} />
     </View>
-    <Text className="text-gray-900 dark:text-white text-3xl font-black tracking-tighter">{value}</Text>
-    <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-[2px] mt-1">{label}</Text>
+    <Text numberOfLines={1} className="text-gray-900 dark:text-white text-2xl font-black tracking-tight">{value}</Text>
+    <Text numberOfLines={1} className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-[1.5px] mt-1">{label}</Text>
   </View>
 );
 
@@ -569,11 +569,11 @@ const QuickAction = ({ icon: Icon, label, color, onPress, isDark }: any) => (
       shadowRadius: 2,
       elevation: 2,
     }}
-    className="w-[48%] bg-white dark:bg-[#161B22] p-8 rounded-[40px] border border-gray-50 dark:border-gray-800 items-center mb-4 active:opacity-80"
+    className="w-[48%] bg-white dark:bg-[#161B22] p-3.5 rounded-2xl border border-gray-50 dark:border-gray-800 items-center mb-3 active:opacity-80"
   >
-    <View style={{ backgroundColor: isDark ? `${color}25` : `${color}10` }} className="p-4 rounded-3xl mb-3 shadow-inner">
-      <Icon size={24} color={color} />
+    <View style={{ backgroundColor: isDark ? `${color}25` : `${color}10` }} className="p-2.5 rounded-xl mb-2 shadow-inner">
+      <Icon size={20} color={color} />
     </View>
-    <Text className="text-gray-900 dark:text-gray-200 font-bold text-xs uppercase tracking-widest">{label}</Text>
+    <Text numberOfLines={1} className="text-gray-900 dark:text-gray-200 font-bold text-xs text-center">{label}</Text>
   </TouchableOpacity>
 );

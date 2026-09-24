@@ -26,6 +26,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LivingBackground } from "@/components/landing/LivingBackground";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { MobileSignIn } from "@/mobile/screens/auth/MobileSignIn";
 
 const IconIonicons = Ionicons as any;
 const CAN_USE_NATIVE_DRIVER = Platform.OS !== "web";
@@ -544,7 +545,7 @@ interface FormData {
   password: string;
 }
 
-export default function SignIn() {
+function WebSignIn() {
   const [showPassword, setShowPassword]     = useState(false);
   const [formData, setFormData]             = useState<FormData>({ email: "", password: "" });
   const [errors, setErrors]                 = useState<Record<string, string>>({});
@@ -941,3 +942,11 @@ export default function SignIn() {
     </>
   );
 }
+
+export default function SignIn() {
+  if (Platform.OS !== 'web') {
+    return <MobileSignIn />;
+  }
+  return <WebSignIn />;
+}
+

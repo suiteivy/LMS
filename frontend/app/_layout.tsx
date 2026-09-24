@@ -63,7 +63,7 @@ console.error = (...args: unknown[]) => {
   if (all.includes("non-boolean attribute") && all.includes("collapsable")) return;
   if (all.includes("reportAllChanges") || (all.includes("startTime") && all.includes("Cannot read properties of undefined"))) return;
 
-  // Prevent transient auth timeouts or socket drops from triggering fatal LogBox web error overlays
+  // Prevent transient auth timeouts, socket drops, or dev FCM notices from triggering fatal LogBox overlays
   if (
     all.includes("getUser timeout") ||
     all.includes("getSession timeout") ||
@@ -71,9 +71,12 @@ console.error = (...args: unknown[]) => {
     all.includes("Error or timeout in getUser during init") ||
     all.includes("UND_ERR_SOCKET") ||
     all.includes("other side closed") ||
-    (all.includes("fetch failed") && all.includes("Supabase"))
+    (all.includes("fetch failed") && all.includes("Supabase")) ||
+    all.includes("FirebaseApp is not initialized") ||
+    all.includes("fcm-credentials") ||
+    all.includes("Failed to register push token")
   ) {
-    _origConsoleWarn("[Auth Notice - Retrying/Fallback Active]:", ...args);
+    _origConsoleWarn("[App Notice - Non-fatal]:", ...args);
     return;
   }
 
@@ -122,6 +125,9 @@ LogBox.ignoreLogs([
   "fetch failed",
   "UND_ERR_SOCKET",
   "SocketError: other side closed",
+  "Failed to register push token",
+  "FirebaseApp is not initialized",
+  "fcm-credentials",
 ]);
 
 // SuiteIvy Dark color palette (matches landing page)
@@ -144,8 +150,11 @@ export default function RootLayout() {
             </CurrencyProvider>
           </AuthProvider>
         </ThemeProvider>
+        <Toast
+          config={toastConfig}
+          topOffset={Platform.OS === 'android' ? 52 : (Platform.OS === 'ios' ? 56 : 24)}
+        />
       </SafeAreaProvider>
-      <Toast config={toastConfig} />
     </GestureHandlerRootView>
   );
 }
@@ -386,7 +395,13 @@ function AuthHandler() {
       style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}
       onStartShouldSetResponder={handleInteraction}
     >
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          animationDuration: 220,
+        }}
+      >
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)/signIn" />
         <Stack.Screen name="(master-admin)" />

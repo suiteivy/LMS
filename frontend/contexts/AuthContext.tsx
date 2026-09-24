@@ -267,6 +267,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await api.get('/settings/maintenance', {
         skipErrorToast: true,
+        skipErrorLog: true,
         timeout: 5000,
       });
       const data = response?.data || {};

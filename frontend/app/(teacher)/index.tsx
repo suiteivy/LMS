@@ -38,7 +38,7 @@ const QuickAction = ({ icon: Icon, label, color, onPress, badge }: QuickActionPr
         <TouchableOpacity
             onPress={onPress}
             style={{
-                minHeight: 135, 
+                minHeight: 100, 
                 justifyContent: 'center', 
                 alignItems: 'center',
                 boxShadow: [{
@@ -53,18 +53,17 @@ const QuickAction = ({ icon: Icon, label, color, onPress, badge }: QuickActionPr
                 shadowRadius: 1.5,
                 elevation: 1,
             }}
-            className="bg-white dark:bg-[#161B22] p-6 rounded-3xl border border-gray-100 dark:border-gray-800 items-center mb-4 active:bg-gray-50 dark:active:bg-gray-900"
+            className="bg-white dark:bg-[#161B22] p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 items-center mb-3 active:bg-gray-50 dark:active:bg-gray-900"
         >
-            <View style={{ backgroundColor: `${color}15` }} className="p-3 rounded-2xl mb-2">
-                <Icon size={24} color={color} />
+            <View style={{ backgroundColor: `${color}15` }} className="p-2.5 rounded-xl mb-1.5">
+                <Icon size={20} color={color} />
             </View>
-            <Text className="text-gray-800 dark:text-gray-200 font-bold text-center">{label}</Text>
-            <View className="mt-1 h-5 items-center justify-center">
-                {badge && 
-                (<View className="mt-1 h-5 items-center justify-center">
+            <Text numberOfLines={1} className="text-gray-800 dark:text-gray-200 font-bold text-xs text-center">{label}</Text>
+            {badge && (
+                <View className="mt-1 h-4 items-center justify-center">
                     {badge}
-                </View>)}
-            </View>
+                </View>
+            )}
         </TouchableOpacity>
     );
 };
@@ -664,7 +663,7 @@ export default function TeacherHome() {
             <ScrollView
                 className="flex-1"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100, padding: 24, paddingTop: 10 }}
+                contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 16, paddingTop: 10 }}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#FF6900"]} tintColor="#FF6900" />
                 }
@@ -759,10 +758,10 @@ export default function TeacherHome() {
                     </View>
 
                     {/* --- 3. Switcher Card (Subjects / Classes / CT Mode) --- */}
-                    <View className="bg-white dark:bg-[#161B22] rounded-[32px] border border-gray-100 dark:border-gray-800 p-5 mb-8 shadow-sm">
+                    <View className="bg-white dark:bg-[#161B22] rounded-2xl border border-gray-100 dark:border-gray-800 p-4 mb-6 shadow-sm">
                         {/* Mode Selector - Tabs */}
                         {canToggle && (
-                            <View className="flex-row bg-gray-100 dark:bg-[#0D1117] rounded-2xl p-1 mb-5 gap-1 flex-wrap">
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 4, flexGrow: 1 }} className="bg-gray-100 dark:bg-[#0D1117] rounded-xl p-1 mb-4">
                                 {isSubjectTeacher && (
                                     <TouchableOpacity 
                                         onPress={() => setMode('subject')}
@@ -813,7 +812,7 @@ export default function TeacherHome() {
                                         </Text>
                                     </TouchableOpacity>
                                 )}
-                            </View>
+                            </ScrollView>
                         )}
 
                         {mode === 'subject' ? (

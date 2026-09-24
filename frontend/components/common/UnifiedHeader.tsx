@@ -80,7 +80,7 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
         backgroundColor: bg,
         borderBottomWidth: 1,
         borderBottomColor: border,
-        paddingHorizontal: 24,
+        paddingHorizontal: isMobile ? 16 : 24,
         paddingBottom: 16,
         paddingTop: Math.max(insets.top, 8),
       }}

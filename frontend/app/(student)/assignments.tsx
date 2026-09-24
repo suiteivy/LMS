@@ -202,27 +202,27 @@ export default function StudentsAssignments() {
           <View className="flex-row justify-end mb-2">
             <HelpTooltip id="student.assignments.filters" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
           </View>
-          <View className="flex-row bg-white dark:bg-[#161B22] p-1.5 rounded-[24px] border border-gray-100 dark:border-gray-800 shadow-sm mb-8">
+          <View className="flex-row bg-white dark:bg-[#161B22] p-1 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm mb-5">
             <TouchableOpacity
               onPress={() => setFilter("pending")}
-              className={`flex-1 py-3.5 rounded-2xl items-center ${filter === "pending" ? "bg-[#FF6900]" : ""}`}
+              className={`flex-1 py-2.5 rounded-xl items-center ${filter === "pending" ? "bg-[#FF6900]" : ""}`}
             >
-              <Text className={`text-xs font-bold uppercase tracking-widest ${filter === "pending" ? "text-white" : "text-gray-400 dark:text-gray-500"}`}>Current</Text>
+              <Text className={`text-xs font-bold uppercase tracking-wider ${filter === "pending" ? "text-white" : "text-gray-400 dark:text-gray-500"}`}>Current</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setFilter("completed")}
-              className={`flex-1 py-3.5 rounded-2xl items-center ${filter === "completed" ? "bg-gray-900 dark:bg-[#161B22]" : ""}`}
+              className={`flex-1 py-2.5 rounded-xl items-center ${filter === "completed" ? "bg-gray-900 dark:bg-[#21262D]" : ""}`}
             >
-              <Text className={`text-xs font-bold uppercase tracking-widest ${filter === "completed" ? "text-white" : "text-gray-400 dark:text-gray-500"}`}>History</Text>
+              <Text className={`text-xs font-bold uppercase tracking-wider ${filter === "completed" ? "text-white" : "text-gray-400 dark:text-gray-500"}`}>History</Text>
             </TouchableOpacity>
           </View>
 
           {loading ? (
             <ListItemSkeleton loading={loading} count={4} label="Loading assignments..." />
           ) : displayList.length === 0 ? (
-            <View className="bg-white dark:bg-[#161B22] p-16 rounded-[40px] items-center border border-gray-100 dark:border-gray-800 border-dashed mt-8">
-              <CheckCircle2 size={64} color="#E5E7EB" style={{ opacity: 0.3 }} />
-              <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-6 tracking-tight">
+            <View className="bg-white dark:bg-[#161B22] p-10 rounded-3xl items-center border border-gray-100 dark:border-gray-800 border-dashed mt-4">
+              <CheckCircle2 size={48} color="#E5E7EB" style={{ opacity: 0.3 }} />
+              <Text className="text-gray-400 dark:text-gray-500 font-bold text-center mt-4 tracking-tight">
                 {filter === 'pending' ? "No pending tasks." : "No records found."}
               </Text>
             </View>
@@ -232,20 +232,20 @@ export default function StudentsAssignments() {
                 key={item.id}
                 activeOpacity={0.7}
                 onPress={() => setSelectedAssignment(item)}
-                className="bg-white dark:bg-[#161B22] p-5 rounded-[32px] border border-gray-50 dark:border-gray-800 mb-4 flex-row items-center shadow-sm"
+                className="bg-white dark:bg-[#161B22] p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 mb-3 flex-row items-center shadow-sm"
               >
-                <View className={`w-14 h-14 rounded-2xl items-center justify-center mr-4 ${item.status === "completed" ? "bg-green-50 dark:bg-green-950/20" : (item.status === 'overdue' ? "bg-red-50 dark:bg-red-950/20" : "bg-orange-50 dark:bg-orange-950/20")}`}>
-                  {item.status === "completed" ? <CheckCircle2 size={24} color="#16a34a" /> : (item.status === 'overdue' ? <Clock size={24} color="#dc2626" /> : <Activity size={24} color="#FF6900" />)}
+                <View className={`w-11 h-11 rounded-xl items-center justify-center mr-3 ${item.status === "completed" ? "bg-green-50 dark:bg-green-950/20" : (item.status === 'overdue' ? "bg-red-50 dark:bg-red-950/20" : "bg-orange-50 dark:bg-orange-950/20")}`}>
+                  {item.status === "completed" ? <CheckCircle2 size={20} color="#16a34a" /> : (item.status === 'overdue' ? <Clock size={20} color="#dc2626" /> : <Activity size={20} color="#FF6900" />)}
                 </View>
-                <View className="flex-1">
-                  <Text className="text-[#FF6900] text-[8px] font-bold uppercase tracking-[2px] mb-1">{item.subject?.title}</Text>
-                  <Text className="text-gray-900 dark:text-gray-100 font-bold text-base leading-tight mb-1" numberOfLines={1}>{item.title}</Text>
+                <View className="flex-1 mr-2">
+                  <Text className="text-[#FF6900] text-[8px] font-bold uppercase tracking-wider mb-0.5">{item.subject?.title}</Text>
+                  <Text className="text-gray-900 dark:text-gray-100 font-bold text-sm leading-snug mb-1" numberOfLines={1}>{item.title}</Text>
                   <View className="flex-row items-center">
-                    <Calendar size={12} color="#9CA3AF" />
-                    <Text className="text-gray-400 dark:text-gray-500 text-xs font-medium ml-1.5">{item.due_date}</Text>
+                    <Calendar size={11} color="#9CA3AF" />
+                    <Text className="text-gray-400 dark:text-gray-500 text-[11px] font-medium ml-1">{item.due_date}</Text>
                   </View>
                 </View>
-                <ChevronRight size={18} color="#D1D5DB" />
+                <ChevronRight size={16} color="#D1D5DB" />
               </TouchableOpacity>
             ))
           )}
@@ -254,32 +254,32 @@ export default function StudentsAssignments() {
 
       <Modal animationType="slide" transparent visible={!!selectedAssignment}>
         <View className="flex-1 bg-black/60 justify-end">
-          <View className="bg-white dark:bg-[#161B22] rounded-t-[50px] p-8 pb-12 border-t border-gray-100 dark:border-gray-800">
-            <View className="flex-row justify-between items-start mb-8">
-              <View className="flex-1 pr-6">
-                <Text className="text-[#FF6900] font-bold text-[10px] uppercase tracking-[3px] mb-2">{selectedAssignment?.subject?.title}</Text>
-                <Text className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight leading-8">{selectedAssignment?.title}</Text>
+          <View className="bg-white dark:bg-[#161B22] rounded-t-3xl p-5 pb-8 border-t border-gray-100 dark:border-gray-800">
+            <View className="flex-row justify-between items-start mb-5">
+              <View className="flex-1 pr-4">
+                <Text className="text-[#FF6900] font-bold text-[9px] uppercase tracking-wider mb-1">{selectedAssignment?.subject?.title}</Text>
+                <Text className="text-xl font-bold text-gray-900 dark:text-white tracking-tight leading-7">{selectedAssignment?.title}</Text>
               </View>
-              <TouchableOpacity onPress={() => setSelectedAssignment(null)} className="w-10 h-10 bg-gray-50 dark:bg-[#161B22] rounded-full items-center justify-center">
-                <X size={20} color="#6B7280" />
+              <TouchableOpacity onPress={() => setSelectedAssignment(null)} className="w-8 h-8 bg-gray-100 dark:bg-[#21262D] rounded-full items-center justify-center">
+                <X size={18} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
             {/* Assignment Details */}
-            <View className="bg-gray-50 dark:bg-[#161B22] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 mb-8">
-              <View className="flex-row items-center justify-between mb-4 pb-4 border-b border-gray-100 dark:border-gray-800">
+            <View className="bg-gray-50 dark:bg-[#0D1117] p-4 rounded-2xl border border-gray-100 dark:border-gray-800 mb-5">
+              <View className="flex-row items-center justify-between mb-3 pb-3 border-b border-gray-100 dark:border-gray-800">
                 <View className="flex-row items-center">
-                  <Clock size={16} color="#9CA3AF" />
-                  <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest ml-2">Deadline</Text>
+                  <Clock size={14} color="#9CA3AF" />
+                  <Text className="text-gray-400 dark:text-gray-500 text-[9px] font-bold uppercase tracking-wider ml-1.5">Deadline</Text>
                 </View>
-                <Text className="text-gray-900 dark:text-gray-100 font-bold text-sm">{selectedAssignment?.due_date}</Text>
+                <Text className="text-gray-900 dark:text-gray-100 font-bold text-xs">{selectedAssignment?.due_date}</Text>
               </View>
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center">
-                  <Activity size={16} color="#9CA3AF" />
-                  <Text className="text-gray-400 dark:text-gray-500 text-[10px] font-bold uppercase tracking-widest ml-2">Potential</Text>
+                  <Activity size={14} color="#9CA3AF" />
+                  <Text className="text-gray-400 dark:text-gray-500 text-[9px] font-bold uppercase tracking-wider ml-1.5">Potential</Text>
                 </View>
-                <Text className="text-[#FF6900] font-bold text-sm">{selectedAssignment?.total_points} Points</Text>
+                <Text className="text-[#FF6900] font-bold text-xs">{selectedAssignment?.total_points} Points</Text>
               </View>
             </View>
 
@@ -287,10 +287,10 @@ export default function StudentsAssignments() {
             {selectedAssignment?.attachment_url && (
               <TouchableOpacity
                 onPress={() => handleDownload(selectedAssignment!.attachment_url!)}
-                className="bg-orange-50 dark:bg-orange-950/20 p-6 rounded-[32px] border border-orange-100 dark:border-orange-900 flex-row items-center mb-8"
+                className="bg-orange-50 dark:bg-orange-950/20 p-4 rounded-2xl border border-orange-100 dark:border-orange-900 flex-row items-center mb-5"
               >
-                <View className="bg-white dark:bg-[#161B22] p-3 rounded-2xl shadow-sm mr-4">
-                  <Download size={20} color="#FF6900" />
+                <View className="bg-white dark:bg-[#161B22] p-2 rounded-xl shadow-sm mr-3">
+                  <Download size={18} color="#FF6900" />
                 </View>
                 <View className="flex-1">
                   <Text className="text-gray-900 dark:text-gray-100 font-bold text-sm tracking-tight">{selectedAssignment.attachment_name || "Course Material"}</Text>
