@@ -1,10 +1,10 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
@@ -21,6 +21,7 @@ import { supabase } from '@/libs/supabase';
 
 import { DatePicker } from '@/components/common/DatePicker';
 import { formatCredentialExpiry } from '@/utils/formatExpiry';
+import { getBackendRootUrl } from '@/utils/backendUrl';
 
 type Institution = {
   id: string;
@@ -225,9 +226,7 @@ export default function MasterInstitutionsPage() {
   }, [institutions, searchQuery, currencies]);
 
   const backendUrl = useMemo(() => {
-    let url = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || 'http://localhost:4001').replace(/\/api\/?$/, '');
-    if (Platform.OS === 'android') url = url.replace('localhost', '10.0.2.2');
-    return url;
+    return getBackendRootUrl();
   }, []);
 
   const authedFetch = useCallback(async (path: string, init?: RequestInit) => {
@@ -1007,7 +1006,7 @@ export default function MasterInstitutionsPage() {
           data={filteredInstitutions}
           keyExtractor={(i) => i.id}
           renderItem={renderInstitution}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 110 }}
           ListEmptyComponent={
             <View style={{ alignItems: 'center', paddingTop: 40, paddingHorizontal: 20 }}>
               <MaterialCommunityIcons

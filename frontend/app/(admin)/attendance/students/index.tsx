@@ -274,7 +274,7 @@ export default function AdminStudentAttendance() {
                 showNotification={false}
             />
 
-            <ScrollView style={{ flex: 1, padding: 20 }}>
+            <ScrollView style={{ flex: 1, padding: 20 }} contentContainerStyle={{ paddingBottom: 110 }}>
                 {/* Date Selector */}
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
                     <View style={{ flex: 1, marginRight: 12 }}>

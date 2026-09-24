@@ -10,6 +10,7 @@ import Toast from 'react-native-toast-message';
 import { SettingsService } from '@/services/SettingsService';
 import { DashboardStatCardSkeleton } from '@/components/ui/skeletons';
 import { CacheService } from '@/services/CacheService';
+import { getBackendRootUrl } from '@/utils/backendUrl';
 
 /*
   Calls the master_admin backend to fetch platform-wide stats
@@ -79,10 +80,7 @@ export default function MasterDashboard() {
                 }
             }
 
-            let backendUrl = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || "http://localhost:4001").replace(/\/api\/?$/, '');
-            if (Platform.OS === 'android') {
-                backendUrl = backendUrl.replace('localhost', '10.0.2.2');
-            }
+            const backendUrl = getBackendRootUrl();
 
             const res = await fetch(`${backendUrl}/api/master-admin/stats`, {
                 headers: {
@@ -113,8 +111,7 @@ export default function MasterDashboard() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            let backendUrl = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || "http://localhost:4001").replace(/\/api\/?$/, '');
-            if (Platform.OS === 'android') backendUrl = backendUrl.replace('localhost', '10.0.2.2');
+            const backendUrl = getBackendRootUrl();
 
             const res = await fetch(`${backendUrl}/api/master-admin/subscriptions/lifecycle-sweep/preview`, {
                 headers: {
@@ -142,8 +139,7 @@ export default function MasterDashboard() {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            let backendUrl = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || "http://localhost:4001").replace(/\/api\/?$/, '');
-            if (Platform.OS === 'android') backendUrl = backendUrl.replace('localhost', '10.0.2.2');
+            const backendUrl = getBackendRootUrl();
 
             const res = await fetch(`${backendUrl}/api/master-admin/subscriptions/lifecycle-sweep`, {
                 method: 'POST',
@@ -199,7 +195,7 @@ export default function MasterDashboard() {
             <ScrollView
                 className="flex-1"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 60, paddingTop: 14 }}
+                contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 110, paddingTop: 14 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6900" colors={["#FF6900"]} />}
             >
                 {/* Top actions */}

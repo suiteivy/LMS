@@ -9,6 +9,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
+import { getBackendRootUrl } from '@/utils/backendUrl';
 
 type ResourceItem = {
     id: string;
@@ -59,7 +60,7 @@ export default function AdminMaterialsScreen() {
         primary: '#FF6B00',
     };
 
-    const apiUrl = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || 'http://localhost:4001').replace(/\/api\/?$/, '');
+    const apiUrl = getBackendRootUrl();
 
     const fetchPending = async () => {
         try {

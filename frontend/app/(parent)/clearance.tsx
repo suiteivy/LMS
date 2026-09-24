@@ -236,7 +236,7 @@ export default function ParentClearanceScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60, maxWidth: 900, alignSelf: 'center', width: '100%' }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 110, maxWidth: 900, alignSelf: 'center', width: '100%' }}>
         {/* Child Selector */}
         {children.length > 1 && (
           <View style={{ marginBottom: 16 }}>

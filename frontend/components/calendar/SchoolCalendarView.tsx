@@ -401,7 +401,7 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
         }
       />
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: isTablet ? 32 : 110 }} showsVerticalScrollIndicator={false}>
         <View style={{ gap: 14 }}>
           <GlassCard
             variant="modal"

@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios";
+import { Platform } from "react-native";
 import { getApiBaseUrl } from "@/utils/backendUrl";
 import { assertNoDoubleApiSegment } from "@/utils/validateApiUrl";
 
@@ -42,10 +43,10 @@ const _setOffline = (val: boolean) => {
   offlineListeners.forEach((cb) => cb(val));
 };
 
-if (typeof window !== 'undefined') {
+if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
   window.addEventListener('online', () => _setOffline(false));
   window.addEventListener('offline', () => _setOffline(true));
-  _isOffline = !navigator.onLine;
+  _isOffline = typeof navigator !== 'undefined' ? !navigator.onLine : false;
 }
 
 let _lastNetworkToast = 0;
@@ -245,6 +246,11 @@ api.interceptors.request.use(
         },
       };
       throw heldError;
+    }
+
+    // Ensure environment-aware base URL resolution on native platforms
+    if (!config.baseURL || (Platform.OS !== 'web' && config.baseURL.includes('localhost'))) {
+      config.baseURL = getApiBaseUrl();
     }
 
     // Validate no /api/api/ duplication in constructed URL

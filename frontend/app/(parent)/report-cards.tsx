@@ -904,7 +904,7 @@ export default function ParentReportCardsScreen() {
             );
           })}
 
-          <View style={{ height: 40 }} />
+          <View style={{ height: 110 }} />
         </ScrollView>
       )}
 

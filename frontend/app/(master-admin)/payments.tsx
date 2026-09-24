@@ -1,3 +1,4 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -5,7 +6,6 @@ import {
   Linking,
   Modal,
   Platform,
-  SafeAreaView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -20,6 +20,7 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import type { CurrencyFormatInput } from '@/utils/currency';
+import { getBackendRootUrl } from '@/utils/backendUrl';
 
 type PaymentRow = {
   id: string;
@@ -113,9 +114,7 @@ export default function MasterPaymentsPage() {
   });
 
   const backendUrl = useMemo(() => {
-    let url = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || 'http://localhost:4001').replace(/\/api\/?$/, '');
-    if (Platform.OS === 'android') url = url.replace('localhost', '10.0.2.2');
-    return url;
+    return getBackendRootUrl();
   }, []);
 
   const authedFetch = async (path: string, init?: RequestInit) => {
@@ -345,7 +344,7 @@ export default function MasterPaymentsPage() {
       </View>
 
       {loading ? (
-        <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 80 }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 110 }}>
           <TableRowSkeleton loading={loading} columns={5} count={8} label="Loading payments..." />
         </View>
       ) : (

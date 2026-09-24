@@ -174,7 +174,7 @@ export default function StudentProfileScreen() {
   const recentRejected = myRequests.find((r: any) => r.status === 'rejected');
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: bg }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: bg }} contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
       {/* Pending Request Banners */}
       {pendingNameChange && (
         <View

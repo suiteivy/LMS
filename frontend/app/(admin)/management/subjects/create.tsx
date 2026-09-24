@@ -491,8 +491,7 @@ const CreateSubject = () => {
                                 alignItems: 'center',
                                 backgroundColor: (!isValid || isSubmitting) ? (isDark ? '#374151' : '#D1D5DB') : '#FF6B00',
                                 opacity: (!isValid || isSubmitting) ? 0.6 : 1,
-                                // @ts-ignore - web-specific
-                                cursor: (!isValid || isSubmitting) ? 'not-allowed' : 'pointer',
+                                cursor: ((!isValid || isSubmitting) ? 'not-allowed' : 'pointer') as any,
                             }}
                         >
                             <Text style={{ color: (!isValid || isSubmitting) ? (isDark ? '#9CA3AF' : '#6B7280') : 'white', fontWeight: '700', fontSize: 15 }}>

@@ -393,9 +393,26 @@ const PORT = process.env.PORT || 4001;
 const server = app.listen(PORT, "0.0.0.0", () => {
   const { networkInterfaces } = require("os");
   const nets = networkInterfaces();
-  const lanIp = Object.values(nets).flat().find(
-    (n) => n?.family === "IPv4" && !n.internal
-  )?.address || "unknown";
+  const allIpv4 = Object.entries(nets)
+    .flatMap(([name, ifaces]) =>
+      (ifaces || []).map((iface) => ({ ...iface, name }))
+    )
+    .filter(
+      (n) =>
+        n?.family === "IPv4" &&
+        !n.internal &&
+        !n.address.startsWith("169.254.")
+    );
+
+  // Prioritize Wi-Fi, standard LAN subnets (192.168.x.x, 10.x.x.x), and physical adapters
+  const bestIface =
+    allIpv4.find((n) => /wi-?fi|wlan/i.test(n.name)) ||
+    allIpv4.find((n) => n.address.startsWith("192.168.")) ||
+    allIpv4.find((n) => n.address.startsWith("10.")) ||
+    allIpv4.find((n) => !/virtual|vethernet|wsl|vbox/i.test(n.name)) ||
+    allIpv4[0];
+
+  const lanIp = bestIface?.address || "unknown";
 
   logger.info('LMS Backend started', { port: PORT, lanIp });
   console.log(`LMS Backend running on:`);

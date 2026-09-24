@@ -76,7 +76,7 @@ export default function StudentAcademicVault() {
                 role="Student"
                 fallbackPath="/(student)"
             />
-            <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+            <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
                 <View className="p-4 md:p-6">
                     {/* Header & Search */}
                     <View className="mb-5">

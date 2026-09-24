@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Platform, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import Aurora from './Aurora';
+import { MobileLivingBackground } from './MobileLivingBackground';
 
 const isWeb = Platform.OS === 'web';
 
@@ -51,7 +52,9 @@ export const LivingBackground: React.FC<LivingBackgroundProps> = ({
           speed={speed}
           lightMode={lightMode}
         />
-      ) : null}
+      ) : (
+        <MobileLivingBackground colorStops={colorStops} />
+      )}
     </View>
   );
 };

@@ -1,0 +1,46 @@
+diff --git a/node_modules/react-native-css-interop/dist/css-to-rn/parseDeclaration.js b/node_modules/react-native-css-interop/dist/css-to-rn/parseDeclaration.js
+index 9205e46..7f2d658 100644
+--- a/node_modules/react-native-css-interop/dist/css-to-rn/parseDeclaration.js
++++ b/node_modules/react-native-css-interop/dist/css-to-rn/parseDeclaration.js
+@@ -918,6 +918,7 @@ function parseDeclaration(declaration, parseOptions) {
+             return addStyleProp(declaration.property, parseTextAlign(declaration.value, parseOptions));
+         case "box-shadow": {
+             parseBoxShadow(declaration.value, parseOptions);
++            return;
+         }
+         case "aspect-ratio": {
+             return addStyleProp(declaration.property, parseAspectRatio(declaration.value));
+@@ -1758,6 +1759,10 @@ function parseBoxShadow(boxShadows, options) {
+     }
+ }
+ function parseAspectRatio(aspectRatio) {
++    if (!aspectRatio || !aspectRatio.ratio) {
++        if (aspectRatio?.auto) return "auto";
++        return undefined;
++    }
+     if (aspectRatio.auto) {
+         return "auto";
+     }
+diff --git a/node_modules/react-native-css-interop/src/css-to-rn/parseDeclaration.ts b/node_modules/react-native-css-interop/src/css-to-rn/parseDeclaration.ts
+index bf095a5..fe7e665 100644
+--- a/node_modules/react-native-css-interop/src/css-to-rn/parseDeclaration.ts
++++ b/node_modules/react-native-css-interop/src/css-to-rn/parseDeclaration.ts
+@@ -1556,6 +1556,7 @@ export function parseDeclaration(
+       );
+     case "box-shadow": {
+       parseBoxShadow(declaration.value, parseOptions);
++      return;
+     }
+     case "aspect-ratio": {
+       return addStyleProp(
+@@ -2639,6 +2640,10 @@ function parseAspectRatio(
+   // This is missing types
+   aspectRatio: any,
+ ): RuntimeValueDescriptor {
++  if (!aspectRatio || !aspectRatio.ratio) {
++    if (aspectRatio?.auto) return "auto";
++    return undefined;
++  }
+   if (aspectRatio.auto) {
+     return "auto";
+   } else {

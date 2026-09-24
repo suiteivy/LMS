@@ -9,6 +9,7 @@ import { AddonRequestModal } from "@/components/shared/SubscriptionComponents";
 import { InstitutionBrandingModal } from "@/components/InstitutionBrandingModal";
 import { getPlanLabel } from "@/services/SubscriptionService";
 import { api } from "@/services/api";
+import { getBackendRootUrl } from "@/utils/backendUrl";
 
 export default function SettingsScreen() {
     const {
@@ -99,11 +100,7 @@ export default function SettingsScreen() {
     };
 
     const getBackendUrl = () => {
-        let url = (process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_URL || "http://localhost:4001").replace(/\/api\/?$/, '');
-        if (Platform.OS === "android") {
-            url = url.replace("localhost", "10.0.2.2");
-        }
-        return url;
+        return getBackendRootUrl();
     };
 
     const fetchSubscriptionSnapshot = async () => {

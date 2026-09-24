@@ -177,7 +177,7 @@ export default function TeacherAttendancePage() {
                     <ActivityIndicator size="large" color="#FF6B00" />
                 </View>
             ) : (
-                <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 10 }}>
+                <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 10 }} contentContainerStyle={{ paddingBottom: 110 }}>
                     {attendance.map((item: any) => {
                         const config = statusConfig(item.status);
                         return (

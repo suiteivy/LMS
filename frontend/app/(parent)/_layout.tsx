@@ -33,7 +33,6 @@ import { useRouter } from "expo-router";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 function ParentTabs() {
-    const HIDDEN_ROUTES = ["diary", "library", "reports", "calendar"];
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
     const { hasMessaging } = useSubscriptionTier();
@@ -41,9 +40,27 @@ function ParentTabs() {
     const [showNotifDropdown, setShowNotifDropdown] = useState(false);
     const router = useRouter();
 
-    const NAV_ITEMS = ALL_NAV_ITEMS.filter((item) => (item.name === 'messages' ? hasMessaging : true));
+    const NAV_ITEMS = ALL_NAV_ITEMS.filter((item) => (item.name === "messages" ? hasMessaging : true));
+    const HIDDEN_ROUTES = [
+        "settings",
+        "finance",
+        "grades",
+        "assignments",
+        "attendance",
+        "reports",
+        "diary",
+        "timetable",
+        "report-cards",
+        "analytics",
+        "clearance",
+        "exams",
+        "support",
+        "library",
+        "notifications",
+        ...(!hasMessaging ? ["messages"] : []),
+    ];
 
-    const tabBarHeight = 60;
+    const tabBarHeight = 56 + (insets.bottom > 0 ? insets.bottom : 8);
 
     return (
         <View style={{ flex: 1 }}>
@@ -63,7 +80,8 @@ function ParentTabs() {
                         borderTopWidth: 1,
                         borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
                         height: tabBarHeight,
-                        paddingBottom: 8,
+                        paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+                        paddingTop: 6,
                         elevation: 8,
                         shadowColor: "#000",
                         shadowOffset: { width: 0, height: -4 },
@@ -136,18 +154,9 @@ function ParentTabs() {
                     />
                 );
             })}
-            <Tabs.Screen name="settings" options={{ href: null, headerShown: false }} />
-            <Tabs.Screen name="finance" options={{ href: null, headerShown: false }} />
-            <Tabs.Screen name="grades" options={{ href: null, headerShown: false }} />
-            <Tabs.Screen name="assignments" options={{ href: null, headerShown: false }} />
-            <Tabs.Screen name="attendance" options={{ href: null, headerShown: false }} />
-            <Tabs.Screen name="reports" options={{ href: null, headerShown: false }} />
-            <Tabs.Screen name="diary" options={{ href: null, headerShown: false }} />
-            <Tabs.Screen name="timetable" options={{ href: null, headerShown: false }} />
-            <Tabs.Screen name="report-cards" options={{ href: null, headerShown: false }} />
-            <Tabs.Screen name="analytics" options={{ href: null, headerShown: false }} />
-            <Tabs.Screen name="messages" options={{ href: null, headerShown: false }} />
-            <Tabs.Screen name="clearance" options={{ href: null, headerShown: false }} />
+            {HIDDEN_ROUTES.map((name) => (
+                <Tabs.Screen key={name} name={name} options={{ href: null, headerShown: false }} />
+            ))}
             </Tabs>
 
             <NotificationBellDropdown

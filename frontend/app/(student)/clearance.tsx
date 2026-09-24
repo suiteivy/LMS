@@ -225,7 +225,7 @@ export default function StudentClearanceScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60, maxWidth: 900, alignSelf: 'center', width: '100%' }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 110, maxWidth: 900, alignSelf: 'center', width: '100%' }}>
         {activeProcess ? (
           /* ACTIVE PROCESS VIEW */
           <View style={{ gap: 20 }}>

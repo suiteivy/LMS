@@ -48,8 +48,10 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
+    useWindowDimensions
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -409,6 +411,8 @@ export default function TimetableBuilder() {
     const styles = React.useMemo(() => getStyles(colors), [colors]) as any;
 
     const { institutionName, institutionLogo } = useAuth();
+    const { width } = useWindowDimensions();
+    const insets = useSafeAreaInsets();
 
     // Data state
     const [loading, setLoading] = useState(true);
@@ -906,7 +910,7 @@ export default function TimetableBuilder() {
             {/* ── FAB ── */}
             {selectedClassId && (
                 <ActionTooltip label="Add Period Slot" description="Create a new scheduled timetable lesson for this cohort." learnMoreAnchor="timetable-builder">
-                    <TouchableOpacity style={styles.fab} onPress={openAdd} activeOpacity={0.85}>
+                    <TouchableOpacity style={[styles.fab, { bottom: insets.bottom + (width < 768 ? 84 : 28) }]} onPress={openAdd} activeOpacity={0.85}>
                     <Plus size={24} color="#fff" />
                 </TouchableOpacity>
                 </ActionTooltip>

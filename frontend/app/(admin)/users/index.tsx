@@ -411,7 +411,7 @@ export default function UsersManagementScreen() {
                 <FlatList
                     data={filteredUsers}
                     keyExtractor={item => item.id}
-                    contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}
+                    contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + (width < 768 ? 96 : 24) }}
                     numColumns={numColumns}
                     key={`user-grid-${numColumns}`}
                     columnWrapperStyle={numColumns > 1 ? { gap: 16 } : undefined}

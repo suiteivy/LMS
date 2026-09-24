@@ -411,7 +411,7 @@ export default function MasterNotifications() {
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.pageBg }} edges={['top', 'left', 'right']}>
             <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={20}>
-                <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 36, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
+                <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 110, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
                         <View style={{ backgroundColor: `${colors.primary}20`, padding: 8, borderRadius: 10, marginRight: 10 }}>
                             <MaterialCommunityIcons name="bullhorn-variant-outline" size={22} color={colors.primary} />

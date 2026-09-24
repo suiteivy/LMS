@@ -14,7 +14,8 @@ import { showError } from '@/utils/toast';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRealtimeQuery } from '@/hooks/useRealtimeQuery';
 import { HelpTooltip } from '@/components/settings/HelpTooltip';
 
@@ -32,6 +33,8 @@ type TabKey = typeof TABS[number]['key'];
 export default function FinanceDashboard() {
     const router = useRouter();
     const { isDark } = useTheme();
+    const { width } = useWindowDimensions();
+    const insets = useSafeAreaInsets();
     const [activeTab, setActiveTab] = useState<TabKey>('revenue');
     const [refreshing, setRefreshing] = useState(false);
     const [payments, setPayments] = useState<Payment[]>([]);
@@ -246,6 +249,7 @@ export default function FinanceDashboard() {
                 {/* Content */}
                 <ScrollView
                     style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}
+                    contentContainerStyle={{ paddingBottom: insets.bottom + (width < 768 ? 100 : 32) }}
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
@@ -275,7 +279,7 @@ export default function FinanceDashboard() {
 
                 {/* FAB for Bursaries */}
                 {activeTab === 'bursaries' && (
-                    <View style={{ position: 'absolute', bottom: 24, right: 24, flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}>
+                    <View style={{ position: 'absolute', bottom: insets.bottom + (width < 768 ? 88 : 24), right: 24, flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}>
                         <TouchableOpacity
                             style={{
                                 width: 48, height: 48,

@@ -11,7 +11,7 @@ import { logger } from "@/services/LoggingService";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React from "react";
-import { LogBox, Platform, View } from "react-native";
+import { LogBox, Platform, View, ActivityIndicator } from "react-native";
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -19,6 +19,18 @@ import Toast from "react-native-toast-message";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Animated, Easing as EasingRN, Text } from 'react-native';
 import "../styles/global.css";
+import * as SplashScreen from 'expo-splash-screen';
+import { AnimatedEntranceTransition } from "@/components/common/AnimatedEntranceTransition";
+import { setupImmersiveMode } from "@/mobile/utils/immersiveMode";
+import { pushNotificationService } from "@/services/PushNotificationService";
+
+// Prevent native splash screen from hiding automatically until custom entrance animation takes over
+if (Platform.OS !== 'web') {
+  SplashScreen.preventAutoHideAsync().catch(() => {});
+}
+
+// Track whether the cold launch entrance animation has already played in this process lifecycle
+let hasCompletedColdLaunch = false;
 
 declare const global: typeof globalThis & {
   ErrorUtils?: {
@@ -77,7 +89,7 @@ console.warn = (...args: unknown[]) => {
   _origConsoleWarn(...args);
 };
 
-if (Platform.OS === 'web' && typeof window !== 'undefined') {
+if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
   window.addEventListener(
     'error',
     (event: ErrorEvent) => {
@@ -98,6 +110,7 @@ if (Platform.OS === 'web' && typeof window !== 'undefined') {
 }
 
 LogBox.ignoreLogs([
+  "SafeAreaView has been deprecated",
   "Couldn't find a navigation context",
   "Received `false` for a non-boolean attribute `collapsable`",
   "non-boolean attribute `collapsable`",
@@ -140,22 +153,43 @@ export default function RootLayout() {
 // AppShell 
 function AppShell() {
   const { isDark } = useTheme();
+  const [showEntrance, setShowEntrance] = React.useState(() => {
+    // Only run entrance sequence on mobile (iOS/Android) on cold launch
+    return Platform.OS !== 'web' && !hasCompletedColdLaunch;
+  });
+
+  React.useEffect(() => {
+    if (Platform.OS === 'android') {
+      setupImmersiveMode();
+    }
+    if (Platform.OS !== 'web') {
+      pushNotificationService.init();
+    }
+  }, []);
+
+  const handleEntranceComplete = React.useCallback(() => {
+    hasCompletedColdLaunch = true;
+    setShowEntrance(false);
+  }, []);
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
       {Platform.OS === 'android' ? (
         <StatusBar
-          style={isDark ? "light" : "dark"}
-          backgroundColor={isDark ? '#0F0B2E' : '#ffffff'}
-          translucent={false}
+          style={showEntrance ? "light" : (isDark ? "light" : "dark")}
+          backgroundColor={showEntrance ? '#070514' : (isDark ? '#0F0B2E' : '#ffffff')}
+          translucent={true}
         />
       ) : (
-        <StatusBar style={isDark ? "light" : "dark"} />
+        <StatusBar style={showEntrance ? "light" : (isDark ? "light" : "dark")} />
       )}
       <OfflineBanner />
       <DemoBanner />
       <AuthHandler />
-    </>
+      {showEntrance && (
+        <AnimatedEntranceTransition onComplete={handleEntranceComplete} />
+      )}
+    </View>
   );
 }
 
@@ -334,6 +368,12 @@ function AuthHandler() {
     }
   }, [session, profile, isInitializing, isNavReady, segments, isPlatformAdmin, activeRole, availableRoles, isAuthPath, currentPath, wasDemo, clearWasDemo, getRoleRedirect, router, normalizePath, canonicalizePath, routePath, authPublicPaths]);
 
+  React.useEffect(() => {
+    if (profile?.id && Platform.OS !== 'web') {
+      pushNotificationService.registerForPushNotifications(profile.id);
+    }
+  }, [profile?.id]);
+
   const handleInteraction = React.useCallback(() => {
     if (session) resetSessionTimer();
     return false;
@@ -373,7 +413,20 @@ function AuthHandler() {
             zIndex: 100000,
           }}
         >
-          <AppLoading message={isDemoExiting ? "Exiting Demo Session..." : undefined} onLogout={signOut} />
+          {Platform.OS === 'web' ? (
+            <AppLoading message={isDemoExiting ? "Exiting Demo Session..." : undefined} onLogout={signOut} />
+          ) : (
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: isDark ? '#070514' : '#F6F8FA',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ActivityIndicator size="large" color="#FF6B00" />
+            </View>
+          )}
         </View>
       )}
 

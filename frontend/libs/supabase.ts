@@ -61,7 +61,7 @@ export const isBenignSupabaseSignOutError = (error: any): boolean => {
 };
 
 // Handle Back-Forward Cache (bfcache) in web environments to avoid WebSocket abortion errors
-if (Platform.OS === 'web' && typeof window !== 'undefined') {
+if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
   window.addEventListener('pagehide', () => {
     try {
       supabase.realtime?.disconnect?.();

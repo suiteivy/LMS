@@ -242,16 +242,17 @@ export const UserCard: React.FC<UserCardProps> = ({
                     </Text>
 
                     {showActions && (
-                        <View className="flex-row items-center gap-1.5">
+                        <View className="flex-row items-center gap-2">
                             {onMasterRecordPress && (
                                 <ActionTooltip text="Master Record">
                                     <TouchableOpacity
                                         onPress={(e) => { e.stopPropagation(); onMasterRecordPress(user); }}
-                                        className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-500/20 items-center justify-center"
+                                        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                                        className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-500/20 items-center justify-center"
                                         activeOpacity={0.7}
                                         accessibilityLabel="Master Record"
                                     >
-                                        <MaterialCommunityIcons name="file-document-outline" size={15} color="#3B82F6" />
+                                        <MaterialCommunityIcons name="file-document-outline" size={16} color="#3B82F6" />
                                     </TouchableOpacity>
                                 </ActionTooltip>
                             )}
@@ -259,11 +260,12 @@ export const UserCard: React.FC<UserCardProps> = ({
                                 <ActionTooltip text="Reset credentials">
                                     <TouchableOpacity
                                         onPress={handleResetCredentialsPress}
-                                        className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-500/20 items-center justify-center"
+                                        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                                        className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-500/20 items-center justify-center"
                                         activeOpacity={0.7}
                                         accessibilityLabel="Reset credentials"
                                     >
-                                        <MaterialCommunityIcons name="lock-reset" size={15} color="#FF6900" />
+                                        <MaterialCommunityIcons name="lock-reset" size={16} color="#FF6900" />
                                     </TouchableOpacity>
                                 </ActionTooltip>
                             )}
@@ -272,11 +274,12 @@ export const UserCard: React.FC<UserCardProps> = ({
                                     <ActionTooltip text="Reactivate account">
                                         <TouchableOpacity
                                             onPress={handleReactivatePress}
-                                            className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-500/20 items-center justify-center"
+                                            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                                            className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-500/20 items-center justify-center"
                                             activeOpacity={0.7}
                                             accessibilityLabel="Reactivate user"
                                         >
-                                            <Ionicons name="refresh" size={15} color="#10B981" />
+                                            <Ionicons name="refresh" size={16} color="#10B981" />
                                         </TouchableOpacity>
                                     </ActionTooltip>
                                 )
@@ -285,11 +288,12 @@ export const UserCard: React.FC<UserCardProps> = ({
                                     <ActionTooltip text="Mark as leaver">
                                         <TouchableOpacity
                                             onPress={handleMarkLeaverPress}
-                                            className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-500/20 items-center justify-center"
+                                            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                                            className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-500/20 items-center justify-center"
                                             activeOpacity={0.7}
                                             accessibilityLabel="Mark user as leaver"
                                         >
-                                            <Ionicons name="exit-outline" size={15} color="#F59E0B" />
+                                            <Ionicons name="exit-outline" size={16} color="#F59E0B" />
                                         </TouchableOpacity>
                                     </ActionTooltip>
                                 )
@@ -298,11 +302,12 @@ export const UserCard: React.FC<UserCardProps> = ({
                                 <ActionTooltip text="Edit user details">
                                     <TouchableOpacity
                                         onPress={handleEditPress}
-                                        className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] items-center justify-center"
+                                        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                                        className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] items-center justify-center"
                                         activeOpacity={0.7}
                                         accessibilityLabel="Edit user"
                                     >
-                                        <Ionicons name="pencil" size={15} color="#9CA3AF" />
+                                        <Ionicons name="pencil" size={16} color="#9CA3AF" />
                                     </TouchableOpacity>
                                 </ActionTooltip>
                             )}
@@ -310,11 +315,12 @@ export const UserCard: React.FC<UserCardProps> = ({
                                 <ActionTooltip text="Delete user permanently">
                                     <TouchableOpacity
                                         onPress={handleDeletePress}
-                                        className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-500/20 items-center justify-center"
+                                        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                                        className="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-500/20 items-center justify-center"
                                         activeOpacity={0.7}
                                         accessibilityLabel="Delete user"
                                     >
-                                        <Ionicons name="trash" size={15} color="#EF4444" />
+                                        <Ionicons name="trash" size={16} color="#EF4444" />
                                     </TouchableOpacity>
                                 </ActionTooltip>
                             )}

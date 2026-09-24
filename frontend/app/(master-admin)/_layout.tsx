@@ -30,7 +30,7 @@ const ALL_OTHER = NAV_ITEMS
     .filter(i => !EXPLICIT_TAB_NAMES.includes(i.name))
     .map(i => i.name);
 
-const HIDDEN = [...ALL_OTHER];
+const HIDDEN = [...ALL_OTHER, "loading", "settings"];
 
 function MasterAdminPinnedHeader() {
     const { isDark } = useTheme();
