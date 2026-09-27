@@ -183,9 +183,16 @@ export default function CreateUserScreen() {
 
     const computedAge = calculateAgeFromDob(form.date_of_birth);
 
+    const lookupAbortRef = React.useRef<boolean>(false);
+    const lookupInFlightRef = React.useRef<boolean>(false);
+
     useEffect(() => {
         if (!session?.access_token || !profile?.institution_id || isProfileLoading) return;
+        lookupAbortRef.current = false;
         loadLookupData();
+        return () => {
+            lookupAbortRef.current = true;
+        };
     }, [session?.access_token, profile?.institution_id, isProfileLoading]);
 
     useEffect(() => {
@@ -196,150 +203,159 @@ export default function CreateUserScreen() {
 
     const loadLookupData = async () => {
         if (!profile?.institution_id) return;
+        if (lookupInFlightRef.current) return;
+        lookupInFlightRef.current = true;
         setSlotCapacityStatus('loading');
 
-        let subjectQuery = supabase.from('subjects').select('id, title, teacher_id');
-        let studentQuery = supabase.from('students').select('id, user_id, grade_level, users!inner(first_name, last_name, full_name, institution_id), parent_students(relationship, parents(users(full_name)))') as any;
-        let parentQuery = supabase.from('parents').select('id, user_id, users!inner(first_name, last_name, full_name, institution_id)') as any;
+        try {
+            let subjectQuery = supabase.from('subjects').select('id, title, teacher_id');
+            let studentQuery = supabase.from('students').select('id, user_id, grade_level, users!inner(first_name, last_name, full_name, institution_id), parent_students(relationship, parents(users(full_name)))') as any;
+            let parentQuery = supabase.from('parents').select('id, user_id, users!inner(first_name, last_name, full_name, institution_id)') as any;
 
-        if (profile?.institution_id) {
-            subjectQuery = subjectQuery.eq('institution_id', profile.institution_id);
-            studentQuery = studentQuery.eq('users.institution_id', profile.institution_id);
-            parentQuery = parentQuery.eq('users.institution_id', profile.institution_id);
-        }
-
-        const [classRes, subjectRes, studentRes, parentRes, classOptionsRes, yearsRes, gendersRes, positionsRes, slotCapacityRes] = await Promise.all([
-            supabase.from('classes')
-                .select('id, grade_level, form_level, stream, display_name, level_id, stream_id, teacher_id, teachers:teacher_id(id, users:user_id(full_name, first_name, last_name))')
-                .eq('institution_id', profile.institution_id)
-                .order('grade_level', { ascending: true })
-                .order('form_level', { ascending: true })
-                .order('stream', { ascending: true }),
-            subjectQuery,
-            studentQuery,
-            parentQuery,
-            api.get('/classes/options').catch(() => null),
-            supabase.from('academic_years').select('id, name').eq('institution_id', profile?.institution_id || '').order('start_date', { ascending: false }),
-            supabase.from('users').select('gender').eq('institution_id', profile?.institution_id || '').not('gender', 'is', null),
-            supabase.from('teachers').select('position').eq('institution_id', profile?.institution_id || '').not('position', 'is', null),
-            api.get('/auth/enrollment-slot-capacity', { skipErrorToast: true, skipErrorLog: true }).catch(() => null)
-        ]);
-        if (classRes.data) {
-            setClasses(
-                classRes.data.map((cls: any) => ({
-                    ...cls,
-                    name: formatClassLabel(cls),
-                    teacher_name: cls.teachers?.users?.full_name || (cls.teachers?.users?.first_name ? `${cls.teachers.users.first_name} ${cls.teachers.users.last_name || ''}`.trim() : null),
-                }))
-            );
-        }
-        if (subjectRes.data) setSubjects(subjectRes.data);
-        if (studentRes.data) setStudents(studentRes.data);
-        if (parentRes.data) setParents(parentRes.data);
-
-        const classOptionsData = (classOptionsRes && 'data' in classOptionsRes) ? classOptionsRes.data : null;
-        if (classOptionsData?.level_options?.length) {
-            const mappedLevels: ClassOptionLevel[] = classOptionsData.level_options.map((opt: any) => ({
-                value: Number(opt.value),
-                label: String(opt.label),
-                level_id: opt.level_id,
-            })).filter((opt: ClassOptionLevel) => Number.isFinite(opt.value));
-
-            setLevelOptions(mappedLevels.map((opt) => ({ value: String(opt.value), label: opt.label })));
-        } else {
-            setLevelOptions(EDUCATION_LEVELS.map((l) => ({ value: String(l.value), label: l.label })));
-        }
-
-        if (classOptionsData?.categories) {
-            const mappedCats = (classOptionsData.categories as any[]).map((c) => ({ id: c.id, name: String(c.name || '') }));
-            setDomainCategories(mappedCats);
-            if (mappedCats.length === 1) {
-                setForm((prev) => prev.class_category_id ? prev : ({ ...prev, class_category_id: mappedCats[0].id }));
+            if (profile?.institution_id) {
+                subjectQuery = subjectQuery.eq('institution_id', profile.institution_id);
+                studentQuery = studentQuery.eq('users.institution_id', profile.institution_id);
+                parentQuery = parentQuery.eq('users.institution_id', profile.institution_id);
             }
-        }
-        if (classOptionsData?.levels) {
-            setDomainLevels((classOptionsData.levels as any[]).map((l) => ({
-                id: l.id,
-                category_id: l.category_id,
-                level_number: Number(l.level_number),
-                name: l.name || undefined,
-            })));
-        }
-        if (classOptionsData?.streams) {
-            setDomainStreams((classOptionsData.streams as any[]).map((s) => ({
-                id: s.id,
-                level_id: s.level_id,
-                code: String(s.code || ''),
-                name: s.name || undefined,
-            })));
-        }
 
-        if (yearsRes.data) {
-            const options = yearsRes.data
-                .map((row: any) => ({ value: String(row.name || ''), label: String(row.name || '') }))
-                .filter((row: SelectOption) => row.value);
-            setAcademicYearOptions(options);
-        }
+            const [classRes, subjectRes, studentRes, parentRes, classOptionsRes, yearsRes, gendersRes, positionsRes, slotCapacityRes] = await Promise.all([
+                supabase.from('classes')
+                    .select('id, grade_level, form_level, stream, display_name, level_id, stream_id, teacher_id, teachers:teacher_id(id, users:user_id(full_name, first_name, last_name))')
+                    .eq('institution_id', profile.institution_id)
+                    .order('grade_level', { ascending: true })
+                    .order('form_level', { ascending: true })
+                    .order('stream', { ascending: true }),
+                subjectQuery,
+                studentQuery,
+                parentQuery,
+                api.get('/classes/options').catch(() => null),
+                supabase.from('academic_years').select('id, name').eq('institution_id', profile?.institution_id || '').order('start_date', { ascending: false }),
+                supabase.from('users').select('gender').eq('institution_id', profile?.institution_id || '').not('gender', 'is', null),
+                supabase.from('teachers').select('position').eq('institution_id', profile?.institution_id || '').not('position', 'is', null),
+                api.get('/auth/enrollment-slot-capacity', { skipErrorToast: true, skipErrorLog: true }).catch(() => null)
+            ]);
 
-        if (gendersRes.data) {
-            const genderRows = gendersRes.data as any[];
-            const genderSet = new Set<string>();
-            for (const row of genderRows) {
-                const value = String(row.gender || '').trim().toLowerCase();
-                if (value) genderSet.add(value);
+            if (lookupAbortRef.current) return;
+
+            if (classRes.data) {
+                setClasses(
+                    classRes.data.map((cls: any) => ({
+                        ...cls,
+                        name: formatClassLabel(cls),
+                        teacher_name: cls.teachers?.users?.full_name || (cls.teachers?.users?.first_name ? `${cls.teachers.users.first_name} ${cls.teachers.users.last_name || ''}`.trim() : null),
+                    }))
+                );
             }
-            ['male', 'female', 'other'].forEach((value) => genderSet.add(value));
-            setGenderOptions(Array.from(genderSet).map((value) => ({ value, label: value.charAt(0).toUpperCase() + value.slice(1) })));
-        }
+            if (subjectRes.data) setSubjects(subjectRes.data);
+            if (studentRes.data) setStudents(studentRes.data);
+            if (parentRes.data) setParents(parentRes.data);
 
-        if (positionsRes.data) {
-            const positionRows = positionsRes.data as any[];
-            const positionSet = new Set<string>();
-            for (const row of positionRows) {
-                const value = String(row.position || '').trim();
-                if (value) positionSet.add(value);
+            const classOptionsData = (classOptionsRes && 'data' in classOptionsRes) ? classOptionsRes.data : null;
+            if (classOptionsData?.level_options?.length) {
+                const mappedLevels: ClassOptionLevel[] = classOptionsData.level_options.map((opt: any) => ({
+                    value: Number(opt.value),
+                    label: String(opt.label),
+                    level_id: opt.level_id,
+                })).filter((opt: ClassOptionLevel) => Number.isFinite(opt.value));
+
+                setLevelOptions(mappedLevels.map((opt) => ({ value: String(opt.value), label: opt.label })));
+            } else {
+                setLevelOptions(EDUCATION_LEVELS.map((l) => ({ value: String(l.value), label: l.label })));
             }
-            ['teacher', 'head_of_department', 'assistant', 'class_teacher', 'dean'].forEach((value) => positionSet.add(value));
-            setPositionOptions(Array.from(positionSet).map((value) => ({ value, label: value.replace(/_/g, ' ') })));
-        }
 
-        if (studentRes.data) {
-            const relationshipRows = (studentRes.data as any[])
-                .flatMap((student) => Array.isArray(student.parent_students) ? student.parent_students : []);
-            const relSet = new Set<string>();
-            for (const row of relationshipRows) {
-                const value = String(row.relationship || '').trim().toLowerCase();
-                if (value) relSet.add(value);
+            if (classOptionsData?.categories) {
+                const mappedCats = (classOptionsData.categories as any[]).map((c) => ({ id: c.id, name: String(c.name || '') }));
+                setDomainCategories(mappedCats);
+                if (mappedCats.length === 1) {
+                    setForm((prev) => prev.class_category_id ? prev : ({ ...prev, class_category_id: mappedCats[0].id }));
+                }
             }
-            ['father', 'mother', 'guardian', 'sibling', 'other'].forEach((value) => relSet.add(value));
-            setRelationshipOptions(Array.from(relSet).map((value) => ({ value, label: value })));
-        }
+            if (classOptionsData?.levels) {
+                setDomainLevels((classOptionsData.levels as any[]).map((l) => ({
+                    id: l.id,
+                    category_id: l.category_id,
+                    level_number: Number(l.level_number),
+                    name: l.name || undefined,
+                })));
+            }
+            if (classOptionsData?.streams) {
+                setDomainStreams((classOptionsData.streams as any[]).map((s) => ({
+                    id: s.id,
+                    level_id: s.level_id,
+                    code: String(s.code || ''),
+                    name: s.name || undefined,
+                })));
+            }
 
-        const slotData = (slotCapacityRes && 'data' in slotCapacityRes) ? slotCapacityRes.data : null;
-        if (slotData && slotData.limits && slotData.usage && slotData.remaining && slotData.at_capacity) {
-            setSlotCapacity({
-                plan: String(slotData.plan || ''),
-                limits: {
-                    student: slotData.limits.student === null ? null : Number(slotData.limits.student),
-                    admin: slotData.limits.admin === null ? null : Number(slotData.limits.admin),
-                },
-                usage: {
-                    student: Number(slotData.usage.student || 0),
-                    admin: Number(slotData.usage.admin || 0),
-                },
-                remaining: {
-                    student: slotData.remaining.student === null ? null : Number(slotData.remaining.student),
-                    admin: slotData.remaining.admin === null ? null : Number(slotData.remaining.admin),
-                },
-                at_capacity: {
-                    student: !!slotData.at_capacity.student,
-                    admin: !!slotData.at_capacity.admin,
-                },
-            });
-            setSlotCapacityStatus('ready');
-        } else {
-            setSlotCapacity(null);
-            setSlotCapacityStatus('error');
+            if (yearsRes.data) {
+                const options = yearsRes.data
+                    .map((row: any) => ({ value: String(row.name || ''), label: String(row.name || '') }))
+                    .filter((row: SelectOption) => row.value);
+                setAcademicYearOptions(options);
+            }
+
+            if (gendersRes.data) {
+                const genderRows = gendersRes.data as any[];
+                const genderSet = new Set<string>();
+                for (const row of genderRows) {
+                    const value = String(row.gender || '').trim().toLowerCase();
+                    if (value) genderSet.add(value);
+                }
+                ['male', 'female', 'other'].forEach((value) => genderSet.add(value));
+                setGenderOptions(Array.from(genderSet).map((value) => ({ value, label: value.charAt(0).toUpperCase() + value.slice(1) })));
+            }
+
+            if (positionsRes.data) {
+                const positionRows = positionsRes.data as any[];
+                const positionSet = new Set<string>();
+                for (const row of positionRows) {
+                    const value = String(row.position || '').trim();
+                    if (value) positionSet.add(value);
+                }
+                ['teacher', 'head_of_department', 'assistant', 'class_teacher', 'dean'].forEach((value) => positionSet.add(value));
+                setPositionOptions(Array.from(positionSet).map((value) => ({ value, label: value.replace(/_/g, ' ') })));
+            }
+
+            if (studentRes.data) {
+                const relationshipRows = (studentRes.data as any[])
+                    .flatMap((student) => Array.isArray(student.parent_students) ? student.parent_students : []);
+                const relSet = new Set<string>();
+                for (const row of relationshipRows) {
+                    const value = String(row.relationship || '').trim().toLowerCase();
+                    if (value) relSet.add(value);
+                }
+                ['father', 'mother', 'guardian', 'sibling', 'other'].forEach((value) => relSet.add(value));
+                setRelationshipOptions(Array.from(relSet).map((value) => ({ value, label: value })));
+            }
+
+            const slotData = (slotCapacityRes && 'data' in slotCapacityRes) ? slotCapacityRes.data : null;
+            if (slotData && slotData.limits && slotData.usage && slotData.remaining && slotData.at_capacity) {
+                setSlotCapacity({
+                    plan: String(slotData.plan || ''),
+                    limits: {
+                        student: slotData.limits.student === null ? null : Number(slotData.limits.student),
+                        admin: slotData.limits.admin === null ? null : Number(slotData.limits.admin),
+                    },
+                    usage: {
+                        student: Number(slotData.usage.student || 0),
+                        admin: Number(slotData.usage.admin || 0),
+                    },
+                    remaining: {
+                        student: slotData.remaining.student === null ? null : Number(slotData.remaining.student),
+                        admin: slotData.remaining.admin === null ? null : Number(slotData.remaining.admin),
+                    },
+                    at_capacity: {
+                        student: !!slotData.at_capacity.student,
+                        admin: !!slotData.at_capacity.admin,
+                    },
+                });
+                setSlotCapacityStatus('ready');
+            } else {
+                setSlotCapacity(null);
+                setSlotCapacityStatus('error');
+            }
+        } finally {
+            lookupInFlightRef.current = false;
         }
     };
 
@@ -697,7 +713,7 @@ export default function CreateUserScreen() {
     const getRemainingSlotsText = (role: Role) => {
         if (role === 'student' || role === 'admin') {
             if (slotCapacityStatus === 'loading') return 'Checking capacity...';
-            if (!slotCapacity) return 'Capacity unavailable';
+            if (!slotCapacity) return null;
             const limit = role === 'student' ? slotCapacity.limits.student : slotCapacity.limits.admin;
             const remaining = role === 'student' ? slotCapacity.remaining.student : slotCapacity.remaining.admin;
             if (limit === null) return 'Unlimited slots';
@@ -741,9 +757,11 @@ export default function CreateUserScreen() {
                     <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 17, fontWeight: '700', color: textPrimary }}>{roleCard.label}</Text>
                         <Text style={{ fontSize: 13, color: textSecondary }}>{roleCard.desc}</Text>
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#FF6B00', marginTop: 4 }}>
-                            {getRemainingSlotsText(roleCard.role)}
-                        </Text>
+                        {!capacity.unavailable && (
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#FF6B00', marginTop: 4 }}>
+                                {getRemainingSlotsText(roleCard.role)}
+                            </Text>
+                        )}
                         {capacity.unavailable && (
                             <Text style={{ fontSize: 11, fontWeight: '700', color: '#ef4444', marginTop: 4 }}>
                                 Capacity unavailable

@@ -15,7 +15,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import Toast from 'react-native-toast-message';
 import { ListItemSkeleton } from '@/components/ui/skeletons';
-import { getApiBaseUrl } from '@/utils/backendUrl';
+import { api } from '@/services/api';
 
 type Institution = { id: string; name: string };
 
@@ -98,10 +98,6 @@ export default function MasterNotifications() {
         inputBg: isDark ? '#111827' : '#F3F4F6',
     };
 
-    const apiBaseUrl = useMemo(() => {
-        return getApiBaseUrl();
-    }, []);
-
     const selectedInstitutionName = useMemo(() => {
         return institutions.find((i) => i.id === institutionId)?.name || 'Select Institution';
     }, [institutionId, institutions]);
@@ -122,37 +118,19 @@ export default function MasterNotifications() {
     const fetchHistory = useCallback(async () => {
         try {
             setHistoryLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                setHistory([]);
-                setHistoryLoading(false);
-                return;
-            }
-
-            const res = await fetch(`${apiBaseUrl}/master-admin/notifications/history`, {
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    Accept: 'application/json',
-                },
-            });
-
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                Toast.show({ type: 'error', text1: 'Failed', text2: data?.error || 'Could not load notices', position: 'top' });
-                setHistory([]);
-                setHistoryLoading(false);
-                return;
-            }
-
+            const res = await api.get('/master-admin/notifications/history');
+            const data = res.data;
             setHistory(Array.isArray(data?.notices) ? data.notices : []);
-        } catch (err) {
-            console.error('fetchHistory error:', err);
-            Toast.show({ type: 'error', text1: 'Network Error', text2: 'Could not load notice history', position: 'top' });
+        } catch (err: any) {
+            if (!err?.isAuthError) {
+                console.error('fetchHistory error:', err);
+                Toast.show({ type: 'error', text1: 'Network Error', text2: 'Could not load notice history', position: 'top' });
+            }
             setHistory([]);
         } finally {
             setHistoryLoading(false);
         }
-    }, [apiBaseUrl]);
+    }, []);
 
     useEffect(() => {
         fetchInstitutions();
@@ -192,12 +170,6 @@ export default function MasterNotifications() {
 
         try {
             setLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                setLoading(false);
-                return;
-            }
-
             const payload: Record<string, unknown> = {
                 title: title.trim(),
                 message: message.trim(),
@@ -206,21 +178,8 @@ export default function MasterNotifications() {
             };
             if (target === 'specific') payload.institution_id = institutionId;
 
-            const res = await fetch(`${apiBaseUrl}/master-admin/notifications`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
-
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                Toast.show({ type: 'error', text1: 'Dispatch Failed', text2: data?.error || 'Could not dispatch notice', position: 'top' });
-                return;
-            }
+            const res = await api.post('/master-admin/notifications', payload);
+            const data = res.data;
 
             const delivered = Number(data?.delivered || 0);
             const failed = Number(data?.failed || 0);
@@ -270,25 +229,10 @@ export default function MasterNotifications() {
 
         try {
             setSavingNotice(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${apiBaseUrl}/master-admin/notifications/${noticeId}`, {
-                method: 'PUT',
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                },
-                body: JSON.stringify({ title: editTitle.trim(), message: editMessage.trim() }),
+            await api.put(`/master-admin/notifications/${noticeId}`, {
+                title: editTitle.trim(),
+                message: editMessage.trim(),
             });
-
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                Toast.show({ type: 'error', text1: 'Update Failed', text2: data?.error || 'Could not update notice', position: 'top' });
-                setSavingNotice(false);
-                return;
-            }
 
             setHistory((prev) => prev.map((n) => n.notice_id === noticeId
                 ? { ...n, title: editTitle.trim(), message: editMessage.trim() }
@@ -297,9 +241,12 @@ export default function MasterNotifications() {
             setEditingNoticeId(null);
             setEditTitle('');
             setEditMessage('');
-        } catch (err) {
-            console.error('saveNoticeEdit error:', err);
-            Toast.show({ type: 'error', text1: 'Network Error', text2: 'Failed to update notice', position: 'top' });
+        } catch (err: any) {
+            if (!err?.isAuthError) {
+                console.error('saveNoticeEdit error:', err);
+                const errMsg = err?.response?.data?.error || 'Failed to update notice';
+                Toast.show({ type: 'error', text1: 'Update Failed', text2: errMsg, position: 'top' });
+            }
         } finally {
             setSavingNotice(false);
         }
@@ -319,23 +266,7 @@ export default function MasterNotifications() {
 
         try {
             setDeletingNoticeId(noticeId);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${apiBaseUrl}/master-admin/notifications/${noticeId}`, {
-                method: 'DELETE',
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    Accept: 'application/json',
-                },
-            });
-
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                Toast.show({ type: 'error', text1: 'Delete Failed', text2: data?.error || 'Could not delete notice', position: 'top' });
-                setDeletingNoticeId(null);
-                return;
-            }
+            await api.delete(`/master-admin/notifications/${noticeId}`);
 
             setHistory((prev) => prev.filter((n) => n.notice_id !== noticeId));
             Toast.show({ type: 'success', text1: 'Notice Deleted', text2: 'Notice removed successfully', position: 'top' });
@@ -345,9 +276,12 @@ export default function MasterNotifications() {
                 setEditMessage('');
             }
             setConfirmDeleteNoticeId(null);
-        } catch (err) {
-            console.error('confirmDeleteNotice error:', err);
-            Toast.show({ type: 'error', text1: 'Network Error', text2: 'Failed to delete notice', position: 'top' });
+        } catch (err: any) {
+            if (!err?.isAuthError) {
+                console.error('confirmDeleteNotice error:', err);
+                const errMsg = err?.response?.data?.error || 'Failed to delete notice';
+                Toast.show({ type: 'error', text1: 'Delete Failed', text2: errMsg, position: 'top' });
+            }
         } finally {
             setDeletingNoticeId(null);
         }
@@ -376,33 +310,22 @@ export default function MasterNotifications() {
 
         try {
             setApplyingExtendNoticeId(noticeId);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${apiBaseUrl}/master-admin/notifications/${noticeId}/extend-expiry`, {
-                method: 'PUT',
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                },
-                body: JSON.stringify({ extend_days: extendDays }),
+            const res = await api.put(`/master-admin/notifications/${noticeId}/extend-expiry`, {
+                extend_days: extendDays,
             });
-
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                Toast.show({ type: 'error', text1: 'Extend Failed', text2: data?.error || 'Could not extend notice expiry', position: 'top' });
-                return;
-            }
+            const data = res.data;
 
             const nextExpiry = data?.expires_at || null;
             setHistory((prev) => prev.map((n) => n.notice_id === noticeId ? { ...n, expires_at: nextExpiry } : n));
             Toast.show({ type: 'success', text1: 'Expiry Extended', text2: `Extended by ${extendDays} day(s)`, position: 'top' });
             setExtendingNoticeId(null);
             setExtendDaysInput('1');
-        } catch (err) {
-            console.error('confirmExtendNotice error:', err);
-            Toast.show({ type: 'error', text1: 'Network Error', text2: 'Failed to extend notice expiry', position: 'top' });
+        } catch (err: any) {
+            if (!err?.isAuthError) {
+                console.error('confirmExtendNotice error:', err);
+                const errMsg = err?.response?.data?.error || 'Failed to extend notice expiry';
+                Toast.show({ type: 'error', text1: 'Extend Failed', text2: errMsg, position: 'top' });
+            }
         } finally {
             setApplyingExtendNoticeId(null);
         }

@@ -97,7 +97,7 @@ async function authMiddleware(req, res, next) {
         return res.status(200).json({ message: "Already logged out" });
       }
       console.warn("[AuthMiddleware] No token provided for:", req.url);
-      return res.status(401).json({ error: "No token provided" });
+      return res.status(401).json({ error: "No token provided", code: "NO_TOKEN" });
     }
 
     let authResult;
@@ -132,7 +132,7 @@ async function authMiddleware(req, res, next) {
         return res.status(503).json({ error: 'Authentication service unavailable', code: 'AUTH_SERVICE_UNAVAILABLE' });
       }
       console.error(`[AuthMiddleware] Supabase auth error for ${req.url}:`, msg);
-      return res.status(401).json({ error: "Invalid token" });
+      return res.status(401).json({ error: "Invalid token", code: "INVALID_TOKEN" });
     }
 
     // Decode session_id from JWT payload

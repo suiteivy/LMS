@@ -8,7 +8,6 @@ import {
   Building,
   Calendar,
   Clock,
-  CreditCard,
   Glasses,
   MessageSquare,
   PenBox,
@@ -32,214 +31,212 @@ const NAV_ITEMS: NavItem[] = [
   { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(student)/accessibility/settings" },
 ];
 
-// Only these show in the mobile bottom tab bar
-const MOBILE_TAB_NAMES = ["grades", "assignments", "index", "notifications", "accessibility/settings"];
+/**
+ * 5 Primary Mobile Destinations for Students:
+ * 1. Home (index) - Today's schedule, quick metrics, updates
+ * 2. Grades (grades) - Course grades, marks & GPA
+ * 3. Tasks (assignments) - Homework, exams & submissions
+ * 4. Schedule (timetable) - Daily class schedule & rooms
+ * 5. Settings (accessibility/settings) - Profile & display settings
+ *
+ * NOTE: Notifications bell is located at TOP-RIGHT of the screen header.
+ */
+const PRIMARY_STUDENT_TABS = [
+  "index",
+  "grades",
+  "assignments",
+  "timetable",
+  "accessibility/settings",
+];
 
-const EXPLICIT_TAB_NAMES = [...MOBILE_TAB_NAMES, "diary"];
+// Exhaustive list of all routes under app/(student)
+const ALL_STUDENT_ROUTES = [
+  "accessibility/settings",
+  "analytics",
+  "announcements",
+  "assignments",
+  "attendance",
+  "calendar",
+  "clearance",
+  "diary",
+  "finance",
+  "grades-enhanced",
+  "grades",
+  "index",
+  "library",
+  "notifications",
+  "profile",
+  "report-cards",
+  "settings",
+  "timetable",
+  "transcripts",
+  "vault",
+];
 
-// Everything else hidden (route still works, just no tab)
-const ALL_OTHER = NAV_ITEMS
-  .filter(i => !EXPLICIT_TAB_NAMES.includes(i.name))
-  .map(i => i.name);
-const HIDDEN_ROUTES = [...ALL_OTHER, "attendance", "announcements", "grades-enhanced", "report-cards", "analytics", "clearance", "transcripts", "profile", "finance", "settings"];
-
-import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
-import { useNotifications } from "@/contexts/NotificationContext";
-import { NotificationBellDropdown } from "@/components/common/NotificationBellDropdown";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+const HIDDEN_STUDENT_ROUTES = ALL_STUDENT_ROUTES.filter(
+  (name) => !PRIMARY_STUDENT_TABS.includes(name)
+);
 
 function StudentTabs() {
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { unreadCount } = useNotifications();
-  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
-  const router = useRouter();
 
-  const tabBarHeight = 52 + insets.bottom;
+  const tabBarHeight = 60 + Math.max(insets.bottom, 8);
 
   return (
     <View style={{ flex: 1 }}>
-    <Tabs
-      initialRouteName="index"
-      screenListeners={({ route }: { route: any }) => ({
-        tabPress: (e: any) => {
-          if (route.name === "notifications") {
-            e.preventDefault();
-            setShowNotifDropdown((v) => !v);
-          }
-        },
-      })}
-      screenOptions={{
-        headerShown: false,
-        animation: 'shift',
-        tabBarActiveTintColor: "#FF6B00",
-        tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
-        tabBarLabelStyle: { fontSize: 10, fontWeight: "600", letterSpacing: 0.2 },
-        tabBarStyle: {
-          backgroundColor: isDark ? '#161B22' : "#ffffff",
-          borderTopWidth: 1,
-          borderTopColor: isDark ? '#1f2937' : "#f1f5f9",
-          // Tighter on all screen sizes — no more sprawling gaps
-          height: 52 + insets.bottom,
-          paddingBottom: insets.bottom || 4,
-          paddingTop: 4,
-          paddingHorizontal: 8,
-          shadowOpacity: isDark ? 0.3 : 0.08,
-          boxShadow: [{
-            offsetX: 0,
-            offsetY: -2,
-            blurRadius: 8,
-            color: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.06)',
-          }],
-        },
-        sceneStyle: {
-          backgroundColor: isDark ? '#161B22' : "#ffffff",
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="grades"
-        options={{
-          title: "Grades",
-          tabBarIcon: ({ size, color }) => {
-            const Icon = Star as any;
-            return <Icon size={size - 2} color={color} strokeWidth={2} />;
+      <Tabs
+        initialRouteName="index"
+        screenOptions={{
+          headerShown: false,
+          animation: 'shift',
+          tabBarActiveTintColor: "#FF6B00",
+          tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
+          tabBarLabelStyle: {
+            fontSize: 10,
+            fontWeight: "700",
+            letterSpacing: 0.1,
+            marginTop: -2,
+            marginBottom: 4,
+          },
+          tabBarStyle: {
+            backgroundColor: isDark ? '#161B22' : "#ffffff",
+            borderTopWidth: 1,
+            borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
+            height: tabBarHeight,
+            paddingBottom: Math.max(insets.bottom, 8),
+            paddingTop: 8,
+            paddingHorizontal: 8,
+            elevation: 10,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.1,
+            shadowRadius: 6,
+          },
+          sceneStyle: {
+            backgroundColor: isDark ? '#161B22' : "#ffffff",
           },
         }}
-      />
+      >
+        {/* 1. Home */}
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: "Home",
+            tabBarIcon: ({ color, focused }) => {
+              const Icon = Building as any;
+              return (
+                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                  <Icon
+                    size={22}
+                    color={focused ? "#FF6B00" : color}
+                    strokeWidth={focused ? 2.5 : 2}
+                  />
+                </View>
+              );
+            },
+          }}
+        />
 
-      <Tabs.Screen
-        name="assignments"
-        options={{
-          title: "Tasks",
-          tabBarIcon: ({ size, color }) => {
-            const Icon = PenBox as any;
-            return <Icon size={size - 2} color={color} strokeWidth={2} />;
-          },
-        }}
-      />
+        {/* 2. Grades */}
+        <Tabs.Screen
+          name="grades"
+          options={{
+            title: "Grades",
+            tabBarIcon: ({ color, focused }) => {
+              const Icon = Star as any;
+              return (
+                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                  <Icon
+                    size={22}
+                    color={focused ? "#FF6B00" : color}
+                    strokeWidth={focused ? 2.5 : 2}
+                  />
+                </View>
+              );
+            },
+          }}
+        />
 
-      {/* Home — lifted floating center button */}
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Home",
-          tabBarIcon: ({ color, focused }) => {
-            const Icon = Building as any;
-            return (
-              <View style={{
-                width: focused ? 44 : 26,
-                height: focused ? 44 : 26,
-                borderRadius: focused ? 22 : 8,
-                backgroundColor: focused ? "#FF6B00" : "transparent",
-                alignItems: "center",
-                justifyContent: "center",
-                marginTop: focused ? -16 : 0,
-                shadowOpacity: focused ? 0.4 : 0,
-                shadowRadius: focused ? 10 : 0,
-                boxShadow: focused ? [{
-                  offsetX: 0,
-                  offsetY: 6,
-                  blurRadius: 10,
-                  color: 'rgba(255, 107, 0, 0.4)',
-                }] : undefined,
-                elevation: focused ? 8 : 0,
-              }}>
-                <Icon
-                  size={focused ? 20 : 18}
-                  color={focused ? "#ffffff" : color}
-                  strokeWidth={focused ? 2.5 : 2}
-                />
-              </View>
-            );
-          },
-          tabBarLabel: ({ focused, color }) =>
-            focused ? null : (
-              <Text style={{ fontSize: 10, fontWeight: "600", color, letterSpacing: 0.2 }}>Home</Text>
-            ),
-        }}
-      />
+        {/* 3. Tasks / Assignments */}
+        <Tabs.Screen
+          name="assignments"
+          options={{
+            title: "Tasks",
+            tabBarIcon: ({ color, focused }) => {
+              const Icon = PenBox as any;
+              return (
+                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                  <Icon
+                    size={22}
+                    color={focused ? "#FF6B00" : color}
+                    strokeWidth={focused ? 2.5 : 2}
+                  />
+                </View>
+              );
+            },
+          }}
+        />
 
-      <Tabs.Screen
-        name="diary"
-        options={{
-          title: "Diary",
-          tabBarIcon: ({ size, color }) => {
-            const Icon = BookOpen as any;
-            return <Icon size={size - 2} color={color} strokeWidth={2} />;
-          },
-        }}
-      />
+        {/* 4. Timetable */}
+        <Tabs.Screen
+          name="timetable"
+          options={{
+            title: "Schedule",
+            tabBarIcon: ({ color, focused }) => {
+              const Icon = Clock as any;
+              return (
+                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                  <Icon
+                    size={22}
+                    color={focused ? "#FF6B00" : color}
+                    strokeWidth={focused ? 2.5 : 2}
+                  />
+                </View>
+              );
+            },
+          }}
+        />
 
-      <Tabs.Screen
-        name="accessibility/settings"
-        options={{
-          title: "Accessibility",
-          tabBarIcon: ({ size, color }) => {
-            const Icon = Settings as any;
-            return <Icon size={size - 2} color={color} strokeWidth={2} />;
-          },
-        }}
-      />
+        {/* 5. Settings */}
+        <Tabs.Screen
+          name="accessibility/settings"
+          options={{
+            title: "Settings",
+            tabBarIcon: ({ color, focused }) => {
+              const Icon = Settings as any;
+              return (
+                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                  <Icon
+                    size={22}
+                    color={focused ? "#FF6B00" : color}
+                    strokeWidth={focused ? 2.5 : 2}
+                  />
+                </View>
+              );
+            },
+          }}
+        />
 
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          title: "Updates",
-          tabBarItemStyle: { width: 72 },
-          tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
-          tabBarIcon: ({ size = 22, color, focused }) => {
-            const iconColor = showNotifDropdown ? "#FF6B00" : focused ? "#FF6B00" : color;
-            return (
-              <View>
-                <Bell size={size} color={iconColor} strokeWidth={2} />
-                {unreadCount > 0 && (
-                  <View
-                    style={{
-                      position: "absolute",
-                      top: -4,
-                      right: -6,
-                      minWidth: 16,
-                      height: 16,
-                      borderRadius: 8,
-                      backgroundColor: "#FF6B00",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderWidth: 2,
-                      borderColor: isDark ? "#0F0B2E" : "#ffffff",
-                    }}
-                  >
-                    <Text style={{ color: "white", fontSize: 8, fontWeight: "bold" }}>
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            );
-          },
-        }}
-      />
-
-      {HIDDEN_ROUTES.map((name) => (
-        <Tabs.Screen key={name} name={name} options={{ href: null }} />
-      ))}
-    </Tabs>
-    <NotificationBellDropdown
-      visible={showNotifDropdown}
-      onClose={() => setShowNotifDropdown(false)}
-      onViewAll={() => router.push("/(student)/notifications")}
-      tabBarHeight={tabBarHeight}
-    />
+        {/* Exhaustive Hidden Sub-Routes */}
+        {HIDDEN_STUDENT_ROUTES.map((name) => (
+          <Tabs.Screen
+            key={name}
+            name={name}
+            options={{
+              href: null,
+              headerShown: false,
+            }}
+          />
+        ))}
+      </Tabs>
     </View>
   );
 }
 
 function StudentSidebar() {
-  const { showFinancials } = useSubscriptionTier();
-  const items = showFinancials ? NAV_ITEMS : NAV_ITEMS.filter(i => i.name !== 'finance');
   return (
-    <WebSidebar items={items} basePath="(student)" role="Student">
+    <WebSidebar items={NAV_ITEMS} basePath="(student)" role="Student">
       <Slot />
     </WebSidebar>
   );
@@ -247,8 +244,7 @@ function StudentSidebar() {
 
 export default function StudentLayout() {
   const { width } = useWindowDimensions();
-  // FIX: drop Platform.OS check — native tablet (iPad) at >768px also gets sidebar
-  const useWebLayout = width > 768;
+  const useWebLayout = width >= 768;
 
   return (
     <AuthGuard allowedRoles={['student']}>

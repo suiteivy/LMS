@@ -64,7 +64,11 @@ export const useSubjectForm = () => {
       });
 
       showSuccess("Subject Created", "Subject created successfully!");
-      router.back();
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(teacher)/management/subjects' as any);
+      }
     } catch (err: any) {
       console.error("Submit failed:", err);
       showError("Creation Failed", err?.response?.data?.error || err?.message || "Could not create subject.");

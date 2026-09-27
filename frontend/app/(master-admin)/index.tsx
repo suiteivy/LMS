@@ -10,6 +10,7 @@ import Toast from 'react-native-toast-message';
 import { SettingsService } from '@/services/SettingsService';
 import { DashboardStatCardSkeleton } from '@/components/ui/skeletons';
 import { CacheService } from '@/services/CacheService';
+import { api } from '@/services/api';
 import { getBackendRootUrl } from '@/utils/backendUrl';
 
 /*
@@ -80,25 +81,14 @@ export default function MasterDashboard() {
                 }
             }
 
-            const backendUrl = getBackendRootUrl();
-
-            const res = await fetch(`${backendUrl}/api/master-admin/stats`, {
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Accept': 'application/json'
-                }
-            });
-            const data = await res.json();
-            if (res.ok) {
-                setStats(data);
-                CacheService.set('master_admin_platform_stats', data, 5 * 60 * 1000);
-            } else {
-                console.error("Failed to fetch platform stats:", data);
-                setFetchError(data?.error || 'Failed to load platform stats.');
+            const res = await api.get('/master-admin/stats');
+            if (res.data) {
+                setStats(res.data);
+                CacheService.set('master_admin_platform_stats', res.data, 5 * 60 * 1000);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            setFetchError('Network error while loading platform stats.');
+            setFetchError(err?.response?.data?.error || 'Failed to load platform stats.');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -108,26 +98,11 @@ export default function MasterDashboard() {
     const previewLifecycleSweep = useCallback(async () => {
         try {
             setSweepPreviewLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const backendUrl = getBackendRootUrl();
-
-            const res = await fetch(`${backendUrl}/api/master-admin/subscriptions/lifecycle-sweep/preview`, {
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    Accept: 'application/json',
-                },
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                Toast.show({ type: 'error', text1: 'Lifecycle Preview Failed', text2: data?.error || 'Unable to preview lifecycle sweep.' });
-                return;
-            }
-            setSweepPreview(data);
-        } catch (err) {
+            const res = await api.get('/master-admin/subscriptions/lifecycle-sweep/preview');
+            setSweepPreview(res.data);
+        } catch (err: any) {
             console.error('previewLifecycleSweep error:', err);
-            Toast.show({ type: 'error', text1: 'Lifecycle Preview Failed', text2: 'Unable to preview lifecycle sweep.' });
+            Toast.show({ type: 'error', text1: 'Lifecycle Preview Failed', text2: err?.response?.data?.error || 'Unable to preview lifecycle sweep.' });
         } finally {
             setSweepPreviewLoading(false);
         }
@@ -136,24 +111,8 @@ export default function MasterDashboard() {
     const runLifecycleSweep = useCallback(async () => {
         try {
             setSweepRunLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const backendUrl = getBackendRootUrl();
-
-            const res = await fetch(`${backendUrl}/api/master-admin/subscriptions/lifecycle-sweep`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    Accept: 'application/json',
-                },
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                Toast.show({ type: 'error', text1: 'Lifecycle Sweep Failed', text2: data?.error || 'Unable to run lifecycle sweep.' });
-                return;
-            }
-
+            const res = await api.post('/master-admin/subscriptions/lifecycle-sweep', {});
+            const data = res.data;
             Toast.show({
                 type: 'success',
                 text1: 'Lifecycle Sweep Complete',
@@ -161,9 +120,9 @@ export default function MasterDashboard() {
             });
             await previewLifecycleSweep();
             await fetchStats();
-        } catch (err) {
+        } catch (err: any) {
             console.error('runLifecycleSweep error:', err);
-            Toast.show({ type: 'error', text1: 'Lifecycle Sweep Failed', text2: 'Unable to run lifecycle sweep.' });
+            Toast.show({ type: 'error', text1: 'Lifecycle Sweep Failed', text2: err?.response?.data?.error || 'Unable to run lifecycle sweep.' });
         } finally {
             setSweepRunLoading(false);
         }

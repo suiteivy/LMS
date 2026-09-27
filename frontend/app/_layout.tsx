@@ -23,6 +23,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { AnimatedEntranceTransition } from "@/components/common/AnimatedEntranceTransition";
 import { setupImmersiveMode } from "@/mobile/utils/immersiveMode";
 import { pushNotificationService } from "@/services/PushNotificationService";
+import { setActiveRoute } from "@/utils/activeRouteTracker";
+import { isTokenExpired } from "@/services/api";
 
 // Prevent native splash screen from hiding automatically until custom entrance animation takes over
 if (Platform.OS !== 'web') {
@@ -63,7 +65,7 @@ console.error = (...args: unknown[]) => {
   if (all.includes("non-boolean attribute") && all.includes("collapsable")) return;
   if (all.includes("reportAllChanges") || (all.includes("startTime") && all.includes("Cannot read properties of undefined"))) return;
 
-  // Prevent transient auth timeouts, socket drops, or dev FCM notices from triggering fatal LogBox overlays
+  // Prevent transient auth timeouts, socket drops, unhandled GO_BACK on initial routes, or dev FCM notices from triggering fatal LogBox overlays
   if (
     all.includes("getUser timeout") ||
     all.includes("getSession timeout") ||
@@ -74,7 +76,9 @@ console.error = (...args: unknown[]) => {
     (all.includes("fetch failed") && all.includes("Supabase")) ||
     all.includes("FirebaseApp is not initialized") ||
     all.includes("fcm-credentials") ||
-    all.includes("Failed to register push token")
+    all.includes("Failed to register push token") ||
+    all.includes("The action 'GO_BACK' was not handled by any navigator") ||
+    all.includes("was not handled by any navigator")
   ) {
     _origConsoleWarn("[App Notice - Non-fatal]:", ...args);
     return;
@@ -128,6 +132,8 @@ LogBox.ignoreLogs([
   "Failed to register push token",
   "FirebaseApp is not initialized",
   "fcm-credentials",
+  "The action 'GO_BACK' was not handled by any navigator",
+  "Is there any screen to go back to?",
 ]);
 
 // SuiteIvy Dark color palette (matches landing page)
@@ -162,10 +168,9 @@ export default function RootLayout() {
 // AppShell 
 function AppShell() {
   const { isDark } = useTheme();
-  const [showEntrance, setShowEntrance] = React.useState(() => {
-    // Only run entrance sequence on mobile (iOS/Android) on cold launch
-    return Platform.OS !== 'web' && !hasCompletedColdLaunch;
-  });
+  const { session, isInitializing } = useAuth();
+  const [showEntrance, setShowEntrance] = React.useState(false);
+  const checkedSessionRef = React.useRef(false);
 
   React.useEffect(() => {
     if (Platform.OS === 'android') {
@@ -175,6 +180,33 @@ function AppShell() {
       pushNotificationService.init();
     }
   }, []);
+
+  React.useEffect(() => {
+    if (Platform.OS === 'web') return;
+    if (hasCompletedColdLaunch) {
+      SplashScreen.hideAsync().catch(() => {});
+      return;
+    }
+
+    if (isInitializing) return;
+
+    if (!checkedSessionRef.current) {
+      checkedSessionRef.current = true;
+      const isValidCachedSession = Boolean(
+        session?.access_token && !isTokenExpired(session.access_token, 60)
+      );
+
+      if (isValidCachedSession) {
+        // Fast launch: Skip entrance animation entirely for already-authenticated, valid cached session
+        hasCompletedColdLaunch = true;
+        setShowEntrance(false);
+        SplashScreen.hideAsync().catch(() => {});
+      } else {
+        // Genuine cold launch with no valid session: show branded entrance sequence
+        setShowEntrance(true);
+      }
+    }
+  }, [isInitializing, session]);
 
   const handleEntranceComplete = React.useCallback(() => {
     hasCompletedColdLaunch = true;
@@ -247,6 +279,10 @@ function AuthHandler() {
 
   const routePath = React.useMemo(() => normalizePath(`/${segments.join('/')}`), [segments, normalizePath]);
   const currentPath = React.useMemo(() => canonicalizePath(routePath), [routePath, canonicalizePath]);
+
+  React.useEffect(() => {
+    setActiveRoute(currentPath);
+  }, [currentPath]);
   const inAuthGroup = React.useMemo(() => segments.some((s) => s === "(auth)"), [segments]);
   const isAuthPath = React.useMemo(() => {
     if (inAuthGroup) return true;
@@ -388,18 +424,47 @@ function AuthHandler() {
     return false;
   }, [resetSessionTimer, session]);
 
-  const isLoadingOverlayVisible = isInitializing || loading || isDemoExiting;
+  const isLoading = isInitializing || loading || isDemoExiting;
+  const [showLoadingOverlay, setShowLoadingOverlay] = React.useState(isLoading);
+  const [isLoadComplete, setIsLoadComplete] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isLoading) {
+      setShowLoadingOverlay(true);
+      setIsLoadComplete(false);
+    } else {
+      if (Platform.OS === 'web') {
+        setIsLoadComplete(true);
+      } else {
+        setShowLoadingOverlay(false);
+      }
+    }
+  }, [isLoading]);
+
+  React.useEffect(() => {
+    if (isLoadComplete) {
+      const safety = setTimeout(() => {
+        setShowLoadingOverlay(false);
+      }, 1500);
+      return () => clearTimeout(safety);
+    }
+  }, [isLoadComplete]);
+
+  const handleLoadingFinish = React.useCallback(() => {
+    setShowLoadingOverlay(false);
+  }, []);
 
   return (
     <View
-      style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}
+      style={{ flex: 1, backgroundColor: isDark ? '#070514' : '#ffffff' }}
       onStartShouldSetResponder={handleInteraction}
     >
       <Stack
         screenOptions={{
           headerShown: false,
-          animation: 'slide_from_right',
+          animation: Platform.OS === 'web' ? 'none' : 'slide_from_right',
           animationDuration: 220,
+          contentStyle: { backgroundColor: isDark ? '#070514' : '#ffffff' },
         }}
       >
         <Stack.Screen name="index" />
@@ -420,7 +485,7 @@ function AuthHandler() {
 
       <GlobalNotifications />
 
-      {isLoadingOverlayVisible && (
+      {showLoadingOverlay && (
         <View
           style={{
             position: 'absolute',
@@ -429,7 +494,12 @@ function AuthHandler() {
           }}
         >
           {Platform.OS === 'web' ? (
-            <AppLoading message={isDemoExiting ? "Exiting Demo Session..." : undefined} onLogout={signOut} />
+            <AppLoading
+              message={isDemoExiting ? "Exiting Demo Session..." : undefined}
+              onLogout={signOut}
+              isComplete={isLoadComplete}
+              onFinish={handleLoadingFinish}
+            />
           ) : (
             <View
               style={{

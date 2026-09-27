@@ -188,15 +188,15 @@ export default function AdminDashboard() {
         <View className="mb-4">
           <Text className="text-lg font-bold text-gray-900 dark:text-white mb-3">Quick Actions</Text>
           <View className="flex-row flex-wrap justify-between">
-            <QuickAction icon={IconUserPlus} label="Enroll User" onPress={() => router.push({ pathname: "/(admin)/users/create", params: { backTo: "/(admin)" } })} />
+            <QuickAction icon={IconUserPlus} label="Enroll User" onPress={() => router.push("/(admin)/users/create")} />
             <SubscriptionGate feature="library">
-              <QuickAction icon={IconBookOpen} label="Library" onPress={() => router.navigate({ pathname: "/(admin)/management/library", params: { backTo: "/(admin)" } } as any)} />
+              <QuickAction icon={IconBookOpen} label="Library" onPress={() => router.push("/(admin)/management/library")} />
             </SubscriptionGate>
             <SubscriptionGate feature="finance">
-              <QuickAction icon={IconWallet} label="Finance" onPress={() => router.navigate({ pathname: "/(admin)/finance", params: { backTo: "/(admin)" } } as any)} />
+              <QuickAction icon={IconWallet} label="Finance" onPress={() => router.push("/(admin)/finance")} />
             </SubscriptionGate>
             <SubscriptionGate feature="analytics">
-              <QuickAction icon={IconBarChart3} label="Analytics" onPress={() => router.navigate({ pathname: "/(admin)/management/analytics", params: { backTo: "/(admin)" } } as any)} />
+              <QuickAction icon={IconBarChart3} label="Analytics" onPress={() => router.push("/(admin)/management/analytics")} />
             </SubscriptionGate>
             <QuickAction icon={IconCalendar} label="Attendance" onPress={() => router.push({ pathname: "/(admin)/attendance", params: { backTo: "/(admin)" } } as any)} />
             <QuickAction icon={IconClipboardList} label="Results & Cards" onPress={() => router.push({ pathname: "/(admin)/results", params: { backTo: "/(admin)" } } as any)} />

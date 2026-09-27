@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { getSigningOutState } from './sessionState';
 
 const activeToasts = new Set<string>();
 
@@ -78,6 +79,9 @@ export const showSuccess = (title: string, message?: string, options?: ToastOpti
 };
 
 export const showError = (title: string, message?: string, options?: ToastOptions) => {
+    if (getSigningOutState() && options?.code !== 'ACCOUNT_LOCKED' && options?.code !== 'ACCOUNT_DISABLED') {
+        return;
+    }
     const key = toastKey(title, message);
     if (activeToasts.has(key)) return;
     const { autoHide, visibilityTime, topOffset } = resolveToastConfig(title, message, options, 4500);
@@ -101,6 +105,7 @@ export const showError = (title: string, message?: string, options?: ToastOption
 };
 
 export const showWarning = (title: string, message?: string, options?: ToastOptions) => {
+    if (getSigningOutState()) return;
     const key = toastKey(title, message);
     if (activeToasts.has(key)) return;
     const { autoHide, visibilityTime, topOffset } = resolveToastConfig(title, message, options, 4000);
@@ -124,6 +129,7 @@ export const showWarning = (title: string, message?: string, options?: ToastOpti
 };
 
 export const showInfo = (title: string, message?: string, options?: ToastOptions) => {
+    if (getSigningOutState()) return;
     const key = toastKey(title, message);
     if (activeToasts.has(key)) return;
     const { autoHide, visibilityTime, topOffset } = resolveToastConfig(title, message, options, 3500);
@@ -156,8 +162,15 @@ export const showFetchError = (resource: string, error?: any, options?: ToastOpt
         ? error
         : error?.message || error?.error_description || error?.error;
 
-    // Suppress if auth error (handled by auth interceptor) or deliberate cancellation/abort
-    if (error?.isAuthError || (rawMessage && /abort|cancelled|canceled/i.test(rawMessage))) {
+    const isCancelled =
+        error?.name === 'CanceledError' ||
+        error?.code === 'ERR_CANCELED' ||
+        error?.isCanceled === true ||
+        (rawMessage && /abort|cancelled|canceled/i.test(rawMessage));
+
+    // Suppress if auth error (handled centrally by auth interceptor/safeSignOut), deliberate cancellation/abort,
+    // out-of-scope route error, or when actively signing out.
+    if (error?.isAuthError || error?.response?.status === 401 || isCancelled || error?.isOutOfScope || getSigningOutState()) {
         return;
     }
 

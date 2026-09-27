@@ -44,7 +44,7 @@ import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
 import { MobileScreenWrapper } from '@/mobile/components/common/MobileScreenWrapper';
 import { MobileHeader } from '@/mobile/components/common/MobileHeader';
 import { MobileCard } from '@/mobile/components/common/MobileCard';
-import { DashboardSkeleton } from '@/mobile/components/skeletons/MobileSkeleton';
+import { AdminDashboardSkeleton } from '@/mobile/components/skeletons/MobileSkeleton';
 import { mobileColors, MIN_TOUCH_TARGET, spacing } from '@/mobile/utils/platform';
 import { SubscriptionBanner, SubscriptionGate } from '@/components/shared/SubscriptionComponents';
 
@@ -189,7 +189,6 @@ export const AdminDashboardMobile: React.FC = () => {
   // Extract stats
   const attendanceValue = stats.find((s) => s.label === 'Attendance')?.value || '0%';
   const attendanceSub = stats.find((s) => s.label === 'Attendance')?.subValue || 'No data recorded today';
-  const revenueStat = stats.find((s) => s.label === 'Revenue');
   const totalStudents = parseInt(stats.find((s) => s.label === 'Total Students')?.value || '0');
   const totalTeachers = parseInt(stats.find((s) => s.label === 'Teachers')?.value || '0');
   const totalUsers = totalStudents + totalTeachers;
@@ -234,12 +233,14 @@ export const AdminDashboardMobile: React.FC = () => {
     return (
       <View style={{ flex: 1, backgroundColor: isDark ? mobileColors.bgPrimary : mobileColors.bgLightSurface }}>
         <MobileHeader
-          title="Dashboard"
-          subtitle="Loading..."
+          title="Welcome back,"
+          subtitle="Loading dashboard..."
           largeTitle
-          rightAction={logoutAction}
+          role="Admin"
+          showNotification={true}
+          showUserAvatar={true}
         />
-        <DashboardSkeleton />
+        <AdminDashboardSkeleton />
       </View>
     );
   }
@@ -248,11 +249,12 @@ export const AdminDashboardMobile: React.FC = () => {
     <View style={{ flex: 1, backgroundColor: isDark ? mobileColors.bgPrimary : mobileColors.bgLightSurface }}>
       <SubscriptionBanner />
       <MobileHeader
-        title={`Welcome back,`}
+        title="Welcome back,"
         subtitle={profile?.full_name || 'Administrator'}
         largeTitle
-        rightAction={logoutAction}
-        rightActionSecondary={refreshAction}
+        role="Admin"
+        showNotification={true}
+        showUserAvatar={true}
       />
 
       <MobileScreenWrapper
@@ -263,9 +265,6 @@ export const AdminDashboardMobile: React.FC = () => {
       >
         {/* ── Hero Stats Row ── */}
         <View style={styles.statsRow}>
-          {tier.showFinancials && revenueStat && (
-            <StatDisplay label="Revenue" value={revenueStat.value} />
-          )}
           <StatDisplay label="Total Users" value={formatNum(totalUsers)} accentColor={mobileColors.flame} />
           <StatDisplay label="Students" value={formatNum(totalStudents)} />
         </View>
@@ -299,38 +298,38 @@ export const AdminDashboardMobile: React.FC = () => {
           <QuickAction
             icon={IconUserPlus}
             label="Enroll User"
-            onPress={() => router.push({ pathname: '/(admin)/users/create', params: { backTo: '/(admin)' } })}
+            onPress={() => router.push('/(admin)/users/create')}
           />
           <SubscriptionGate feature="library">
             <QuickAction
               icon={IconBookOpen}
               label="Library"
-              onPress={() => router.navigate({ pathname: '/(admin)/management/library', params: { backTo: '/(admin)' } } as any)}
+              onPress={() => router.push('/(admin)/management/library')}
             />
           </SubscriptionGate>
           <SubscriptionGate feature="finance">
             <QuickAction
               icon={IconWallet}
               label="Finance"
-              onPress={() => router.navigate({ pathname: '/(admin)/finance', params: { backTo: '/(admin)' } } as any)}
+              onPress={() => router.push('/(admin)/finance')}
             />
           </SubscriptionGate>
           <SubscriptionGate feature="analytics">
             <QuickAction
               icon={IconBarChart3}
               label="Analytics"
-              onPress={() => router.navigate({ pathname: '/(admin)/management/analytics', params: { backTo: '/(admin)' } } as any)}
+              onPress={() => router.push('/(admin)/management/analytics')}
             />
           </SubscriptionGate>
           <QuickAction
             icon={IconCalendar}
             label="Attendance"
-            onPress={() => router.push({ pathname: '/(admin)/attendance', params: { backTo: '/(admin)' } } as any)}
+            onPress={() => router.push('/(admin)/attendance')}
           />
           <QuickAction
             icon={IconClipboardList}
             label="Results & Cards"
-            onPress={() => router.push({ pathname: '/(admin)/results', params: { backTo: '/(admin)' } } as any)}
+            onPress={() => router.push('/(admin)/results')}
           />
         </View>
       </MobileScreenWrapper>

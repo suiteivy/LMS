@@ -305,6 +305,7 @@ const bulkCreateGradingScale = async (req, res) => {
       return res.status(500).json({ success: false, error: error.message });
     }
 
+    configCache.invalidateGradingScales(institution_id);
     return res.status(201).json({ success: true, data });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });

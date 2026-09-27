@@ -3,6 +3,7 @@ const supabase = require("../utils/supabaseClient.js");
 const axios = require("axios");
 const { isTransientSupabaseError, withSupabaseRetry } = require('../utils/supabaseRetry.js');
 const logger = require('../utils/logger');
+const configCache = require('../utils/configCache.js');
 
 
 const FX_PROVIDERS = [
@@ -75,6 +76,12 @@ const getCurrentKesRate = async () => {
  */
 exports.getCurrencies = async (_req, res) => {
     try {
+        const cacheKey = 'global:currencies';
+        const cached = configCache.get(cacheKey);
+        if (cached) {
+            return res.status(200).json({ currencies: cached });
+        }
+
         const { data, error } = await withSupabaseRetry(() =>
             supabase
                 .from('currencies')
@@ -85,6 +92,7 @@ exports.getCurrencies = async (_req, res) => {
         );
 
         if (error) throw error;
+        configCache.set(cacheKey, data || [], 300);
         return res.status(200).json({ currencies: data || [] });
     } catch (err) {
         console.error('Get currencies error:', err);
@@ -269,6 +277,8 @@ exports.updateCurrencyRates = async (_req, res) => {
             .single();
 
         if (error) throw error;
+
+        configCache.invalidateCurrencies();
 
         res.json({
             KES: Number(data?.usd_rate || kesRate),

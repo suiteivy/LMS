@@ -17,10 +17,11 @@ import Toast from 'react-native-toast-message';
 import { TableRowSkeleton } from '@/components/ui/skeletons';
 
 import { useCurrency } from '@/contexts/CurrencyContext';
+import type { CurrencyFormatInput } from '@/utils/currency';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
-import type { CurrencyFormatInput } from '@/utils/currency';
 import { getBackendRootUrl } from '@/utils/backendUrl';
+import { api } from '@/services/api';
 
 type PaymentRow = {
   id: string;
@@ -117,38 +118,19 @@ export default function MasterPaymentsPage() {
     return getBackendRootUrl();
   }, []);
 
-  const authedFetch = async (path: string, init?: RequestInit) => {
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    const headers: Record<string, string> = {
-      Accept: 'application/json',
-      ...(init?.headers as Record<string, string>),
-    };
-    if (token) headers.Authorization = `Bearer ${token}`;
-    if (init?.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
-
-    const res = await fetch(`${backendUrl}${path}`, { ...init, headers });
-    let payload: any = null;
-    try {
-      payload = await res.json();
-    } catch {
-      payload = null;
-    }
-    if (!res.ok) throw new Error(payload?.error || `Request failed (${res.status})`);
-    return payload;
-  };
-
   const loadData = async () => {
     try {
       setLoading(true);
       const [payRes, summaryRes] = await Promise.all([
-        authedFetch('/api/master-admin/payments'),
-        authedFetch('/api/master-admin/payments/summary'),
+        api.get('/master-admin/payments'),
+        api.get('/master-admin/payments/summary'),
       ]);
-      setPayments(payRes?.payments || []);
-      setSummary(summaryRes?.summary || []);
+      setPayments(payRes.data?.payments || []);
+      setSummary(summaryRes.data?.summary || []);
     } catch (e: any) {
-      Toast.show({ type: 'error', text1: 'Payments', text2: e.message || 'Failed to load payments', position: 'top' });
+      if (!e?.isAuthError) {
+        Toast.show({ type: 'error', text1: 'Payments', text2: e.response?.data?.error || e.message || 'Failed to load payments', position: 'top' });
+      }
     } finally {
       setLoading(false);
     }
@@ -194,23 +176,22 @@ export default function MasterPaymentsPage() {
     }
     try {
       setEditSaving(true);
-      await authedFetch(`/api/master-admin/payments/${editing.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          amount: Number(editForm.amount),
-          method: editForm.method,
-          status: editForm.status,
-          reference_id: editForm.reference_id,
-          date: editForm.date || null,
-          notes: editForm.notes,
-        }),
+      await api.put(`/master-admin/payments/${editing.id}`, {
+        amount: Number(editForm.amount),
+        method: editForm.method,
+        status: editForm.status,
+        reference_id: editForm.reference_id,
+        date: editForm.date || null,
+        notes: editForm.notes,
       });
       Toast.show({ type: 'success', text1: 'Payment', text2: 'Payment updated', position: 'top' });
       setEditOpen(false);
       setEditing(null);
       await loadData();
     } catch (e: any) {
-      Toast.show({ type: 'error', text1: 'Payment', text2: e.message || 'Unable to update payment', position: 'top' });
+      if (!e?.isAuthError) {
+        Toast.show({ type: 'error', text1: 'Payment', text2: e.response?.data?.error || e.message || 'Unable to update payment', position: 'top' });
+      }
     } finally {
       setEditSaving(false);
     }
@@ -218,19 +199,9 @@ export default function MasterPaymentsPage() {
 
   const exportCsv = async () => {
     try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) throw new Error('Missing session');
-      const url = `${backendUrl}/api/master-admin/payments/export`;
-
       if (Platform.OS === 'web') {
-        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
-          throw new Error(json?.error || 'Export failed');
-        }
-        const text = await res.text();
-        const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+        const res = await api.get('/master-admin/payments/export', { responseType: 'text' });
+        const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = blobUrl;
@@ -240,37 +211,33 @@ export default function MasterPaymentsPage() {
         a.remove();
         URL.revokeObjectURL(blobUrl);
       } else {
+        const url = `${backendUrl}/api/master-admin/payments/export`;
         await Linking.openURL(url);
       }
 
       Toast.show({ type: 'success', text1: 'Export', text2: 'Payments CSV exported', position: 'top' });
     } catch (e: any) {
-      Toast.show({ type: 'error', text1: 'Export', text2: e.message || 'CSV export failed', position: 'top' });
+      if (!e?.isAuthError) {
+        Toast.show({ type: 'error', text1: 'Export', text2: e.response?.data?.error || e.message || 'CSV export failed', position: 'top' });
+      }
     }
   };
 
   const openReceipt = async (paymentId: string) => {
     try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) throw new Error('Missing session');
-
-      const url = `${backendUrl}/api/master-admin/payments/${encodeURIComponent(paymentId)}/receipt`;
       if (Platform.OS === 'web') {
-        const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload?.error || 'Failed to open receipt');
-        }
-        const html = await response.text();
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const res = await api.get(`/master-admin/payments/${encodeURIComponent(paymentId)}/receipt`, { responseType: 'text' });
+        const blob = new Blob([res.data], { type: 'text/html;charset=utf-8' });
         const blobUrl = URL.createObjectURL(blob);
         window.open(blobUrl, '_blank', 'noopener,noreferrer');
       } else {
+        const url = `${backendUrl}/api/master-admin/payments/${encodeURIComponent(paymentId)}/receipt`;
         await Linking.openURL(url);
       }
     } catch (e: any) {
-      Toast.show({ type: 'error', text1: 'Receipt', text2: e.message || 'Unable to open receipt', position: 'top' });
+      if (!e?.isAuthError) {
+        Toast.show({ type: 'error', text1: 'Receipt', text2: e.response?.data?.error || e.message || 'Unable to open receipt', position: 'top' });
+      }
     }
   };
 

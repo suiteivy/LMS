@@ -21,7 +21,7 @@ import { supabase } from '@/libs/supabase';
 
 import { DatePicker } from '@/components/common/DatePicker';
 import { formatCredentialExpiry } from '@/utils/formatExpiry';
-import { getBackendRootUrl } from '@/utils/backendUrl';
+import { api } from '@/services/api';
 
 type Institution = {
   id: string;
@@ -225,35 +225,32 @@ export default function MasterInstitutionsPage() {
     });
   }, [institutions, searchQuery, currencies]);
 
-  const backendUrl = useMemo(() => {
-    return getBackendRootUrl();
-  }, []);
-
   const authedFetch = useCallback(async (path: string, init?: RequestInit) => {
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    if (!token) {
-      throw new Error('Session expired. Please sign in again.');
-    }
-    const headers: Record<string, string> = {
-      Accept: 'application/json',
-      ...(init?.headers as Record<string, string>),
-    };
-    headers.Authorization = `Bearer ${token}`;
-    if (init?.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
-
-    const response = await fetch(`${backendUrl}${path}`, { ...init, headers });
-    let payload: any = null;
     try {
-      payload = await response.json();
-    } catch {
-      payload = null;
+      const cleanPath = path.replace(/^\/api/, '');
+      const method = (init?.method || 'GET').toUpperCase();
+      let data = init?.body;
+      if (typeof data === 'string') {
+        try {
+          data = JSON.parse(data);
+        } catch {
+          // keep as string
+        }
+      }
+      const res = await api.request({
+        url: cleanPath,
+        method,
+        data,
+      });
+      return res.data;
+    } catch (err: any) {
+      const message = err.response?.data?.error || err.message || 'Request failed';
+      const error = new Error(message);
+      (error as any).isAuthError = err.isAuthError;
+      (error as any).response = err.response;
+      throw error;
     }
-    if (!response.ok) {
-      throw new Error(payload?.error || `Request failed: ${response.status}`);
-    }
-    return payload;
-  }, [backendUrl]);
+  }, []);
 
   const loadInstitutions = useCallback(async () => {
     try {

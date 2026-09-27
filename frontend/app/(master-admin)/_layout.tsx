@@ -22,20 +22,45 @@ const NAV_ITEMS: NavItem[] = [
     { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(master-admin)/accessibility/settings" },
 ];
 
-const MOBILE_TAB_NAMES = ["accessibility/settings", "index", "institutions", "payments"];
+/**
+ * 4 Primary Mobile Destinations for Master Admin:
+ * 1. Home (index) - Platform KPI overview
+ * 2. Institutions (institutions) - School tenants
+ * 3. Users (users) - Global users directory
+ * 4. Settings (accessibility/settings) - Platform configurations
+ *
+ * NOTE: Notifications bell is located at TOP-RIGHT of the screen header.
+ */
+const PRIMARY_MASTER_ADMIN_TABS = [
+    "index",
+    "institutions",
+    "users",
+    "accessibility/settings",
+];
 
-const EXPLICIT_TAB_NAMES = [...MOBILE_TAB_NAMES, "users", "password-audit"];
+const ALL_MASTER_ADMIN_ROUTES = [
+    "accessibility/settings",
+    "index",
+    "institutions",
+    "loading",
+    "notifications",
+    "password-audit",
+    "payments",
+    "settings",
+    "support",
+    "system-logs",
+    "users",
+];
 
-const ALL_OTHER = NAV_ITEMS
-    .filter(i => !EXPLICIT_TAB_NAMES.includes(i.name))
-    .map(i => i.name);
-
-const HIDDEN = [...ALL_OTHER, "loading", "settings"];
+const HIDDEN_MASTER_ADMIN_ROUTES = ALL_MASTER_ADMIN_ROUTES.filter(
+    (name) => !PRIMARY_MASTER_ADMIN_TABS.includes(name)
+);
 
 function MasterAdminPinnedHeader() {
     const { isDark } = useTheme();
     const { profile } = useAuth();
     const { unreadCount, setShowNotifications } = useNotifications();
+    const insets = useSafeAreaInsets();
     const accountLabel = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Master Admin';
 
     return (
@@ -44,28 +69,28 @@ function MasterAdminPinnedHeader() {
                 backgroundColor: isDark ? '#161B22' : '#F6F8FA',
                 borderBottomWidth: 1,
                 borderBottomColor: isDark ? '#21262D' : '#D0D7DE',
-                paddingHorizontal: 24,
-                paddingTop: 10,
-                paddingBottom: 14,
+                paddingHorizontal: 16,
+                paddingTop: insets.top + 6,
+                paddingBottom: 10,
             }}
         >
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <View style={{ marginRight: 10 }}>
-                        <MaterialCommunityIcons name="shield-crown" size={22} color="#FF6900" />
+                        <MaterialCommunityIcons name="shield-crown" size={22} color="#FF6B00" />
                     </View>
                     <View>
-                        <Text style={{ fontSize: 22, fontWeight: '900', color: isDark ? '#f1f1f1' : '#111827' }}>
+                        <Text style={{ fontSize: 18, fontWeight: '900', color: isDark ? '#f1f1f1' : '#111827' }}>
                             Platform Admin
                         </Text>
                         <Text
                             style={{
-                                fontSize: 11,
+                                fontSize: 10,
                                 fontWeight: '700',
                                 color: isDark ? '#9ca3af' : '#6b7280',
                                 textTransform: 'uppercase',
                                 letterSpacing: 1.1,
-                                marginTop: 2,
+                                marginTop: 1,
                             }}
                         >
                             {accountLabel}
@@ -73,12 +98,13 @@ function MasterAdminPinnedHeader() {
                     </View>
                 </View>
 
+                {/* Top-Right Notification Bell */}
                 <TouchableOpacity
                     onPress={() => setShowNotifications(true)}
                     style={{
                         width: 36,
                         height: 36,
-                        borderRadius: 10,
+                        borderRadius: 18,
                         borderWidth: 1,
                         borderColor: isDark ? '#21262D' : '#D0D7DE',
                         backgroundColor: isDark ? '#111827' : '#EAEEF2',
@@ -100,7 +126,7 @@ function MasterAdminPinnedHeader() {
                                 minWidth: 16,
                                 height: 16,
                                 borderRadius: 8,
-                                backgroundColor: '#ef4444',
+                                backgroundColor: '#FF6B00',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 paddingHorizontal: 3,
@@ -123,6 +149,8 @@ function MasterAdminTabs() {
     const segments = useSegments();
     const hideGlobalHeader = segments[1] === 'accessibility' && segments[2] === 'settings';
 
+    const tabBarHeight = 60 + Math.max(insets.bottom, 8);
+
     return (
         <View style={{ flex: 1 }}>
             {!hideGlobalHeader && (
@@ -131,123 +159,126 @@ function MasterAdminTabs() {
 
             <View style={{ flex: 1 }}>
                 <Tabs
+                    initialRouteName="index"
                     screenOptions={{
                         headerShown: false,
                         tabBarActiveTintColor: "#FF6B00",
                         tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
-                        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+                        tabBarLabelStyle: {
+                            fontSize: 10,
+                            fontWeight: "700",
+                            letterSpacing: 0.1,
+                            marginTop: -2,
+                            marginBottom: 4,
+                        },
                         tabBarStyle: {
-                            backgroundColor: isDark ? '#0F0B2E' : "#ffffff",
+                            backgroundColor: isDark ? '#161B22' : "#ffffff",
                             borderTopWidth: 1,
                             borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
-                            height: 56 + insets.bottom,
-                            paddingBottom: insets.bottom || 6,
-                            paddingTop: 6,
-                            paddingHorizontal: 40,
-                            justifyContent: "center",
-                            gap: 32,
-                            boxShadow: [{
-                                offsetX: 0,
-                                offsetY: -4,
-                                blurRadius: 3,
-                                color: 'rgba(0, 0, 0, 0.1)',
-                            }],
+                            height: tabBarHeight,
+                            paddingBottom: Math.max(insets.bottom, 8),
+                            paddingTop: 8,
+                            paddingHorizontal: 8,
+                            elevation: 10,
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: -4 },
+                            shadowOpacity: 0.1,
+                            shadowRadius: 6,
                         },
                         sceneStyle: { backgroundColor: isDark ? '#0F0B2E' : "#f9fafb" },
                     }}
                 >
-            <Tabs.Screen
-                name="accessibility/settings"
-                options={{
-                    title: "Accessibility",
-                    tabBarIcon: ({ size, color }) => {
-                        const Icon = Settings as any;
-                        return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-                    },
-                }}
-            />
+                    {/* 1. Home Dashboard */}
+                    <Tabs.Screen
+                        name="index"
+                        options={{
+                            title: "Home",
+                            tabBarIcon: ({ color, focused }) => {
+                                const Icon = LayoutDashboard as any;
+                                return (
+                                    <View style={{ alignItems: "center", justifyContent: "center" }}>
+                                        <Icon
+                                            size={22}
+                                            color={focused ? "#FF6B00" : color}
+                                            strokeWidth={focused ? 2.5 : 2}
+                                        />
+                                    </View>
+                                );
+                            },
+                        }}
+                    />
 
-            <Tabs.Screen
-                name="settings"
-                options={{ href: null }}
-            />
+                    {/* 2. Institutions */}
+                    <Tabs.Screen
+                        name="institutions"
+                        options={{
+                            title: "Institutions",
+                            tabBarIcon: ({ color, focused }) => {
+                                const Icon = Building2 as any;
+                                return (
+                                    <View style={{ alignItems: "center", justifyContent: "center" }}>
+                                        <Icon
+                                            size={22}
+                                            color={focused ? "#FF6B00" : color}
+                                            strokeWidth={focused ? 2.5 : 2}
+                                        />
+                                    </View>
+                                );
+                            },
+                        }}
+                    />
 
-            <Tabs.Screen
-                name="index"
-                options={{
-                    title: "Home",
-                    tabBarIcon: ({ color, focused }) => {
-                        const Icon = LayoutDashboard as any;
-                        return (
-                            <View style={{
-                                width: focused ? 48 : 28,
-                                height: focused ? 48 : 28,
-                                borderRadius: focused ? 24 : 6,
-                                backgroundColor: focused ? "#FF6B00" : "transparent",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                marginTop: focused ? -14 : 0,
-                                shadowOpacity: focused ? 0.35 : 0,
-                                elevation: focused ? 6 : 0,
-                                boxShadow: focused ? [{
-                                    offsetX: 0,
-                                    offsetY: 4,
-                                    blurRadius: 8,
-                                    color: 'rgba(255, 107, 0, 0.35)',
-                                }] : undefined,
-                            }}>
-                                <Icon
-                                    size={focused ? 22 : 20}
-                                    color={focused ? "#ffffff" : color}
-                                    strokeWidth={2}
-                                />
-                            </View>
-                        );
-                    },
-                }}
-            />
+                    {/* 3. Users */}
+                    <Tabs.Screen
+                        name="users"
+                        options={{
+                            title: "Users",
+                            tabBarIcon: ({ color, focused }) => {
+                                const Icon = Users as any;
+                                return (
+                                    <View style={{ alignItems: "center", justifyContent: "center" }}>
+                                        <Icon
+                                            size={22}
+                                            color={focused ? "#FF6B00" : color}
+                                            strokeWidth={focused ? 2.5 : 2}
+                                        />
+                                    </View>
+                                );
+                            },
+                        }}
+                    />
 
-            <Tabs.Screen
-                name="institutions"
-                options={{
-                    title: "Institutions",
-                    tabBarIcon: ({ size, color }) => {
-                        const Icon = Building2 as any;
-                        return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-                    },
-                }}
-            />
-            
-            <Tabs.Screen
-                name="payments"
-                options={{
-                    title: "Payments",
-                    tabBarIcon: ({ size, color }) => {
-                        const Icon = CreditCard as any;
-                        return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-                    },
-                }}
-            />
+                    {/* 4. Settings */}
+                    <Tabs.Screen
+                        name="accessibility/settings"
+                        options={{
+                            title: "Settings",
+                            tabBarIcon: ({ color, focused }) => {
+                                const Icon = Settings as any;
+                                return (
+                                    <View style={{ alignItems: "center", justifyContent: "center" }}>
+                                        <Icon
+                                            size={22}
+                                            color={focused ? "#FF6B00" : color}
+                                            strokeWidth={focused ? 2.5 : 2}
+                                        />
+                                    </View>
+                                );
+                            },
+                        }}
+                    />
 
-            <Tabs.Screen
-                name="users"
-                options={{
-                    title: "Users",
-                    tabBarIcon: ({ size, color }) => {
-                        const Icon = Users as any;
-                        return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-                    },
-                }}
-            />
-
-            <Tabs.Screen
-                name="password-audit"
-                options={{ href: null }}
-            />
-
-            {HIDDEN.map((name) => (
-                <Tabs.Screen key={name} name={name} options={{ href: null }} />
-            ))}
+                    {/* Exhaustive Hidden Sub-Routes */}
+                    {HIDDEN_MASTER_ADMIN_ROUTES.map((name) => (
+                        <Tabs.Screen
+                            key={name}
+                            name={name}
+                            options={{
+                                href: null,
+                                headerShown: false,
+                            }}
+                        />
+                    ))}
                 </Tabs>
             </View>
         </View>
@@ -259,39 +290,23 @@ function MasterAdminSidebar() {
     const hideGlobalHeader = segments[1] === 'accessibility' && segments[2] === 'settings';
 
     return (
-        <WebSidebar items={NAV_ITEMS} basePath="(master-admin)" role="Master Admin">
-            <View style={{ flex: 1 }}>
-                {!hideGlobalHeader && (
-                    <MasterAdminPinnedHeader />
-                )}
-                <View style={{ flex: 1 }}>
-                    <Slot />
-                </View>
-            </View>
-        </WebSidebar>
+        <View style={{ flex: 1 }}>
+            {!hideGlobalHeader && (
+                <MasterAdminPinnedHeader />
+            )}
+            <WebSidebar items={NAV_ITEMS} basePath="(master-admin)" role="Master Admin">
+                <Slot />
+            </WebSidebar>
+        </View>
     );
 }
 
 export default function MasterAdminLayout() {
-    const { session, isInitializing, loading, isPlatformAdmin } = useAuth();
     const { width } = useWindowDimensions();
-    // Tablet (iPad/Android) at >= 768px and Web both get sidebar layout
     const useWebLayout = width >= 768;
 
-    // If loading or initializing, don't flash content
-    if (isInitializing || loading) {
-        return null;
-    }
-
-    // Protection: must be logged in and either a master admin or a platform admin
-    const isAllowed = session && isPlatformAdmin;
-
-    if (!isAllowed) {
-        return <Redirect href="/(auth)/signIn" />;
-    }
-
     return (
-        <AuthGuard allowedRoles={['admin', 'master_admin']}>
+        <AuthGuard allowedRoles={['master_admin']}>
             {useWebLayout ? <MasterAdminSidebar /> : <MasterAdminTabs />}
         </AuthGuard>
     );

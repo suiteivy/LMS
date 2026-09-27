@@ -1,20 +1,25 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { Platform } from "react-native";
-import { getApiBaseUrl } from "@/utils/backendUrl";
+import { getApiBaseUrl, getFallbackApiBaseUrl, getApiDiagnostics } from "@/utils/backendUrl";
 import { assertNoDoubleApiSegment } from "@/utils/validateApiUrl";
 
 import { showError, showWarning, showInfo } from "../utils/toast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getActiveTeacherRoleMode } from "@/services/teacherRoleModeState";
 
-// Extend Axios request config to support a per-request flag that suppresses
-// the global error toast (useful for background fetches that have silent fallbacks).
+import { getActiveRoute } from "@/utils/activeRouteTracker";
+import { getSigningOutState, setSigningOutState as setGlobalSigningOutState } from "@/utils/sessionState";
+
+// Extend Axios request config to support per-request flags
 declare module 'axios' {
   interface AxiosRequestConfig {
     skipErrorToast?: boolean;
+    skipSignOut?: boolean;
     retryable?: boolean;
     skipErrorLog?: boolean;
     _isRetry?: boolean;
+    _hostFailoverAttempted?: boolean;
+    _originRoute?: string | null;
   }
 }
 
@@ -65,20 +70,23 @@ export const retryLastRequest = async () => {
 };
 
 const baseURL = getApiBaseUrl();
+if (__DEV__) {
+  console.log('[API Init] URL Diagnostics:', JSON.stringify(getApiDiagnostics()));
+}
 
 let latestAccessToken: string | null = null;
 let authContextReady = false;
-let isSigningOut = false;
 
+export { getSigningOutState };
 export const setSigningOutState = (signingOut: boolean) => {
-  isSigningOut = signingOut;
+  setGlobalSigningOutState(signingOut);
   if (signingOut) {
     latestAccessToken = null;
   }
 };
 
 const setLatestAccessToken = (token?: string | null) => {
-  if (isSigningOut) {
+  if (getSigningOutState()) {
     latestAccessToken = null;
     return;
   }
@@ -87,7 +95,7 @@ const setLatestAccessToken = (token?: string | null) => {
 
 supabase.auth.getSession()
   .then(({ data }) => {
-    if (!isSigningOut) {
+    if (!getSigningOutState()) {
       setLatestAccessToken(data?.session?.access_token || null);
     }
     authContextReady = true;
@@ -97,7 +105,7 @@ supabase.auth.getSession()
   });
 
 supabase.auth.onAuthStateChange((_event, session) => {
-  if (isSigningOut) {
+  if (getSigningOutState()) {
     setLatestAccessToken(null);
     return;
   }
@@ -257,12 +265,17 @@ api.interceptors.request.use(
     const fullUrl = `${config.baseURL || ''}${config.url || ''}`;
     assertNoDoubleApiSegment(fullUrl);
 
+    // Tag request with current active route if not already specified
+    if (!config._originRoute) {
+      config._originRoute = getActiveRoute();
+    }
+
     const startTime = Date.now();
     const requestId = Math.random().toString(36).substring(7);
     
     
     try {
-      if (isSigningOut && !isLikelyPublicRoute(config.url)) {
+      if (getSigningOutState() && !isLikelyPublicRoute(config.url)) {
         const unauthError: any = new Error('No authentication token available');
         unauthError.isAuthError = true;
         unauthError.config = config;
@@ -366,14 +379,14 @@ api.interceptors.response.use(
           title = "Unauthorized";
           message = data?.error || data?.message || "Please sign in again.";
 
-          const skipSignOut = (error.config as InternalAxiosRequestConfig & { skipErrorToast?: boolean })?.skipErrorToast;
+          const skipSignOut = (error.config as InternalAxiosRequestConfig & { skipSignOut?: boolean })?.skipSignOut === true;
           const errorCode = data?.code;
-          const shouldForceSignOut = ['SESSION_IDLE_TIMEOUT', 'SESSION_TIMEOUT', 'SESSION_REVOKED'].includes(errorCode);
+          const isHardSessionTimeout = ['SESSION_IDLE_TIMEOUT', 'SESSION_TIMEOUT', 'SESSION_REVOKED'].includes(errorCode);
 
           // If standard 401 occurred (e.g. token expired) and request hasn't been retried yet,
           // attempt a single token refresh and retry before concluding unauthorized.
           const originalConfig = error.config as (InternalAxiosRequestConfig & { _isRetry?: boolean }) | undefined;
-          if (originalConfig && !originalConfig._isRetry && !shouldForceSignOut && !isSigningOut && !isLikelyPublicRoute(originalConfig.url)) {
+          if (originalConfig && !originalConfig._isRetry && !isHardSessionTimeout && !getSigningOutState() && !isLikelyPublicRoute(originalConfig.url)) {
             originalConfig._isRetry = true;
             try {
               const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
@@ -388,24 +401,22 @@ api.interceptors.response.use(
             }
           }
 
-          let logoutReason = LogoutReason.UNKNOWN;
+          let logoutReason = LogoutReason.TOKEN_EXPIRED;
           if (errorCode === 'SESSION_IDLE_TIMEOUT') {
             logoutReason = LogoutReason.INACTIVITY_TIMEOUT;
-          } else if (errorCode === 'SESSION_TIMEOUT' || errorCode === 'SESSION_REVOKED') {
+          } else if (errorCode === 'SESSION_TIMEOUT') {
             logoutReason = LogoutReason.SESSION_TIMEOUT;
-          } else if (error.response?.status === 401) {
-            logoutReason = LogoutReason.TOKEN_EXPIRED;
+          } else if (errorCode === 'SESSION_REVOKED') {
+            logoutReason = LogoutReason.REVOKED_BY_OTHER_DEVICE;
           }
 
-          if (!skipSignOut && shouldForceSignOut && error.config?.headers?.Authorization) {
-            console.warn(`[API] 401 ${errorCode} received. Checking session before triggering safeSignOut.`);
-            supabase.auth.getSession().then(({ data: { session } }) => {
-              if (session) {
-                safeSignOut('local', logoutReason, true).catch(e => console.warn("safeSignOut error:", e));
-              }
-            });
+          // If the route was authenticated and refresh failed or server explicitly invalidated the session,
+          // trigger safeSignOut so the frontend session is cleared and user is gracefully returned to login.
+          if (!skipSignOut && !getSigningOutState() && error.config?.headers?.Authorization && !isLikelyPublicRoute(error.config?.url)) {
+            console.warn(`[API] 401 ${errorCode || 'UNAUTHORIZED'} received. Triggering safeSignOut with reason: ${logoutReason}`);
+            safeSignOut('local', logoutReason, false).catch(e => console.warn("safeSignOut error:", e));
           }
-          return Promise.reject({ ...error, isAuthError: true });
+          return Promise.reject({ ...error, isAuthError: true, title, message });
         }
         case 403:
           if (data?.code === 'ACCOUNT_LOCKED') {
@@ -458,6 +469,34 @@ api.interceptors.response.use(
           break;
       }
     } else if (error.request) {
+      // Check for automatic host failover on native platforms (e.g. 127.0.0.1 <-> 192.168.100.83)
+      const originalConfig = error.config as (InternalAxiosRequestConfig & { _hostFailoverAttempted?: boolean }) | undefined;
+      const fallbackUrl = getFallbackApiBaseUrl();
+      const currentBaseUrl = api.defaults.baseURL || getApiBaseUrl();
+
+      if (
+        Platform.OS !== 'web' &&
+        __DEV__ &&
+        originalConfig &&
+        !originalConfig._hostFailoverAttempted &&
+        fallbackUrl !== currentBaseUrl
+      ) {
+        originalConfig._hostFailoverAttempted = true;
+        originalConfig.baseURL = fallbackUrl;
+        console.warn(`[API] Network error on ${currentBaseUrl}. Retrying request with failover host: ${fallbackUrl}`);
+
+        try {
+          const res = await api.request(originalConfig);
+          // If failover succeeded, switch default baseURL to the working host
+          api.defaults.baseURL = fallbackUrl;
+          console.log(`[API] Host failover succeeded! Default baseURL permanently updated to: ${fallbackUrl}`);
+          _setOffline(false);
+          return res;
+        } catch (failoverError) {
+          console.warn(`[API] Failover host ${fallbackUrl} also unreachable.`);
+        }
+      }
+
       // Network / no response
       _setOffline(true);
 
@@ -499,14 +538,22 @@ api.interceptors.response.use(
       console.error(`[API Error] ${method} ${url} (${error.response?.status || 'Network'}):`, message);
     }
 
-    // Only show toast if it's not a "cancelled" request, NOT a 401 (handled by AuthContext),
-    // and the caller hasn't opted out via `skipErrorToast: true`.
+    const originRoute = (error.config as any)?._originRoute;
+    const activeRoute = getActiveRoute();
+    const isOutOfScope = Boolean(originRoute && activeRoute && originRoute !== activeRoute);
+
+    // Only show toast if it's not a "cancelled" request, NOT a 401 (handled by safeSignOut),
+    // caller hasn't opted out via `skipErrorToast: true`, route is in scope, and not signing out.
     const skipToast = (error.config as InternalAxiosRequestConfig & { skipErrorToast?: boolean })?.skipErrorToast;
     const now = Date.now();
     const isRateLimited = error.response?.status === 429;
-    const canShowRateLimitToast = !isRateLimited || (now - _lastRateLimitToast > RATE_LIMIT_TOAST_COOLDOWN);
+    const isCancelled = axios.isCancel(error) ||
+      error.name === 'CanceledError' ||
+      error.code === 'ERR_CANCELED' ||
+      /cancel|abort/i.test(error.message || '');
+    const canShowRateLimitToast = !isRateLimited || (now - _lastRateLimitToast >= RATE_LIMIT_TOAST_COOLDOWN);
 
-    if (error.message !== 'canceled' && error.response?.status !== 401 && !skipToast && canShowRateLimitToast) {
+    if (!isCancelled && error.response?.status !== 401 && !skipToast && canShowRateLimitToast && !isOutOfScope && !getSigningOutState()) {
       const errorCode = (error.response?.data as any)?.code;
       const toastOptions = isRateLimited
         ? { code: 'RATE_LIMIT_EXCEEDED' }
@@ -531,7 +578,10 @@ api.interceptors.response.use(
       ...error,
       message,
       title,
+      isOutOfScope,
       safeData: null // UI can check this if they want to avoid crashes
     });
   }
 );
+
+export default api;

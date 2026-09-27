@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
+    "reverse-ports": "adb reverse tcp:8081 tcp:8081 && adb reverse tcp:4001 tcp:4001",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",

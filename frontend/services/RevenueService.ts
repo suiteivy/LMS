@@ -51,10 +51,11 @@ export class RevenueService {
     return isPermissionDeniedError(error);
   }
 
-  static async getOverview(): Promise<RevenueOverview> {
+  static async getOverview(signal?: AbortSignal): Promise<RevenueOverview> {
     const response = await api.get('/finance/revenue/overview', {
       skipErrorToast: true,
       skipErrorLog: true,
+      signal,
     });
     return response.data;
   }

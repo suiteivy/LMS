@@ -237,6 +237,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const userRef = useRef<User | null>(null);
   const isInitializingRef = useRef(true);
   const isNavReadyRef = useRef(false);
+  useEffect(() => { currentSessionRef.current = session; }, [session]);
   useEffect(() => { isDemoRef.current = isDemo; }, [isDemo]);
   useEffect(() => { profileRef.current = profile; }, [profile]);
   useEffect(() => { userRef.current = user; }, [user]);
@@ -288,26 +289,70 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  /** Start the 10-second heartbeat that resets idle timer + pings backend. */
+  const recordUserActivity = useCallback(() => {
+    lastActive.current = Date.now();
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const handleUserEvent = () => recordUserActivity();
+      window.addEventListener('pointerdown', handleUserEvent, { passive: true });
+      window.addEventListener('keydown', handleUserEvent, { passive: true });
+      window.addEventListener('touchstart', handleUserEvent, { passive: true });
+      window.addEventListener('scroll', handleUserEvent, { passive: true });
+      return () => {
+        window.removeEventListener('pointerdown', handleUserEvent);
+        window.removeEventListener('keydown', handleUserEvent);
+        window.removeEventListener('touchstart', handleUserEvent);
+        window.removeEventListener('scroll', handleUserEvent);
+      };
+    }
+  }, [recordUserActivity]);
+
+  /** Start the 10-second heartbeat that monitors idle timeout + pings backend. */
   const startHeartbeat = useCallback(() => {
     clearHeartbeat();
-    heartbeatRef.current = setInterval(() => {
-      // Reset idle timeout on any user activity
-      if (idleTimeoutRef.current) {
-        clearTimeout(idleTimeoutRef.current);
-      }
-      idleTimeoutRef.current = setTimeout(async () => {
-        console.warn("[AuthContext] Local idle timeout triggered (30 minutes inactivity)");
-        await handleLogout(false, LogoutReason.INACTIVITY_TIMEOUT);
-      }, 30 * 60 * 1000);
+    const isMasterAdmin = profileRef.current?.role === 'master_admin' || !!(profileRef.current as any)?.platform_admins?.[0];
+    const maxIdleMs = (isDemoRef.current || isMasterAdmin)
+      ? 15 * 60 * 1000
+      : 30 * 60 * 1000;
 
-      // Throttled keep-alive ping to backend (at most once every 1 minute)
+    heartbeatRef.current = setInterval(async () => {
       const now = Date.now();
-      if (now - lastPingTime.current > 60000) {
+      const idleTime = now - lastActive.current;
+
+      // 1. Check genuine user idle timeout (only genuine user interactions reset lastActive)
+      if (idleTime >= maxIdleMs) {
+        console.warn(`[AuthContext] Local idle timeout triggered (${maxIdleMs / 60000} minutes inactivity)`);
+        clearHeartbeat();
+        await handleLogout(false, LogoutReason.INACTIVITY_TIMEOUT);
+        return;
+      }
+
+      // 2. Throttled keep-alive ping to backend (at most once every 1 minute)
+      // Only ping if user was active recently (within last 2 minutes) to ensure backend aligns
+      if (now - lastPingTime.current > 60000 && idleTime < 2 * 60 * 1000) {
         lastPingTime.current = now;
         const currentToken = currentSessionRef.current?.access_token;
         if (currentToken && !isTokenExpired(currentToken)) {
-          api.post('/auth/ping', {}, { skipErrorToast: true, skipErrorLog: true, timeout: 6000 }).catch(() => {});
+          try {
+            await api.post('/auth/ping', {}, { skipErrorToast: true, skipErrorLog: true, timeout: 6000 });
+          } catch (pingErr: any) {
+            if (pingErr?.response?.status === 401 || pingErr?.isAuthError) {
+              const errorCode = pingErr?.response?.data?.code;
+              let reason = LogoutReason.TOKEN_EXPIRED;
+              if (errorCode === 'SESSION_IDLE_TIMEOUT') {
+                reason = LogoutReason.INACTIVITY_TIMEOUT;
+              } else if (errorCode === 'SESSION_TIMEOUT') {
+                reason = LogoutReason.SESSION_TIMEOUT;
+              } else if (errorCode === 'SESSION_REVOKED') {
+                reason = LogoutReason.REVOKED_BY_OTHER_DEVICE;
+              }
+              console.warn(`[AuthContext] /auth/ping returned 401 (${errorCode || 'UNAUTHORIZED'}). Logging out.`);
+              clearHeartbeat();
+              await handleLogout(false, reason);
+            }
+          }
         }
       }
     }, 10 * 1000); // every 10 seconds
@@ -513,34 +558,93 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsSessionExpiring(false);
   };
 
-  const resetSessionTimer = async () => {
-    if (!session) return;
-    // Start the heartbeat interval which handles idle timeout + backend ping
-    if (isDemoRef.current || profileRef.current?.role === 'master_admin') {
-      clearHeartbeat();
-      heartbeatRef.current = setInterval(() => {
-        if (idleTimeoutRef.current) {
-          clearTimeout(idleTimeoutRef.current);
-        }
-        idleTimeoutRef.current = setTimeout(async () => {
-          console.warn("[AuthContext] Local idle timeout triggered (15 minutes inactivity)");
-          await handleLogout(false, LogoutReason.INACTIVITY_TIMEOUT);
-        }, 15 * 60 * 1000);
+  const resetSessionTimer = useCallback(async () => {
+    if (!currentSessionRef.current) return;
+    recordUserActivity();
+    startHeartbeat();
+  }, [recordUserActivity, startHeartbeat]);
 
-        const now = Date.now();
-        if (now - lastPingTime.current > 60000) {
-          lastPingTime.current = now;
-          const currentToken = currentSessionRef.current?.access_token;
-          if (currentToken && !isTokenExpired(currentToken)) {
-            api.post('/auth/ping', {}, { skipErrorToast: true, skipErrorLog: true, timeout: 6000 }).catch(() => {});
-          }
-        }
-      }, 10 * 1000);
-      return;
+  const checkSessionValidity = useCallback(async () => {
+    // If not authenticated or already logging out, nothing to validate
+    if (isManualLogout.current) return;
+    const currentSession = currentSessionRef.current;
+    if (!currentSession) return;
+
+    // 1. Check demo expiration
+    if (isDemoRef.current) {
+      const expiry = await AsyncStorage.getItem('demo_expiry').catch(() => null);
+      if (expiry && Date.now() > parseInt(expiry, 10)) {
+        console.warn('[AuthContext] Demo session expired while in background');
+        await exitDemoSession();
+        return;
+      }
     }
 
-    startHeartbeat();
-  };
+    // 2. Check absolute session timeout
+    const isMasterAdmin = profileRef.current?.role === 'master_admin' || !!(profileRef.current as any)?.platform_admins?.[0];
+    const totalDurationMs = (isDemoRef.current || isMasterAdmin) ? 15 * 60 * 1000 : 10 * 60 * 60 * 1000;
+    const persistedStart = await AsyncStorage.getItem('session_start_time').catch(() => null);
+    if (persistedStart) {
+      const startTime = parseInt(persistedStart, 10);
+      if (Date.now() - startTime > totalDurationMs) {
+        console.warn('[AuthContext] Absolute session timeout expired while in background');
+        await handleLogout(false, LogoutReason.SESSION_TIMEOUT);
+        return;
+      }
+    }
+
+    // 3. Proactively verify session with Supabase & Backend
+    try {
+      const { data: { session: freshSession }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !freshSession) {
+        console.warn('[AuthContext] Supabase session invalid on app resume');
+        await handleLogout(false, LogoutReason.TOKEN_EXPIRED);
+        return;
+      }
+
+      // If token is expired or close to expiry (<60s), refresh proactively
+      if (isTokenExpired(freshSession.access_token, 60)) {
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshData?.session) {
+          console.warn('[AuthContext] Token refresh failed on app resume');
+          await handleLogout(false, LogoutReason.TOKEN_EXPIRED);
+          return;
+        }
+      }
+
+      // 4. Ping backend to verify server-side session isn't revoked or idle-timed-out
+      try {
+        await api.post('/auth/ping', {}, {
+          skipErrorToast: true,
+          skipErrorLog: true,
+          timeout: 5000,
+        });
+        // If ping succeeds, reset local session idle timer
+        await resetSessionTimer();
+      } catch (pingErr: any) {
+        const pingStatus = pingErr?.response?.status;
+        const pingCode = pingErr?.response?.data?.code;
+        if (pingStatus === 401) {
+          console.warn(`[AuthContext] Backend ping returned 401 ${pingCode} on app resume`);
+          let reason = LogoutReason.SESSION_TIMEOUT;
+          if (pingCode === 'SESSION_IDLE_TIMEOUT') {
+            reason = LogoutReason.INACTIVITY_TIMEOUT;
+          } else if (pingCode === 'SESSION_REVOKED') {
+            reason = LogoutReason.REVOKED_BY_OTHER_DEVICE;
+          }
+          await handleLogout(false, reason);
+          return;
+        }
+      }
+    } catch (err: any) {
+      console.warn('[AuthContext] Error in checkSessionValidity:', err?.message || err);
+    }
+  }, [resetSessionTimer, handleLogout, exitDemoSession]);
+
+  const checkSessionValidityRef = useRef(checkSessionValidity);
+  useEffect(() => {
+    checkSessionValidityRef.current = checkSessionValidity;
+  }, [checkSessionValidity]);
 
   const startTimeoutTimer = async (isDemoSession?: boolean) => {
     clearTimer();
@@ -1138,7 +1242,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               // Persist reason then clear state — safeSignOut will be a no-op since
               // Supabase already invalidated the session on the server side.
               AsyncStorage.setItem('logout_reason', LogoutReason.REVOKED_BY_OTHER_DEVICE).then(() => {
-                handleLogout(true, LogoutReason.REVOKED_BY_OTHER_DEVICE);
+                handleLogout(false, LogoutReason.REVOKED_BY_OTHER_DEVICE);
               });
             }
           })
@@ -1215,11 +1319,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const appStateSubscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        await resetSessionTimer();
+        await checkSessionValidityRef.current?.();
         await refreshMaintenanceStatus();
       }
       appState.current = nextAppState;
     });
+
+    let visibilityHandler: (() => void) | null = null;
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      visibilityHandler = () => {
+        if (document.visibilityState === 'visible') {
+          checkSessionValidityRef.current?.();
+        }
+      };
+      document.addEventListener('visibilitychange', visibilityHandler);
+    }
 
     return () => {
       subscription.unsubscribe()
@@ -1228,6 +1342,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         realtimeChannelRef.current = null;
       }
       appStateSubscription.remove()
+      if (visibilityHandler && typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', visibilityHandler);
+      }
       clearTimer()
       clearHeartbeat()
       clearTimeout(watchdog)

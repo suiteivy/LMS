@@ -51,16 +51,41 @@ class ConfigCache {
   }
 
   invalidateSettings(institutionId) {
+    if (!institutionId) return;
+    this.invalidate(`${institutionId}:settings*`);
+    this.invalidate(`${institutionId}:institution*`);
     this.invalidate(`${institutionId}:settings`);
   }
 
   invalidateGradingScales(institutionId) {
+    if (!institutionId) return;
+    this.invalidate(`${institutionId}:grading_scales*`);
     this.invalidate(`${institutionId}:grading_scales`);
   }
 
   invalidateTerms(institutionId) {
+    if (!institutionId) return;
+    this.invalidate(`${institutionId}:terms*`);
+    this.invalidate(`${institutionId}:active_term*`);
+    this.invalidate(`${institutionId}:academic_years*`);
     this.invalidate(`${institutionId}:terms`);
     this.invalidate(`${institutionId}:active_term`);
+  }
+
+  invalidateCurrencies() {
+    this.invalidate('global:currencies*');
+    this.invalidate('global:currencies');
+  }
+
+  invalidateSubjects(institutionId) {
+    if (!institutionId) return;
+    this.invalidate(`${institutionId}:subjects*`);
+  }
+
+  invalidateClassDomain(institutionId) {
+    if (!institutionId) return;
+    this.invalidate(`${institutionId}:class_domain*`);
+    this.invalidate(`${institutionId}:class_options*`);
   }
 
   clear() {

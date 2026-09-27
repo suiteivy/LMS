@@ -1,15 +1,160 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { supabase } from "@/libs/supabase";
+import { api } from "@/services/api";
 import { formatDistanceToNow } from 'date-fns';
-import { Activity, AlertCircle, Bell, CheckCircle, Clock, Info, Server, Users } from "lucide-react-native";
-import React from "react";
-import { ScrollView, Text, View } from "react-native";
+import {
+    Activity,
+    AlertCircle,
+    Bell,
+    BookOpen,
+    Calendar,
+    CheckCircle,
+    GraduationCap,
+    Info,
+    Laptop,
+    Users
+} from "lucide-react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { RefreshControl, ScrollView, Text, View } from "react-native";
 
 export default function AdminOverview() {
     const { profile } = useAuth();
     const { isDark } = useTheme();
-    const { notifications } = useNotifications();
+    const { notifications, unreadCount } = useNotifications();
+
+    // Live operational metrics
+    const [enrolledStudents, setEnrolledStudents] = useState<string>("Loading...");
+    const [teachingStaff, setTeachingStaff] = useState<string>("Loading...");
+    const [activeClasses, setActiveClasses] = useState<string>("Loading...");
+    const [activeTerm, setActiveTerm] = useState<string>("Loading...");
+
+    // Live system & connectivity metrics
+    const [healthStatus, setHealthStatus] = useState<string>("Checking...");
+    const [isHealthy, setIsHealthy] = useState<boolean>(true);
+    const [activeSessions, setActiveSessions] = useState<string>("Loading...");
+    const [refreshing, setRefreshing] = useState<boolean>(false);
+
+    const isMountedRef = useRef(true);
+
+    const fetchMetrics = useCallback(async () => {
+        const startTime = Date.now();
+
+        // 1. Live API connectivity & round-trip latency
+        try {
+            const healthRes = await api.get('/health', { timeout: 8000, skipErrorToast: true });
+            const roundTrip = Date.now() - startTime;
+            if (isMountedRef.current) {
+                if (healthRes.data?.status === 'ok') {
+                    setHealthStatus(`Online (${roundTrip}ms)`);
+                    setIsHealthy(true);
+                } else {
+                    setHealthStatus("Degraded");
+                    setIsHealthy(false);
+                }
+            }
+        } catch {
+            if (isMountedRef.current) {
+                setHealthStatus("Offline");
+                setIsHealthy(false);
+            }
+        }
+
+        // 2. Active Academic Term (date-driven resolution)
+        try {
+            const termRes = await api.get('/academic-years/active-term', { timeout: 8000, skipErrorToast: true });
+            if (isMountedRef.current) {
+                const termData = termRes.data?.data?.active_term;
+                if (termData?.name) {
+                    const yearName = termData.academic_years?.name;
+                    setActiveTerm(yearName ? `${termData.name} (${yearName})` : termData.name);
+                } else {
+                    setActiveTerm("No Active Term");
+                }
+            }
+        } catch {
+            if (isMountedRef.current) {
+                setActiveTerm("Not Configured");
+            }
+        }
+
+        // 3. Operational Counts: Students, Teachers, Classes, Sessions
+        try {
+            const instId = profile?.institution_id;
+            const isMaster = profile?.role === 'master_admin';
+
+            let studentQ = supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student');
+            let teacherQ = supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'teacher');
+            let classQ = supabase.from('classes').select('*', { count: 'exact', head: true });
+            let sessionQ = supabase.from('user_sessions').select('*', { count: 'exact', head: true }).eq('is_active', true);
+
+            if (!isMaster && instId) {
+                studentQ = studentQ.eq('institution_id', instId);
+                teacherQ = teacherQ.eq('institution_id', instId);
+                classQ = classQ.eq('institution_id', instId);
+            }
+            if (profile?.id && !isMaster) {
+                sessionQ = sessionQ.eq('user_id', profile.id);
+            }
+
+            const [studentsRes, teachersRes, classesRes, sessionsRes] = await Promise.allSettled([
+                studentQ,
+                teacherQ,
+                classQ,
+                sessionQ,
+            ]);
+
+            if (isMountedRef.current) {
+                if (studentsRes.status === 'fulfilled' && !studentsRes.value.error && studentsRes.value.count !== null) {
+                    setEnrolledStudents(`${studentsRes.value.count}`);
+                } else {
+                    setEnrolledStudents("0");
+                }
+
+                if (teachersRes.status === 'fulfilled' && !teachersRes.value.error && teachersRes.value.count !== null) {
+                    setTeachingStaff(`${teachersRes.value.count}`);
+                } else {
+                    setTeachingStaff("0");
+                }
+
+                if (classesRes.status === 'fulfilled' && !classesRes.value.error && classesRes.value.count !== null) {
+                    setActiveClasses(`${classesRes.value.count}`);
+                } else {
+                    setActiveClasses("0");
+                }
+
+                if (sessionsRes.status === 'fulfilled' && !sessionsRes.value.error && sessionsRes.value.count !== null) {
+                    setActiveSessions(`${sessionsRes.value.count}`);
+                } else {
+                    setActiveSessions("1");
+                }
+            }
+        } catch {
+            if (isMountedRef.current) {
+                setEnrolledStudents("—");
+                setTeachingStaff("—");
+                setActiveClasses("—");
+                setActiveSessions("—");
+            }
+        }
+    }, [profile?.id, profile?.institution_id, profile?.role]);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        fetchMetrics();
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, [fetchMetrics]);
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await fetchMetrics();
+        if (isMountedRef.current) {
+            setRefreshing(false);
+        }
+    };
 
     // Show the 5 most recent notifications as system alerts
     const recentAlerts = notifications.slice(0, 5);
@@ -29,6 +174,7 @@ export default function AdminOverview() {
         blue:   { bg: isDark ? "#0c1a3a" : "#eff6ff", text: "#2563eb" },
         purple: { bg: isDark ? "#1a0a2e" : "#faf5ff", text: "#9333ea" },
         orange: { bg: isDark ? "#2a1200" : "#fff7ed", text: "#ea580c" },
+        teal:   { bg: isDark ? "#042f2e" : "#f0fdfa", text: "#0d9488" },
     };
 
     const StatCard = ({
@@ -55,9 +201,8 @@ export default function AdminOverview() {
                     borderColor: tokens.border,
                     flex: 1,
                     minWidth: "45%",
-                    marginBottom: 16,
+                    marginBottom: 12,
                     marginHorizontal: 4,
-                    boxShadow: isDark ? undefined : [{ offsetX: 0, offsetY: 0, blurRadius: 4, color: 'rgba(0, 0, 0, 0.05)' }],
                     shadowOpacity: isDark ? 0 : 0.05,
                     elevation: isDark ? 0 : 2,
                 }}
@@ -83,7 +228,9 @@ export default function AdminOverview() {
                 <Text style={{ color: tokens.textMuted, fontSize: 11, fontWeight: "700", textTransform: "uppercase", marginBottom: 4 }}>
                     {label}
                 </Text>
-                <Text style={{ color: tokens.textPrimary, fontSize: 18, fontWeight: "700" }}>{value}</Text>
+                <Text style={{ color: tokens.textPrimary, fontSize: 18, fontWeight: "700" }} numberOfLines={1}>
+                    {value}
+                </Text>
             </View>
         );
     };
@@ -98,22 +245,86 @@ export default function AdminOverview() {
 
     return (
         <View style={{ flex: 1, backgroundColor: tokens.bg }}>
-            <ScrollView style={{ flex: 1, backgroundColor: tokens.bg }}>
+            <ScrollView
+                style={{ flex: 1, backgroundColor: tokens.bg }}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.textPrimary} />
+                }
+            >
                 <View style={{ padding: 24 }}>
-                    {/* System Health */}
-                    <Text style={{ fontSize: 18, fontWeight: "700", color: tokens.textPrimary, marginBottom: 16, paddingHorizontal: 4 }}>
-                        System Health
-                    </Text>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4, marginBottom: 32 }}>
-                        <StatCard icon={Activity} label="System Status" value="Operational" colorKey="green" status="good" />
-                        <StatCard icon={Server}   label="Server Load"   value="Optimal"      colorKey="blue"   status="good" />
-                        <StatCard icon={Clock}    label="Uptime"        value="99.9%"         colorKey="purple" />
-                        <StatCard icon={Users}    label="Active Sessions" value="1"           colorKey="orange" />
+                    {/* Header */}
+                    <View style={{ marginBottom: 20 }}>
+                        <Text style={{ fontSize: 20, fontWeight: "800", color: tokens.textPrimary, letterSpacing: -0.5 }}>
+                            Institution Overview
+                        </Text>
+                        <Text style={{ fontSize: 12, color: tokens.textSecondary, marginTop: 2 }}>
+                            Live academic &amp; operational metrics
+                        </Text>
                     </View>
 
-                    {/* System Alerts — real data from notifications */}
-                    <Text style={{ fontSize: 18, fontWeight: "700", color: tokens.textPrimary, marginBottom: 16, paddingHorizontal: 4 }}>
-                        System Alerts
+                    {/* Section 1: Academic & Operations */}
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: tokens.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, paddingHorizontal: 4 }}>
+                        Academic &amp; Operations
+                    </Text>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4, marginBottom: 24 }}>
+                        <StatCard
+                            icon={GraduationCap}
+                            label="Enrolled Students"
+                            value={enrolledStudents}
+                            colorKey="blue"
+                        />
+                        <StatCard
+                            icon={Users}
+                            label="Teaching Staff"
+                            value={teachingStaff}
+                            colorKey="purple"
+                        />
+                        <StatCard
+                            icon={BookOpen}
+                            label="Active Classes"
+                            value={activeClasses}
+                            colorKey="teal"
+                        />
+                        <StatCard
+                            icon={Calendar}
+                            label="Current Term"
+                            value={activeTerm}
+                            colorKey="orange"
+                            status={activeTerm !== "No Active Term" && activeTerm !== "Not Configured" ? "good" : "warn"}
+                        />
+                    </View>
+
+                    {/* Section 2: System Health & Security */}
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: tokens.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, paddingHorizontal: 4 }}>
+                        System &amp; Connectivity
+                    </Text>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4, marginBottom: 28 }}>
+                        <StatCard
+                            icon={Activity}
+                            label="API Status"
+                            value={healthStatus}
+                            colorKey={isHealthy ? "green" : "orange"}
+                            status={isHealthy ? "good" : "warn"}
+                        />
+                        <StatCard
+                            icon={Laptop}
+                            label="Active Sessions"
+                            value={activeSessions}
+                            colorKey="blue"
+                            status="good"
+                        />
+                        <StatCard
+                            icon={Bell}
+                            label="Pending Alerts"
+                            value={unreadCount > 0 ? `${unreadCount} Unread` : "0 Unread"}
+                            colorKey={unreadCount > 0 ? "orange" : "green"}
+                            status={unreadCount === 0 ? "good" : "warn"}
+                        />
+                    </View>
+
+                    {/* Section 3: Recent Activity & System Alerts */}
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: tokens.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, paddingHorizontal: 4 }}>
+                        Recent Alerts &amp; Activity
                     </Text>
                     <View
                         style={{
@@ -122,7 +333,6 @@ export default function AdminOverview() {
                             borderWidth: 1,
                             borderColor: tokens.border,
                             padding: 16,
-                            boxShadow: isDark ? undefined : [{ offsetX: 0, offsetY: 0, blurRadius: 4, color: 'rgba(0, 0, 0, 0.05)' }],
                             shadowOpacity: isDark ? 0 : 0.05,
                             elevation: isDark ? 0 : 2,
                         }}
@@ -166,10 +376,11 @@ export default function AdminOverview() {
                         )}
                     </View>
 
-                    {/* Footer */}
+                    {/* Dynamic Footer */}
                     <View style={{ marginTop: 32, alignItems: "center" }}>
                         <Text style={{ color: tokens.textMuted, fontSize: 12, textAlign: "center", lineHeight: 18 }}>
-                            LMS Admin Control Panel v1.2.0{"\n"}Designed for efficiency
+                            {profile?.institution_id ? "Institution Administrative Control Panel" : "Platform Management Console"}
+                            {"\n"}Real-time metrics updated live
                         </Text>
                     </View>
                 </View>

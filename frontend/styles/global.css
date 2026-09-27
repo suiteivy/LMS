@@ -2,6 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Smooth Theme Transitions (Web) ────────────────────────────────────────── */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Exempt elements with dedicated high-performance animation loops */
+.no-theme-transition,
+.aurora-container,
+.glass-blur-30,
+.glass-blur-20-absolute,
+canvas,
+video,
+[data-no-transition] {
+  transition-property: none !important;
+}
+
+/* Accessibility: instant transition if user prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
 /* Aurora Background Container */
 .aurora-container {
   width: 100%;
@@ -69,10 +95,10 @@
 }
 
 /* Font smoothing & typography polish */
-html, body {
+html, body, #root {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #080616;
+  background-color: #070514 !important;
 }
 
 .text-tabular {

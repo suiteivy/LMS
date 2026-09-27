@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/libs/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 
 const MAX_RETRIES = 5;
 const INITIAL_BACKOFF_MS = 1000;
@@ -27,12 +28,28 @@ export function useRealtimeQuery(
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
   const onUpdateRef = useRef(onUpdate);
+  const isFocused = useIsFocused();
+  const isFocusedRef = useRef(isFocused);
+  const missedUpdateRef = useRef(false);
+
+  useEffect(() => {
+    isFocusedRef.current = isFocused;
+    if (isFocused && missedUpdateRef.current) {
+      missedUpdateRef.current = false;
+      onUpdateRef.current();
+    }
+  }, [isFocused]);
 
   // Keep callback ref fresh without re-subscribing
   onUpdateRef.current = onUpdate;
 
   // Stable callback that always calls latest onUpdate
   const handleUpdate = useCallback(() => {
+    if (!mountedRef.current) return;
+    if (!isFocusedRef.current) {
+      missedUpdateRef.current = true;
+      return;
+    }
     onUpdateRef.current();
   }, []);
 
@@ -64,7 +81,7 @@ export function useRealtimeQuery(
       if (pollingRef.current || !mountedRef.current) return;
       setRealtimeUnavailable(true);
       pollingRef.current = setInterval(async () => {
-        if (!mountedRef.current) return;
+        if (!mountedRef.current || !isFocusedRef.current) return;
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (!session || (session.expires_at && session.expires_at * 1000 <= Date.now())) return;

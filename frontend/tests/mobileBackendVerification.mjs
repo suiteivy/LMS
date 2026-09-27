@@ -2,10 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import os from 'node:os';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendDir = path.resolve(__dirname, '..');
 
 // ── Test 1: AndroidManifest.xml Cleartext Configuration ──────────────────────────
 test('AndroidManifest.xml includes android:usesCleartextTraffic="true"', () => {
-  const manifestPath = path.resolve('android/app/src/main/AndroidManifest.xml');
+  const manifestPath = path.resolve(frontendDir, 'android/app/src/main/AndroidManifest.xml');
   const manifestContent = fs.readFileSync(manifestPath, 'utf8');
   assert.ok(
     manifestContent.includes('android:usesCleartextTraffic="true"'),
@@ -15,7 +21,7 @@ test('AndroidManifest.xml includes android:usesCleartextTraffic="true"', () => {
 
 // ── Test 2: app.json Cleartext & Transport Security ──────────────────────────────
 test('app.json includes usesCleartextTraffic: true for Android and ATS for iOS', () => {
-  const appJsonPath = path.resolve('app.json');
+  const appJsonPath = path.resolve(frontendDir, 'app.json');
   const appJson = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
   
   assert.equal(
@@ -73,18 +79,20 @@ const simulateUrlResolution = ({
     const expoHost = getExpoDevHost();
     const isPhysical = isDevice ?? false;
 
+    const lanIp = process.env.EXPO_PUBLIC_DEV_LAN_IP || '192.168.100.83';
+
     if (isPhysical) {
       if (expoHost && expoHost !== 'localhost' && expoHost !== '127.0.0.1') {
         return expoHost;
       }
-      return '192.168.100.25';
+      return lanIp;
     }
 
     if (platform === 'android') {
-      if (expoHost && expoHost !== 'localhost' && expoHost !== '127.0.0.1' && !expoHost.startsWith('10.0.2.')) {
+      if (expoHost && expoHost !== 'localhost' && expoHost !== '127.0.0.1') {
         return expoHost;
       }
-      return '192.168.100.25';
+      return '10.0.2.2';
     }
 
     if (platform === 'ios') {
@@ -94,7 +102,7 @@ const simulateUrlResolution = ({
       return 'localhost';
     }
 
-    return expoHost || '192.168.100.25';
+    return expoHost || lanIp;
   };
 
   const getApiBaseUrl = () => {
@@ -119,10 +127,10 @@ test('Mobile resolution: Android physical device with NativeModules.SourceCode.s
   const result = simulateUrlResolution({
     platform: 'android',
     isDevice: true,
-    scriptURL: 'http://192.168.100.25:8081/index.bundle?platform=android&dev=true',
+    scriptURL: 'http://192.168.100.83:8081/index.bundle?platform=android&dev=true',
   });
-  assert.equal(result.devHost, '192.168.100.25');
-  assert.equal(result.apiBaseUrl, 'http://192.168.100.25:4001/api');
+  assert.equal(result.devHost, '192.168.100.83');
+  assert.equal(result.apiBaseUrl, 'http://192.168.100.83:4001/api');
 });
 
 test('Mobile resolution: Android device with no Constants host falls back safely to workstation LAN IP', () => {
@@ -132,23 +140,34 @@ test('Mobile resolution: Android device with no Constants host falls back safely
     scriptURL: null,
     hostUri: null,
   });
-  assert.equal(result.devHost, '192.168.100.25');
-  assert.equal(result.apiBaseUrl, 'http://192.168.100.25:4001/api');
+  assert.equal(result.devHost, '192.168.100.83');
+  assert.equal(result.apiBaseUrl, 'http://192.168.100.83:4001/api');
 });
 
 test('Mobile resolution: iOS device with Metro bundle URL', () => {
   const result = simulateUrlResolution({
     platform: 'ios',
     isDevice: true,
-    scriptURL: 'http://192.168.100.25:8081/index.bundle?platform=ios&dev=true',
+    scriptURL: 'http://192.168.100.83:8081/index.bundle?platform=ios&dev=true',
   });
-  assert.equal(result.devHost, '192.168.100.25');
-  assert.equal(result.apiBaseUrl, 'http://192.168.100.25:4001/api');
+  assert.equal(result.devHost, '192.168.100.83');
+  assert.equal(result.apiBaseUrl, 'http://192.168.100.83:4001/api');
 });
 
 // ── Test 4: Live HTTP Network Test to Backend over LAN IP ─────────────────────────
-test('Live Backend responds to mobile endpoints via LAN IP (192.168.100.25:4001)', async () => {
-  const baseUrl = 'http://192.168.100.25:4001/api';
+test('Live Backend responds to mobile endpoints via LAN IP', async () => {
+  const nets = os.networkInterfaces();
+  let lanIp = process.env.EXPO_PUBLIC_DEV_LAN_IP || '192.168.100.25';
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] || []) {
+      if (net.family === 'IPv4' && !net.internal && !net.address.startsWith('169.254.') && !net.address.startsWith('172.') && !net.address.startsWith('100.')) {
+        lanIp = net.address;
+        break;
+      }
+    }
+  }
+
+  const baseUrl = `http://${lanIp}:4001/api`;
 
   // 1. Maintenance endpoint (cold-start test)
   const maintenanceRes = await fetch(`${baseUrl}/settings/maintenance`, {

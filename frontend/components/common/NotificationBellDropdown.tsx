@@ -23,6 +23,7 @@ interface NotificationBellDropdownProps {
     onViewAll: () => void;
     accentColor?: string;
     tabBarHeight?: number;
+    position?: 'top' | 'bottom';
 }
 
 export function NotificationBellDropdown({
@@ -31,6 +32,7 @@ export function NotificationBellDropdown({
     onViewAll,
     accentColor = "#FF6B00",
     tabBarHeight = 70,
+    position = "top",
 }: NotificationBellDropdownProps) {
     const { isDark } = useTheme();
     const { profile } = useAuth();
@@ -154,8 +156,10 @@ export function NotificationBellDropdown({
             <View
                 style={{
                     position: "absolute",
-                    bottom: tabBarHeight + insets.bottom + 6,
-                    right: 10,
+                    ...(position === "top"
+                        ? { top: insets.top + 54, right: 12 }
+                        : { bottom: tabBarHeight + insets.bottom + 6, right: 10 }),
+
                     width: menuWidth,
                     maxHeight: 360,
                     backgroundColor: tokens.surface,

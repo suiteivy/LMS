@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import { TableRowSkeleton } from '@/components/ui/skeletons';
 import { getApiBaseUrl } from '@/utils/backendUrl';
+import { api } from '@/services/api';
 import { DateRangePicker } from '@/components/common/DatePicker';
 
 type SystemActivityLog = {
@@ -83,35 +84,21 @@ export default function MasterSystemLogsPage() {
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        Toast.show({ type: 'error', text1: 'Session expired', text2: 'Please sign in again.' });
-        return;
-      }
-
       const parsedLimit = Number.parseInt(limit, 10);
       const safeLimit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 2000) : 300;
       const params = new URLSearchParams({ limit: String(safeLimit) });
       if (fromDate.trim()) params.append('from', `${fromDate.trim()}T00:00:00.000Z`);
       if (toDate.trim()) params.append('to', `${toDate.trim()}T23:59:59.999Z`);
 
-      const response = await fetch(`${getApiBaseUrl()}/master-admin/logs/system-activity?${params.toString()}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to load system activity logs');
-      }
+      const res = await api.get(`/master-admin/logs/system-activity?${params.toString()}`);
+      const payload = res.data;
 
       setLogs(Array.isArray(payload?.logs) ? payload.logs : []);
     } catch (error: any) {
       setLogs([]);
-      Toast.show({ type: 'error', text1: 'Load failed', text2: error?.message || 'Could not load logs.' });
+      if (!error?.isAuthError) {
+        Toast.show({ type: 'error', text1: 'Load failed', text2: error?.response?.data?.error || error?.message || 'Could not load logs.' });
+      }
     } finally {
       setLoading(false);
     }
@@ -133,25 +120,11 @@ export default function MasterSystemLogsPage() {
   const executeClearLogs = useCallback(async () => {
     setClearing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        Toast.show({ type: 'error', text1: 'Session expired', text2: 'Please sign in again.' });
-        return;
-      }
-
-      const response = await fetch(`${getApiBaseUrl()}/master-admin/logs/system-activity/clear`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ window: clearWindow, confirm: clearWindow === 'all' }),
+      const res = await api.post('/master-admin/logs/system-activity/clear', {
+        window: clearWindow,
+        confirm: clearWindow === 'all',
       });
-
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to clear system logs');
-      }
+      const payload = res.data;
 
       Toast.show({
         type: 'success',
@@ -161,7 +134,9 @@ export default function MasterSystemLogsPage() {
 
       await fetchLogs();
     } catch (error: any) {
-      Toast.show({ type: 'error', text1: 'Clear failed', text2: error?.message || 'Unable to clear system logs.' });
+      if (!error?.isAuthError) {
+        Toast.show({ type: 'error', text1: 'Clear failed', text2: error?.response?.data?.error || error?.message || 'Unable to clear system logs.' });
+      }
     } finally {
       setClearing(false);
     }

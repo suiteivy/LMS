@@ -1,4 +1,5 @@
 const supabase = require("../utils/supabaseClient.js");
+const configCache = require("../utils/configCache.js");
 const { hasPaidAtLeastHalf } = require("../utils/feeUtils.js");
 const { parsePagination, paginatedResponse } = require("../utils/pagination.js");
 
@@ -216,6 +217,9 @@ exports.createSubject = async (req, res) => {
       }
     }
 
+    if (institution_id) {
+      configCache.invalidateSubjects(institution_id);
+    }
     res.status(201).json({ message: "Subject created", data: { ...data, class_ids: normalizedClassIds } });
   } catch (err) {
     console.error("createSubject error:", err);
@@ -300,6 +304,15 @@ exports.enrollStudentInSubject = async (req, res) => {
 exports.getSubjects = async (req, res) => {
   const { institution_id } = req;
   const { page, limit, from, to } = parsePagination(req.query);
+  const { level_id } = req.query || {};
+  const cacheKey = institution_id ? `${institution_id}:subjects:${page}:${limit}:${level_id || 'all'}` : null;
+
+  if (cacheKey) {
+    const cached = configCache.get(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+  }
 
   try {
     const richSelect = `
@@ -346,7 +359,6 @@ exports.getSubjects = async (req, res) => {
       count = fallback.count;
     }
 
-    const { level_id } = req.query || {};
     const subjects = await enrichSubjectsWithClassIds(data || [], institution_id);
     let finalSubjects = subjects;
     if (level_id) {
@@ -356,7 +368,11 @@ exports.getSubjects = async (req, res) => {
         return Array.isArray(sLevels) && sLevels.includes(level_id);
       });
     }
-    return res.json(paginatedResponse(finalSubjects, level_id ? finalSubjects.length : count, page, limit));
+    const responsePayload = paginatedResponse(finalSubjects, level_id ? finalSubjects.length : count, page, limit);
+    if (cacheKey) {
+      configCache.set(cacheKey, responsePayload, 300);
+    }
+    return res.json(responsePayload);
   } catch (err) {
     console.error("getSubjects error:", err);
     res.status(500).json({ error: "Server error" });
@@ -791,6 +807,9 @@ exports.deleteSubject = async (req, res) => {
       return res.status(500).json({ error: deleteError.message });
     }
 
+    if (institution_id) {
+      configCache.invalidateSubjects(institution_id);
+    }
     return res.json({ message: "Subject deleted" });
   } catch (err) {
     console.error("deleteSubject error:", err);
@@ -1024,6 +1043,9 @@ exports.updateSubject = async (req, res) => {
       }
     }
 
+    if (institution_id) {
+      configCache.invalidateSubjects(institution_id);
+    }
     req.params.id = id;
     return exports.getSubjectById(req, res);
   } catch (err) {

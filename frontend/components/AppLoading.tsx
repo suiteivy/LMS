@@ -39,13 +39,14 @@ export function CyberConduit({
 
   useEffect(() => {
     const id = progressVal.addListener(({ value }) => {
-      setPercent(Math.min(99, Math.round(value * 100)));
+      setPercent(Math.min(100, Math.max(0, Math.round(value * 100))));
     });
     return () => progressVal.removeListener(id);
   }, [progressVal]);
 
   const TOTAL_CELLS = 20;
-  const activeCells = Math.floor((percent / 100) * TOTAL_CELLS);
+  const activeCells = Math.round((percent / 100) * TOTAL_CELLS);
+  const isComplete = percent >= 100;
 
   return (
     <View style={{ width: '100%', maxWidth, alignItems: 'center' }}>
@@ -59,14 +60,14 @@ export function CyberConduit({
       >
         <Text
           style={{
-            color: '#FFA040',
+            color: isComplete ? '#10B981' : '#FFA040',
             fontSize: 13,
             fontWeight: '900',
             fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
             letterSpacing: 1.5,
           }}
         >
-          {percent}%
+          {isComplete ? '100%' : `${percent}%`}
         </Text>
       </View>
 
@@ -78,7 +79,7 @@ export function CyberConduit({
           borderRadius: 4,
           backgroundColor: 'rgba(255, 255, 255, 0.05)',
           borderWidth: 1,
-          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderColor: isComplete ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255, 255, 255, 0.1)',
           padding: 1.5,
           flexDirection: 'row',
           gap: 2,
@@ -86,7 +87,7 @@ export function CyberConduit({
         }}
       >
         {Array.from({ length: TOTAL_CELLS }).map((_, idx) => {
-          const isActive = idx <= activeCells;
+          const isActive = idx < activeCells;
           return (
             <View
               key={idx}
@@ -94,15 +95,18 @@ export function CyberConduit({
                 flex: 1,
                 borderRadius: 1.5,
                 backgroundColor: isActive
-                  ? idx < 12
-                    ? '#7C3AED'
-                    : '#FF6B00'
+                  ? isComplete
+                    ? '#10B981'
+                    : idx < 12
+                      ? '#7C3AED'
+                      : '#FF6B00'
                   : 'transparent',
                 opacity: isActive ? 0.95 : 0.15,
                 ...(isActive && isWeb
                   ? ({
-                      boxShadow:
-                        idx < 12
+                      boxShadow: isComplete
+                        ? '0 0 8px rgba(16, 185, 129, 0.7)'
+                        : idx < 12
                           ? '0 0 6px rgba(124, 58, 237, 0.6)'
                           : '0 0 6px rgba(255, 107, 0, 0.8)',
                     } as any)
@@ -477,9 +481,13 @@ export function QuantumReactorLoader({
 export function AppLoading({
   onLogout,
   message,
+  isComplete = false,
+  onFinish,
 }: {
   onLogout?: () => void;
   message?: string;
+  isComplete?: boolean;
+  onFinish?: () => void;
 }) {
   const { isDark } = useTheme();
   const { width } = useWindowDimensions();
@@ -488,34 +496,66 @@ export function AppLoading({
 
   // Animated progress state
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const animRunning = useRef<Animated.CompositeAnimation | null>(null);
+  const isFinishedRef = useRef(false);
+
+  const completeAndExit = React.useCallback(() => {
+    if (isFinishedRef.current) return;
+    isFinishedRef.current = true;
+    setConnectionNote('LOAD COMPLETE');
+    // Hold at 100% briefly so user sees the 100% completed state
+    setTimeout(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 250,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: isWeb ? false : true,
+      }).start(() => {
+        onFinish?.();
+      });
+    }, 280);
+  }, [onFinish]);
 
   useEffect(() => {
-    // Dynamic progress trajectory: jumps quickly to ~70%, then steadily reaches 94%
-    Animated.sequence([
+    // Dynamic progress trajectory: jumps quickly to ~45%, then 78%, then 94%, then reaches 100%
+    const anim = Animated.sequence([
       Animated.timing(progressAnim, {
         toValue: 0.45,
-        duration: 1200,
+        duration: 900,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }),
       Animated.timing(progressAnim, {
         toValue: 0.78,
-        duration: 3500,
+        duration: 1800,
         easing: Easing.inOut(Easing.quad),
         useNativeDriver: false,
       }),
       Animated.timing(progressAnim, {
         toValue: 0.94,
-        duration: 6000,
+        duration: 2200,
         easing: Easing.out(Easing.sin),
         useNativeDriver: false,
       }),
-    ]).start();
+      Animated.timing(progressAnim, {
+        toValue: 1.0,
+        duration: 1000,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: false,
+      }),
+    ]);
+    animRunning.current = anim;
+    anim.start(({ finished }) => {
+      if (finished && !isFinishedRef.current && isComplete) {
+        completeAndExit();
+      }
+    });
 
     // Informative status updates for slower connections
     const noteTimer = setTimeout(() => {
       setConnectionNote('CONNECTING TO YOUR ACCOUNT...');
-    }, 3500);
+    }, 3000);
 
     // Timeout option to sign out if loading takes longer than usual (5 seconds)
     const rescueTimer = setTimeout(() => setShowRescue(true), 5000);
@@ -523,11 +563,29 @@ export function AppLoading({
     return () => {
       clearTimeout(noteTimer);
       clearTimeout(rescueTimer);
+      anim.stop();
     };
-  }, []);
+  }, [completeAndExit, isComplete]);
+
+  useEffect(() => {
+    if (isComplete && !isFinishedRef.current) {
+      if (animRunning.current) {
+        animRunning.current.stop();
+      }
+      // Rapidly drive progress to 100% to match successful load process
+      Animated.timing(progressAnim, {
+        toValue: 1.0,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start(() => {
+        completeAndExit();
+      });
+    }
+  }, [isComplete, completeAndExit]);
 
   return (
-    <View style={styles.canvasContainer}>
+    <Animated.View style={[styles.canvasContainer, { opacity: fadeAnim }]}>
       {/* ── 1. LIVING BIOLUMINESCENT AURORA BACKGROUND ── */}
       <LivingBackground
         colorStops={['#FF6B00', '#7C3AED', '#3166BE']}
@@ -580,7 +638,7 @@ export function AppLoading({
           null
         )}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

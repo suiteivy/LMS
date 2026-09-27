@@ -4,7 +4,6 @@ import {
   Animated,
   Dimensions,
   Easing,
-  Image,
   StyleSheet,
   Text,
   View,
@@ -20,6 +19,7 @@ import Svg, {
   Path,
   G,
 } from 'react-native-svg';
+import { MobileLivingBackground } from '@/components/landing/MobileLivingBackground';
 
 export interface AnimatedEntranceTransitionProps {
   onComplete?: () => void;
@@ -35,10 +35,16 @@ const FLAME_HIGHLIGHT = '#FFE0B2';
 const VIOLET_PRIMARY = '#7C3AED';
 const CYAN_SPECULAR = '#38BDF8';
 
-// Proportional Cloud Size inside 1024x1024 master canvas
-// Bounding box of cloud in 1024x1024 is ~1019x577 (centered).
-// In a 130x130 square box, cloud renders at ~129x73 px.
-const CLOUD_CONTAINER_SIZE = 130;
+// Proportional Canonical Cloud Dimensions (1.4:1 aspect ratio matching 28:20 vector viewBox)
+const CLOUD_WIDTH = 138;
+const CLOUD_HEIGHT = 98;
+const GLINT_SIZE = 26;
+
+// Exact apex of the pinnacle cloud dome in 28:20 coordinate space:
+// Highest dome is cx=16.5, cy=8.8, r=5.0 -> apex top is (16.5, 3.8).
+// In pixel space: x = (16.5 / 28) * 138 = 81.3px, y = (3.8 / 20) * 98 = 18.6px.
+const GLINT_LEFT = Math.round((16.5 / 28) * CLOUD_WIDTH - GLINT_SIZE / 2);
+const GLINT_TOP = Math.round((3.8 / 20) * CLOUD_HEIGHT - GLINT_SIZE / 2);
 
 /**
  * Molten Glass Droplet Component
@@ -99,19 +105,20 @@ const PrismaticStarGlint: React.FC<{ size: number }> = ({ size }) => {
 /**
  * AnimatedEntranceTransition — Concept: "Liquid Glass Formation"
  *
+ * Reconfigured Architecture:
+ * 1. Background: Unified living Aurora Borealis background matching the web shader.
+ * 2. Vector Cloud Logo: Pure mathematical SVG (zero downscaled raster PNGs, zero blur,
+ *    zero duplicate overlapping layers, exact sub-pixel alignment).
+ * 3. Caustic Light Sweep: Precision-clipped to the cloud silhouette body.
+ * 4. Star Glint: Pinpoint anchored to the highest dome crest at (81px, 19px).
+ *
  * Cinematic Sequence (~3.6s total):
- * 1. Gathering & Coalescence (0.0s – 0.9s):
- *    Incandescent molten beads flow inward toward the central nucleus, creating fluid ripple waves.
- * 2. Surface Tension Reshaping (0.9s – 1.9s):
- *    The molten pool wells up and expands into the Cloudora multi-lobed cloud contour with organic fluid elasticity.
- * 3. Vitrification & Cooling (1.9s – 2.5s):
- *    Molten heat cools into crystal liquid-glass. Beveled reflections and inner prismatic refractions emerge.
- * 4. Specular Sweep & Star Glint (2.4s – 3.0s):
- *    A diagonal caustic light beam sweeps across the glass face; a diamond starburst glints at the apex crest.
- * 5. Brand Materialization (2.8s – 3.3s):
- *    The "CLOUDORA" mark and subtitle softly illuminate underneath in pristine gold/white.
- * 6. Velvet Curtain Dissolve (3.3s – 3.75s):
- *    The dark veil dissolves with a silky alpha fade, seamlessly revealing the app.
+ * 1. Gathering & Coalescence (0.0s – 0.9s): Molten beads converge into central nucleus.
+ * 2. Surface Tension Reshaping (0.9s – 1.9s): Vector cloud blooms with liquid elasticity.
+ * 3. Vitrification & Cooling (1.9s – 2.5s): Crystal beveled rim highlight solidifies.
+ * 4. Specular Sweep & Star Glint (2.4s – 3.0s): Light beam sweeps across cloud face; star glint sparks at apex.
+ * 5. Brand Materialization (2.8s – 3.3s): "CLOUDORA" mark illuminates below.
+ * 6. Velvet Curtain Dissolve (3.3s – 3.75s): Scrim dissolves smoothly into app.
  */
 export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProps> = ({
   onComplete,
@@ -119,12 +126,15 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
   const [isDone, setIsDone] = useState(false);
   const hasFinishedRef = useRef(false);
 
-  // Master scrim overlay opacity (for smooth velvet curtain exit)
-  const overlayOpacity = useRef(new Animated.Value(1)).current;
+  // Master backdrop scrim opacity (dissolves to reveal destination screen underneath)
+  const backdropOpacity = useRef(new Animated.Value(1)).current;
 
-  // Background Ambient Caustic Orbs (pure native 60fps, 0-cost WebGL-free)
-  const ambientPulse1 = useRef(new Animated.Value(0.4)).current;
-  const ambientPulse2 = useRef(new Animated.Value(0.3)).current;
+  // Spatial translation for the single persistent cloud element handoff
+  const sceneTranslateY = useRef(new Animated.Value(0)).current;
+
+  // Destination header lift and scale targets for persistent handoff
+  const targetLiftY = -Math.round((SCREEN_HEIGHT * 0.5) - Math.max(SCREEN_HEIGHT * 0.08, 68));
+  const targetScale = 0.32;
 
   // Phase 1: Molten Liquid Beads (4 organic converging droplets)
   const bead1X = useRef(new Animated.Value(-SCREEN_WIDTH * 0.32)).current;
@@ -160,7 +170,7 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
   const beveledRimOpacity = useRef(new Animated.Value(0)).current;
 
   // Phase 4: Specular Light Sweep & Star Glint
-  const sweepTranslateX = useRef(new Animated.Value(-CLOUD_CONTAINER_SIZE * 1.5)).current;
+  const sweepTranslateX = useRef(new Animated.Value(-CLOUD_WIDTH * 1.4)).current;
   const sweepOpacity = useRef(new Animated.Value(0)).current;
   const glintScale = useRef(new Animated.Value(0)).current;
   const glintOpacity = useRef(new Animated.Value(0)).current;
@@ -208,22 +218,18 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
               Animated.timing(textOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
             ]),
             Animated.delay(800),
-            Animated.timing(overlayOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+            Animated.parallel([
+              Animated.timing(backdropOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+              Animated.timing(cloudOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+              Animated.timing(textOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+            ]),
           ]).start(() => {
             if (isMounted) finish();
           });
           return;
         }
 
-        // Ambient background gentle pulse
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(ambientPulse1, { toValue: 0.7, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-            Animated.timing(ambientPulse1, { toValue: 0.4, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-          ])
-        ).start();
-
-        // ── Grand Liquid Glass Formation Orchestration (~3.6s total) ──
+        // ── Grand Liquid Glass Formation Orchestration (~3.8s total) ──
         Animated.sequence([
           // ── PHASE 1: Molten Gathering & Coalescence (0.0s – 0.9s) ──
           Animated.parallel([
@@ -328,13 +334,13 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
           Animated.parallel([
             // Vitrification: Crystal glass glow and beveled edge rim highlights solidify
             Animated.timing(crystalGlowOpacity, {
-              toValue: 0.65,
+              toValue: 0.75,
               duration: 500,
               easing: Easing.out(Easing.quad),
               useNativeDriver: true,
             }),
             Animated.timing(beveledRimOpacity, {
-              toValue: 0.55,
+              toValue: 0.9,
               duration: 500,
               easing: Easing.out(Easing.quad),
               useNativeDriver: true,
@@ -346,7 +352,7 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
               Animated.parallel([
                 Animated.timing(sweepOpacity, { toValue: 0.95, duration: 180, useNativeDriver: true }),
                 Animated.timing(sweepTranslateX, {
-                  toValue: CLOUD_CONTAINER_SIZE * 1.5,
+                  toValue: CLOUD_WIDTH * 1.4,
                   duration: 620,
                   easing: Easing.bezier(0.22, 1, 0.36, 1),
                   useNativeDriver: true,
@@ -399,23 +405,76 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
             ]),
           ]),
 
-          // ── PHASE 5: Equilibrium Rest in Pristine Clarity (2.9s – 3.25s) ──
-          Animated.delay(350),
+          // ── PHASE 5: Equilibrium Rest in Pristine Clarity (2.9s – 3.3s) ──
+          Animated.delay(400),
 
-          // ── PHASE 6: Velvet Curtain Dissolve into App (3.25s – 3.7s) ──
+          // ── PHASE 6: Persistent Handoff & Scrim Dissolve (3.3s – 3.8s) ──
+          // Single-element persistent handoff: the vector cloud glides smoothly into the destination
+          // header position while the backdrop dissolves to resolve the destination screen content.
           Animated.parallel([
-            Animated.timing(overlayOpacity, {
-              toValue: 0,
-              duration: 450,
-              easing: Easing.bezier(0.4, 0, 0.2, 1),
+            // 1. Spatial Ascent to Destination Header (500ms, smooth deceleration settle)
+            Animated.timing(sceneTranslateY, {
+              toValue: targetLiftY,
+              duration: 500,
+              easing: Easing.bezier(0.22, 1, 0.36, 1),
               useNativeDriver: true,
             }),
+            // 2. Scale down smoothly from hero presence to header size
             Animated.timing(cloudScale, {
-              toValue: 0.96,
-              duration: 450,
+              toValue: targetScale,
+              duration: 500,
+              easing: Easing.bezier(0.22, 1, 0.36, 1),
+              useNativeDriver: true,
+            }),
+            // 3. Dissolve backdrop scrim so destination screen content gradually resolves in
+            Animated.timing(backdropOpacity, {
+              toValue: 0,
+              duration: 480,
               easing: Easing.bezier(0.4, 0, 0.2, 1),
               useNativeDriver: true,
             }),
+            // 4. Accompanying brand wordmark dissolves and settles gently in place
+            Animated.timing(textOpacity, {
+              toValue: 0,
+              duration: 260,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.timing(textTranslateY, {
+              toValue: 14,
+              duration: 260,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+            // 5. Embellishments cleanly distill away during departure
+            Animated.timing(crystalGlowOpacity, {
+              toValue: 0,
+              duration: 250,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.timing(beveledRimOpacity, {
+              toValue: 0,
+              duration: 250,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.timing(moltenCoreOpacity, {
+              toValue: 0,
+              duration: 220,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+            // 6. Seamless final cross-fade into destination header logo at arrival
+            Animated.sequence([
+              Animated.delay(440),
+              Animated.timing(cloudOpacity, {
+                toValue: 0,
+                duration: 60,
+                easing: Easing.linear,
+                useNativeDriver: true,
+              }),
+            ]),
           ]),
         ]).start(({ finished }) => {
           if (isMounted) finish();
@@ -441,164 +500,140 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
   });
 
   return (
-    <Animated.View
+    <View
       pointerEvents="none"
       style={[
         StyleSheet.absoluteFillObject,
-        styles.container,
-        { opacity: overlayOpacity },
+        styles.rootContainer,
       ]}
       accessibilityElementsHidden={true}
       importantForAccessibility="no-hide-descendants"
     >
-      {/* ── Layer 1: Native High-Performance Ambient Aurora Background (0-lag SVG) ── */}
-      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-        {/* Upper Amber Nebula */}
+      {/* ── Backdrop Scrim Layer (Dissolves in Phase 6 to reveal destination content) ── */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFillObject,
+          styles.backdropContainer,
+          { opacity: backdropOpacity },
+        ]}
+      >
+        {/* Layer 1: Unified Native Living Aurora Background (Matches Web Aurora Shader) */}
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+          <MobileLivingBackground speed={0.8} />
+        </View>
+
+        {/* Layer 2: Phase 1 Molten Liquid Droplets (Inward Convergence) */}
+        {/* Droplet 1 (Top-Left) */}
         <Animated.View
+          pointerEvents="none"
           style={[
-            styles.ambientOrbTop,
-            { opacity: ambientPulse1 },
+            styles.beadContainer,
+            {
+              opacity: bead1Opacity,
+              transform: [{ translateX: bead1X }, { translateY: bead1Y }],
+            },
           ]}
         >
-          <Svg width={SCREEN_WIDTH * 1.1} height={SCREEN_WIDTH * 1.1} viewBox="0 0 360 360">
-            <Defs>
-              <RadialGradient id="topNebula" cx="50%" cy="50%" rx="50%" ry="50%">
-                <Stop offset="0%" stopColor={FLAME_PRIMARY} stopOpacity="0.45" />
-                <Stop offset="45%" stopColor={FLAME_CORE} stopOpacity="0.2" />
-                <Stop offset="100%" stopColor={BG_COLOR} stopOpacity="0" />
-              </RadialGradient>
-            </Defs>
-            <Circle cx="180" cy="180" r="180" fill="url(#topNebula)" />
+          <MoltenBead id="mb1" size={32} />
+        </Animated.View>
+
+        {/* Droplet 2 (Top-Right) */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.beadContainer,
+            {
+              opacity: bead2Opacity,
+              transform: [{ translateX: bead2X }, { translateY: bead2Y }],
+            },
+          ]}
+        >
+          <MoltenBead id="mb2" size={28} />
+        </Animated.View>
+
+        {/* Droplet 3 (Bottom-Left) */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.beadContainer,
+            {
+              opacity: bead3Opacity,
+              transform: [{ translateX: bead3X }, { translateY: bead3Y }],
+            },
+          ]}
+        >
+          <MoltenBead id="mb3" size={26} />
+        </Animated.View>
+
+        {/* Droplet 4 (Bottom-Right) */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.beadContainer,
+            {
+              opacity: bead4Opacity,
+              transform: [{ translateX: bead4X }, { translateY: bead4Y }],
+            },
+          ]}
+        >
+          <MoltenBead id="mb4" size={30} />
+        </Animated.View>
+
+        {/* Layer 3: Central Molten Plasma Nucleus & Fluid Ripple */}
+        {/* Coalescence Shockwave Ripple */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.rippleContainer,
+            {
+              opacity: rippleOpacity,
+              transform: [{ scale: rippleScale }],
+            },
+          ]}
+        >
+          <Svg width={80} height={80} viewBox="0 0 80 80">
+            <Circle cx="40" cy="40" r="38" stroke={FLAME_CORE} strokeWidth="1.5" fill="none" opacity={0.8} />
           </Svg>
         </Animated.View>
 
-        {/* Lower Violet/Cyan Nebula */}
+        {/* Molten Nucleus */}
         <Animated.View
+          pointerEvents="none"
           style={[
-            styles.ambientOrbBottom,
-            { opacity: ambientPulse2 },
+            styles.nucleusContainer,
+            {
+              opacity: nucleusOpacity,
+              transform: [{ scale: nucleusScale }],
+            },
           ]}
         >
-          <Svg width={SCREEN_WIDTH * 1.1} height={SCREEN_WIDTH * 1.1} viewBox="0 0 360 360">
+          <Svg width={64} height={64} viewBox="0 0 64 64">
             <Defs>
-              <RadialGradient id="bottomNebula" cx="50%" cy="50%" rx="50%" ry="50%">
-                <Stop offset="0%" stopColor={VIOLET_PRIMARY} stopOpacity="0.4" />
-                <Stop offset="50%" stopColor="#3166BE" stopOpacity="0.18" />
+              <RadialGradient id="nucleusGrad" cx="50%" cy="50%" rx="50%" ry="50%">
+                <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+                <Stop offset="30%" stopColor={FLAME_HIGHLIGHT} stopOpacity="0.95" />
+                <Stop offset="60%" stopColor={FLAME_PRIMARY} stopOpacity="0.75" />
+                <Stop offset="85%" stopColor={VIOLET_PRIMARY} stopOpacity="0.4" />
                 <Stop offset="100%" stopColor={BG_COLOR} stopOpacity="0" />
               </RadialGradient>
             </Defs>
-            <Circle cx="180" cy="180" r="180" fill="url(#bottomNebula)" />
+            <Circle cx="32" cy="32" r="32" fill="url(#nucleusGrad)" />
           </Svg>
         </Animated.View>
-      </View>
-
-      {/* ── Layer 2: Phase 1 Molten Liquid Droplets (Inward Convergence) ── */}
-      {/* Droplet 1 (Top-Left) */}
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.beadContainer,
-          {
-            opacity: bead1Opacity,
-            transform: [{ translateX: bead1X }, { translateY: bead1Y }],
-          },
-        ]}
-      >
-        <MoltenBead id="mb1" size={32} />
       </Animated.View>
 
-      {/* Droplet 2 (Top-Right) */}
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.beadContainer,
-          {
-            opacity: bead2Opacity,
-            transform: [{ translateX: bead2X }, { translateY: bead2Y }],
-          },
-        ]}
-      >
-        <MoltenBead id="mb2" size={28} />
-      </Animated.View>
-
-      {/* Droplet 3 (Bottom-Left) */}
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.beadContainer,
-          {
-            opacity: bead3Opacity,
-            transform: [{ translateX: bead3X }, { translateY: bead3Y }],
-          },
-        ]}
-      >
-        <MoltenBead id="mb3" size={26} />
-      </Animated.View>
-
-      {/* Droplet 4 (Bottom-Right) */}
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.beadContainer,
-          {
-            opacity: bead4Opacity,
-            transform: [{ translateX: bead4X }, { translateY: bead4Y }],
-          },
-        ]}
-      >
-        <MoltenBead id="mb4" size={30} />
-      </Animated.View>
-
-      {/* ── Layer 3: Central Molten Plasma Nucleus & Fluid Ripple ── */}
-      {/* Coalescence Shockwave Ripple */}
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.rippleContainer,
-          {
-            opacity: rippleOpacity,
-            transform: [{ scale: rippleScale }],
-          },
-        ]}
-      >
-        <Svg width={80} height={80} viewBox="0 0 80 80">
-          <Circle cx="40" cy="40" r="38" stroke={FLAME_CORE} strokeWidth="1.5" fill="none" opacity={0.8} />
-        </Svg>
-      </Animated.View>
-
-      {/* Molten Nucleus */}
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.nucleusContainer,
-          {
-            opacity: nucleusOpacity,
-            transform: [{ scale: nucleusScale }],
-          },
-        ]}
-      >
-        <Svg width={64} height={64} viewBox="0 0 64 64">
-          <Defs>
-            <RadialGradient id="nucleusGrad" cx="50%" cy="50%" rx="50%" ry="50%">
-              <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
-              <Stop offset="30%" stopColor={FLAME_HIGHLIGHT} stopOpacity="0.95" />
-              <Stop offset="60%" stopColor={FLAME_PRIMARY} stopOpacity="0.75" />
-              <Stop offset="85%" stopColor={VIOLET_PRIMARY} stopOpacity="0.4" />
-              <Stop offset="100%" stopColor={BG_COLOR} stopOpacity="0" />
-            </RadialGradient>
-          </Defs>
-          <Circle cx="32" cy="32" r="32" fill="url(#nucleusGrad)" />
-        </Svg>
-      </Animated.View>
-
-      {/* ── Layer 4: Cloudora Centerpiece Stage (Logo + Refraction + Star Glint) ── */}
-      <View style={styles.centerStage}>
+      {/* ── Persistent Foreground Stage (Single continuously-mounted element that hands off) ── */}
+      <View style={styles.centerStage} pointerEvents="none">
         <Animated.View
           style={[
             styles.cloudWrapper,
             {
               opacity: cloudOpacity,
-              transform: [{ scale: cloudScale }],
+              transform: [
+                { translateY: sceneTranslateY },
+                { scale: cloudScale },
+              ],
             },
           ]}
         >
@@ -613,7 +648,7 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
               },
             ]}
           >
-            <Svg width={CLOUD_CONTAINER_SIZE} height={CLOUD_CONTAINER_SIZE} viewBox="0 0 130 130">
+            <Svg width={CLOUD_WIDTH} height={CLOUD_HEIGHT} viewBox="0 0 130 90">
               <Defs>
                 <RadialGradient id="innerMoltenCore" cx="50%" cy="50%" rx="48%" ry="48%">
                   <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
@@ -622,11 +657,11 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
                   <Stop offset="100%" stopColor="#000000" stopOpacity="0" />
                 </RadialGradient>
               </Defs>
-              <Circle cx="65" cy="65" r="60" fill="url(#innerMoltenCore)" />
+              <Circle cx="65" cy="45" r="40" fill="url(#innerMoltenCore)" />
             </Svg>
           </Animated.View>
 
-          {/* Deep Vitrified Ambient Caustic Shadow/Backdrop */}
+          {/* Deep Vitrified Ambient Caustic Glow Aura (Single diffuse radial gradient, zero ghosting) */}
           <Animated.View
             pointerEvents="none"
             style={[
@@ -634,38 +669,77 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
               { opacity: crystalGlowOpacity },
             ]}
           >
-            <Image
-              source={require('@/assets/images/splash-icon.png')}
-              style={styles.cloudImageBackdrop}
-              resizeMode="contain"
-            />
+            <Svg width={CLOUD_WIDTH * 1.5} height={CLOUD_HEIGHT * 1.5} viewBox="0 0 200 140">
+              <Defs>
+                <RadialGradient id="cloudAuraGrad" cx="50%" cy="50%" rx="50%" ry="50%">
+                  <Stop offset="0%" stopColor={FLAME_CORE} stopOpacity="0.45" />
+                  <Stop offset="45%" stopColor={FLAME_PRIMARY} stopOpacity="0.25" />
+                  <Stop offset="80%" stopColor={VIOLET_PRIMARY} stopOpacity="0.08" />
+                  <Stop offset="100%" stopColor="#000000" stopOpacity="0" />
+                </RadialGradient>
+              </Defs>
+              <Rect x="0" y="0" width="200" height="140" fill="url(#cloudAuraGrad)" />
+            </Svg>
           </Animated.View>
 
-          {/* Beveled Edge Highlight (Crisp White Glass Rim) */}
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.cloudRimLayer,
-              { opacity: beveledRimOpacity },
-            ]}
-          >
-            <Image
-              source={require('@/assets/images/splash-icon.png')}
-              style={styles.cloudImageRim}
-              resizeMode="contain"
-            />
-          </Animated.View>
+          {/* PRIMARY CLOUDORA VECTOR CLOUD (Single crisp vector instance, 100% sharp on all DPIs) */}
+          <View style={styles.cloudVectorContainer}>
+            <Svg width={CLOUD_WIDTH} height={CLOUD_HEIGHT} viewBox="0 0 28 20" fill="none">
+              <Defs>
+                <LinearGradient id="entranceCloudGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor="#FFA040" />
+                  <Stop offset="45%" stopColor="#FF6B00" />
+                  <Stop offset="100%" stopColor="#E05300" />
+                </LinearGradient>
+                <LinearGradient id="entranceRimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.95" />
+                  <Stop offset="100%" stopColor="#FF6B00" stopOpacity="0.15" />
+                </LinearGradient>
+              </Defs>
 
-          {/* Primary Sharp Cloudora Cloud Logo */}
-          <View style={styles.cloudImageHolder}>
-            <Image
-              source={require('@/assets/images/splash-icon.png')}
-              style={styles.cloudImageMain}
-              resizeMode="contain"
-              accessibilityLabel="Cloudora LMS"
-            />
+              {/* Core solid body */}
+              <Circle cx="14" cy="12.5" r="5.5" fill="url(#entranceCloudGrad)" />
 
-            {/* Specular Diagonal Caustic Light Sweep Overlay */}
+              {/* Outer side puffs giving the wide aerodynamic silhouette */}
+              <Circle cx="6.5" cy="13.5" r="4.2" fill="url(#entranceCloudGrad)" />
+              <Circle cx="21.5" cy="13.5" r="4.2" fill="url(#entranceCloudGrad)" />
+
+              {/* Upper cloud domes */}
+              <Circle cx="10.5" cy="9.8" r="4.4" fill="url(#entranceCloudGrad)" />
+              <Circle cx="16.5" cy="8.8" r="5.0" fill="url(#entranceCloudGrad)" />
+
+              {/* Crisp wide base connector pill */}
+              <Rect x="5.5" y="11.8" width="17" height="5" rx="2.5" fill="url(#entranceCloudGrad)" />
+
+              {/* Upper specular crest highlight path */}
+              <Path
+                d="M 12 7.2 C 14 5.5 18 5.8 19.8 8.6"
+                stroke="url(#entranceRimGrad)"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+              />
+            </Svg>
+
+            {/* Vitrification Beveled Rim Highlight Overlay */}
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFillObject,
+                { opacity: beveledRimOpacity },
+              ]}
+            >
+              <Svg width={CLOUD_WIDTH} height={CLOUD_HEIGHT} viewBox="0 0 28 20" fill="none">
+                <Path
+                  d="M 12 7.2 C 14 5.5 18 5.8 19.8 8.6"
+                  stroke="#FFFFFF"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  opacity={0.85}
+                />
+              </Svg>
+            </Animated.View>
+
+            {/* Specular Diagonal Caustic Light Sweep Overlay (Clipped to Cloud Bounds) */}
             <Animated.View
               pointerEvents="none"
               style={[
@@ -679,7 +753,7 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
                 },
               ]}
             >
-              <Svg width={42} height={CLOUD_CONTAINER_SIZE * 1.6} viewBox="0 0 42 208">
+              <Svg width={42} height={CLOUD_HEIGHT * 1.8} viewBox="0 0 42 180">
                 <Defs>
                   <LinearGradient id="sweepBeam" x1="0%" y1="0%" x2="100%" y2="0%">
                     <Stop offset="0%" stopColor={CYAN_SPECULAR} stopOpacity="0" />
@@ -689,12 +763,12 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
                     <Stop offset="100%" stopColor={FLAME_PRIMARY} stopOpacity="0" />
                   </LinearGradient>
                 </Defs>
-                <Rect x="0" y="0" width={42} height={208} fill="url(#sweepBeam)" />
+                <Rect x="0" y="0" width={42} height={180} fill="url(#sweepBeam)" />
               </Svg>
             </Animated.View>
           </View>
 
-          {/* Prismatic Star Glint (Positioned exactly at top crest of cloud) */}
+          {/* Prismatic Star Glint (Positioned mathematically at apex crest of top cloud dome) */}
           <Animated.View
             pointerEvents="none"
             style={[
@@ -708,7 +782,7 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
               },
             ]}
           >
-            <PrismaticStarGlint size={28} />
+            <PrismaticStarGlint size={GLINT_SIZE} />
           </Animated.View>
         </Animated.View>
 
@@ -726,26 +800,22 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
           <Text style={styles.brandSubtitle}>LEARNING WORKSPACE</Text>
         </Animated.View>
       </View>
-    </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: BG_COLOR,
+  rootContainer: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 999999,
   },
-  ambientOrbTop: {
-    position: 'absolute',
-    top: -SCREEN_WIDTH * 0.25,
-    left: -SCREEN_WIDTH * 0.15,
-  },
-  ambientOrbBottom: {
-    position: 'absolute',
-    bottom: -SCREEN_WIDTH * 0.2,
-    right: -SCREEN_WIDTH * 0.15,
+  backdropContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: BG_COLOR,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   beadContainer: {
     position: 'absolute',
@@ -767,79 +837,53 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cloudWrapper: {
-    width: CLOUD_CONTAINER_SIZE,
-    height: CLOUD_CONTAINER_SIZE,
+    width: CLOUD_WIDTH,
+    height: CLOUD_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
   },
   moltenCoreLayer: {
     position: 'absolute',
-    width: CLOUD_CONTAINER_SIZE,
-    height: CLOUD_CONTAINER_SIZE,
+    width: CLOUD_WIDTH,
+    height: CLOUD_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cloudBackdropGlow: {
     position: 'absolute',
-    width: CLOUD_CONTAINER_SIZE,
-    height: CLOUD_CONTAINER_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: FLAME_PRIMARY,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.9,
-    shadowRadius: 32,
-  },
-  cloudImageBackdrop: {
-    width: CLOUD_CONTAINER_SIZE * 1.12,
-    height: CLOUD_CONTAINER_SIZE * 1.12,
-    tintColor: FLAME_CORE,
-    opacity: 0.45,
-  },
-  cloudRimLayer: {
-    position: 'absolute',
-    width: CLOUD_CONTAINER_SIZE,
-    height: CLOUD_CONTAINER_SIZE,
+    width: CLOUD_WIDTH * 1.5,
+    height: CLOUD_HEIGHT * 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cloudImageRim: {
-    width: CLOUD_CONTAINER_SIZE * 1.03,
-    height: CLOUD_CONTAINER_SIZE * 1.03,
-    tintColor: '#FFFFFF',
-    opacity: 0.25,
-  },
-  cloudImageHolder: {
-    width: CLOUD_CONTAINER_SIZE,
-    height: CLOUD_CONTAINER_SIZE,
+  cloudVectorContainer: {
+    width: CLOUD_WIDTH,
+    height: CLOUD_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-  },
-  cloudImageMain: {
-    width: CLOUD_CONTAINER_SIZE,
-    height: CLOUD_CONTAINER_SIZE,
+    borderRadius: 24,
   },
   sweepContainer: {
     position: 'absolute',
-    top: -CLOUD_CONTAINER_SIZE * 0.3,
-    bottom: -CLOUD_CONTAINER_SIZE * 0.3,
+    top: -CLOUD_HEIGHT * 0.4,
+    bottom: -CLOUD_HEIGHT * 0.4,
     width: 42,
     alignItems: 'center',
     justifyContent: 'center',
   },
   glintHolder: {
     position: 'absolute',
-    top: 24, // Exact top crest of the cloud inside the 130x130 square box (y ≈ 0.22 * 130 = 28px)
-    left: 88, // Center-right pinnacle lobe (x ≈ 0.70 * 130 = 91px)
-    width: 28,
-    height: 28,
+    top: GLINT_TOP,
+    left: GLINT_LEFT,
+    width: GLINT_SIZE,
+    height: GLINT_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
   },
   brandTextContainer: {
     alignItems: 'center',
-    marginTop: 18,
+    marginTop: 22,
   },
   brandTitle: {
     color: '#FFFFFF',
@@ -853,7 +897,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 3.2,
-    marginTop: 5,
+    marginTop: 6,
     textAlign: 'center',
   },
 });

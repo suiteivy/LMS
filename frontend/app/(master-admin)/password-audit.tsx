@@ -8,6 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import { TableRowSkeleton } from '@/components/ui/skeletons';
 import { getApiBaseUrl } from '@/utils/backendUrl';
+import { api } from '@/services/api';
 import { DateRangePicker } from '@/components/common/DatePicker';
 
 type AuditOutcome = 'success' | 'failure' | 'requested';
@@ -142,25 +143,17 @@ export default function MasterPasswordAuditPage() {
       if (fromDate.trim()) params.append('from', `${fromDate.trim()}T00:00:00.000Z`);
       if (toDate.trim()) params.append('to', `${toDate.trim()}T23:59:59.999Z`);
 
-      const response = await fetch(`${getApiBaseUrl()}/master-admin/password-audit-logs?${params.toString()}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to fetch password audit logs');
-      }
+      const res = await api.get(`/master-admin/password-audit-logs?${params.toString()}`);
+      const payload = res.data;
 
       setLogs(Array.isArray(payload?.logs) ? payload.logs : []);
       setPagination(payload.pagination || { page: 1, limit: 30, total: 0, pages: 0 });
     } catch (error: any) {
       setLogs([]);
       setPagination((prev) => ({ ...prev, total: 0, pages: 0 }));
-      Toast.show({ type: 'error', text1: 'Load failed', text2: error?.message || 'Could not load audit logs.' });
+      if (!error?.isAuthError) {
+        Toast.show({ type: 'error', text1: 'Load failed', text2: error?.response?.data?.error || error?.message || 'Could not load audit logs.' });
+      }
     } finally {
       setLoading(false);
     }
@@ -236,25 +229,11 @@ export default function MasterPasswordAuditPage() {
   const executeClearLogs = async () => {
     setClearing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        Toast.show({ type: 'error', text1: 'Session expired', text2: 'Please sign in again.' });
-        return;
-      }
-
-      const response = await fetch(`${getApiBaseUrl()}/master-admin/password-audit-logs/clear`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ window: clearWindow, confirm: clearWindow === 'all' }),
+      const res = await api.post('/master-admin/password-audit-logs/clear', {
+        window: clearWindow,
+        confirm: clearWindow === 'all',
       });
-
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to clear password audit logs');
-      }
+      const payload = res.data;
 
       Toast.show({
         type: 'success',
@@ -264,7 +243,9 @@ export default function MasterPasswordAuditPage() {
 
       await fetchLogs(1);
     } catch (error: any) {
-      Toast.show({ type: 'error', text1: 'Clear failed', text2: error?.message || 'Unable to clear logs.' });
+      if (!error?.isAuthError) {
+        Toast.show({ type: 'error', text1: 'Clear failed', text2: error?.response?.data?.error || error?.message || 'Unable to clear logs.' });
+      }
     } finally {
       setClearing(false);
     }

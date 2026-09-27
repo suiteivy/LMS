@@ -3,6 +3,7 @@ import { isBenignSupabaseSignOutError, supabase } from '@/libs/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { getApiBaseUrl } from '@/utils/backendUrl';
+import { setSigningOutState } from './sessionState';
 
 
 /**
@@ -30,10 +31,7 @@ export async function safeSignOut(
   skipDemoCleanup?: boolean,
 ): Promise<void> {
   // Notify API layer to drop tokens and block in-flight requests
-  try {
-    const { setSigningOutState } = await import('@/services/api');
-    setSigningOutState(true);
-  } catch {}
+  setSigningOutState(true);
 
   // 1. Persist reason and deliberate logout marker
   if (!isDemoSession) {
@@ -157,10 +155,7 @@ export async function safeSignOut(
   }
 
   // Release signing out flag after settle
-  setTimeout(async () => {
-    try {
-      const { setSigningOutState } = await import('@/services/api');
-      setSigningOutState(false);
-    } catch {}
+  setTimeout(() => {
+    setSigningOutState(false);
   }, 1200);
 }

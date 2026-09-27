@@ -9,6 +9,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
+import { api } from '@/services/api';
 import { getBackendRootUrl } from '@/utils/backendUrl';
 
 type ResourceItem = {
@@ -65,11 +66,8 @@ export default function AdminMaterialsScreen() {
     const fetchPending = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`${apiUrl}/api/resources/pending`, {
-                headers: { 'Authorization': `Bearer ${getToken()}` }
-            });
-            const data = await res.json();
-            if (res.ok) setResources(data);
+            const res = await api.get('/resources/pending');
+            if (res.data) setResources(res.data);
         } catch (err) {
             Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load pending materials' });
         } finally {
@@ -80,11 +78,8 @@ export default function AdminMaterialsScreen() {
     const fetchAll = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`${apiUrl}/api/resources`, {
-                headers: { 'Authorization': `Bearer ${getToken()}` }
-            });
-            const data = await res.json();
-            if (res.ok) setAllResources(data);
+            const res = await api.get('/resources');
+            if (res.data) setAllResources(res.data);
         } catch (err) {
             Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load materials' });
         } finally {
@@ -100,25 +95,13 @@ export default function AdminMaterialsScreen() {
     const handleApprove = async (id: string, status: 'approved' | 'rejected') => {
         setSubmitting(true);
         try {
-            const res = await fetch(`${apiUrl}/api/resources/${id}/approve`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${getToken()}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ status, feedback }),
-            });
-            const data = await res.json();
-            if (res.ok) {
-                Toast.show({ type: 'success', text1: `Material ${status}`, text2: data.message });
-                setSelectedResource(null);
-                setFeedback('');
-                fetchPending();
-            } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error });
-            }
-        } catch (err) {
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Network error' });
+            const res = await api.put(`/resources/${id}/approve`, { status, feedback });
+            Toast.show({ type: 'success', text1: `Material ${status}`, text2: res.data?.message || 'Updated successfully' });
+            setSelectedResource(null);
+            setFeedback('');
+            fetchPending();
+        } catch (err: any) {
+            Toast.show({ type: 'error', text1: 'Error', text2: err.response?.data?.error || err.message || 'Network error' });
         } finally {
             setSubmitting(false);
         }

@@ -108,7 +108,21 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
             <TouchableOpacity
               onPress={() => {
                 if (onBack) {
-                  onBack();
+                  if (router.canGoBack()) {
+                    onBack();
+                  } else if (backTo) {
+                    router.replace(backTo as any);
+                  } else if (fallbackPath) {
+                    router.replace(fallbackPath as any);
+                  } else {
+                    const r = (role || '').toLowerCase();
+                    if (r.includes('master')) router.replace('/(master-admin)' as any);
+                    else if (r.includes('admin')) router.replace('/(admin)' as any);
+                    else if (r.includes('teacher')) router.replace('/(teacher)' as any);
+                    else if (r.includes('student')) router.replace('/(student)' as any);
+                    else if (r.includes('parent')) router.replace('/(parent)' as any);
+                    else router.replace('/' as any);
+                  }
                 } else if (backTo) {
                   router.replace(backTo as any);
                 } else if (fallbackPath) {
@@ -117,6 +131,16 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                   } else {
                     router.replace(fallbackPath as any);
                   }
+                } else if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  const r = (role || '').toLowerCase();
+                  if (r.includes('master')) router.replace('/(master-admin)' as any);
+                  else if (r.includes('admin')) router.replace('/(admin)' as any);
+                  else if (r.includes('teacher')) router.replace('/(teacher)' as any);
+                  else if (r.includes('student')) router.replace('/(student)' as any);
+                  else if (r.includes('parent')) router.replace('/(parent)' as any);
+                  else router.replace('/' as any);
                 }
               }}
               style={{

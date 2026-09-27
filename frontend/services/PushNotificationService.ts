@@ -124,12 +124,12 @@ class PushNotificationService {
           msg.includes('fcm-credentials') ||
           msg.includes('projectId')
         ) {
-          logger.warn(
+          logger.info(
             'Push notification token registration skipped (FCM / Firebase credentials not configured in this build):',
             msg
           );
         } else {
-          logger.warn('Push notification token unavailable:', msg);
+          logger.info('Push notification token unavailable:', msg);
         }
         return null;
       }

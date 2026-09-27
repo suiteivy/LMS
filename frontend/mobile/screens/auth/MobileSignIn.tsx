@@ -29,6 +29,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Eye, EyeOff, Lock, Mail, ShieldAlert, ArrowRight } from 'lucide-react-native';
 import { MobileLivingBackground } from '@/components/landing/MobileLivingBackground';
+import { CloudoraLogo } from '@/components/common/CloudoraLogo';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/libs/supabase';
@@ -208,11 +209,11 @@ export const MobileSignIn: React.FC = () => {
           {/* Header Brand — Standalone Unboxed Cloud Logo */}
           <View style={styles.brandHeader}>
             <View style={styles.logoContainer}>
-              <Image
-                source={require('@/assets/images/splash-icon.png')}
-                style={styles.logoImage}
-                resizeMode="contain"
-                accessibilityLabel="Cloudora LMS Logo"
+              <CloudoraLogo
+                width={64}
+                height={46}
+                glow={true}
+                glowIntensity={0.6}
               />
             </View>
             <Text style={styles.brandTitle}>CLOUDORA</Text>

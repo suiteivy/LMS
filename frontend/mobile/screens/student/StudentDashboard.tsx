@@ -49,12 +49,13 @@ import { StudentService } from '@/services/StudentService';
 import { supabase } from '@/libs/supabase';
 import { downloadTimetablePdf } from '@/utils/timetablePdfGenerator';
 import { showError, showFetchError, showSuccess } from '@/utils/toast';
+import { useIsFocused } from '@react-navigation/native';
 
 // Mobile-native components & design tokens
 import { MobileScreenWrapper } from '@/mobile/components/common/MobileScreenWrapper';
 import { MobileHeader } from '@/mobile/components/common/MobileHeader';
 import { MobileCard } from '@/mobile/components/common/MobileCard';
-import { StudentDashboardSkeleton } from '@/components/ui/skeletons';
+import { StudentDashboardSkeleton } from '@/mobile/components/skeletons/MobileSkeleton';
 import { mobileColors, spacing, MIN_TOUCH_TARGET } from '@/mobile/utils/platform';
 
 // Cast icons for RN
@@ -85,6 +86,7 @@ export function StudentDashboardMobile() {
   const { hasDiary, showFinancials } = useSubscriptionTier();
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const isFocused = useIsFocused();
 
   const [gpa, setGpa] = useState<string>('0.00');
   const [attendancePct, setAttendancePct] = useState<string>('0%');
@@ -96,6 +98,7 @@ export function StudentDashboardMobile() {
   const cacheKey = studentId ? `student_dashboard_${studentId}` : null;
 
   const fetchDashboardData = useCallback(async () => {
+    if (!isFocused) return;
     if (cacheKey && todaysSchedule.length === 0) {
       const cached = await CacheService.get<any>(cacheKey, { allowStale: true });
       if (cached.data) {
@@ -209,12 +212,14 @@ export function StudentDashboardMobile() {
       }
     } catch (error) {
       console.error('Error fetching student dashboard data:', error);
-      showFetchError('dashboard data', error);
+      if (isFocused) {
+        showFetchError('dashboard data', error);
+      }
     } finally {
       setLoadingData(false);
       setRefreshing(false);
     }
-  }, [studentId, isDemo, cacheKey]);
+  }, [studentId, isDemo, cacheKey, isFocused]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -314,10 +319,14 @@ export function StudentDashboardMobile() {
 
   if (authLoading || (loadingData && todaysSchedule.length === 0 && gpa === '0.00')) {
     return (
-      <View style={[styles.container, { backgroundColor: isDark ? '#161B22' : '#F6F8FA' }]}>
+      <View style={{ flex: 1, backgroundColor: isDark ? mobileColors.bgPrimary : mobileColors.bgLightSurface }}>
         <MobileHeader
-          title="Student Portal"
-          subtitle={profile?.full_name || 'Academic Hub'}
+          title="Welcome back,"
+          subtitle={profile?.full_name || 'Student'}
+          largeTitle
+          role="Student"
+          showNotification={true}
+          showUserAvatar={true}
         />
         <StudentDashboardSkeleton loading={true} label="Loading student dashboard..." />
       </View>
@@ -325,16 +334,23 @@ export function StudentDashboardMobile() {
   }
 
   return (
-    <MobileScreenWrapper
-      refreshing={refreshing}
-      onRefresh={onRefresh}
-      scrollable={true}
-      contentStyle={styles.scrollContent}
-    >
+    <View style={{ flex: 1, backgroundColor: isDark ? mobileColors.bgPrimary : mobileColors.bgLightSurface }}>
       <MobileHeader
-        title="Student Portal"
-        subtitle={profile?.full_name || 'Academic Hub'}
+        title="Welcome back,"
+        subtitle={profile?.full_name || 'Student'}
+        largeTitle
+        role="Student"
+        showNotification={true}
+        showUserAvatar={true}
       />
+
+      <MobileScreenWrapper
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        scrollable={true}
+        skipTopInset
+        contentStyle={styles.scrollContent}
+      >
 
       {/* ── Metric Cards ── */}
       <View style={styles.metricsRow}>
@@ -544,7 +560,8 @@ export function StudentDashboardMobile() {
         </View>
         <IconArrowRight size={18} color={isDark ? '#64748b' : '#94a3b8'} />
       </TouchableOpacity>
-    </MobileScreenWrapper>
+      </MobileScreenWrapper>
+    </View>
   );
 }
 

@@ -105,20 +105,9 @@ export default function SettingsScreen() {
 
     const fetchSubscriptionSnapshot = async () => {
         try {
-            const { data } = await supabase.auth.getSession();
-            const token = data.session?.access_token;
-            if (!token) return;
-
-            const res = await fetch(`${getBackendUrl()}/api/settings/subscription-snapshot`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: 'application/json',
-                },
-            });
-
-            const payload = await res.json();
-            if (res.ok) {
-                setSubscriptionSnapshot(payload);
+            const res = await api.get('/settings/subscription-snapshot');
+            if (res.data) {
+                setSubscriptionSnapshot(res.data);
             }
         } catch (e) {
             console.error('fetchSubscriptionSnapshot error:', e);

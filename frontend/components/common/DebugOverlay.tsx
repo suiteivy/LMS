@@ -2,7 +2,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { LogEntry, logger } from '@/services/LoggingService';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export const DebugOverlay: React.FC = () => {
  const [visible, setVisible] = useState(false);

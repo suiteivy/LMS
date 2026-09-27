@@ -15,12 +15,18 @@ export async function setupImmersiveMode() {
 
   try {
     const NavigationBar = await import('expo-navigation-bar');
-    // Draw behind system navigation bar
-    await NavigationBar.setPositionAsync('absolute');
-    // Transparent navigation bar surface
-    await NavigationBar.setBackgroundColorAsync('#00000000');
-    // Auto-hide navigation bar, reveal on edge swipe without re-layout
-    await NavigationBar.setBehaviorAsync('overlay-swipe');
+    const apiLevel = typeof Platform.Version === 'number' ? Platform.Version : parseInt(String(Platform.Version || '0'), 10);
+
+    // On Android 15+ (API 35+), edge-to-edge is mandatory and native.
+    // Calling these deprecated methods emits warnings when edge-to-edge is enabled.
+    if (apiLevel < 35) {
+      // Draw behind system navigation bar
+      await NavigationBar.setPositionAsync('absolute');
+      // Transparent navigation bar surface
+      await NavigationBar.setBackgroundColorAsync('#00000000');
+      // Auto-hide navigation bar, reveal on edge swipe without re-layout
+      await NavigationBar.setBehaviorAsync('overlay-swipe');
+    }
     await NavigationBar.setVisibilityAsync('hidden');
   } catch {
     // Graceful fallback on devices that don't support custom navigation bar behavior

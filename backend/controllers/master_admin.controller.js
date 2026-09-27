@@ -7,6 +7,7 @@ const { logSystemActivity, readSystemActivityLogs, clearSystemActivityLogs } = r
 const { canonicalRoleFrom, databaseRoleFrom, withRoleAliases } = require("../utils/roleAlias.js");
 const { isTransientSupabaseError, withSupabaseRetry } = require('../utils/supabaseRetry.js');
 const { buildReceiptHtml } = require('../utils/receiptTemplate.js');
+const configCache = require('../utils/configCache.js');
 
 let serviceClientFactory = createClient;
 
@@ -1374,6 +1375,9 @@ exports.updateInstitutionDetails = async (req, res) => {
                 await revokeInstitutionUserSessions(adminClient, changedUserIds);
             }
         }
+
+        configCache.invalidateInstitution(id);
+        configCache.invalidateSettings(id);
 
         res.status(200).json({
             message: "Institution updated successfully",
@@ -3479,6 +3483,7 @@ exports.upsertCurrency = async (req, res) => {
                 .is('currency_id', null);
         }
 
+        configCache.invalidateCurrencies();
         return res.status(200).json({
             message: toUuidString(id) ? 'Currency updated successfully' : 'Currency created successfully',
             currency: data,
@@ -3526,6 +3531,7 @@ exports.deactivateCurrency = async (req, res) => {
             .single();
 
         if (error) throw error;
+        configCache.invalidateCurrencies();
         return res.status(200).json({ message: 'Currency deactivated successfully', currency: data });
     } catch (error) {
         console.error('Error deactivating currency:', error);

@@ -17,6 +17,7 @@ import Toast from 'react-native-toast-message';
 import { ListItemSkeleton } from '@/components/ui/skeletons';
 import { getApiBaseUrl } from '@/utils/backendUrl';
 import { formatCredentialExpiry } from '@/utils/formatExpiry';
+import { api } from '@/services/api';
 
 type Institution = { id: string; name: string };
 type Category = { id: string; name: string };
@@ -141,21 +142,14 @@ export default function MasterAdminUsersScreen() {
 
     const fetchCategories = useCallback(async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${getApiBaseUrl()}/master-admin/school-categories`, {
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    Accept: 'application/json',
-                },
-            });
-            const data = await res.json();
-            if (res.ok) {
-                setCategories(Array.isArray(data) ? data : []);
+            const res = await api.get('/master-admin/school-categories');
+            if (res.data) {
+                setCategories(Array.isArray(res.data) ? res.data : []);
             }
-        } catch (err) {
-            console.error('fetchCategories error:', err);
+        } catch (err: any) {
+            if (!err?.isAuthError) {
+                console.error('fetchCategories error:', err);
+            }
         }
     }, []);
 
@@ -174,13 +168,6 @@ export default function MasterAdminUsersScreen() {
                 setLoadingMore(true);
             }
 
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                setLoading(false);
-                setLoadingMore(false);
-                return;
-            }
-
             const params = new URLSearchParams({
                 page: String(currentPage),
                 limit: String(PAGE_SIZE),
@@ -192,26 +179,8 @@ export default function MasterAdminUsersScreen() {
             if (categoryFilters.length > 0) params.append('category_ids', categoryFilters.join(','));
             if (search.trim()) params.append('search', search.trim());
 
-            const response = await fetch(`${getApiBaseUrl()}/master-admin/users?${params.toString()}`, {
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    Accept: 'application/json',
-                },
-            });
-
-            const text = await response.text();
-            let payload: any;
-            try {
-                payload = JSON.parse(text);
-            } catch {
-                Toast.show({ type: 'error', text1: 'Server Error', text2: 'Invalid response body', position: 'top' });
-                return;
-            }
-
-            if (!response.ok) {
-                Toast.show({ type: 'error', text1: 'Fetch Failed', text2: payload?.error || 'Unable to load users', position: 'top' });
-                return;
-            }
+            const res = await api.get(`/master-admin/users?${params.toString()}`);
+            const payload = res.data;
 
             const incoming = Array.isArray(payload?.users) ? payload.users : [];
             setUsers((prev) => {
@@ -224,9 +193,11 @@ export default function MasterAdminUsersScreen() {
             if (!reset && more) {
                 pageRef.current = currentPage + 1;
             }
-        } catch (err) {
-            console.error('fetchUsers error:', err);
-            Toast.show({ type: 'error', text1: 'Network Error', text2: 'Could not reach server', position: 'top' });
+        } catch (err: any) {
+            if (!err?.isAuthError) {
+                console.error('fetchUsers error:', err);
+                Toast.show({ type: 'error', text1: 'Network Error', text2: 'Could not reach server', position: 'top' });
+            }
         } finally {
             setLoading(false);
             setLoadingMore(false);
@@ -330,34 +301,16 @@ export default function MasterAdminUsersScreen() {
         setDeletingUser(true);
 
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                Toast.show({ type: 'error', text1: 'Unauthorized', text2: 'Please sign in again', position: 'top' });
-                setDeletingUser(false);
-                return;
-            }
-
-            const response = await fetch(`${getApiBaseUrl()}/master-admin/users/${editingUser.id}`, {
-                method: 'DELETE',
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    Accept: 'application/json',
-                },
-            });
-
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                Toast.show({ type: 'error', text1: 'Delete Failed', text2: data?.error || 'Could not delete user', position: 'top' });
-                setDeletingUser(false);
-                return;
-            }
-
+            await api.delete(`/master-admin/users/${editingUser.id}`);
             setUsers((prev) => prev.filter((u) => u.id !== editingUser.id));
             Toast.show({ type: 'success', text1: 'Master Admin Deleted', text2: 'User removed successfully', position: 'top' });
             closeEdit();
-        } catch (err) {
-            console.error('confirmDeleteMasterAdmin error:', err);
-            Toast.show({ type: 'error', text1: 'Network Error', text2: 'Failed to delete user', position: 'top' });
+        } catch (err: any) {
+            if (!err?.isAuthError) {
+                console.error('confirmDeleteMasterAdmin error:', err);
+                const errMsg = err?.response?.data?.error || 'Failed to delete user';
+                Toast.show({ type: 'error', text1: 'Delete Failed', text2: errMsg, position: 'top' });
+            }
             setDeletingUser(false);
         }
     }, [closeEdit, deletingUser, editingUser]);
@@ -378,31 +331,10 @@ export default function MasterAdminUsersScreen() {
         setResettingLoading(true);
 
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                Toast.show({ type: 'error', text1: 'Unauthorized', text2: 'Please sign in again', position: 'top' });
-                setResettingLoading(false);
-                return;
-            }
-
-            const response = await fetch(`${getApiBaseUrl()}/auth/admin-reset-password`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    targetUserId: resettingUser.id,
-                }),
+            const res = await api.post('/auth/admin-reset-password', {
+                targetUserId: resettingUser.id,
             });
-
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                Toast.show({ type: 'error', text1: 'Reset Failed', text2: data?.error || 'Could not reset credentials', position: 'top' });
-                setResettingLoading(false);
-                return;
-            }
+            const data = res.data || {};
 
             setResetResult({
                 ...data,
@@ -418,9 +350,12 @@ export default function MasterAdminUsersScreen() {
                 text2: 'Temporary credential regenerated. All active sessions were revoked.',
                 position: 'top',
             });
-        } catch (err) {
-            console.error('confirmCredentialReset error:', err);
-            Toast.show({ type: 'error', text1: 'Network Error', text2: 'Failed to trigger credential reset', position: 'top' });
+        } catch (err: any) {
+            if (!err?.isAuthError) {
+                console.error('confirmCredentialReset error:', err);
+                const errMsg = err?.response?.data?.error || 'Failed to trigger credential reset';
+                Toast.show({ type: 'error', text1: 'Reset Failed', text2: errMsg, position: 'top' });
+            }
         } finally {
             setResettingLoading(false);
         }
@@ -431,13 +366,6 @@ export default function MasterAdminUsersScreen() {
         setSavingEdit(true);
 
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                Toast.show({ type: 'error', text1: 'Unauthorized', text2: 'Please sign in again', position: 'top' });
-                setSavingEdit(false);
-                return;
-            }
-
             const payload = {
                 first_name: editFirstName.trim() || null,
                 last_name: editLastName.trim() || null,
@@ -447,22 +375,8 @@ export default function MasterAdminUsersScreen() {
                 institution_id: editInstitution === 'none' ? null : editInstitution,
             };
 
-            const response = await fetch(`${getApiBaseUrl()}/master-admin/users/${editingUser.id}`, {
-                method: 'PUT',
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
-
-            const data = await response.json();
-            if (!response.ok) {
-                Toast.show({ type: 'error', text1: 'Update Failed', text2: data?.error || 'Could not update user', position: 'top' });
-                setSavingEdit(false);
-                return;
-            }
+            const res = await api.put(`/master-admin/users/${editingUser.id}`, payload);
+            const data = res.data;
 
             const serverUser = data?.user || {};
             const canonicalRole = toCanonicalRole(editRole);
@@ -489,9 +403,12 @@ export default function MasterAdminUsersScreen() {
 
             Toast.show({ type: 'success', text1: 'User Updated', text2: 'Changes saved successfully', position: 'top' });
             closeEdit();
-        } catch (err) {
-            console.error('saveEdit error:', err);
-            Toast.show({ type: 'error', text1: 'Network Error', text2: 'Failed to save changes', position: 'top' });
+        } catch (err: any) {
+            if (!err?.isAuthError) {
+                console.error('saveEdit error:', err);
+                const errMsg = err?.response?.data?.error || 'Failed to save changes';
+                Toast.show({ type: 'error', text1: 'Update Failed', text2: errMsg, position: 'top' });
+            }
             setSavingEdit(false);
         }
     }, [closeEdit, editEmail, editFirstName, editInstitution, editLastName, editPhone, editRole, editingUser, institutions, savingEdit]);

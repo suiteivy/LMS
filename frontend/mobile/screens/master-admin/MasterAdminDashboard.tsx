@@ -17,7 +17,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -41,7 +40,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import { SettingsService } from '@/services/SettingsService';
 import { CacheService } from '@/services/CacheService';
-import { DashboardStatCardSkeleton } from '@/components/ui/skeletons';
+import { MasterAdminDashboardSkeleton } from '@/mobile/components/skeletons/MobileSkeleton';
+import { api } from '@/services/api';
 import { getBackendRootUrl } from '@/utils/backendUrl';
 
 // Mobile-native components & design tokens
@@ -127,24 +127,14 @@ export function MasterAdminDashboardMobile() {
         }
       }
 
-      const backendUrl = getBackendRootUrl();
-
-      const res = await fetch(`${backendUrl}/api/master-admin/stats`, {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          Accept: 'application/json',
-        },
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setStats(data);
-        CacheService.set('master_admin_platform_stats', data, 5 * 60 * 1000);
-      } else {
-        setFetchError(data?.error || 'Failed to load platform stats.');
+      const res = await api.get('/master-admin/stats');
+      if (res.data) {
+        setStats(res.data);
+        CacheService.set('master_admin_platform_stats', res.data, 5 * 60 * 1000);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setFetchError('Network error while loading platform stats.');
+      setFetchError(err?.response?.data?.error || 'Failed to load platform stats.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -154,26 +144,11 @@ export function MasterAdminDashboardMobile() {
   const previewLifecycleSweep = useCallback(async () => {
     try {
       setSweepPreviewLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const backendUrl = getBackendRootUrl();
-
-      const res = await fetch(`${backendUrl}/api/master-admin/subscriptions/lifecycle-sweep/preview`, {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          Accept: 'application/json',
-        },
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        Toast.show({ type: 'error', text1: 'Preview Failed', text2: data?.error || 'Unable to preview sweep.' });
-        return;
-      }
-      setSweepPreview(data);
-    } catch (err) {
+      const res = await api.get('/master-admin/subscriptions/lifecycle-sweep/preview');
+      setSweepPreview(res.data);
+    } catch (err: any) {
       console.error('previewLifecycleSweep error:', err);
-      Toast.show({ type: 'error', text1: 'Preview Failed', text2: 'Unable to preview sweep.' });
+      Toast.show({ type: 'error', text1: 'Preview Failed', text2: err?.response?.data?.error || 'Unable to preview sweep.' });
     } finally {
       setSweepPreviewLoading(false);
     }
@@ -182,24 +157,8 @@ export function MasterAdminDashboardMobile() {
   const runLifecycleSweep = useCallback(async () => {
     try {
       setSweepRunLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const backendUrl = getBackendRootUrl();
-
-      const res = await fetch(`${backendUrl}/api/master-admin/subscriptions/lifecycle-sweep`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          Accept: 'application/json',
-        },
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        Toast.show({ type: 'error', text1: 'Sweep Failed', text2: data?.error || 'Unable to run sweep.' });
-        return;
-      }
-
+      const res = await api.post('/master-admin/subscriptions/lifecycle-sweep', {});
+      const data = res.data;
       Toast.show({
         type: 'success',
         text1: 'Sweep Complete',
@@ -207,9 +166,9 @@ export function MasterAdminDashboardMobile() {
       });
       await previewLifecycleSweep();
       await fetchStats();
-    } catch (err) {
+    } catch (err: any) {
       console.error('runLifecycleSweep error:', err);
-      Toast.show({ type: 'error', text1: 'Sweep Failed', text2: 'Unable to run sweep.' });
+      Toast.show({ type: 'error', text1: 'Sweep Failed', text2: err?.response?.data?.error || 'Unable to run sweep.' });
     } finally {
       setSweepRunLoading(false);
     }
@@ -248,29 +207,41 @@ export function MasterAdminDashboardMobile() {
     { label: 'MASTER ADMINS', value: stats?.totalMasterAdmins ?? 0, icon: IconShieldAlert, color: '#EC4899' },
   ];
 
+  // Show skeleton while loading initial stats
+  if (loading && !stats) {
+    return (
+      <View style={{ flex: 1, backgroundColor: isDark ? mobileColors.bgPrimary : mobileColors.bgLightSurface }}>
+        <MobileHeader
+          title="Welcome back,"
+          subtitle="Loading platform..."
+          largeTitle
+          role="Master Admin"
+          showNotification={true}
+          showUserAvatar={true}
+        />
+        <MasterAdminDashboardSkeleton />
+      </View>
+    );
+  }
+
   return (
-    <MobileScreenWrapper
-      refreshing={refreshing}
-      onRefresh={onRefresh}
-      scrollable={true}
-      contentStyle={styles.scrollContent}
-    >
+    <View style={{ flex: 1, backgroundColor: isDark ? mobileColors.bgPrimary : mobileColors.bgLightSurface }}>
       <MobileHeader
-        title="Platform Admin"
-        subtitle={profile?.full_name || 'Master Operations'}
-        rightAction={
-          <TouchableOpacity
-            onPress={async () => {
-              await logout();
-              router.replace('/(auth)/signIn');
-            }}
-            style={styles.logoutBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <IconLogOut size={16} color="#EF4444" />
-          </TouchableOpacity>
-        }
+        title="Welcome back,"
+        subtitle={profile?.full_name || 'Platform Administrator'}
+        largeTitle
+        role="Master Admin"
+        showNotification={true}
+        showUserAvatar={true}
       />
+
+      <MobileScreenWrapper
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        scrollable={true}
+        skipTopInset
+        contentStyle={styles.scrollContent}
+      >
 
       {/* ── Global Maintenance Mode Card ── */}
       <MobileCard
@@ -412,9 +383,7 @@ export function MasterAdminDashboardMobile() {
         </Text>
       </View>
 
-      {loading && !stats ? (
-        <DashboardStatCardSkeleton loading={true} count={8} label="Loading platform stats..." />
-      ) : stats ? (
+      {stats ? (
         <View style={styles.kpiGrid}>
           {kpis.map((kpi) => {
             const Icon = kpi.icon;
@@ -499,7 +468,8 @@ export function MasterAdminDashboardMobile() {
           </Text>
         )}
       </MobileCard>
-    </MobileScreenWrapper>
+      </MobileScreenWrapper>
+    </View>
   );
 }
 
@@ -507,14 +477,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: spacing.md,
     paddingBottom: 110, // Generous clearance for 60+insets bottom tab bar
-  },
-  logoutBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: 'rgba(239,68,68,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   controlCard: {
     padding: spacing.md,

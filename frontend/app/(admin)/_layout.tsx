@@ -10,7 +10,7 @@ import { House, LayoutGrid, Settings, Users, Wallet, MessageSquare, Bell, Calend
 import { Platform, useWindowDimensions, View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// Full nav for paid plans
+// Full nav for paid plans (Sidebar & Global Nav)
 export const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: House, route: "/(admin)" },
     { name: "management/index", title: "Manage", icon: LayoutGrid, route: "/(admin)/management" },
@@ -33,220 +33,231 @@ export const BETA_NAV_ITEMS: NavItem[] = [
     { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(admin)/accessibility/settings" },
 ];
 
-const MOBILE_TAB_NAMES = ["index", "notifications", "accessibility/settings"];
-
-const ALL_ROUTES = [
+/**
+ * 5 Standard Primary Mobile Destinations (Apple HIG / Material 3 compliant):
+ * 1. Home (index) - Overview & Quick Actions
+ * 2. Manage (management/index) - School operations, classes & subjects
+ * 3. Users (users/index) - Student & staff directory
+ * 4. Finance (finance/index) - Tuition, bursaries, fee collections
+ * 5. Settings (accessibility/settings) - Profile, appearance, accessibility
+ *
+ * NOTE: Notifications bell has been moved to the TOP-RIGHT header app-bar
+ * as per mobile app conventions.
+ */
+const PRIMARY_MOBILE_TABS = [
     "index",
-    "calendar/index",
-    "notifications",
-    "request-feature",
-    "communication/index",
+    "management/index",
+    "users/index",
+    "finance/index",
+    "accessibility/settings",
+];
+
+// Exhaustive catalog of every route under app/(admin) to guarantee no unhandled tabs
+const ALL_ADMIN_ROUTES = [
+    "academic-setup/index",
+    "accessibility/settings",
     "attendance/index",
     "attendance/students/index",
     "attendance/teachers/index",
+    "calendar/index",
     "classes/create",
     "classes/index",
-    "finance/index",
+    "classes/transfers",
+    "communication/index",
     "finance/bursaries/create",
     "finance/bursaries/reports",
     "finance/bursaries/[id]",
     "finance/funds/index",
+    "finance/index",
+    "finance/individual-records",
+    "finance/revenue",
+    "index",
+    "loading",
     "management/analytics",
-    "management/index",
-    "management/materials",
-    "management/resources",
-    "management/library/index",
+    "management/clearance/index",
     "management/coverage",
     "management/exams",
+    "management/index",
+    "management/library/index",
+    "management/materials",
+    "management/resources",
     "management/roles/index",
     "management/subjects/create",
     "management/subjects/details",
     "management/subjects/index",
+    "notifications",
+    "request-feature",
+    "results/index",
+    "results/promotions",
+    "results/rankings",
     "settings/index",
     "settings/settings",
     "subjects/create",
     "subjects/index",
-    "academic-setup/index",
-    "results/index",
-    "results/rankings",
-    "results/promotions",
-    "classes/transfers",
     "timetable/index",
     "users/create",
     "users/index",
-    "users/[id]",
+    "users/[id]/index",
+    "users/[id]/master-record",
 ];
 
-const HIDDEN = ALL_ROUTES.filter(name => !MOBILE_TAB_NAMES.includes(name));
-
-// Beta plan extra hidden items (routes hidden from tab bar for beta users)
-// Note: management/index is already in MOBILE_TAB_NAMES so it is handled via href:null below.
-const BETA_EXTRA_HIDDEN = ["finance/index"];
-
-import { useNotifications } from "@/contexts/NotificationContext";
-import { NotificationBellDropdown } from "@/components/common/NotificationBellDropdown";
-import { useState } from "react";
-import { useRouter } from "expo-router";
+const HIDDEN_ADMIN_ROUTES = ALL_ADMIN_ROUTES.filter(
+    (name) => !PRIMARY_MOBILE_TABS.includes(name)
+);
 
 function AdminTabs() {
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
-    const { hasMessaging } = useSubscriptionTier();
-    const { unreadCount } = useNotifications();
-    const [showNotifDropdown, setShowNotifDropdown] = useState(false);
-    const router = useRouter();
+    const { showFinancials, hasMessaging } = useSubscriptionTier();
 
-    const tabBarHeight = 70 + insets.bottom;
+    const tabBarHeight = 60 + Math.max(insets.bottom, 8);
 
     return (
         <View style={{ flex: 1 }}>
             <Tabs
-                screenListeners={({ route }: { route: any }) => ({
-                    tabPress: (e: any) => {
-                        if (route.name === "notifications") {
-                            e.preventDefault();
-                            setShowNotifDropdown((v) => !v);
-                        }
-                    },
-                })}
+                initialRouteName="index"
                 screenOptions={{
                     headerShown: false,
                     animation: 'shift',
                     tabBarActiveTintColor: "#FF6B00",
                     tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
-                    tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
+                    tabBarLabelStyle: {
+                        fontSize: 10,
+                        fontWeight: "700",
+                        letterSpacing: 0.1,
+                        marginTop: -2,
+                        marginBottom: 4,
+                    },
                     tabBarStyle: {
                         backgroundColor: isDark ? '#161B22' : "#ffffff",
                         borderTopWidth: 1,
                         borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
                         height: tabBarHeight,
-                        paddingBottom: insets.bottom || 6,
-                        paddingTop: 6,
-                        paddingHorizontal: 12,
-                        justifyContent: "space-around",
-                        elevation: 8,
+                        paddingBottom: Math.max(insets.bottom, 8),
+                        paddingTop: 8,
+                        paddingHorizontal: 8,
+                        elevation: 10,
                         shadowColor: "#000",
                         shadowOffset: { width: 0, height: -4 },
                         shadowOpacity: 0.1,
-                        shadowRadius: 3,
-                        boxShadow: [{
-                            offsetX: 0,
-                            offsetY: -4,
-                            blurRadius: 3,
-                            color: 'rgba(0, 0, 0, 0.1)',
-                        }],
+                        shadowRadius: 6,
                     },
                     sceneStyle: { backgroundColor: isDark ? '#161B22' : "#f9fafb" },
                 }}
             >
-            {/* Notifications — tab registered, press intercepted by listeners */}
-            <Tabs.Screen
-                name="notifications"
-                options={{
-                    title: "Alerts",
-                    tabBarItemStyle: { width: 72 },
-                    tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
-                    tabBarIcon: ({ size = 24, color, focused }) => {
-                        const Icon = Bell as any;
-                        const isOpen = showNotifDropdown;
-                        const iconColor = isOpen ? "#FF6B00" : focused ? "#FF6B00" : color;
-                        return (
-                            <View>
-                                <Icon size={size} color={iconColor} strokeWidth={2} />
-                                {unreadCount > 0 && (
-                                    <View style={{
-                                        position: 'absolute',
-                                        top: -4,
-                                        right: -6,
-                                        minWidth: 16,
-                                        height: 16,
-                                        borderRadius: 8,
-                                        backgroundColor: '#FF6B00',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        borderWidth: 2,
-                                        borderColor: isDark ? '#0F0B2E' : '#ffffff',
-                                    }}>
-                                        <Text style={{ color: 'white', fontSize: 8, fontWeight: 'bold' }}>
-                                            {unreadCount > 9 ? '9+' : unreadCount}
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-                        );
-                    },
-                }}
-            />
+                {/* 1. Home Dashboard */}
+                <Tabs.Screen
+                    name="index"
+                    options={{
+                        title: "Home",
+                        tabBarIcon: ({ color, focused }) => {
+                            const Icon = House as any;
+                            return (
+                                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                                    <Icon
+                                        size={22}
+                                        color={focused ? "#FF6B00" : color}
+                                        strokeWidth={focused ? 2.5 : 2}
+                                    />
+                                </View>
+                            );
+                        },
+                    }}
+                />
 
-            {/* Home - center, elevated style */}
-            <Tabs.Screen
-                name="index"
-                options={{
-                    title: "Home",
-                    tabBarShowLabel: false,
-                    tabBarIcon: ({ color, focused }) => {
-                        const Icon = House as any;
-                        return (
-                            <View style={{
-                                width: focused ? 48 : 28,
-                                height: focused ? 48 : 28,
-                                borderRadius: focused ? 24 : 6,
-                                backgroundColor: focused ? "#FF6B00" : "transparent",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                marginTop: focused ? -14 : 0,
-                                shadowColor: "#FF6B00",
-                                shadowOffset: { width: 0, height: 4 },
-                                shadowOpacity: focused ? 0.35 : 0,
-                                shadowRadius: 8,
-                                boxShadow: focused ? [{
-                                    offsetX: 0,
-                                    offsetY: 4,
-                                    blurRadius: 8,
-                                    color: 'rgba(255, 107, 0, 0.35)',
-                                }] : undefined,
-                                elevation: focused ? 6 : 0,
-                            }}>
-                                <Icon
-                                    size={focused ? 22 : 20}
-                                    color={focused ? "#ffffff" : color}
-                                    strokeWidth={2}
-                                />
-                            </View>
-                        );
-                    },
-                }}
-            />
+                {/* 2. Management Hub */}
+                <Tabs.Screen
+                    name="management/index"
+                    options={{
+                        title: "Manage",
+                        tabBarIcon: ({ color, focused }) => {
+                            const Icon = LayoutGrid as any;
+                            return (
+                                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                                    <Icon
+                                        size={22}
+                                        color={focused ? "#FF6B00" : color}
+                                        strokeWidth={focused ? 2.5 : 2}
+                                    />
+                                </View>
+                            );
+                        },
+                    }}
+                />
 
-            {/* Settings - right */}
-            <Tabs.Screen
-                name="accessibility/settings"
-                options={{
-                    title: "Accessibility",
-                    tabBarIcon: ({ size = 24, color }) => {
-                        const Icon = Settings as any;
-                        return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-                    },
-                }}
-            />
+                {/* 3. Users Directory */}
+                <Tabs.Screen
+                    name="users/index"
+                    options={{
+                        title: "Users",
+                        tabBarIcon: ({ color, focused }) => {
+                            const Icon = Users as any;
+                            return (
+                                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                                    <Icon
+                                        size={22}
+                                        color={focused ? "#FF6B00" : color}
+                                        strokeWidth={focused ? 2.5 : 2}
+                                    />
+                                </View>
+                            );
+                        },
+                    }}
+                />
 
-            {/* Hidden items (routes registered but not shown in tab bar) */}
-            {HIDDEN.map((name) => {
-                if (name === "communication/index" && !hasMessaging) {
-                    return <Tabs.Screen key={name} name={name} options={{ href: null, headerShown: false }} />;
-                }
-                return (
-                <Tabs.Screen key={name} name={name} options={{ href: null }} />
-                );
-            })}
+                {/* 4. Finance (Visible if paid tier or replaced with hidden when restricted) */}
+                <Tabs.Screen
+                    name="finance/index"
+                    options={{
+                        title: "Finance",
+                        href: showFinancials ? "/(admin)/finance" : null,
+                        tabBarIcon: ({ color, focused }) => {
+                            const Icon = Wallet as any;
+                            return (
+                                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                                    <Icon
+                                        size={22}
+                                        color={focused ? "#FF6B00" : color}
+                                        strokeWidth={focused ? 2.5 : 2}
+                                    />
+                                </View>
+                            );
+                        },
+                    }}
+                />
+
+                {/* 5. Settings & Accessibility */}
+                <Tabs.Screen
+                    name="accessibility/settings"
+                    options={{
+                        title: "Settings",
+                        tabBarIcon: ({ color, focused }) => {
+                            const Icon = Settings as any;
+                            return (
+                                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                                    <Icon
+                                        size={22}
+                                        color={focused ? "#FF6B00" : color}
+                                        strokeWidth={focused ? 2.5 : 2}
+                                    />
+                                </View>
+                            );
+                        },
+                    }}
+                />
+
+                {/* Comprehensive Hidden Screens (No auto-discovered rogue tabs or tofu glyphs) */}
+                {HIDDEN_ADMIN_ROUTES.map((name) => (
+                    <Tabs.Screen
+                        key={name}
+                        name={name}
+                        options={{
+                            href: null,
+                            headerShown: false,
+                        }}
+                    />
+                ))}
             </Tabs>
-
-            <NotificationBellDropdown
-                visible={showNotifDropdown}
-                onClose={() => setShowNotifDropdown(false)}
-                onViewAll={() => router.push("/(admin)/notifications")}
-                tabBarHeight={tabBarHeight}
-            />
         </View>
     );
 }
@@ -264,7 +275,7 @@ function AdminSidebar() {
     const baseItems = (showFinancials ? ALL_NAV_ITEMS : BETA_NAV_ITEMS)
         .filter((item) => (item.name === 'communication/index' ? hasMessaging : true));
 
-    // If the user's active role is strictly finance admin, limit sidebar navigation strictly to finance and accessibility
+    // If user's active role is strictly finance admin, limit sidebar navigation
     const items = isPureFinanceAdmin
         ? baseItems.filter((item) => ['finance/index', 'accessibility/settings', 'notifications'].includes(item.name))
         : baseItems;

@@ -1,4 +1,5 @@
 const supabase = require("../utils/supabaseClient.js");
+const configCache = require("../utils/configCache.js");
 
 const isMissingRelationError = (error) => {
   const code = String(error?.code || '').toLowerCase();
@@ -205,6 +206,12 @@ exports.getInstitutionDetails = async (req, res) => {
     const { institution_id } = req;
     if (!institution_id) return res.json(null); // Return null instead of error
 
+    const cacheKey = `${institution_id}:institution_details`;
+    const cached = configCache.get(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const { data, error } = await supabase
       .from("institutions")
       .select("*")
@@ -217,11 +224,14 @@ exports.getInstitutionDetails = async (req, res) => {
     }
     const categoryMap = await loadCategoryMap([institution_id]);
     const categories = categoryMap.get(institution_id) || [];
-    res.json({
+    const responsePayload = {
       ...data,
       category_ids: categories.map((cat) => cat.id).filter(Boolean),
       categories,
-    });
+    };
+
+    configCache.set(cacheKey, responsePayload, 300);
+    res.json(responsePayload);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -263,6 +273,10 @@ exports.updateInstitution = async (req, res) => {
     if (category_id !== undefined || req.body.category_ids !== undefined) {
       await syncInstitutionCategories(targetId, categoryIds);
     }
+
+    // Invalidate cached institution and settings data immediately upon update
+    configCache.invalidateInstitution(targetId);
+    configCache.invalidateSettings(targetId);
 
     const categoryMap = await loadCategoryMap([targetId]);
     const categories = categoryMap.get(targetId) || [];

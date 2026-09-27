@@ -93,12 +93,23 @@ void main() {
   colors[1] = ColorStop(uColorStops[1], 0.5);
   colors[2] = ColorStop(uColorStops[2], 1.0);
   
+  // Screen size & aspect ratio adjustment:
+  // Smoothly adapts wave frequency, vertical spread, and color distribution between mobile portrait and desktop landscape
+  float aspect = uResolution.x / uResolution.y;
+  float tAspect = clamp((aspect - 0.45) / 0.75, 0.0, 1.0);
+
+  float rampFactor = mix(clamp(uv.x * 0.75 + (1.0 - uv.y) * 0.25, 0.0, 1.0), uv.x, tAspect);
   vec3 rampColor;
-  COLOR_RAMP(colors, uv.x, rampColor);
-  
-  float height = snoise(vec2(uv.x * 2.0 + uTime * 0.1, uTime * 0.25)) * 0.5 * uAmplitude;
-  height = exp(height);
-  height = (uv.y * 2.0 - height + 0.2);
+  COLOR_RAMP(colors, rampFactor, rampColor);
+
+  float freqX = mix(1.25, 2.0, tAspect);
+  float yScale = mix(1.55, 2.0, tAspect);
+  float yOffset = mix(0.30, 0.20, tAspect);
+  float heightAmp = mix(0.88, 1.0, tAspect);
+
+  float noiseVal = snoise(vec2(uv.x * freqX + uTime * 0.1, uTime * 0.25)) * 0.5 * uAmplitude;
+  float expHeight = exp(noiseVal) * heightAmp;
+  float height = (uv.y * yScale - expHeight + yOffset);
   float intensity = 0.6 * height;
   
   float midPoint = 0.20;

@@ -51,7 +51,7 @@ import { formatClassLabel } from '@/utils/classLabel';
 import { MobileScreenWrapper } from '@/mobile/components/common/MobileScreenWrapper';
 import { MobileHeader } from '@/mobile/components/common/MobileHeader';
 import { MobileCard } from '@/mobile/components/common/MobileCard';
-import { DashboardSkeleton } from '@/mobile/components/skeletons/MobileSkeleton';
+import { TeacherDashboardSkeleton } from '@/mobile/components/skeletons/MobileSkeleton';
 import { mobileColors, spacing, MIN_TOUCH_TARGET } from '@/mobile/utils/platform';
 
 // Cast icons for RN compatibility
@@ -199,35 +199,28 @@ export function TeacherDashboardMobile() {
   }, [mode]);
 
   return (
-    <MobileScreenWrapper
-      refreshing={refreshing}
-      onRefresh={onRefresh}
-      scrollable={true}
-    >
+    <View style={{ flex: 1, backgroundColor: isDark ? mobileColors.bgPrimary : mobileColors.bgLightSurface }}>
       <SubscriptionBanner />
 
-      {/* Header */}
+      {/* Persistent Mobile Header */}
       <MobileHeader
-        title={profile?.full_name || 'Teacher Portal'}
-        subtitle={`Welcome back · ${teacherRoleLabel}`}
-        showBack={false}
-        rightAction={
-          <TouchableOpacity
-            onPress={async () => {
-              await logout();
-              router.replace('/(auth)/signIn');
-            }}
-            style={styles.logoutBtn}
-            accessibilityLabel="Log out"
-          >
-            <IconLogOut size={16} color="#EF4444" />
-          </TouchableOpacity>
-        }
+        title="Welcome back,"
+        subtitle={profile?.full_name || 'Teacher'}
+        largeTitle
+        role={teacherRoleLabel || 'Teacher'}
+        showNotification={true}
+        showUserAvatar={true}
       />
 
-      {loading && !stats ? (
-        <DashboardSkeleton />
-      ) : (
+      <MobileScreenWrapper
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        scrollable={true}
+        skipTopInset
+      >
+        {loading && !stats ? (
+          <TeacherDashboardSkeleton />
+        ) : (
         <View style={styles.container}>
           {/* Mode Switcher Tabs (if multiple roles) */}
           {canToggle && (
@@ -438,11 +431,10 @@ export function TeacherDashboardMobile() {
             ))
           )}
 
-          {/* Bottom Spacing to ensure complete clearance of tab bar */}
-          <View style={{ height: 110 }} />
         </View>
       )}
-    </MobileScreenWrapper>
+      </MobileScreenWrapper>
+    </View>
   );
 }
 
@@ -450,14 +442,6 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
-  },
-  logoutBtn: {
-    width: MIN_TOUCH_TARGET,
-    height: MIN_TOUCH_TARGET,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(239,68,68,0.1)',
   },
   modeSwitcher: {
     flexDirection: 'row',

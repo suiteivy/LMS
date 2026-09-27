@@ -5,15 +5,7 @@ import { Slot, Tabs } from "expo-router";
 import { Bell, BookOpenCheck, Calendar, Clock, CreditCard, LayoutDashboard, MessageSquare, Settings } from "lucide-react-native";
 import { Platform, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-// All nav items for mobile tab bar
-const ALL_NAV_ITEMS: NavItem[] = [
-    { name: "index", title: "Home", icon: LayoutDashboard, route: "/(parent)" },
-    { name: "calendar", title: "Calendar", icon: Calendar, route: "/(parent)/calendar" },
-    { name: "messages", title: "Chat", icon: MessageSquare, route: "/(parent)/messages" },
-    { name: "announcements", title: "Updates", icon: Bell, route: "/(parent)/announcements" },
-    { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(parent)/accessibility/settings" },
-];
+import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 // All nav items for web desktop persistent sidebar (includes Timetable and Assignments)
 const PARENT_SIDEBAR_ITEMS: NavItem[] = [
@@ -26,155 +18,192 @@ const PARENT_SIDEBAR_ITEMS: NavItem[] = [
     { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(parent)/accessibility/settings" },
 ];
 
-import { useNotifications } from "@/contexts/NotificationContext";
-import { NotificationBellDropdown } from "@/components/common/NotificationBellDropdown";
-import { useState } from "react";
-import { useRouter } from "expo-router";
-import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
+/**
+ * 4 Primary Mobile Destinations for Parents:
+ * 1. Home (index) - Student overview, presence & fee summary
+ * 2. Calendar (calendar) - School events & term dates
+ * 3. Chat (messages) - Teacher & staff messaging
+ * 4. Settings (accessibility/settings) - Account & family preferences
+ *
+ * NOTE: Notifications bell is located at TOP-RIGHT of the screen header.
+ */
+const PRIMARY_PARENT_TABS = [
+    "index",
+    "calendar",
+    "messages",
+    "accessibility/settings",
+];
+
+// Exhaustive list of all routes in app/(parent) to prevent rogue tabs or tofu boxes
+const ALL_PARENT_ROUTES = [
+    "accessibility/settings",
+    "analytics",
+    "announcements",
+    "assignments",
+    "attendance",
+    "calendar",
+    "clearance",
+    "diary",
+    "exams",
+    "finance",
+    "grades",
+    "index",
+    "library",
+    "messages",
+    "notifications",
+    "report-cards",
+    "reports",
+    "settings",
+    "support",
+    "timetable",
+];
+
+const HIDDEN_PARENT_ROUTES = ALL_PARENT_ROUTES.filter(
+    (name) => !PRIMARY_PARENT_TABS.includes(name)
+);
 
 function ParentTabs() {
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
     const { hasMessaging } = useSubscriptionTier();
-    const { unreadCount } = useNotifications();
-    const [showNotifDropdown, setShowNotifDropdown] = useState(false);
-    const router = useRouter();
 
-    const NAV_ITEMS = ALL_NAV_ITEMS.filter((item) => (item.name === "messages" ? hasMessaging : true));
-    const HIDDEN_ROUTES = [
-        "settings",
-        "finance",
-        "grades",
-        "assignments",
-        "attendance",
-        "reports",
-        "diary",
-        "timetable",
-        "report-cards",
-        "analytics",
-        "clearance",
-        "exams",
-        "support",
-        "library",
-        "notifications",
-        ...(!hasMessaging ? ["messages"] : []),
-    ];
-
-    const tabBarHeight = 56 + (insets.bottom > 0 ? insets.bottom : 8);
+    const tabBarHeight = 60 + Math.max(insets.bottom, 8);
 
     return (
         <View style={{ flex: 1 }}>
             <Tabs
-                screenListeners={({ route }: { route: any }) => ({
-                    tabPress: (e: any) => {
-                        if (route.name === "announcements") {
-                            e.preventDefault();
-                            setShowNotifDropdown((v) => !v);
-                        }
-                    },
-                })}
+                initialRouteName="index"
                 screenOptions={{
                     headerShown: false,
                     animation: 'shift',
+                    tabBarActiveTintColor: "#FF6B00",
+                    tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
+                    tabBarLabelStyle: {
+                        fontSize: 10,
+                        fontWeight: "700",
+                        letterSpacing: 0.1,
+                        marginTop: -2,
+                        marginBottom: 4,
+                    },
                     tabBarStyle: {
                         backgroundColor: isDark ? '#161B22' : "#ffffff",
                         borderTopWidth: 1,
                         borderTopColor: isDark ? '#1f2937' : "#e5e7eb",
                         height: tabBarHeight,
-                        paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
-                        paddingTop: 6,
-                        elevation: 8,
+                        paddingBottom: Math.max(insets.bottom, 8),
+                        paddingTop: 8,
+                        paddingHorizontal: 8,
+                        elevation: 10,
                         shadowColor: "#000",
                         shadowOffset: { width: 0, height: -4 },
                         shadowOpacity: 0.1,
-                        shadowRadius: 3,
+                        shadowRadius: 6,
                     },
-                    tabBarActiveTintColor: "#FF6B00",
-                    tabBarInactiveTintColor: isDark ? "#94a3b8" : "#64748b",
-                    tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
                     sceneStyle: {
                         backgroundColor: isDark ? '#161B22' : "#ffffff",
                     },
                 }}
             >
-            {NAV_ITEMS.map((item) => {
-                if (item.name === "announcements") {
-                    return (
-                        <Tabs.Screen
-                            key={item.name}
-                            name={item.name}
-                            options={{
-                                title: item.title,
-                                tabBarItemStyle: { width: 72 },
-                                tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
-                                tabBarIcon: ({ size = 24, color, focused }) => {
-                                    const Icon = item.icon as any;
-                                    const isOpen = showNotifDropdown;
-                                    const iconColor = isOpen ? "#FF6B00" : focused ? "#FF6B00" : color;
-                                    return (
-                                        <View>
-                                            <Icon size={size} color={iconColor} strokeWidth={2} />
-                                            {unreadCount > 0 && (
-                                                <View style={{
-                                                    position: 'absolute',
-                                                    top: -4,
-                                                    right: -6,
-                                                    minWidth: 16,
-                                                    height: 16,
-                                                    borderRadius: 8,
-                                                    backgroundColor: '#FF6B00',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    borderWidth: 2,
-                                                    borderColor: isDark ? '#0F0B2E' : '#ffffff',
-                                                }}>
-                                                    <Text style={{ color: 'white', fontSize: 8, fontWeight: 'bold' }}>
-                                                        {unreadCount > 9 ? '9+' : unreadCount}
-                                                    </Text>
-                                                </View>
-                                            )}
-                                        </View>
+                {/* 1. Home */}
+                <Tabs.Screen
+                    name="index"
+                    options={{
+                        title: "Home",
+                        tabBarIcon: ({ color, focused }) => {
+                            const Icon = LayoutDashboard as any;
+                            return (
+                                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                                    <Icon
+                                        size={22}
+                                        color={focused ? "#FF6B00" : color}
+                                        strokeWidth={focused ? 2.5 : 2}
+                                    />
+                                </View>
+                            );
+                        },
+                    }}
+                />
 
-                                    );
-                                },
-                            }}
-                        />
-                    );
-                }
-                return (
+                {/* 2. Calendar */}
+                <Tabs.Screen
+                    name="calendar"
+                    options={{
+                        title: "Calendar",
+                        tabBarIcon: ({ color, focused }) => {
+                            const Icon = Calendar as any;
+                            return (
+                                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                                    <Icon
+                                        size={22}
+                                        color={focused ? "#FF6B00" : color}
+                                        strokeWidth={focused ? 2.5 : 2}
+                                    />
+                                </View>
+                            );
+                        },
+                    }}
+                />
+
+                {/* 3. Messages / Chat */}
+                <Tabs.Screen
+                    name="messages"
+                    options={{
+                        title: "Chat",
+                        href: hasMessaging ? "/(parent)/messages" : null,
+                        tabBarIcon: ({ color, focused }) => {
+                            const Icon = MessageSquare as any;
+                            return (
+                                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                                    <Icon
+                                        size={22}
+                                        color={focused ? "#FF6B00" : color}
+                                        strokeWidth={focused ? 2.5 : 2}
+                                    />
+                                </View>
+                            );
+                        },
+                    }}
+                />
+
+                {/* 4. Settings */}
+                <Tabs.Screen
+                    name="accessibility/settings"
+                    options={{
+                        title: "Settings",
+                        tabBarIcon: ({ color, focused }) => {
+                            const Icon = Settings as any;
+                            return (
+                                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                                    <Icon
+                                        size={22}
+                                        color={focused ? "#FF6B00" : color}
+                                        strokeWidth={focused ? 2.5 : 2}
+                                    />
+                                </View>
+                            );
+                        },
+                    }}
+                />
+
+                {/* Exhaustive Hidden Sub-Routes */}
+                {HIDDEN_PARENT_ROUTES.map((name) => (
                     <Tabs.Screen
-                        key={item.name}
-                        name={item.name}
+                        key={name}
+                        name={name}
                         options={{
-                            title: item.title,
-                            tabBarIcon: ({ size, color }) => {
-                                const Icon = item.icon as any;
-                                return <View><Icon size={size} color={color} strokeWidth={2} /></View>;
-                            },
+                            href: null,
+                            headerShown: false,
                         }}
                     />
-                );
-            })}
-            {HIDDEN_ROUTES.map((name) => (
-                <Tabs.Screen key={name} name={name} options={{ href: null, headerShown: false }} />
-            ))}
+                ))}
             </Tabs>
-
-            <NotificationBellDropdown
-                visible={showNotifDropdown}
-                onClose={() => setShowNotifDropdown(false)}
-                onViewAll={() => router.push("/(parent)/announcements")}
-                tabBarHeight={tabBarHeight}
-            />
         </View>
     );
 }
 
 function ParentSidebar() {
-    const { hasMessaging } = useSubscriptionTier();
-    const items = PARENT_SIDEBAR_ITEMS.filter((item) => (item.name === 'messages' ? hasMessaging : true));
     return (
-        <WebSidebar items={items} basePath="(parent)" role="Parent/Guardian">
+        <WebSidebar items={PARENT_SIDEBAR_ITEMS} basePath="(parent)" role="Parent">
             <Slot />
         </WebSidebar>
     );
@@ -182,7 +211,6 @@ function ParentSidebar() {
 
 export default function ParentLayout() {
     const { width } = useWindowDimensions();
-    // Tablet (iPad/Android) at >= 768px and Web both get sidebar layout
     const useWebLayout = width >= 768;
 
     return (

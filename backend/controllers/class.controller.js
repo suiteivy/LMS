@@ -1,4 +1,5 @@
 const supabase = require("../utils/supabaseClient.js");
+const configCache = require("../utils/configCache.js");
 const { buildClassLabel } = require('../utils/classLabel');
 const { assignStudentToSingleClass } = require('../utils/studentClassEnrollment');
 const { parsePagination, paginatedResponse } = require("../utils/pagination.js");
@@ -206,6 +207,12 @@ async function supportsClassesClassType() {
 }
 
 async function getClassDomainOptions(institutionId) {
+    if (institutionId) {
+        const cacheKey = `${institutionId}:class_domain_options`;
+        const cached = configCache.get(cacheKey);
+        if (cached) return cached;
+    }
+
     const { data: scopedInstitutionCategories } = await supabase
         .from('institution_categories')
         .select('category_id')
@@ -276,11 +283,15 @@ async function getClassDomainOptions(institutionId) {
         };
     });
 
-    return {
+    const result = {
         categories,
         levels,
         streams,
     };
+    if (institutionId) {
+        configCache.set(`${institutionId}:class_domain_options`, result, 300);
+    }
+    return result;
 }
 
 async function getClassTypesByLevelIds(levelIds = []) {
@@ -471,6 +482,7 @@ exports.createClassDomainCategory = async (req, res) => {
             .single();
 
         if (error) throw error;
+        configCache.invalidateClassDomain(institution_id);
         res.status(201).json(data);
     } catch (err) {
         console.error('createClassDomainCategory error:', err);
@@ -684,6 +696,8 @@ exports.createClassDomainLevel = async (req, res) => {
             }
         }
 
+        configCache.invalidateClassDomain(institution_id);
+
         res.status(201).json({
             ...data,
             has_standalone_class: !!standaloneClass,
@@ -745,6 +759,7 @@ exports.createClassDomainStream = async (req, res) => {
             .single();
 
         if (error) throw error;
+        configCache.invalidateClassDomain(institution_id);
         res.status(201).json(data);
     } catch (err) {
         console.error('createClassDomainStream error:', err);
@@ -789,6 +804,7 @@ exports.archiveClassDomainCategory = async (req, res) => {
 
         if (error) throw error;
         if (!data) return res.status(404).json({ error: 'Category not found' });
+        configCache.invalidateClassDomain(institution_id);
         res.json({ message: 'Category archived successfully' });
     } catch (err) {
         console.error('archiveClassDomainCategory error:', err);
@@ -871,6 +887,7 @@ exports.archiveClassDomainLevel = async (req, res) => {
 
         if (error) throw error;
         if (!data) return res.status(404).json({ error: 'Level not found' });
+        configCache.invalidateClassDomain(institution_id);
         res.json({ message: 'Level archived successfully' });
     } catch (err) {
         console.error('archiveClassDomainLevel error:', err);
@@ -905,6 +922,7 @@ exports.archiveClassDomainStream = async (req, res) => {
 
         if (error) throw error;
         if (!data) return res.status(404).json({ error: 'Stream not found' });
+        configCache.invalidateClassDomain(institution_id);
         res.json({ message: 'Stream archived successfully' });
     } catch (err) {
         console.error('archiveClassDomainStream error:', err);
@@ -994,6 +1012,7 @@ exports.createClass = async (req, res) => {
             .single();
 
         if (error) throw error;
+        configCache.invalidateClassDomain(institution_id);
         res.status(201).json(normalizeClassRecord(data, meta));
     } catch (err) {
         console.error("createClass error:", err);
@@ -1077,6 +1096,7 @@ exports.updateClass = async (req, res) => {
             .single();
 
         if (error) throw error;
+        configCache.invalidateClassDomain(req.institution_id || existingClass?.institution_id);
         res.json(normalizeClassRecord(data, meta));
     } catch (err) {
         console.error("updateClass error:", err);
@@ -1145,6 +1165,10 @@ exports.deleteClass = async (req, res) => {
 
         if (!data) {
             return res.status(404).json({ error: 'Class not found' });
+        }
+
+        if (institution_id) {
+            configCache.invalidateClassDomain(institution_id);
         }
 
         res.json({ message: hasDeletedAt ? "Class archived successfully" : "Class deleted successfully" });
@@ -2162,6 +2186,8 @@ exports.setClassFinalLevel = async (req, res) => {
             .single();
 
         if (updateErr) throw updateErr;
+
+        configCache.invalidateClassDomain(targetClass.institution_id || institution_id);
 
         res.json({
             message: "Class final level status updated",

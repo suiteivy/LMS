@@ -59,7 +59,7 @@ import {
 import { MobileScreenWrapper } from '@/mobile/components/common/MobileScreenWrapper';
 import { MobileHeader } from '@/mobile/components/common/MobileHeader';
 import { MobileCard } from '@/mobile/components/common/MobileCard';
-import { ParentDashboardSkeleton } from '@/components/ui/skeletons';
+import { ParentDashboardSkeleton } from '@/mobile/components/skeletons/MobileSkeleton';
 import { mobileColors, spacing, MIN_TOUCH_TARGET } from '@/mobile/utils/platform';
 
 // Cast icons for RN compatibility
@@ -310,10 +310,14 @@ export function ParentDashboardMobile() {
 
   if (loading && !refreshing && linkedStudents.length === 0) {
     return (
-      <View style={[styles.container, { backgroundColor: isDark ? '#161B22' : '#F6F8FA' }]}>
+      <View style={{ flex: 1, backgroundColor: isDark ? mobileColors.bgPrimary : mobileColors.bgLightSurface }}>
         <MobileHeader
-          title="Parent Portal"
-          subtitle={profile?.full_name || 'Family Hub'}
+          title="Welcome back,"
+          subtitle={profile?.full_name || 'Parent'}
+          largeTitle
+          role="Parent"
+          showNotification={true}
+          showUserAvatar={true}
         />
         <ParentDashboardSkeleton loading={true} label="Loading parent dashboard..." />
       </View>
@@ -321,28 +325,23 @@ export function ParentDashboardMobile() {
   }
 
   return (
-    <MobileScreenWrapper
-      refreshing={refreshing}
-      onRefresh={onRefresh}
-      scrollable={true}
-      contentStyle={styles.scrollContent}
-    >
+    <View style={{ flex: 1, backgroundColor: isDark ? mobileColors.bgPrimary : mobileColors.bgLightSurface }}>
       <MobileHeader
-        title="Parent Portal"
-        subtitle={profile?.full_name || 'Family Hub'}
-        rightAction={
-          <TouchableOpacity
-            onPress={async () => {
-              await logout();
-              router.replace('/(auth)/signIn');
-            }}
-            style={styles.logoutBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <IconLogOut size={16} color="#EF4444" />
-          </TouchableOpacity>
-        }
+        title="Welcome back,"
+        subtitle={profile?.full_name || 'Parent'}
+        largeTitle
+        role="Parent"
+        showNotification={true}
+        showUserAvatar={true}
       />
+
+      <MobileScreenWrapper
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        scrollable={true}
+        skipTopInset
+        contentStyle={styles.scrollContent}
+      >
 
       {/* ── Multiple Children Switcher ── */}
       {linkedStudents.length > 1 && (
@@ -554,7 +553,8 @@ export function ParentDashboardMobile() {
           </View>
         </View>
       </Modal>
-    </MobileScreenWrapper>
+      </MobileScreenWrapper>
+    </View>
   );
 }
 
@@ -565,14 +565,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: spacing.md,
     paddingBottom: 110, // Clears the 60+insets bottom tab bar cleanly
-  },
-  logoutBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: 'rgba(239,68,68,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   childPillsScroll: {
     gap: 8,

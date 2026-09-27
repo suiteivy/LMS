@@ -43,9 +43,13 @@ export function QuantumReactorLoader({
 export function AppLoading({
   onLogout,
   message,
+  isComplete,
+  onFinish,
 }: {
   onLogout?: () => void;
   message?: string;
+  isComplete?: boolean;
+  onFinish?: () => void;
 }) {
   const { isDark } = useTheme();
   const [showRescue, setShowRescue] = useState(false);

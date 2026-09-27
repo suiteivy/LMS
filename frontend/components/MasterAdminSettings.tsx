@@ -3,9 +3,8 @@ import { Lock, ShieldAlert, Bell, Mail, Smartphone, AlertTriangle, AlertCircle, 
 import React, { useState, useEffect } from "react";
 import { ActivityIndicator, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, Switch } from "react-native";
 import Toast from 'react-native-toast-message';
-import { supabase } from '@/libs/supabase';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { getApiBaseUrl } from '@/utils/backendUrl';
+import { api } from '@/services/api';
 import { ChangePasswordModal } from "./shared/ChangePasswordModal";
 import { SettingsService, UserPreferences } from "@/services/SettingsService";
 import { router } from "expo-router";
@@ -116,29 +115,16 @@ export default function MasterAdminSettings() {
 
         setEnrollLoading(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const res = await fetch(`${getApiBaseUrl()}/master-admin/enroll-master-admin`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(enrollData)
-            });
-
-            const data = await res.json();
-            if (res.ok) {
-                Toast.show({ type: 'success', text1: 'Success', text2: 'Master Admin enrolled successfully.' });
-                setEnrollModalVisible(false);
-                setEnrollData({ first_name: "", last_name: "", email: "", password: "" });
-            } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: data.error || 'Failed to enroll master admin' });
+            await api.post('/master-admin/enroll-master-admin', enrollData);
+            Toast.show({ type: 'success', text1: 'Success', text2: 'Master Admin enrolled successfully.' });
+            setEnrollModalVisible(false);
+            setEnrollData({ first_name: "", last_name: "", email: "", password: "" });
+        } catch (err: any) {
+            if (!err?.isAuthError) {
+                console.error(err);
+                const errMsg = err?.response?.data?.error || 'Failed to enroll master admin';
+                Toast.show({ type: 'error', text1: 'Error', text2: errMsg });
             }
-        } catch (err) {
-            console.error(err);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to enroll master admin' });
         } finally {
             setEnrollLoading(false);
         }
@@ -148,30 +134,14 @@ export default function MasterAdminSettings() {
         setAuditLoading(true);
         setAuditError(null);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                setAuditError('No active session. Please sign in again.');
-                setAuditLogs([]);
-                return;
-            }
-
-            const res = await fetch(`${getApiBaseUrl()}/master-admin/password-audit-logs?limit=100`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            const payload = await res.json();
-            if (!res.ok) {
-                throw new Error(payload?.error || 'Failed to fetch password audit logs');
-            }
-
+            const res = await api.get('/master-admin/password-audit-logs?limit=100');
+            const payload = res.data;
             setAuditLogs(payload?.logs || []);
         } catch (error: any) {
             setAuditLogs([]);
-            setAuditError(error?.message || 'Failed to load password audit logs');
+            if (!error?.isAuthError) {
+                setAuditError(error?.response?.data?.error || error?.message || 'Failed to load password audit logs');
+            }
         } finally {
             setAuditLoading(false);
         }

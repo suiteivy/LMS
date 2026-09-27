@@ -6,12 +6,25 @@ import { CacheService } from '@/services/CacheService';
 import { StatsData } from '@/types/types';
 import { hasFinanceDashboardAccess } from '@/utils/financeAccess';
 import { showFetchError } from '@/utils/toast';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 
 export const useDashboardStats = () => {
+    const isFocused = useIsFocused();
+    const isFocusedRef = useRef(isFocused);
+    const isMountedRef = useRef(true);
+    const abortControllerRef = useRef<AbortController | null>(null);
     const [stats, setStats] = useState<StatsData[]>([]);
     const [loading, setLoading] = useState(true);
     const [revenueData, setRevenueData] = useState<{ day: string, amount: number }[]>([]);
+
+    useEffect(() => {
+        isFocusedRef.current = isFocused;
+        if (!isFocused && abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+    }, [isFocused]);
     
     const { formatAmount } = useCurrency();
 
@@ -26,6 +39,12 @@ export const useDashboardStats = () => {
     });
 
     const fetchStats = async () => {
+        if (!isMountedRef.current || !isFocusedRef.current) return;
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
         if (requiresCredentialSetup || !profile?.institution_id) {
             setStats([]);
             setRevenueData([]);
@@ -136,7 +155,8 @@ export const useDashboardStats = () => {
 
             if (canRequestFinanceStats) {
                 try {
-                    const overview = await RevenueService.getOverview();
+                    const overview = await RevenueService.getOverview(controller.signal);
+                    if (!isMountedRef.current || controller.signal.aborted) return;
                     const totalRevenue = Number(overview?.net_revenue || 0);
                     const paymentsCount = Number(overview?.payment_count || 0);
 
@@ -155,10 +175,11 @@ export const useDashboardStats = () => {
                             color: "yellow",
                         },
                     ];
-                } catch (revenueError) {
+                } catch (revenueError: any) {
+                    if (!isMountedRef.current || controller.signal.aborted) return;
                     // Revenue is optional in shared dashboards; omit quietly on permission
                     // boundaries and transient endpoint failures.
-                    const statusCode = Number((revenueError as any)?.response?.status || 0);
+                    const statusCode = Number(revenueError?.response?.status || 0);
                     if (!RevenueService.isPermissionDeniedError(revenueError) && statusCode !== 401 && statusCode !== 428) {
                         showFetchError('revenue statistics', revenueError);
                         nextRevenueData = [];
@@ -166,20 +187,25 @@ export const useDashboardStats = () => {
                 }
             }
 
+            if (!isMountedRef.current || controller.signal.aborted) return;
             setRevenueData(nextRevenueData);
             setStats(statsData);
 
             if (cacheKey) {
                 CacheService.set(cacheKey, { stats: statsData, revenueData: nextRevenueData }, 5 * 60 * 1000);
             }
-        } catch (e) {
+        } catch (e: any) {
+            if (!isMountedRef.current || !isFocusedRef.current || controller.signal.aborted) return;
             showFetchError('dashboard statistics', e);
         } finally {
-            setLoading(false);
+            if (isMountedRef.current && !controller.signal.aborted) {
+                setLoading(false);
+            }
         }
     };
 
     useEffect(() => {
+        isMountedRef.current = true;
         if (isInitializing) return;
 
         if (!session || requiresCredentialSetup) {
@@ -192,6 +218,7 @@ export const useDashboardStats = () => {
         // Use a ref-based timer for debouncing realtime updates
         let debounceTimer: any = null;
         const debouncedFetch = () => {
+            if (!isMountedRef.current || !isFocusedRef.current) return;
             if (debounceTimer) clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
                 fetchStats();
@@ -236,6 +263,10 @@ export const useDashboardStats = () => {
             .subscribe();
 
         return () => {
+            isMountedRef.current = false;
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
             if (debounceTimer) clearTimeout(debounceTimer);
             supabase.removeChannel(userChannel);
             supabase.removeChannel(subjectChannel);
@@ -243,6 +274,12 @@ export const useDashboardStats = () => {
             supabase.removeChannel(attendanceChannel);
         };
     }, [isInitializing, session, requiresCredentialSetup, canRequestFinanceStats]);
+
+    useEffect(() => {
+        if (isFocused && !isInitializing && session && !requiresCredentialSetup) {
+            fetchStats();
+        }
+    }, [isFocused]);
 
     return { stats, loading, revenueData, refresh: fetchStats };
 };

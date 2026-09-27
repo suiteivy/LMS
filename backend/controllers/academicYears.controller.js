@@ -1,4 +1,5 @@
 const supabase = require('../utils/supabaseClient.js');
+const configCache = require('../utils/configCache.js');
 const {
   resolveActiveTerm,
   resolveNextUpcomingTerm,
@@ -68,6 +69,12 @@ const getAcademicYears = async (req, res) => {
       return res.status(400).json({ success: false, message: 'institution_id is required' });
     }
 
+    const cacheKey = `${institution_id}:academic_years:all`;
+    const cached = configCache.get(cacheKey);
+    if (cached) {
+      return res.status(200).json({ success: true, data: cached });
+    }
+
     const { data, error } = await supabase
       .from('academic_years')
       .select('*, terms(*)')
@@ -75,6 +82,8 @@ const getAcademicYears = async (req, res) => {
       .order('start_date', { ascending: false });
 
     if (error) throw error;
+
+    configCache.set(cacheKey, data, 300);
 
     return res.status(200).json({ success: true, data });
   } catch (error) {
@@ -167,6 +176,8 @@ const createAcademicYear = async (req, res) => {
 
     if (fetchError) throw fetchError;
 
+    configCache.invalidateTerms(institution_id);
+
     return res.status(201).json({ success: true, data: result });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -206,6 +217,8 @@ const updateAcademicYear = async (req, res) => {
 
     if (error) throw error;
 
+    configCache.invalidateTerms(institution_id);
+
     return res.status(200).json({ success: true, data });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -232,6 +245,8 @@ const deleteAcademicYear = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Academic year not found' });
     }
 
+    configCache.invalidateTerms(institution_id);
+
     return res.status(200).json({ success: true, data });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -243,6 +258,12 @@ const getTerms = async (req, res) => {
     const institution_id = req.user?.institution_id;
     if (!institution_id) {
       return res.status(400).json({ success: false, message: 'institution_id is required' });
+    }
+
+    const cacheKey = `${institution_id}:terms:${req.query.academic_year_id || 'all'}`;
+    const cached = configCache.get(cacheKey);
+    if (cached) {
+      return res.status(200).json({ success: true, data: cached });
     }
 
     await syncCurrentTermFlags(institution_id);
@@ -260,6 +281,8 @@ const getTerms = async (req, res) => {
 
     if (error) throw error;
 
+    configCache.set(cacheKey, data, 300);
+
     return res.status(200).json({ success: true, data });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -273,17 +296,30 @@ const getActiveTerm = async (req, res) => {
       return res.status(400).json({ success: false, message: 'institution_id is required' });
     }
 
+    const cacheKey = `${institution_id}:active_term`;
+    const cached = configCache.get(cacheKey);
+    if (cached) {
+      return res.status(200).json({
+        success: true,
+        data: cached,
+      });
+    }
+
     await syncCurrentTermFlags(institution_id);
     const activeTerm = await resolveActiveTerm(institution_id);
     const nextTerm = activeTerm ? null : await resolveNextUpcomingTerm(institution_id);
 
+    const resultData = {
+      active_term: activeTerm,
+      next_upcoming_term: nextTerm,
+      has_active_term: activeTerm !== null,
+    };
+
+    configCache.set(cacheKey, resultData, 300);
+
     return res.status(200).json({
       success: true,
-      data: {
-        active_term: activeTerm,
-        next_upcoming_term: nextTerm,
-        has_active_term: activeTerm !== null,
-      },
+      data: resultData,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -347,6 +383,8 @@ const createTerm = async (req, res) => {
     // Re-evaluate active term after creation and synchronize flags
     await syncCurrentTermFlags(institution_id);
     const activeTerm = await resolveActiveTerm(institution_id);
+
+    configCache.invalidateTerms(institution_id);
 
     return res.status(201).json({
       success: true,
@@ -453,6 +491,8 @@ const updateTerm = async (req, res) => {
     await syncCurrentTermFlags(institution_id);
     const activeTerm = await resolveActiveTerm(institution_id);
 
+    configCache.invalidateTerms(institution_id);
+
     return res.status(200).json({
       success: true,
       data,
@@ -495,6 +535,8 @@ const deleteTerm = async (req, res) => {
     // Re-evaluate active term after deletion and synchronize flags
     await syncCurrentTermFlags(institution_id);
     const activeTerm = await resolveActiveTerm(institution_id);
+
+    configCache.invalidateTerms(institution_id);
 
     return res.status(200).json({
       success: true,
@@ -571,6 +613,8 @@ const setCurrentTerm = async (req, res) => {
 
     await syncCurrentTermFlags(institution_id);
 
+    configCache.invalidateTerms(institution_id);
+
     return res.status(200).json({ success: true, data });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -603,6 +647,8 @@ const setTermLockState = async (req, res) => {
     if (error || !data) {
       return res.status(404).json({ success: false, message: 'Term not found or lock column unavailable' });
     }
+
+    configCache.invalidateTerms(institution_id);
 
     return res.status(200).json({ success: true, data });
   } catch (error) {

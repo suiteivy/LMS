@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { formatCurrency, type CurrencyFormatInput } from '../utils/currency';
+export type { CurrencyFormatInput };
 import { SettingsService, ExchangeRates } from '@/services/SettingsService';
 import { useAuth } from './AuthContext';
 import { CurrencyRecord, CurrencyService } from '@/services/CurrencyService';
