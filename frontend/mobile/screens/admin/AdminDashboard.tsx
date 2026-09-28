@@ -327,6 +327,11 @@ export const AdminDashboardMobile: React.FC = () => {
             onPress={() => router.push('/(admin)/attendance')}
           />
           <QuickAction
+            icon={IconClock}
+            label="Timetable"
+            onPress={() => router.push('/(admin)/timetable')}
+          />
+          <QuickAction
             icon={IconClipboardList}
             label="Results & Cards"
             onPress={() => router.push('/(admin)/results')}

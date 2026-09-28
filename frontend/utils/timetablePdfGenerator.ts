@@ -401,6 +401,7 @@ export function generateTimetableHtml({
                 .map((entry) => {
                   const subjectName = entry.subjects?.title || 'Subject';
                   const teacherName =
+                    entry.teachers?.full_name ||
                     entry.subjects?.teachers?.users?.full_name ||
                     (entry.subjects?.teachers?.users?.first_name
                       ? `${entry.subjects.teachers.users.first_name} ${entry.subjects.teachers.users.last_name || ''}`.trim()
@@ -411,9 +412,9 @@ export function generateTimetableHtml({
                 <div class="slot-card">
                   <div class="subject-title">${escapeHtml(subjectName)}</div>
                   <div class="sub-meta">
-                    ${className ? `<span class="badge">${escapeHtml(className)}</span>` : ''}
+                    ${className ? `<span class="badge">${escapeHtml(className)}</span>` : (entry.room_number ? `<span class="badge">${escapeHtml(entry.room_number)}</span>` : '')}
+                    ${entry.subjects?.category ? `<span class="badge" style="background:#f1f5f9;color:#475569;">${escapeHtml(entry.subjects.category)}</span>` : ''}
                     ${teacherName ? `<span>Teacher: ${escapeHtml(teacherName)}</span>` : ''}
-                    ${entry.room_number ? `<span class="badge room-badge">Room: ${escapeHtml(entry.room_number)}</span>` : ''}
                   </div>
                 </div>
                 `;

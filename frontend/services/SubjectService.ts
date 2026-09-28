@@ -4,6 +4,7 @@ export interface SubjectData {
     id: string;
     title: string;
     description?: string;
+    category?: string;
     fee_amount?: number;
     institution_id: string;
     teacher_id?: string;

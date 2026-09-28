@@ -8,7 +8,6 @@ import { SubjectAPI, SubjectData } from "@/services/SubjectService";
 import { CreateTimetableDto, TimetableAPI, TimetableEntry } from "@/services/TimetableService";
 import { showError, showSuccess } from "@/utils/toast";
 import { formatClassLabel } from "@/utils/classLabel";
-import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,8 +36,11 @@ import {
     Trash2,
     User,
     X,
-    Zap
+    Zap,
+    Sparkles
 } from "lucide-react-native";
+import { AutoGenerateModal } from "@/components/timetable/AutoGenerateModal";
+import { ManualBuilderModal } from "@/components/timetable/ManualBuilderModal";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     Alert,
@@ -124,42 +126,31 @@ function detectConflicts(entries: TimetableEntry[]): Conflict[] {
                 const bs = toMinutes(b.start_time), be = toMinutes(b.end_time);
                 if (!overlaps(as_, ae, bs, be)) continue;
 
-                const aTeacher = a.subjects?.teachers?.users?.full_name ?? "Unknown teacher";
-                const bTeacher = b.subjects?.teachers?.users?.full_name ?? "Unknown teacher";
-                const aTeacherId = (a.subjects as any)?.teacher_id ?? "";
-                const bTeacherId = (b.subjects as any)?.teacher_id ?? "";
-                const aSub = a.subjects?.title ?? "Unknown";
-                const bSub = b.subjects?.title ?? "Unknown";
+                const aTeacher = a.teachers?.full_name || a.subjects?.teachers?.users?.full_name || "Unknown teacher";
+                const bTeacher = b.teachers?.full_name || b.subjects?.teachers?.users?.full_name || "Unknown teacher";
+                const aTeacherId = a.teacher_id || (a.subjects as any)?.teacher_id || "";
+                const bTeacherId = b.teacher_id || (b.subjects as any)?.teacher_id || "";
+                const aSub = a.subjects?.title ?? a.subject_name ?? "Unknown";
+                const bSub = b.subjects?.title ?? b.subject_name ?? "Unknown";
 
-                if (a.room_number && b.room_number &&
-                    a.room_number.trim().toLowerCase() === b.room_number.trim().toLowerCase() &&
-                    a.class_id !== b.class_id) {
-                    conflicts.push({
-                        id: nextId(), type: "room_clash", severity: "error", day,
-                        message: `Room ${a.room_number} double-booked on ${day}`,
-                        detail: `"${aSub}" and "${bSub}" both use Room ${a.room_number} at overlapping times.`,
-                        affectedEntryIds: [a.id, b.id],
-                        affectedTeacherUserIds: [aTeacherId, bTeacherId].filter(Boolean),
-                        affectedClassIds: [a.class_id, b.class_id],
-                    });
-                }
-
-                if (aTeacherId && bTeacherId && aTeacherId === bTeacherId && a.class_id !== b.class_id) {
+                // Teacher double-booking (institution-wide)
+                if (aTeacherId && bTeacherId && aTeacherId === bTeacherId && a.id !== b.id) {
                     conflicts.push({
                         id: nextId(), type: "teacher_double_book", severity: "error", day,
                         message: `${aTeacher} has two classes simultaneously on ${day}`,
-                        detail: `Teaching "${aSub}" and "${bSub}" at overlapping times.`,
+                        detail: `Teaching "${aSub}" and "${bSub}" at overlapping times (${a.start_time.slice(0, 5)}–${a.end_time.slice(0, 5)}).`,
                         affectedEntryIds: [a.id, b.id],
                         affectedTeacherUserIds: [aTeacherId],
                         affectedClassIds: [a.class_id, b.class_id],
                     });
                 }
 
-                if (a.class_id === b.class_id) {
+                // Class double-booking
+                if (a.class_id === b.class_id && a.id !== b.id) {
                     conflicts.push({
                         id: nextId(), type: "class_double_book", severity: "error", day,
                         message: `Class has overlapping subjects on ${day}`,
-                        detail: `"${aSub}" and "${bSub}" overlap - students can't be in two places at once.`,
+                        detail: `"${aSub}" and "${bSub}" overlap - students cannot attend two subjects simultaneously.`,
                         affectedEntryIds: [a.id, b.id],
                         affectedTeacherUserIds: [aTeacherId, bTeacherId].filter(Boolean),
                         affectedClassIds: [a.class_id],
@@ -432,16 +423,9 @@ export default function TimetableBuilder() {
     // UI state
     const [selectedDay, setSelectedDay] = useState<string>("Monday");
     const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+    const [isAutoModalVisible, setIsAutoModalVisible] = useState(false);
     const [editingEntry, setEditingEntry] = useState<TimetableEntry | null>(null);
-    const [saving, setSaving] = useState(false);
-
-    // Form state
-    const [newSlot, setNewSlot] = useState<Partial<CreateTimetableDto>>({
-        day_of_week: "Monday",
-        start_time: "08:00",
-        end_time: "09:00",
-        room_number: "",
-    });
+    const [publishing, setPublishing] = useState(false);
 
     // Derived
     const selectedClass = classes.find(c => c.id === selectedClassId);
@@ -449,6 +433,34 @@ export default function TimetableBuilder() {
         .filter(t => t.day_of_week === selectedDay)
         .sort((a, b) => toMinutes(a.start_time) - toMinutes(b.start_time));
     const conflictingIds = new Set(conflicts.flatMap(c => c.affectedEntryIds));
+    const draftCount = timetable.filter(t => t.is_draft).length;
+
+    const handlePublishTimetable = async () => {
+        const classLabel = selectedClass ? formatClassLabel(selectedClass) : "this class";
+        Alert.alert(
+            "Publish Timetable",
+            `Publish ${draftCount} draft timetable slots for ${classLabel}? They will become live and visible to students and parents.`,
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Publish Now",
+                    style: "default",
+                    onPress: async () => {
+                        try {
+                            setPublishing(true);
+                            const res = await TimetableAPI.publishTimetable(selectedClassId ? [selectedClassId] : null);
+                            showSuccess("Published", `Made ${res.published_count} slots active!`);
+                            await handleRefresh();
+                        } catch (e: any) {
+                            showError("Publish Error", e.message || "Failed to publish drafts.");
+                        } finally {
+                            setPublishing(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     const handleDownloadPdf = async () => {
         const classTitle = selectedClass ? formatClassLabel(selectedClass) : "Class";
@@ -485,7 +497,7 @@ export default function TimetableBuilder() {
         try {
             const { data } = await supabase
                 .from("timetables")
-                .select(`*, subjects(id, title, class_id, teacher_id, teachers(id, user_id, users(full_name)))`)
+                .select(`*, subjects(id, title, category, class_id, teacher_id, teachers(id, user_id, users(full_name)))`)
                 .eq("institution_id", institutionId);
             const entries = (data ?? []) as unknown as TimetableEntry[];
             setAllEntries(entries);
@@ -580,50 +592,12 @@ export default function TimetableBuilder() {
 
     const openAdd = () => {
         setEditingEntry(null);
-        setNewSlot({ day_of_week: selectedDay as any, start_time: "08:00", end_time: "09:00", room_number: "" });
         setIsAddModalVisible(true);
     };
 
     const openEdit = (entry: TimetableEntry) => {
         setEditingEntry(entry);
-        setNewSlot({
-            day_of_week: entry.day_of_week,
-            start_time: entry.start_time.slice(0, 5),
-            end_time: entry.end_time.slice(0, 5),
-            room_number: entry.room_number ?? "",
-            subject_id: entry.subject_id,
-        });
         setIsAddModalVisible(true);
-    };
-
-    const handleSave = async () => {
-        if (!newSlot.subject_id || !newSlot.day_of_week || !newSlot.start_time || !newSlot.end_time) {
-            showError("Validation", "Please fill all required fields.");
-            return;
-        }
-        const startMin = toMinutes(newSlot.start_time!);
-        const endMin = toMinutes(newSlot.end_time!);
-        if (endMin <= startMin) {
-            showError("Invalid Time", "End time must be after start time.");
-            return;
-        }
-        try {
-            setSaving(true);
-            if (editingEntry) {
-                await TimetableAPI.updateEntry(editingEntry.id, newSlot as Partial<CreateTimetableDto>);
-                showSuccess("Updated", "Schedule entry updated.");
-            } else {
-                await TimetableAPI.createEntry({ ...newSlot, class_id: selectedClassId } as CreateTimetableDto);
-                showSuccess("Created", "Schedule entry added.");
-            }
-            setIsAddModalVisible(false);
-            await fetchClassTimetable(selectedClassId);
-            await fetchAllEntries();
-        } catch (e) {
-            // handled by interceptor
-        } finally {
-            setSaving(false);
-        }
     };
 
     const handleDelete = (id: string) => {
@@ -687,6 +661,24 @@ export default function TimetableBuilder() {
                 onBack={() => router.back()}
                 rightActions={
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <ActionTooltip
+                            label="Auto Timetable Builder"
+                            description="Run MILP constraint optimization to generate an optimal timetable."
+                            learnMoreAnchor="timetable-builder"
+                        >
+                            <TouchableOpacity
+                                onPress={() => setIsAutoModalVisible(true)}
+                                style={[styles.iconBtn, { flexDirection: 'row', paddingHorizontal: 12, width: 'auto', gap: 6, backgroundColor: 'rgba(234, 88, 12, 0.12)', borderColor: '#EA580C' }]}
+                                accessibilityRole="button"
+                                accessibilityLabel="Automatic Timetable Builder"
+                            >
+                                <Sparkles size={16} color="#EA580C" />
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: '#EA580C' }}>
+                                    Auto-Builder
+                                </Text>
+                            </TouchableOpacity>
+                        </ActionTooltip>
+
                         {selectedClassId && (
                             <ActionTooltip
                                 label="Export PDF"
@@ -738,6 +730,36 @@ export default function TimetableBuilder() {
                     })}
                 </ScrollView>
             </View>
+
+            {/* ── Draft Mode Banner ── */}
+            {selectedClassId && draftCount > 0 && (
+                <View style={styles.draftBanner}>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <View style={styles.draftBadgeIcon}>
+                            <Sparkles size={18} color="#F59E0B" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontWeight: '800', color: '#B45309', fontSize: 13 }}>
+                                Draft Timetable Active ({draftCount} slot{draftCount !== 1 ? 's' : ''})
+                            </Text>
+                            <Text style={{ color: '#92400E', fontSize: 11, marginTop: 1 }}>
+                                Review this generated schedule. Publish to make live for students and educators.
+                            </Text>
+                        </View>
+                    </View>
+                    <TouchableOpacity
+                        style={[styles.publishBtn, publishing && { opacity: 0.6 }]}
+                        onPress={handlePublishTimetable}
+                        disabled={publishing}
+                    >
+                        {publishing ? (
+                            <Spinner size="small" color="#fff" />
+                        ) : (
+                            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>Publish Live</Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            )}
 
             {/* ── Conflict Panel (Pro-gated) ── */}
             {selectedClassId && (
@@ -849,6 +871,12 @@ export default function TimetableBuilder() {
                         daySlots.map((slot, idx) => {
                             const hasConflict = conflictingIds.has(slot.id);
                             const color = getSubjectColor(slot.subject_id);
+                            const teacherName =
+                                slot.teachers?.full_name ||
+                                slot.subjects?.teachers?.users?.full_name ||
+                                slot.teacher_name ||
+                                "No teacher assigned";
+                            const cohortLabel = slot.room_number || (selectedClass ? formatClassLabel(selectedClass) : "Cohort");
                             return (
                                 <View
                                     key={slot.id}
@@ -860,12 +888,24 @@ export default function TimetableBuilder() {
                                             <Text style={styles.slotSubject} numberOfLines={1}>
                                                 {slot.subjects?.title ?? "Unknown Subject"}
                                             </Text>
-                                            {hasConflict && (
-                                                <View style={styles.conflictBadge}>
-                                                    <AlertOctagon size={10} color={colors.red} />
-                                                    <Text style={styles.conflictBadgeText}>CONFLICT</Text>
-                                                </View>
-                                            )}
+                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                                                {slot.subjects?.category && (
+                                                    <View style={styles.categoryBadge}>
+                                                        <Text style={styles.categoryBadgeText}>{slot.subjects.category.toUpperCase()}</Text>
+                                                    </View>
+                                                )}
+                                                {slot.is_draft && (
+                                                    <View style={styles.draftBadge}>
+                                                        <Text style={styles.draftBadgeText}>DRAFT</Text>
+                                                    </View>
+                                                )}
+                                                {hasConflict && (
+                                                    <View style={styles.conflictBadge}>
+                                                        <AlertOctagon size={10} color={colors.red} />
+                                                        <Text style={styles.conflictBadgeText}>CONFLICT</Text>
+                                                    </View>
+                                                )}
+                                            </View>
                                         </View>
 
                                         <View style={styles.slotMeta}>
@@ -873,21 +913,22 @@ export default function TimetableBuilder() {
                                             <Text style={styles.slotMetaText}>
                                                 {slot.start_time.slice(0, 5)} – {slot.end_time.slice(0, 5)}
                                             </Text>
-                                            {slot.room_number ? <Text style={styles.slotMetaDot}>·</Text> : null}
-                                            {slot.room_number ? <MapPin size={11} color={colors.textSub} /> : null}
-                                            {slot.room_number ? <Text style={styles.slotMetaText}>Room {slot.room_number}</Text> : null}
+                                            <Text style={styles.slotMetaDot}>·</Text>
+                                            <View style={styles.cohortPill}>
+                                                <Text style={styles.cohortPillText}>{cohortLabel}</Text>
+                                            </View>
                                         </View>
 
                                         <View style={styles.slotTeacherRow}>
                                             <User size={11} color={color} />
                                             <Text style={[styles.slotTeacher, { color }]}>
-                                                {slot.subjects?.teachers?.users?.full_name ?? "No teacher assigned"}
+                                                {teacherName}
                                             </Text>
                                         </View>
                                     </View>
 
                                     <View style={styles.slotActions}>
-                                        <ActionTooltip label="Edit Slot" description="Adjust timing, subject, room, or educator." learnMoreAnchor="timetable-builder">
+                                        <ActionTooltip label="Edit Slot" description="Adjust timing, subject, cohort, or educator." learnMoreAnchor="timetable-builder">
                                             <TouchableOpacity style={styles.slotActionBtn} onPress={() => openEdit(slot)}>
                                                 <Edit3 size={15} color={colors.textSub} />
                                             </TouchableOpacity>
@@ -916,106 +957,31 @@ export default function TimetableBuilder() {
                 </ActionTooltip>
             )}
 
-            {/* ── Add / Edit Modal ── */}
-            <Modal visible={isAddModalVisible} animationType="slide" transparent onRequestClose={() => setIsAddModalVisible(false)}>
-                <View style={styles.modalBackdrop}>
-                    <View style={styles.modalSheet}>
-                        <View style={styles.modalHandle} />
-                        <View style={styles.modalHeader}>
-                            <View>
-                                <Text style={styles.modalTitle}>{editingEntry ? "Edit Slot" : "Add Schedule Slot"}</Text>
-                                <Text style={styles.modalSub}>
-                                    {formatClassLabel(selectedClass) || "Selected class"} · Conflicts checked on save
-                                </Text>
-                            </View>
-                            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setIsAddModalVisible(false)}>
-                                <X size={20} color={colors.textSub} />
-                            </TouchableOpacity>
-                        </View>
+            {/* ── Manual Builder Modal ── */}
+            <ManualBuilderModal
+                visible={isAddModalVisible}
+                onClose={() => setIsAddModalVisible(false)}
+                onSaveSuccess={async () => {
+                    if (selectedClassId) await fetchClassTimetable(selectedClassId);
+                    await fetchAllEntries();
+                }}
+                editingEntry={editingEntry}
+                selectedClassId={selectedClassId}
+                selectedClassName={selectedClass ? formatClassLabel(selectedClass) : "Class"}
+                subjects={subjects}
+                days={DAYS}
+            />
 
-                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalBody}>
-                            <Text style={styles.formLabel}>Day of Week</Text>
-                            <View style={styles.pickerWrap}>
-                                <Picker
-                                    selectedValue={newSlot.day_of_week}
-                                    onValueChange={(v) => setNewSlot({ ...newSlot, day_of_week: v as any })}
-                                    style={{ color: colors.text }}
-                                    dropdownIconColor={colors.textSub}
-                                    itemStyle={{ color: colors.text }}
-                                >
-                                    {DAYS.map(day => <Picker.Item key={day} label={day} value={day} color={colors.text} />)}
-                                </Picker>
-                            </View>
-
-                            <Text style={styles.formLabel}>Subject</Text>
-                            <View style={styles.pickerWrap}>
-                                <Picker
-                                    selectedValue={newSlot.subject_id}
-                                    onValueChange={(v) => setNewSlot({ ...newSlot, subject_id: v })}
-                                    style={{ color: colors.text }}
-                                    dropdownIconColor={colors.textSub}
-                                    itemStyle={{ color: colors.text }}
-                                >
-                                    <Picker.Item label="Select subject..." value="" color={colors.textMuted} />
-                                    {subjects.map(s => <Picker.Item key={s.id} label={s.title} value={s.id} color={colors.text} />)}
-                                </Picker>
-                            </View>
-
-                            <View style={styles.timeRow}>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.formLabel}>Start Time</Text>
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="08:00"
-                                        placeholderTextColor={colors.textMuted}
-                                        value={newSlot.start_time}
-                                        onChangeText={(v) => setNewSlot({ ...newSlot, start_time: v })}
-                                    />
-                                </View>
-                                <View style={styles.timeSeparator}>
-                                    <Text style={styles.timeSepText}>→</Text>
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.formLabel}>End Time</Text>
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="09:00"
-                                        placeholderTextColor={colors.textMuted}
-                                        value={newSlot.end_time}
-                                        onChangeText={(v) => setNewSlot({ ...newSlot, end_time: v })}
-                                    />
-                                </View>
-                            </View>
-
-                            <Text style={styles.formLabel}>Room <Text style={styles.optional}>(optional)</Text></Text>
-                            <TextInput
-                                style={[styles.input, { marginBottom: 24 }]}
-                                placeholder="e.g. Room 101, Lab A, Lecture Hall 2"
-                                placeholderTextColor={colors.textMuted}
-                                value={newSlot.room_number ?? ""}
-                                onChangeText={(v) => setNewSlot({ ...newSlot, room_number: v })}
-                            />
-
-                            <TouchableOpacity
-                                style={[styles.saveBtn, saving && { opacity: 0.6 }]}
-                                onPress={handleSave}
-                                disabled={saving}
-                                accessibilityState={{ disabled: saving, busy: saving }}
-                                activeOpacity={0.85}
-                            >
-                                {saving ? (
-                                    <Spinner color="#fff" size="small" label="Saving timetable slot" />
-                                ) : (
-                                    <>
-                                        <Check size={16} color="#fff" />
-                                        <Text style={styles.saveBtnText}>{editingEntry ? "Save Changes" : "Create Entry"}</Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
+            {/* ── Auto-Generate Modal ── */}
+            <AutoGenerateModal
+                visible={isAutoModalVisible}
+                onClose={() => setIsAutoModalVisible(false)}
+                onGenerated={async () => {
+                    await handleRefresh();
+                }}
+                selectedClassId={selectedClassId}
+                selectedClassName={selectedClass ? formatClassLabel(selectedClass) : undefined}
+            />
         </View>
     );
 }
@@ -1144,25 +1110,77 @@ function getStyles(colors: any) {
             elevation: 8,
         },
 
-        // Modal
-        modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "flex-end" },
-        modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingBottom: 36, maxHeight: "90%" },
-        modalHandle: { width: 36, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: "center", marginTop: 10 },
-        modalHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
-        modalTitle: { fontSize: 20, fontWeight: "900", color: colors.text },
-        modalSub: { fontSize: 12, color: colors.textSub, marginTop: 3 },
-        modalCloseBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surface2, justifyContent: "center", alignItems: "center" },
-        modalBody: { paddingHorizontal: 20, paddingTop: 18 },
+        // Draft mode banner
+        draftBanner: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginHorizontal: 16,
+            marginTop: 10,
+            marginBottom: 4,
+            padding: 12,
+            borderRadius: 14,
+            backgroundColor: "rgba(245,158,11,0.12)",
+            borderWidth: 1,
+            borderColor: "rgba(245,158,11,0.3)",
+        },
+        draftBadgeIcon: {
+            width: 34,
+            height: 34,
+            borderRadius: 10,
+            backgroundColor: "rgba(245,158,11,0.2)",
+            alignItems: "center",
+            justifyContent: "center",
+        },
+        publishBtn: {
+            backgroundColor: "#D97706",
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+            borderRadius: 10,
+            alignItems: "center",
+            justifyContent: "center",
+        },
 
-        // Form
-        formLabel: { fontSize: 11, fontWeight: "700", color: colors.textSub, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 },
-        optional: { fontWeight: "400", color: colors.textMuted, textTransform: "none" },
-        pickerWrap: { backgroundColor: colors.surface2, borderRadius: 12, borderWidth: 1, borderColor: colors.border, marginBottom: 16, overflow: "hidden" },
-        input: { backgroundColor: colors.surface2, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14, paddingVertical: 14, fontSize: 15, fontWeight: "600", color: colors.text, marginBottom: 16 },
-        timeRow: { flexDirection: "row", alignItems: "flex-end", gap: 8 },
-        timeSeparator: { paddingBottom: 14 },
-        timeSepText: { fontSize: 18, color: colors.textMuted, fontWeight: "300" },
-        saveBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.accent, borderRadius: 14, paddingVertical: 16 },
-        saveBtnText: { fontSize: 16, fontWeight: "900", color: "#fff" },
+        // Cohort & Elective tags
+        cohortPill: {
+            paddingHorizontal: 7,
+            paddingVertical: 2,
+            borderRadius: 6,
+            backgroundColor: colors.surface2,
+            borderWidth: 1,
+            borderColor: colors.border,
+        },
+        cohortPillText: {
+            fontSize: 10,
+            fontWeight: "700",
+            color: colors.textSub,
+        },
+        categoryBadge: {
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: 6,
+            backgroundColor: "rgba(59,130,246,0.12)",
+            borderWidth: 1,
+            borderColor: "rgba(59,130,246,0.25)",
+        },
+        categoryBadgeText: {
+            fontSize: 8,
+            fontWeight: "900",
+            color: "#3B82F6",
+            letterSpacing: 0.5,
+        },
+        draftBadge: {
+            paddingHorizontal: 5,
+            paddingVertical: 2,
+            borderRadius: 5,
+            backgroundColor: "rgba(245,158,11,0.15)",
+            borderWidth: 1,
+            borderColor: "rgba(245,158,11,0.3)",
+        },
+        draftBadgeText: {
+            fontSize: 8,
+            fontWeight: "900",
+            color: "#B45309",
+        },
     });
 }

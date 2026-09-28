@@ -91,6 +91,7 @@ const TENANT_SCOPED_TABLES = new Set([
   'teachers',
   'terms',
   'ticket_messages',
+  'timetable_configs',
   'timetables',
   'track_subjects',
   'trial_sessions',
@@ -261,8 +262,14 @@ function createScopedQueryBuilder(targetQb, tableName, tenantId) {
     });
 }
 
+const proxyOverrides = new Map();
+
 const supabaseProxy = new Proxy({}, {
     get: function (_target, prop) {
+        if (proxyOverrides.has(prop)) {
+            return proxyOverrides.get(prop);
+        }
+
         const client = getClient();
 
         if (prop === 'from') {
@@ -284,6 +291,14 @@ const supabaseProxy = new Proxy({}, {
             return value.bind(client);
         }
         return value;
+    },
+    set: function (_target, prop, val) {
+        if (val === undefined) {
+            proxyOverrides.delete(prop);
+        } else {
+            proxyOverrides.set(prop, val);
+        }
+        return true;
     }
 });
 

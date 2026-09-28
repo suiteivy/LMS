@@ -256,15 +256,16 @@ exports.getMyTimetable = async (req, res) => {
             return res.status(404).json({ error: "Student not assigned to a class" });
         }
 
-        // 3. Fetch timetable for that class
+        // 3. Fetch timetable for that class (active published slots only)
         const { data, error } = await supabase
             .from("timetables")
             .select(`
                 id, day_of_week, start_time, end_time, room_number,
-                subjects ( title, teacher_id, teachers:teachers!courses_new_teacher_id_fkey(users(first_name, last_name, full_name)) )
+                subjects ( title, category, teacher_id, teachers:teachers!courses_new_teacher_id_fkey(users(first_name, last_name, full_name)) )
             `)
             .eq("class_id", enrollment.class_id)
             .eq("institution_id", institution_id)
+            .or("is_draft.is.null,is_draft.eq.false")
             .order("start_time", { ascending: true });
 
         if (error) throw error;

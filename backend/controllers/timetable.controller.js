@@ -3,37 +3,52 @@ const supabase = require("../utils/supabaseClient.js");
 const { buildClassLabel } = require('../utils/classLabel');
 const { recomputeForTimetableDayMutation } = require('../services/dailyHours.service.js');
 const { getStudentCurrentClassEnrollment } = require('../utils/studentClassEnrollment');
+const { solveTimetable } = require('../services/timetableSolver.service.js');
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 const toMin = (t) => {
+  if (!t) return 0;
   const [h, m] = t.split(":").map(Number);
-  return h * 60 + m;
+  return (h || 0) * 60 + (m || 0);
 };
 
 const overlaps = (s1, e1, s2, e2) => s1 < e2 && s2 < e1;
 
+async function resolveClassRoomLabel(class_id, institution_id) {
+  if (!class_id) return null;
+  const { data: cls } = await supabase
+    .from("classes")
+    .select("id, name, display_name, grade_level, form_level, stream, class_type")
+    .eq("id", class_id)
+    .eq("institution_id", institution_id)
+    .maybeSingle();
+
+  if (!cls) return null;
+  return buildClassLabel(cls);
+}
+
 async function validateClassAndSubject({ class_id, subject_id, institution_id }) {
   const { data: cls, error: classError } = await supabase
     .from("classes")
-    .select("id")
+    .select("id, name, display_name, grade_level, form_level, stream, class_type")
     .eq("id", class_id)
     .eq("institution_id", institution_id)
     .single();
 
   if (classError || !cls) {
-    return { ok: false, status: 400, error: "Invalid class for institution" };
+    return { ok: false, status: 400, error: "Invalid class for institution", classObj: null };
   }
 
   const { data: subject, error: subjectError } = await supabase
     .from("subjects")
-    .select("id,class_id,metadata")
+    .select("id,class_id,teacher_id,metadata,title")
     .eq("id", subject_id)
     .eq("institution_id", institution_id)
     .single();
 
   if (subjectError || !subject) {
-    return { ok: false, status: 400, error: "Invalid subject for institution" };
+    return { ok: false, status: 400, error: "Invalid subject for institution", classObj: cls, subjectObj: null };
   }
 
   const { data: links, error: linkError } = await supabase
@@ -66,10 +81,12 @@ async function validateClassAndSubject({ class_id, subject_id, institution_id })
       ok: false,
       status: 400,
       error: "Selected subject is not assigned to this class",
+      classObj: cls,
+      subjectObj: subject,
     };
   }
 
-  return { ok: true };
+  return { ok: true, classObj: cls, subjectObj: subject };
 }
 
 async function resolveTeacherIdForUser(userId) {
@@ -207,21 +224,21 @@ async function canAccessClassTimetable({ userRole, userId, class_id, institution
 
 /**
  * Run institution-wide conflict checks before inserting/updating.
- * Returns an array of human-readable conflict strings (empty = clean).
- * excludeId: entry id to skip when updating (so we don't conflict with self).
+ * Note: room_number represents the class's identity/name (e.g. "Grade 4 East").
+ * Physical room clash is NOT performed per system specification.
+ * Parallel elective slots for Senior Secondary are permitted if subjects/teachers differ.
  */
 async function checkConflicts(
-  { class_id, subject_id, day_of_week, start_time, end_time, room_number },
+  { class_id, subject_id, teacher_id, day_of_week, start_time, end_time, is_elective, track_id },
   institution_id,
   excludeId = null,
 ) {
   const issues = [];
 
-  // Fetch all timetable entries for this institution on the same day
   let query = supabase
     .from("timetables")
     .select(
-      "id, class_id, subject_id, start_time, end_time, room_number",
+      "id, class_id, subject_id, teacher_id, start_time, end_time, room_number, is_elective, track_id, is_draft"
     )
     .eq("institution_id", institution_id)
     .eq("day_of_week", day_of_week);
@@ -234,61 +251,55 @@ async function checkConflicts(
   const ns = toMin(start_time);
   const ne = toMin(end_time);
 
-  // Fetch all teacher IDs for the incoming subject (primary + assistants)
-  const { data: primaryRow } = await supabase
-    .from("subjects")
-    .select("teacher_id")
-    .eq("id", subject_id)
-    .single();
-  const { data: assocRows } = await supabase
-    .from("subject_teachers")
-    .select("teacher_id")
-    .eq("subject_id", subject_id);
-  
-  const incomingTeacherIds = new Set([
-    ...(primaryRow?.teacher_id ? [primaryRow.teacher_id] : []),
-    ...(assocRows || []).map(r => r.teacher_id).filter(Boolean)
-  ]);
+  // Resolve incoming teacher IDs: explicit teacher_id or subject linked teachers
+  let incomingTeacherIds = new Set();
+  if (teacher_id) {
+    incomingTeacherIds.add(teacher_id);
+  } else if (subject_id) {
+    const { data: primaryRow } = await supabase
+      .from("subjects")
+      .select("teacher_id")
+      .eq("id", subject_id)
+      .single();
+    const { data: assocRows } = await supabase
+      .from("subject_teachers")
+      .select("teacher_id")
+      .eq("subject_id", subject_id);
+
+    if (primaryRow?.teacher_id) incomingTeacherIds.add(primaryRow.teacher_id);
+    (assocRows || []).forEach(r => { if (r.teacher_id) incomingTeacherIds.add(r.teacher_id); });
+  }
 
   for (const e of existing) {
     const es = toMin(e.start_time);
     const ee = toMin(e.end_time);
     if (!overlaps(ns, ne, es, ee)) continue;
 
-    // Same class double-booking
+    // Class double-booking:
     if (e.class_id === class_id) {
       issues.push(
-        `This class already has a subject scheduled at overlapping times (${e.start_time.slice(0, 5)}–${e.end_time.slice(0, 5)})`,
+        `This class already has a subject scheduled at overlapping times (${e.start_time.slice(0, 5)}–${e.end_time.slice(0, 5)})`
       );
     }
 
-    // Room clash (institution-wide)
-    if (
-      room_number &&
-      e.room_number &&
-      e.room_number.trim().toLowerCase() === room_number.trim().toLowerCase() &&
-      e.class_id !== class_id
-    ) {
-      issues.push(
-        `Room "${room_number}" is already booked to another class at overlapping times on ${day_of_week}`,
-      );
+    // Teacher double-booking (institution-wide):
+    let existingTeacherIds = new Set();
+    if (e.teacher_id) {
+      existingTeacherIds.add(e.teacher_id);
+    } else if (e.subject_id) {
+      const { data: existingPrimary } = await supabase
+        .from("subjects")
+        .select("teacher_id")
+        .eq("id", e.subject_id)
+        .single();
+      const { data: existingAssoc } = await supabase
+        .from("subject_teachers")
+        .select("teacher_id")
+        .eq("subject_id", e.subject_id);
+
+      if (existingPrimary?.teacher_id) existingTeacherIds.add(existingPrimary.teacher_id);
+      (existingAssoc || []).forEach(r => { if (r.teacher_id) existingTeacherIds.add(r.teacher_id); });
     }
-
-    // Teacher double-booking (institution-wide)
-    const { data: existingPrimary } = await supabase
-      .from("subjects")
-      .select("teacher_id")
-      .eq("id", e.subject_id)
-      .single();
-    const { data: existingAssoc } = await supabase
-      .from("subject_teachers")
-      .select("teacher_id")
-      .eq("subject_id", e.subject_id);
-
-    const existingTeacherIds = [
-      ...(existingPrimary?.teacher_id ? [existingPrimary.teacher_id] : []),
-      ...(existingAssoc || []).map(r => r.teacher_id).filter(Boolean)
-    ];
 
     let hasTeacherConflict = false;
     for (const tid of existingTeacherIds) {
@@ -300,7 +311,7 @@ async function checkConflicts(
 
     if (hasTeacherConflict && e.class_id !== class_id) {
       issues.push(
-        `The assigned teacher is already teaching another class at overlapping times on ${day_of_week}`,
+        `The assigned teacher is already teaching another class at overlapping times on ${day_of_week} (${e.start_time.slice(0, 5)}–${e.end_time.slice(0, 5)})`
       );
     }
   }
@@ -309,9 +320,9 @@ async function checkConflicts(
 }
 
 /**
- * Create a new timetable entry — Admin only
+ * Live Conflict Detection Endpoint for Step-by-Step Manual Builder
  */
-exports.createTimetableEntry = async (req, res) => {
+async function liveCheckConflict(req, res) {
   try {
     const { userRole, institution_id } = req;
     if (!["admin", "master_admin"].includes(userRole)) {
@@ -321,10 +332,622 @@ exports.createTimetableEntry = async (req, res) => {
     const {
       class_id,
       subject_id,
+      teacher_id,
+      day_of_week,
+      start_time,
+      end_time,
+      exclude_id,
+      is_elective,
+      track_id
+    } = req.body;
+
+    if (!class_id || !day_of_week || !start_time || !end_time) {
+      return res.status(400).json({ error: "Missing minimum required fields (class_id, day_of_week, start_time, end_time)" });
+    }
+
+    const conflicts = await checkConflicts(
+      { class_id, subject_id, teacher_id, day_of_week, start_time, end_time, is_elective, track_id },
+      institution_id,
+      exclude_id
+    );
+
+    res.json({
+      has_conflict: conflicts.length > 0,
+      conflicts
+    });
+  } catch (err) {
+    console.error("Live check conflict error:", err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+/**
+ * Get Institution Timetable Configuration
+ */
+async function getTimetableConfig(req, res) {
+  try {
+    const { institution_id } = req;
+    if (!institution_id) {
+      return res.status(400).json({ error: "Missing institution context" });
+    }
+
+    const { data: config, error } = await supabase
+      .from("timetable_configs")
+      .select("*")
+      .eq("institution_id", institution_id)
+      .maybeSingle();
+
+    if (error && error.code !== "PGRST116") {
+      throw error;
+    }
+
+    if (config) {
+      return res.json(config);
+    }
+
+    const defaultConfig = {
+      institution_id,
+      days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      periods: [
+        { period_number: 1, start_time: "08:00", end_time: "08:45", is_break: false, label: "Lesson 1" },
+        { period_number: 2, start_time: "08:45", end_time: "09:30", is_break: false, label: "Lesson 2" },
+        { period_number: 3, start_time: "09:30", end_time: "10:15", is_break: false, label: "Lesson 3" },
+        { period_number: 4, start_time: "10:15", end_time: "10:45", is_break: true, label: "Short Break" },
+        { period_number: 5, start_time: "10:45", end_time: "11:30", is_break: false, label: "Lesson 4" },
+        { period_number: 6, start_time: "11:30", end_time: "12:15", is_break: false, label: "Lesson 5" },
+        { period_number: 7, start_time: "12:15", end_time: "13:00", is_break: false, label: "Lesson 6" },
+        { period_number: 8, start_time: "13:00", end_time: "14:00", is_break: true, label: "Lunch Break" },
+        { period_number: 9, start_time: "14:00", end_time: "14:45", is_break: false, label: "Lesson 7" },
+        { period_number: 10, start_time: "14:45", end_time: "15:30", is_break: false, label: "Lesson 8" }
+      ],
+      max_teacher_periods_per_day: 6,
+      max_teacher_periods_per_week: 28,
+      settings: {
+        allow_double_periods: true,
+        default_lesson_duration_minutes: 45
+      }
+    };
+
+    res.json(defaultConfig);
+  } catch (err) {
+    console.error("Get timetable config error:", err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+/**
+ * Save / Update Institution Timetable Configuration
+ */
+async function saveTimetableConfig(req, res) {
+  try {
+    const { userRole, institution_id } = req;
+    if (!["admin", "master_admin"].includes(userRole)) {
+      return res.status(403).json({ error: "Admin only." });
+    }
+
+    const {
+      days,
+      periods,
+      max_teacher_periods_per_day,
+      max_teacher_periods_per_week,
+      settings
+    } = req.body;
+
+    if (!Array.isArray(days) || days.length === 0) {
+      return res.status(400).json({ error: "At least one active school day must be selected." });
+    }
+
+    if (!Array.isArray(periods) || periods.length === 0) {
+      return res.status(400).json({ error: "At least one teaching period must be configured." });
+    }
+
+    const payload = {
+      institution_id,
+      days,
+      periods,
+      max_teacher_periods_per_day: Number(max_teacher_periods_per_day) || 6,
+      max_teacher_periods_per_week: Number(max_teacher_periods_per_week) || 28,
+      settings: settings || { allow_double_periods: true },
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from("timetable_configs")
+      .upsert(payload, { onConflict: "institution_id" })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ message: "Timetable configuration saved successfully.", config: data });
+  } catch (err) {
+    console.error("Save timetable config error:", err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+/**
+ * Timetable Readiness Verification Checklist
+ */
+async function getTimetableReadiness(req, res) {
+  try {
+    const { institution_id } = req;
+    if (!institution_id) {
+      return res.status(400).json({ error: "Missing institution context" });
+    }
+
+    const checks = [];
+    const unmet = [];
+
+    // 1. Active classes
+    const { data: classes, error: classErr } = await supabase
+      .from("classes")
+      .select("id, name, display_name, grade_level, form_level, stream, class_type")
+      .eq("institution_id", institution_id);
+
+    if (classErr) throw classErr;
+    const classCount = (classes || []).length;
+    if (classCount === 0) {
+      checks.push({
+        key: "classes",
+        title: "Active Classes",
+        passed: false,
+        details: "No active classes found in the institution. Add classes before generating a timetable."
+      });
+      unmet.push("No active classes exist.");
+    } else {
+      checks.push({
+        key: "classes",
+        title: "Active Classes",
+        passed: true,
+        details: `${classCount} active class(es) registered.`
+      });
+    }
+
+    // 2. Active Subjects mapped to classes
+    const { data: subjects, error: subjErr } = await supabase
+      .from("subjects")
+      .select("id, title, class_id, teacher_id, metadata")
+      .eq("institution_id", institution_id);
+
+    if (subjErr) throw subjErr;
+    const { data: subjClasses } = await supabase
+      .from("subject_classes")
+      .select("subject_id, class_id")
+      .eq("institution_id", institution_id);
+
+    const classSubjectMap = new Map();
+    (classes || []).forEach(c => classSubjectMap.set(c.id, []));
+
+    (subjects || []).forEach(s => {
+      if (s.class_id && classSubjectMap.has(s.class_id)) {
+        classSubjectMap.get(s.class_id).push(s.id);
+      }
+      const metaClasses = Array.isArray(s.metadata?.class_ids) ? s.metadata.class_ids : [];
+      metaClasses.forEach(cId => {
+        if (classSubjectMap.has(cId) && !classSubjectMap.get(cId).includes(s.id)) {
+          classSubjectMap.get(cId).push(s.id);
+        }
+      });
+    });
+
+    (subjClasses || []).forEach(sc => {
+      if (classSubjectMap.has(sc.class_id) && !classSubjectMap.get(sc.class_id).includes(sc.subject_id)) {
+        classSubjectMap.get(sc.class_id).push(sc.subject_id);
+      }
+    });
+
+    const classesWithoutSubjects = (classes || []).filter(c => (classSubjectMap.get(c.id) || []).length === 0);
+
+    if (classesWithoutSubjects.length > 0) {
+      const names = classesWithoutSubjects.map(c => buildClassLabel(c)).slice(0, 3).join(", ");
+      const more = classesWithoutSubjects.length > 3 ? ` and ${classesWithoutSubjects.length - 3} more` : '';
+      checks.push({
+        key: "subjects",
+        title: "Subject-Class Mappings",
+        passed: false,
+        details: `${classesWithoutSubjects.length} class(es) (${names}${more}) have no mapped subjects.`
+      });
+      unmet.push(`${classesWithoutSubjects.length} class(es) lack subject mappings.`);
+    } else {
+      checks.push({
+        key: "subjects",
+        title: "Subject-Class Mappings",
+        passed: true,
+        details: `All ${classCount} class(es) have active subject allocations.`
+      });
+    }
+
+    // 3. Teacher Allocations
+    const { data: subjectTeachers } = await supabase
+      .from("subject_teachers")
+      .select("subject_id, teacher_id")
+      .eq("institution_id", institution_id);
+
+    const subjectTeachersSet = new Set((subjectTeachers || []).map(st => st.subject_id));
+    const subjectsWithoutTeacher = (subjects || []).filter(s => !s.teacher_id && !subjectTeachersSet.has(s.id));
+
+    if (subjectsWithoutTeacher.length > 0) {
+      const sampleTitles = subjectsWithoutTeacher.map(s => s.title).slice(0, 3).join(", ");
+      const more = subjectsWithoutTeacher.length > 3 ? ` and ${subjectsWithoutTeacher.length - 3} more` : '';
+      checks.push({
+        key: "teachers",
+        title: "Teacher Allocations",
+        passed: false,
+        details: `${subjectsWithoutTeacher.length} subject(s) (${sampleTitles}${more}) have no assigned primary or assistant teacher.`
+      });
+      unmet.push(`${subjectsWithoutTeacher.length} subject(s) have no assigned teacher.`);
+    } else {
+      checks.push({
+        key: "teachers",
+        title: "Teacher Allocations",
+        passed: true,
+        details: `All subjects have designated eligible teachers.`
+      });
+    }
+
+    // 4. Period Budget & Schedule Configuration
+    const { data: config } = await supabase
+      .from("timetable_configs")
+      .select("*")
+      .eq("institution_id", institution_id)
+      .maybeSingle();
+
+    const days = config?.days || ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+    const teachingPeriods = (config?.periods || []).filter(p => !p.is_break);
+    const totalWeeklySlots = days.length * (teachingPeriods.length || 8);
+
+    if (!config || teachingPeriods.length === 0) {
+      checks.push({
+        key: "period_budget",
+        title: "Period Budget & Schedule Config",
+        passed: false,
+        details: "No timetable schedule or periods configured. Save a timetable configuration first."
+      });
+      unmet.push("Schedule periods have not been configured.");
+    } else {
+      checks.push({
+        key: "period_budget",
+        title: "Period Budget & Schedule Config",
+        passed: true,
+        details: `${days.length} days with ${teachingPeriods.length} teaching periods (${totalWeeklySlots} total slots/week).`
+      });
+    }
+
+    // 5. Subject Categorization
+    const categorizedSubjects = (subjects || []).filter(s => !!s.category);
+    checks.push({
+      key: "subject_categories",
+      title: "Subject Categorization",
+      passed: true,
+      details: categorizedSubjects.length > 0
+        ? `${categorizedSubjects.length} of ${subjects.length} subject(s) have assigned curriculum categories.`
+        : `All ${subjects.length} subject(s) are ready for scheduling.`
+    });
+
+    const ready = unmet.length === 0;
+
+    res.json({
+      ready,
+      checks,
+      unmet_prerequisites: unmet
+    });
+  } catch (err) {
+    console.error("Get timetable readiness error:", err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+/**
+ * Automatic Timetable Generation Endpoint
+ */
+async function generateTimetable(req, res) {
+  try {
+    const { userRole, institution_id } = req;
+    if (!["admin", "master_admin"].includes(userRole)) {
+      return res.status(403).json({ error: "Admin only." });
+    }
+
+    const {
+      save_as_draft = true,
+      target_class_ids = null,
+      replace_active = false
+    } = req.body;
+
+    const { data: config } = await supabase
+      .from("timetable_configs")
+      .select("*")
+      .eq("institution_id", institution_id)
+      .maybeSingle();
+
+    const days = config?.days || ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+    const rawPeriods = config?.periods || [
+      { period_number: 1, start_time: "08:00", end_time: "08:45", is_break: false },
+      { period_number: 2, start_time: "08:45", end_time: "09:30", is_break: false },
+      { period_number: 3, start_time: "09:30", end_time: "10:15", is_break: false },
+      { period_number: 4, start_time: "10:15", end_time: "10:45", is_break: true },
+      { period_number: 5, start_time: "10:45", end_time: "11:30", is_break: false },
+      { period_number: 6, start_time: "11:30", end_time: "12:15", is_break: false },
+      { period_number: 7, start_time: "12:15", end_time: "13:00", is_break: false },
+      { period_number: 8, start_time: "13:00", end_time: "14:00", is_break: true },
+      { period_number: 9, start_time: "14:00", end_time: "14:45", is_break: false },
+      { period_number: 10, start_time: "14:45", end_time: "15:30", is_break: false }
+    ];
+
+    const teachingPeriods = rawPeriods.filter(p => !p.is_break);
+    if (teachingPeriods.length === 0) {
+      return res.status(400).json({ error: "No teaching periods configured." });
+    }
+
+    let classQuery = supabase
+      .from("classes")
+      .select("id, name, display_name, grade_level, form_level, stream, class_type")
+      .eq("institution_id", institution_id);
+
+    if (Array.isArray(target_class_ids) && target_class_ids.length > 0) {
+      classQuery = classQuery.in("id", target_class_ids);
+    }
+
+    const { data: classesData, error: classErr } = await classQuery;
+    if (classErr) throw classErr;
+    if (!classesData || classesData.length === 0) {
+      return res.status(400).json({ error: "No classes available for generation." });
+    }
+
+    const classes = classesData.map(c => ({
+      id: c.id,
+      name: buildClassLabel(c),
+      level: c.grade_level || c.form_level
+    }));
+
+    const { data: teachersData } = await supabase
+      .from("teachers")
+      .select("id, full_name, user_id, users(full_name)")
+      .eq("institution_id", institution_id);
+
+    const teachers = (teachersData || []).map(t => ({
+      id: t.id,
+      name: t.full_name || t.users?.full_name || `Teacher ${t.id}`
+    }));
+
+    const { data: subjectsData } = await supabase
+      .from("subjects")
+      .select("id, title, class_id, teacher_id, metadata")
+      .eq("institution_id", institution_id);
+
+    const { data: subjectClassesData } = await supabase
+      .from("subject_classes")
+      .select("subject_id, class_id")
+      .eq("institution_id", institution_id);
+
+    const { data: subjectTeachersData } = await supabase
+      .from("subject_teachers")
+      .select("subject_id, teacher_id")
+      .eq("institution_id", institution_id);
+
+    const subjectTeachersMap = new Map();
+    (subjectTeachersData || []).forEach(st => {
+      if (!subjectTeachersMap.has(st.subject_id)) subjectTeachersMap.set(st.subject_id, new Set());
+      subjectTeachersMap.get(st.subject_id).add(st.teacher_id);
+    });
+
+    const subjectRequirements = [];
+
+    for (const cls of classes) {
+      const classId = cls.id;
+      const mappedSubjectIds = new Set();
+
+      (subjectsData || []).forEach(s => {
+        if (s.class_id === classId) mappedSubjectIds.add(s.id);
+        const metaIds = Array.isArray(s.metadata?.class_ids) ? s.metadata.class_ids : [];
+        if (metaIds.includes(classId)) mappedSubjectIds.add(s.id);
+      });
+
+      (subjectClassesData || []).forEach(sc => {
+        if (sc.class_id === classId) mappedSubjectIds.add(sc.subject_id);
+      });
+
+      const totalSlotsForClass = days.length * teachingPeriods.length;
+      const numSubjects = mappedSubjectIds.size;
+      const defaultPeriodsPerSubj = numSubjects > 0 ? Math.max(2, Math.floor((totalSlotsForClass - 2) / numSubjects)) : 4;
+
+      for (const subjId of mappedSubjectIds) {
+        const subj = (subjectsData || []).find(s => s.id === subjId);
+        if (!subj) continue;
+
+        const eligible = new Set();
+        if (subj.teacher_id) eligible.add(subj.teacher_id);
+        const assoc = subjectTeachersMap.get(subjId);
+        if (assoc) {
+          assoc.forEach(tId => eligible.add(tId));
+        }
+
+        if (eligible.size === 0 && teachers.length > 0) {
+          eligible.add(teachers[0].id);
+        }
+
+        const periodsBudget = Number(subj.metadata?.periods_per_week) || defaultPeriodsPerSubj;
+
+        subjectRequirements.push({
+          class_id: classId,
+          subject_id: subjId,
+          subject_name: subj.title,
+          periods_per_week: periodsBudget,
+          eligible_teachers: Array.from(eligible),
+          category: subj.category || null,
+          allow_double: subj.metadata?.allow_double !== false,
+          max_per_day: 2
+        });
+      }
+    }
+
+    const solverPayload = {
+      institution_id,
+      days,
+      periods: rawPeriods,
+      classes,
+      teachers,
+      subject_requirements: subjectRequirements,
+      senior_secondary_tracks: [],
+      teacher_max_periods_per_day: Number(config?.max_teacher_periods_per_day) || 6,
+      teacher_max_periods_per_week: Number(config?.max_teacher_periods_per_week) || 28
+    };
+
+    const solveResult = await solveTimetable(solverPayload);
+
+    if (!solveResult.success) {
+      return res.status(422).json({
+        success: false,
+        status: solveResult.status || "INFEASIBLE",
+        diagnostics: solveResult.diagnostics || [solveResult.error || "Schedule constraint satisfaction failed."]
+      });
+    }
+
+    const generatedEntries = solveResult.entries || [];
+
+    if (save_as_draft) {
+      const targetClassIdList = classes.map(c => c.id);
+
+      await supabase
+        .from("timetables")
+        .delete()
+        .eq("institution_id", institution_id)
+        .eq("is_draft", true)
+        .in("class_id", targetClassIdList);
+
+      if (replace_active) {
+        await supabase
+          .from("timetables")
+          .delete()
+          .eq("institution_id", institution_id)
+          .in("class_id", targetClassIdList);
+      }
+
+      const rowsToInsert = generatedEntries.map(e => ({
+        institution_id,
+        class_id: e.class_id,
+        subject_id: e.subject_id,
+        teacher_id: e.teacher_id,
+        day_of_week: e.day_of_week,
+        period_number: e.period_number,
+        start_time: e.start_time,
+        end_time: e.end_time,
+        room_number: e.room_number,
+        is_draft: !replace_active
+      }));
+
+      for (let i = 0; i < rowsToInsert.length; i += 50) {
+        const chunk = rowsToInsert.slice(i, i + 50);
+        const { error: insErr } = await supabase.from("timetables").insert(chunk);
+        if (insErr) throw insErr;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: replace_active ? "Timetable generated and published directly." : "Timetable generated successfully as draft.",
+      total_scheduled: generatedEntries.length,
+      solver_engine: solveResult.solver_engine,
+      entries: generatedEntries
+    });
+  } catch (err) {
+    console.error("Generate timetable error:", err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+/**
+ * Publish Timetable
+ */
+async function publishTimetable(req, res) {
+  try {
+    const { userRole, institution_id } = req;
+    if (!["admin", "master_admin"].includes(userRole)) {
+      return res.status(403).json({ error: "Admin only." });
+    }
+
+    const { class_ids = null } = req.body;
+
+    let draftQuery = supabase
+      .from("timetables")
+      .select("id, class_id, day_of_week")
+      .eq("institution_id", institution_id)
+      .eq("is_draft", true);
+
+    if (Array.isArray(class_ids) && class_ids.length > 0) {
+      draftQuery = draftQuery.in("class_id", class_ids);
+    }
+
+    const { data: drafts, error: draftErr } = await draftQuery;
+    if (draftErr) throw draftErr;
+
+    if (!drafts || drafts.length === 0) {
+      return res.status(400).json({ error: "No draft timetable entries found to publish." });
+    }
+
+    const affectedClassIds = [...new Set(drafts.map(d => d.class_id))];
+    const affectedDays = [...new Set(drafts.map(d => d.day_of_week))];
+
+    let deleteActiveQuery = supabase
+      .from("timetables")
+      .delete()
+      .eq("institution_id", institution_id)
+      .or("is_draft.is.null,is_draft.eq.false")
+      .in("class_id", affectedClassIds);
+
+    const { error: delErr } = await deleteActiveQuery;
+    if (delErr) throw delErr;
+
+    let updateQuery = supabase
+      .from("timetables")
+      .update({ is_draft: false })
+      .eq("institution_id", institution_id)
+      .eq("is_draft", true)
+      .in("class_id", affectedClassIds);
+
+    const { error: updateErr } = await updateQuery;
+    if (updateErr) throw updateErr;
+
+    for (const day of affectedDays) {
+      try {
+        await recomputeForTimetableDayMutation({ institution_id, day_name: day });
+      } catch (hErr) {
+        console.warn(`[Timetable] daily hours recompute warning for ${day}:`, hErr.message);
+      }
+    }
+
+    res.json({
+      message: "Timetable published successfully.",
+      published_count: drafts.length,
+      affected_classes: affectedClassIds.length
+    });
+  } catch (err) {
+    console.error("Publish timetable error:", err);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+/**
+ * Create a new timetable entry — Admin only
+ */
+async function createTimetableEntry(req, res) {
+  try {
+    const { userRole, institution_id } = req;
+    if (!["admin", "master_admin"].includes(userRole)) {
+      return res.status(403).json({ error: "Admin only." });
+    }
+
+    const {
+      class_id,
+      subject_id,
+      teacher_id,
       day_of_week,
       start_time,
       end_time,
       room_number,
+      is_draft = false,
+      is_elective = false,
+      track_id = null
     } = req.body;
 
     if (!class_id || !subject_id || !day_of_week || !start_time || !end_time) {
@@ -342,9 +965,18 @@ exports.createTimetableEntry = async (req, res) => {
         .json({ error: classSubjectValidation.error });
     }
 
-    // Institution-wide conflict check
+    let finalTeacherId = teacher_id;
+    if (!finalTeacherId) {
+      finalTeacherId = classSubjectValidation.subjectObj?.teacher_id || null;
+    }
+
+    let finalRoomNumber = room_number;
+    if (!finalRoomNumber || !finalRoomNumber.trim()) {
+      finalRoomNumber = buildClassLabel(classSubjectValidation.classObj);
+    }
+
     const issues = await checkConflicts(
-      { class_id, subject_id, day_of_week, start_time, end_time, room_number },
+      { class_id, subject_id, teacher_id: finalTeacherId, day_of_week, start_time, end_time, is_elective, track_id },
       institution_id,
     );
     if (issues.length > 0) {
@@ -357,10 +989,14 @@ exports.createTimetableEntry = async (req, res) => {
         {
           class_id,
           subject_id,
+          teacher_id: finalTeacherId,
           day_of_week,
           start_time,
           end_time,
-          room_number,
+          room_number: finalRoomNumber,
+          is_draft: !!is_draft,
+          is_elective: !!is_elective,
+          track_id,
           institution_id,
         },
       ])
@@ -369,10 +1005,12 @@ exports.createTimetableEntry = async (req, res) => {
 
     if (error) throw error;
 
-    try {
-      await recomputeForTimetableDayMutation({ institution_id, day_name: day_of_week });
-    } catch (hoursError) {
-      console.error('[Timetable] daily hours recompute failed after create:', hoursError?.message || hoursError);
+    if (!is_draft) {
+      try {
+        await recomputeForTimetableDayMutation({ institution_id, day_name: day_of_week });
+      } catch (hoursError) {
+        console.error('[Timetable] daily hours recompute failed after create:', hoursError?.message || hoursError);
+      }
     }
 
     res.status(201).json({ message: "Timetable entry created", entry: data });
@@ -380,12 +1018,12 @@ exports.createTimetableEntry = async (req, res) => {
     console.error("Create timetable error:", err);
     res.status(500).json({ error: err.message });
   }
-};
+}
 
 /**
  * Get timetable for a class
  */
-exports.getClassTimetable = async (req, res) => {
+async function getClassTimetable(req, res) {
   try {
     const { class_id } = req.params;
     const { userRole, userId } = req;
@@ -408,36 +1046,54 @@ exports.getClassTimetable = async (req, res) => {
       return res.status(403).json({ error: 'Access denied for this class timetable' });
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("timetables")
       .select(
         `
-        id, class_id, subject_id, institution_id, day_of_week, start_time, end_time, room_number,
-        subjects ( id, title, teacher_id, teachers:teachers!courses_new_teacher_id_fkey(users(full_name)) )
+        id, class_id, subject_id, teacher_id, institution_id, day_of_week, start_time, end_time, room_number,
+        is_draft, is_elective, track_id,
+        subjects ( id, title, category, teacher_id ),
+        teachers ( id, full_name, user_id, users(full_name) )
       `,
       )
       .eq("class_id", class_id)
-      .eq("institution_id", institution_id)
-      .eq("class_id", class_id)
-      .eq("institution_id", institution_id)
-      .order("start_time", { ascending: true }); // Need custom sort for days normally, but this sorts time
+      .eq("institution_id", institution_id);
+
+    const includeDrafts = req.query.include_drafts === "true" && ["admin", "master_admin"].includes(userRole);
+    if (!includeDrafts) {
+      query = query.or("is_draft.is.null,is_draft.eq.false");
+    }
+
+    const { data, error } = await query
+      .order("start_time", { ascending: true });
 
     if (error) throw error;
 
-    res.json(data);
+    const { data: cls } = await supabase
+      .from("classes")
+      .select("id, name, display_name, grade_level, form_level, stream, class_type")
+      .eq("id", class_id)
+      .maybeSingle();
+
+    const classLabel = cls ? buildClassLabel(cls) : null;
+
+    const normalized = (data || []).map(row => ({
+      ...row,
+      room_number: row.room_number || classLabel || "Main Classroom",
+      teacher_name: row.teachers?.full_name || row.teachers?.users?.full_name || null
+    }));
+
+    res.json(normalized);
   } catch (err) {
     console.error("Get class timetable error:", err);
     res.status(500).json({ error: err.message });
   }
-};
+}
 
 /**
  * Get teacher's timetable
- * Uses a two-step query because Supabase JS v2 `.eq("joined_table.col", val)`
- * filters joined columns, NOT rows. We must resolve subject IDs first.
- * Supports active teacher role mode (class vs subject).
  */
-exports.getTeacherTimetable = async (req, res) => {
+async function getTeacherTimetable(req, res) {
   try {
     const institution_id =
       req.institution_id && req.institution_id !== "null"
@@ -446,7 +1102,6 @@ exports.getTeacherTimetable = async (req, res) => {
     if (!institution_id)
       return res.status(400).json({ error: "Missing institution context" });
 
-    // Admin can pass teacher_id as param; teachers use their own profile
     let teacherId = req.params.teacher_id;
 
     if (!teacherId && req.userRole === "teacher") {
@@ -461,7 +1116,6 @@ exports.getTeacherTimetable = async (req, res) => {
     if (!teacherId)
       return res.status(400).json({ error: "Teacher ID required" });
 
-    // Determine active teacher role mode (class vs subject)
     const reqRoleMode = req.headers["x-teacher-role-mode"] || req.query.role_mode;
 
     let ctClassIds = [];
@@ -495,42 +1149,39 @@ exports.getTeacherTimetable = async (req, res) => {
       .from("timetables")
       .select(
         `
-        id, day_of_week, start_time, end_time, room_number, class_id, subject_id,
-        classes ( grade_level, form_level, stream ),
-        subjects ( title )
+        id, day_of_week, start_time, end_time, room_number, class_id, subject_id, teacher_id, is_draft, is_elective, track_id,
+        classes ( id, name, display_name, grade_level, form_level, stream, class_type ),
+        subjects ( id, title, category )
         `,
       )
-      .eq("institution_id", institution_id);
+      .eq("institution_id", institution_id)
+      .or("is_draft.is.null,is_draft.eq.false");
 
     if (activeMode === "class") {
       if (ctClassIds.length === 0) return res.json([]);
       timetableQuery = timetableQuery.in("class_id", ctClassIds);
     } else {
-      // Subject mode: get taught subjects
-      const { data: primarySubjectRows, error: primarySubjectError } = await supabase
+      const { data: primarySubjectRows } = await supabase
         .from("subjects")
         .select("id")
         .eq("teacher_id", teacherId)
         .eq("institution_id", institution_id);
 
-      if (primarySubjectError) throw primarySubjectError;
-
-      const { data: assocSubjectRows, error: assocSubjectError } = await supabase
+      const { data: assocSubjectRows } = await supabase
         .from("subject_teachers")
         .select("subject_id")
         .eq("teacher_id", teacherId)
         .eq("institution_id", institution_id);
-
-      if (assocSubjectError) throw assocSubjectError;
 
       const primarySubjectIds = (primarySubjectRows || []).map((s) => s.id);
       const assocSubjectIds = (assocSubjectRows || []).map((s) => s.subject_id);
       const subjectIds = [...new Set([...primarySubjectIds, ...assocSubjectIds])];
 
       if (subjectIds.length === 0) {
-        return res.json([]);
+        timetableQuery = timetableQuery.eq("teacher_id", teacherId);
+      } else {
+        timetableQuery = timetableQuery.or(`teacher_id.eq.${teacherId},subject_id.in.(${subjectIds.join(',')})`);
       }
-      timetableQuery = timetableQuery.in("subject_id", subjectIds);
     }
 
     const { data, error } = await timetableQuery
@@ -538,21 +1189,25 @@ exports.getTeacherTimetable = async (req, res) => {
       .order("start_time", { ascending: true });
 
     if (error) throw error;
-    const normalized = (data || []).map((row) => ({
-      ...row,
-      classes: row.classes ? { ...row.classes, name: buildClassLabel(row.classes) } : row.classes,
-    }));
+    const normalized = (data || []).map((row) => {
+      const classLabel = row.classes ? buildClassLabel(row.classes) : null;
+      return {
+        ...row,
+        room_number: row.room_number || classLabel || "Main Classroom",
+        classes: row.classes ? { ...row.classes, name: classLabel } : row.classes,
+      };
+    });
     res.json(normalized);
   } catch (err) {
     console.error("Get teacher timetable error:", err);
     res.status(500).json({ error: err.message });
   }
-};
+}
 
 /**
  * Update entry
  */
-exports.updateTimetableEntry = async (req, res) => {
+async function updateTimetableEntry(req, res) {
   try {
     const { id } = req.params;
     const { userRole, institution_id } = req;
@@ -566,7 +1221,7 @@ exports.updateTimetableEntry = async (req, res) => {
     const { data: current } = await supabase
       .from("timetables")
       .select(
-        "id,class_id,subject_id,day_of_week,start_time,end_time,room_number,institution_id",
+        "id,class_id,subject_id,teacher_id,day_of_week,start_time,end_time,room_number,institution_id,is_elective,track_id,is_draft",
       )
       .eq("id", id)
       .eq("institution_id", institution_id)
@@ -589,12 +1244,16 @@ exports.updateTimetableEntry = async (req, res) => {
         .json({ error: classSubjectValidation.error });
     }
 
-    // If timing/room/subject fields are being changed, re-run conflict check
+    if (!merged.room_number || !merged.room_number.trim()) {
+      updates.room_number = buildClassLabel(classSubjectValidation.classObj);
+      merged.room_number = updates.room_number;
+    }
+
     const needsCheck =
       updates.day_of_week ||
       updates.start_time ||
       updates.end_time ||
-      updates.room_number !== undefined ||
+      updates.teacher_id ||
       updates.subject_id;
 
     if (needsCheck) {
@@ -628,12 +1287,12 @@ exports.updateTimetableEntry = async (req, res) => {
     console.error("Update timetable error:", err);
     res.status(500).json({ error: err.message });
   }
-};
+}
 
 /**
  * Delete entry
  */
-exports.deleteTimetableEntry = async (req, res) => {
+async function deleteTimetableEntry(req, res) {
   try {
     const { id } = req.params;
     const { userRole, institution_id } = req;
@@ -665,4 +1324,19 @@ exports.deleteTimetableEntry = async (req, res) => {
     console.error("Delete timetable error:", err);
     res.status(500).json({ error: err.message });
   }
+}
+
+module.exports = {
+  checkConflicts,
+  liveCheckConflict,
+  getTimetableConfig,
+  saveTimetableConfig,
+  getTimetableReadiness,
+  generateTimetable,
+  publishTimetable,
+  createTimetableEntry,
+  getClassTimetable,
+  getTeacherTimetable,
+  updateTimetableEntry,
+  deleteTimetableEntry
 };

@@ -35,8 +35,15 @@ const TimetableCard = ({ entry, isDark }: { entry: TimetableEntry; isDark: boole
                         <Text className={`${isDark ? 'text-gray-300' : 'text-gray-500'} text-xs font-bold`} numberOfLines={1}>{entry.classes?.display_name || entry.classes?.name || "No Class"}</Text>
                     </View>
                 </View>
-                <View className={`${isDark ? 'bg-orange-950/40 border-orange-900' : 'bg-orange-50 border-orange-100'} px-2.5 py-0.5 rounded-full border`}>
-                    <Text className="text-[#FF6900] font-bold text-[9px] uppercase tracking-wider">Active</Text>
+                <View className="flex-row items-center gap-1.5">
+                    {entry.subjects?.category && (
+                        <View className={`${isDark ? 'bg-blue-950/40 border-blue-900' : 'bg-blue-50 border-blue-100'} px-2 py-0.5 rounded-full border`}>
+                            <Text className="text-blue-500 font-bold text-[8px] uppercase tracking-wider">{entry.subjects.category}</Text>
+                        </View>
+                    )}
+                    <View className={`${isDark ? 'bg-green-950/40 border-green-900' : 'bg-green-50 border-green-100'} px-2.5 py-0.5 rounded-full border`}>
+                        <Text className="text-green-600 font-bold text-[9px] uppercase tracking-wider">{entry.is_draft ? "Draft" : "Active"}</Text>
+                    </View>
                 </View>
             </View>
 
@@ -50,9 +57,8 @@ const TimetableCard = ({ entry, isDark }: { entry: TimetableEntry; isDark: boole
                     </Text>
                 </View>
                 {entry.room_number && (
-                    <View className="flex-row items-center">
-                        <MapPin size={12} color="#9CA3AF" />
-                        <Text className={`${isDark ? 'text-gray-300' : 'text-gray-400'} text-xs font-medium ml-1`}>{entry.room_number}</Text>
+                    <View className="flex-row items-center bg-gray-100 dark:bg-white/10 px-2 py-0.5 rounded-lg">
+                        <Text className={`${isDark ? 'text-gray-300' : 'text-gray-500'} text-[10px] font-bold uppercase tracking-wider`}>{entry.room_number}</Text>
                     </View>
                 )}
             </View>

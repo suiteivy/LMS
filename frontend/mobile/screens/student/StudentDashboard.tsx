@@ -192,9 +192,10 @@ export function StudentDashboardMobile() {
         const classIds = (myClasses as any[]).map((c: any) => c.class_id);
         const { data: schedule } = await supabase
           .from('timetables')
-          .select(`*, subjects(title, teachers(users(full_name))), classes(display_name)`)
+          .select(`*, subjects(title, category, teachers(users(full_name))), classes(display_name), teachers(full_name)`)
           .in('class_id', classIds)
           .eq('day_of_week', today)
+          .or('is_draft.is.null,is_draft.eq.false')
           .order('start_time', { ascending: true });
 
         fetchedSchedule = schedule || [];
@@ -459,12 +460,20 @@ export function StudentDashboardMobile() {
                   {item.subjects?.title || 'Lecture'}
                 </Text>
 
+                {item.subjects?.category ? (
+                  <View style={{ alignSelf: 'flex-start', backgroundColor: isDark ? 'rgba(59,130,246,0.15)' : '#eff6ff', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginTop: 4 }}>
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: isDark ? '#60a5fa' : '#2563eb', textTransform: 'uppercase' }}>
+                      {item.subjects.category}
+                    </Text>
+                  </View>
+                ) : null}
+
                 <View style={styles.scheduleCardBottom}>
                   <Text style={[styles.roomText, { color: isDark ? '#64748b' : '#94a3b8' }]}>
-                    {item.room_number || 'Room TBD'}
+                    {item.room_number || item.classes?.display_name || 'Class'}
                   </Text>
                   <Text style={styles.teacherText}>
-                    {item.subjects?.teachers?.users?.full_name?.split(' ')[0] || 'Faculty'}
+                    {(item.teachers?.full_name || item.subjects?.teachers?.users?.full_name)?.split(' ')[0] || 'Faculty'}
                   </Text>
                 </View>
               </MobileCard>

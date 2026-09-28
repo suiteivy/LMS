@@ -186,12 +186,14 @@ export function TeacherDashboardMobile() {
       return [
         { label: 'Homeroom Roll', icon: IconUsers, color: '#FF6900', route: '/(teacher)/classes' },
         { label: 'Attendance', icon: IconCalendar, color: '#10B981', route: '/(teacher)/management/attendance' },
+        { label: 'Timetable', icon: IconClock, color: '#06B6D4', route: '/(teacher)/management/timetable' },
         { label: 'Report Cards', icon: IconClipboardList, color: '#3B82F6', route: '/(teacher)/management/report-cards' },
         { label: 'Class Students', icon: IconGraduationCap, color: '#8B5CF6', route: '/(teacher)/students' },
       ];
     }
     return [
       { label: 'My Classes', icon: IconSchool, color: '#FF6900', route: '/(teacher)/classes' },
+      { label: 'Timetable', icon: IconClock, color: '#06B6D4', route: '/(teacher)/management/timetable' },
       { label: 'Grade Entry', icon: IconGraduationCap, color: '#3B82F6', route: '/(teacher)/management/grade-entry' },
       { label: 'Assignments', icon: IconClipboardList, color: '#8B5CF6', route: '/(teacher)/management/assignments' },
       { label: 'Coverage', icon: IconBookOpen, color: '#EC4899', route: '/(teacher)/management/coverage' },
@@ -380,10 +382,10 @@ export function TeacherDashboardMobile() {
               Today's Schedule
             </Text>
             <TouchableOpacity
-              onPress={() => router.push('/(teacher)/calendar' as any)}
+              onPress={() => router.push('/(teacher)/management/timetable' as any)}
               style={styles.seeAllBtn}
             >
-              <Text style={styles.seeAllText}>Calendar →</Text>
+              <Text style={styles.seeAllText}>Timetable →</Text>
             </TouchableOpacity>
           </View>
 

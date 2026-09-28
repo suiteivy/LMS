@@ -341,14 +341,35 @@ CREATE TABLE timetables (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
     subject_id UUID REFERENCES subjects(id) ON DELETE CASCADE,
+    teacher_id TEXT REFERENCES teachers(id) ON DELETE SET NULL,
     day_of_week TEXT CHECK (day_of_week IN ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')),
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
     room_number TEXT,
+    is_draft BOOLEAN NOT NULL DEFAULT false,
+    is_elective BOOLEAN NOT NULL DEFAULT false,
+    track_id UUID REFERENCES institution_tracks(id) ON DELETE SET NULL,
     institution_id UUID REFERENCES institutions(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 5.1 Timetable Configurations
+CREATE TABLE timetable_configs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    school_start_time TIME NOT NULL DEFAULT '08:00',
+    school_end_time TIME NOT NULL DEFAULT '16:00',
+    period_duration_minutes INTEGER NOT NULL DEFAULT 40,
+    active_days JSONB NOT NULL DEFAULT '["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]'::jsonb,
+    break_periods JSONB NOT NULL DEFAULT '[{"name": "Morning Break", "start_time": "10:00", "end_time": "10:30"}, {"name": "Lunch Break", "start_time": "12:30", "end_time": "13:30"}]'::jsonb,
+    subject_requirements JSONB NOT NULL DEFAULT '{}'::jsonb,
+    special_constraints JSONB NOT NULL DEFAULT '{"double_period_subjects": [], "morning_only_subjects": [], "no_back_to_back_subjects": []}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT uq_timetable_configs_institution UNIQUE (institution_id)
+);
+
 
 -- 6. Assignments
 CREATE TABLE assignments (

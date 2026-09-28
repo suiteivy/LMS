@@ -188,15 +188,21 @@ export default function ParentStudentTimetablePage() {
                             {/* Class Card */}
                             <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
                                 <View className="flex-row justify-between items-start mb-3">
-                                    <View className="bg-blue-50 dark:bg-blue-950/30 px-2.5 py-1 rounded-lg">
-                                        <Text className="text-blue-600 dark:text-blue-400 text-[9px] font-bold uppercase tracking-wider" numberOfLines={1}>
-                                            {entry.subjects?.title || 'Academic Unit'}
-                                        </Text>
+                                    <View className="flex-row items-center flex-wrap gap-1.5">
+                                        <View className="bg-blue-50 dark:bg-blue-950/30 px-2.5 py-1 rounded-lg">
+                                            <Text className="text-blue-600 dark:text-blue-400 text-[9px] font-bold uppercase tracking-wider" numberOfLines={1}>
+                                                {entry.subjects?.title || 'Academic Unit'}
+                                            </Text>
+                                        </View>
+                                        {entry.subjects?.category && (
+                                            <View className="bg-orange-50 dark:bg-orange-950/30 px-2 py-0.5 rounded-full border border-orange-200 dark:border-orange-900">
+                                                <Text className="text-[#FF6900] text-[8px] font-black uppercase tracking-widest">{entry.subjects.category}</Text>
+                                            </View>
+                                        )}
                                     </View>
                                     {entry.room_number && (
-                                        <View className="flex-row items-center bg-gray-50 dark:bg-[#21262D] px-2 py-0.5 rounded-lg">
-                                            <MapPin size={11} color="#9CA3AF" />
-                                            <Text className="text-gray-400 text-[9px] font-bold ml-1 uppercase tracking-wider">{entry.room_number}</Text>
+                                        <View className="flex-row items-center bg-gray-50 dark:bg-[#21262D] px-2 py-0.5 rounded-lg border border-gray-100 dark:border-gray-800">
+                                            <Text className="text-gray-500 dark:text-gray-400 text-[9px] font-bold uppercase tracking-wider">{entry.room_number}</Text>
                                         </View>
                                     )}
                                 </View>
@@ -211,7 +217,7 @@ export default function ParentStudentTimetablePage() {
                                     </View>
                                     <View className="flex-1">
                                         <Text className="text-gray-900 dark:text-white font-bold text-xs tracking-tight" numberOfLines={1}>
-                                            {entry.subjects?.teachers?.users?.full_name || 'Assigned Faculty'}
+                                            {entry.teachers?.full_name || entry.subjects?.teachers?.users?.full_name || 'Assigned Faculty'}
                                         </Text>
                                         <Text className="text-gray-400 text-[8px] font-bold uppercase tracking-wider mt-0.5">Primary Instructor</Text>
                                     </View>
