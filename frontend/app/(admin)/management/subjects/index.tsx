@@ -6,7 +6,7 @@ import { Subject } from '@/types/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, TextInput, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
+import { ActivityIndicator, Text, TextInput, TouchableOpacity, View, ScrollView, Alert, useWindowDimensions } from 'react-native';
 import { useRealtimeQuery } from '@/hooks/useRealtimeQuery';
 import { SubjectList } from '@/components/SubjectList';
 import { SubjectAPI, SubjectCategoryData } from '@/services/SubjectService';
@@ -15,6 +15,8 @@ import { SubjectCategoryModal } from '@/components/admin/SubjectCategoryModal';
 import Toast from 'react-native-toast-message';
 
 export default function SubjectsIndex() {
+    const { width } = useWindowDimensions();
+    const isMobile = width < 480;
     const { isDark } = useTheme();
     const { isReadOnlyAdmin } = useAuth();
     const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -240,7 +242,7 @@ export default function SubjectsIndex() {
                                 onPress={() => setShowCategoryModal(true)}
                                 style={{
                                     height: 40,
-                                    paddingHorizontal: 12,
+                                    paddingHorizontal: isMobile ? 10 : 12,
                                     backgroundColor: isDark ? '#21262D' : '#E5E7EB',
                                     borderRadius: 12,
                                     flexDirection: 'row',
@@ -249,9 +251,18 @@ export default function SubjectsIndex() {
                                 }}
                             >
                                 <Ionicons name="albums-outline" size={18} color={textPrimary} />
-                                <Text style={{ fontSize: 12, fontWeight: '600', color: textPrimary }}>
-                                    Categories{categories.length > 0 ? ` (${categories.length})` : ''}
-                                </Text>
+                                {!isMobile && (
+                                    <Text style={{ fontSize: 12, fontWeight: '600', color: textPrimary }}>
+                                        Categories{categories.length > 0 ? ` (${categories.length})` : ''}
+                                    </Text>
+                                )}
+                                {isMobile && categories.length > 0 && (
+                                    <View style={{ backgroundColor: '#FF6B00', borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 }}>
+                                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFFFFF' }}>
+                                            {categories.length}
+                                        </Text>
+                                    </View>
+                                )}
                             </TouchableOpacity>
                         </ActionTooltip>
 

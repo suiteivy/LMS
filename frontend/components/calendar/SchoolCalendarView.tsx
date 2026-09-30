@@ -442,11 +442,12 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
+                      justifyContent: 'center',
                       backgroundColor: isDark ? '#1e293b' : '#f1f5f9',
                       borderWidth: 1,
                       borderColor: colors.border,
-                      paddingHorizontal: 12,
-                      paddingVertical: 7,
+                      paddingHorizontal: isTablet ? 12 : 9,
+                      height: 36,
                       borderRadius: 999,
                       gap: 4,
                     }}
@@ -458,9 +459,11 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
                     ) : (
                       <Globe size={14} color={colors.text} />
                     )}
-                    <Text style={{ color: colors.text, fontWeight: '700', fontSize: 12 }}>
-                      {syncingHolidays ? 'Syncing...' : 'Sync Holidays'}
-                    </Text>
+                    {isTablet && (
+                      <Text style={{ color: colors.text, fontWeight: '700', fontSize: 12 }}>
+                        {syncingHolidays ? 'Syncing...' : 'Sync Holidays'}
+                      </Text>
+                    )}
                   </TouchableOpacity>
                 </ActionTooltip>
 
@@ -471,12 +474,22 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
                 >
                   <TouchableOpacity
                     onPress={isReadOnlyAdmin ? showReadOnlyNotice : () => handleOpenCreateModal()}
-                    style={styles.addButton}
+                    style={[
+                      styles.addButton,
+                      !isTablet && {
+                        paddingHorizontal: 0,
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }
+                    ]}
                     accessibilityRole="button"
                     accessibilityLabel="Create Calendar Event"
                   >
-                    <Plus size={15} color="#ffffff" style={{ marginRight: 4 }} />
-                    <Text className="text-white font-bold text-xs">Add Event</Text>
+                    <Plus size={16} color="#ffffff" style={isTablet ? { marginRight: 4 } : undefined} />
+                    {isTablet && <Text className="text-white font-bold text-xs">Add Event</Text>}
                   </TouchableOpacity>
                 </ActionTooltip>
               </>
@@ -518,12 +531,12 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
               borderWidth: 1,
               borderRadius: 18,
               padding: 14,
-              flexDirection: 'row',
-              alignItems: 'center',
+              flexDirection: isTablet ? 'row' : 'column',
+              alignItems: isTablet ? 'center' : 'stretch',
               justifyContent: 'space-between',
               gap: 12,
             }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: isTablet ? 1 : undefined }}>
                 <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#fef3c7', alignItems: 'center', justifyContent: 'center' }}>
                   <AlertTriangle size={20} color="#b45309" />
                 </View>
@@ -548,8 +561,10 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
                   style={{
                     backgroundColor: '#f59e0b',
                     paddingHorizontal: 14,
-                    paddingVertical: 8,
+                    paddingVertical: 10,
                     borderRadius: 10,
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
                   <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>Review Decisions</Text>

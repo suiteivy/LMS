@@ -226,7 +226,7 @@ export const SubjectCategoryModal: React.FC<SubjectCategoryModalProps> = ({
               borderBottomColor: border,
             }}
           >
-            <View>
+            <View style={{ flex: 1, paddingRight: 8 }}>
               <Text style={{ fontSize: 18, fontWeight: '800', color: textPrimary }}>Subject Categories</Text>
               <Text style={{ fontSize: 12, color: textMuted, marginTop: 2 }}>
                 Optional classification to organize subjects across filters and reports
@@ -508,7 +508,7 @@ export const SubjectCategoryModal: React.FC<SubjectCategoryModalProps> = ({
                       }}
                     >
                       <View style={{ flex: 1, marginRight: 12 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                           <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: catColor }} />
                           <Text style={{ fontSize: 14, fontWeight: '700', color: textPrimary }}>{cat.name}</Text>
                           <View
