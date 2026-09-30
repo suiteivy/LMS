@@ -1403,6 +1403,14 @@ exports.enrollUser = async (req, res) => {
       const { error: adminPermissionError } = await updateAdminManageUsersWithFallback(uid, !!adminData?.is_main);
       if (adminPermissionError) throw adminPermissionError;
 
+      const targetAccessLevel = req.body.access_level === 'read_only' ? 'read_only' : 'read_write';
+      if (!adminData?.is_main && targetAccessLevel !== 'read_write') {
+        await supabase
+          .from('admins')
+          .update({ access_level: targetAccessLevel })
+          .eq('user_id', uid);
+      }
+
       customId = adminData?.id;
     }
 
@@ -2886,14 +2894,14 @@ exports.getInstitutionAdmins = async (req, res) => {
 
     let { data: adminRows, error } = await supabase
       .from('admins')
-      .select('user_id, institution_id, is_main, can_manage_users, users:user_id(id, first_name, last_name, full_name, email)')
+      .select('user_id, institution_id, is_main, can_manage_users, access_level, users:user_id(id, first_name, last_name, full_name, email)')
       .eq('institution_id', targetInstitutionId)
       .order('is_main', { ascending: false });
 
     if (error && isMissingCanManageUsersColumnError(error)) {
       ({ data: adminRows, error } = await supabase
         .from('admins')
-        .select('user_id, institution_id, is_main, users:user_id(id, first_name, last_name, full_name, email)')
+        .select('user_id, institution_id, is_main, access_level, users:user_id(id, first_name, last_name, full_name, email)')
         .eq('institution_id', targetInstitutionId)
         .order('is_main', { ascending: false }));
     }
@@ -2906,6 +2914,7 @@ exports.getInstitutionAdmins = async (req, res) => {
         institution_id: row.institution_id,
         is_main: !!row.is_main,
         can_manage_users: !!row.can_manage_users,
+        access_level: row.is_main ? 'read_write' : (row.access_level || 'read_write'),
         user: row.users || null,
       }))
       .filter((row) => !!row.user?.id);
@@ -2998,6 +3007,99 @@ exports.updateAdminDelegation = async (req, res) => {
   } catch (err) {
     console.error('updateAdminDelegation error:', err);
     return res.status(500).json({ error: err.message || 'Failed to update delegation settings' });
+  }
+};
+
+/**
+ * Update Admin Access Level ('read_write' | 'read_only').
+ * Restricted to Main Admin (or master_admin).
+ * Invariant: Main Admin must always be 'read_write' and cannot be demoted.
+ */
+exports.updateAdminAccessLevel = async (req, res) => {
+  try {
+    const requesterRole = req.userRole;
+    const requesterInstitutionId = req.institution_id;
+    const requesterIsMain = !!req.isMain;
+    const { targetAdminUserId, accessLevel } = req.body || {};
+
+    if (!targetAdminUserId) {
+      return res.status(400).json({ error: 'targetAdminUserId is required' });
+    }
+
+    if (!['read_write', 'read_only'].includes(accessLevel)) {
+      return res.status(400).json({
+        error: "accessLevel must be either 'read_write' or 'read_only'",
+        code: 'INVALID_ACCESS_LEVEL',
+      });
+    }
+
+    if (!['admin', 'master_admin'].includes(requesterRole)) {
+      return res.status(403).json({ error: 'Unauthorized. Insufficient permissions.' });
+    }
+
+    if (requesterRole === 'admin' && !requesterIsMain) {
+      return res.status(403).json({
+        error: 'Only main administrators can update administrator access levels.',
+        code: 'MAIN_ADMIN_REQUIRED',
+      });
+    }
+
+    const { data: targetAdmin, error: targetAdminError } = await supabase
+      .from('admins')
+      .select('id, user_id, institution_id, is_main, access_level')
+      .eq('user_id', targetAdminUserId)
+      .maybeSingle();
+
+    if (targetAdminError) throw targetAdminError;
+
+    if (!targetAdmin) {
+      return res.status(404).json({ error: 'Target administrator not found' });
+    }
+
+    if (requesterRole === 'admin' && targetAdmin.institution_id !== requesterInstitutionId) {
+      return res.status(403).json({ error: 'Cannot modify administrator from another institution' });
+    }
+
+    if (targetAdmin.is_main) {
+      return res.status(400).json({
+        error: 'The main administrator always has read and write access and cannot be set to read-only.',
+        code: 'MAIN_ADMIN_IMMUTABLE',
+      });
+    }
+
+    const oldAccessLevel = targetAdmin.access_level || 'read_write';
+
+    const { data: updatedAdmin, error: updateError } = await supabase
+      .from('admins')
+      .update({ access_level: accessLevel })
+      .eq('user_id', targetAdminUserId)
+      .select('user_id, institution_id, is_main, can_manage_users, access_level')
+      .single();
+
+    if (updateError) throw updateError;
+
+    // Invalidate profile cache so changes propagate immediately
+    invalidateAuthCacheForUser(targetAdminUserId);
+
+    // Audit log
+    await logRecordChange({
+      institution_id: targetAdmin.institution_id,
+      table_name: 'admins',
+      record_id: targetAdmin.id || targetAdminUserId,
+      changed_by: req.userId,
+      change_type: 'UPDATE',
+      old_values: { access_level: oldAccessLevel },
+      new_values: { access_level: accessLevel },
+      reason: `Admin access level updated to ${accessLevel}`,
+    });
+
+    return res.status(200).json({
+      message: `Administrator access level updated to ${accessLevel === 'read_only' ? 'Read-Only' : 'Read & Write'}.`,
+      admin: updatedAdmin,
+    });
+  } catch (err) {
+    console.error('updateAdminAccessLevel error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to update administrator access level' });
   }
 };
 

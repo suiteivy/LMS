@@ -173,8 +173,8 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
           <Text style={{ fontWeight: '700', fontSize: 15, color: t.textPrimary, marginBottom: 6 }} numberOfLines={2}>
             {Subject.title}
           </Text>
-          {/* Level scoping badge */}
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {/* Badges row: Level scoping and Category */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
             <View
               style={{
                 flexDirection: 'row',
@@ -203,6 +203,38 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
                 {isGlobal ? 'All Levels' : `${levelIds.length} Level${levelIds.length > 1 ? 's' : ''}`}
               </Text>
             </View>
+
+            {(Subject.categories?.name || Subject.category_name || (Subject.category && Subject.category !== 'all')) && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 99,
+                  backgroundColor: `${Subject.categories?.color || '#3B82F6'}20`,
+                }}
+              >
+                <View
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: Subject.categories?.color || '#3B82F6',
+                    marginRight: 4,
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: '600',
+                    color: Subject.categories?.color || '#3B82F6',
+                  }}
+                >
+                  {Subject.categories?.name || Subject.category_name || Subject.category}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
         {onDelete ? (

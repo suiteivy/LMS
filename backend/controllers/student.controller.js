@@ -260,8 +260,8 @@ exports.getMyTimetable = async (req, res) => {
         const { data, error } = await supabase
             .from("timetables")
             .select(`
-                id, day_of_week, start_time, end_time, room_number,
-                subjects ( title, category, teacher_id, teachers:teachers!courses_new_teacher_id_fkey(users(first_name, last_name, full_name)) )
+                id, day_of_week, start_time, end_time, room_number, subject_id,
+                subjects ( id, title, category, teacher_id, teachers:teachers!courses_new_teacher_id_fkey(users(first_name, last_name, full_name)) )
             `)
             .eq("class_id", enrollment.class_id)
             .eq("institution_id", institution_id)
@@ -269,6 +269,28 @@ exports.getMyTimetable = async (req, res) => {
             .order("start_time", { ascending: true });
 
         if (error) throw error;
+
+        // Enrich with class-specific subject teacher if configured
+        const subjectIds = [...new Set((data || []).map(r => r.subject_id || r.subjects?.id).filter(Boolean))];
+        if (subjectIds.length > 0) {
+            const { data: stRows } = await supabase
+                .from('subject_teachers')
+                .select('subject_id, teachers(id, user_id, users(first_name, last_name, full_name))')
+                .eq('class_id', enrollment.class_id)
+                .in('subject_id', subjectIds);
+
+            if (stRows && stRows.length > 0) {
+                const stMap = new Map(stRows.map(r => [r.subject_id, r.teachers]));
+                data.forEach(entry => {
+                    const subId = entry.subject_id || entry.subjects?.id;
+                    const assignedTeacher = stMap.get(subId);
+                    if (assignedTeacher && entry.subjects) {
+                        entry.subjects.teachers = assignedTeacher;
+                    }
+                });
+            }
+        }
+
         res.json(data);
     } catch (err) {
         console.error("Get my timetable error:", err);

@@ -28,10 +28,10 @@ async function resolveTeacherScope(userId, institutionId, requestedMode = null) 
         .eq('teacher_id', teacherId);
     if (institutionId) primaryQuery = primaryQuery.eq('institution_id', institutionId);
 
-    // Fetch assistant subjects
+    // Fetch assistant / per-class subjects
     let assocQuery = supabase
         .from('subject_teachers')
-        .select('subject_id, subject:subjects(id, class_id)')
+        .select('subject_id, class_id, subject:subjects(id, class_id)')
         .eq('teacher_id', teacherId);
     if (institutionId) assocQuery = assocQuery.eq('institution_id', institutionId);
 
@@ -44,12 +44,16 @@ async function resolveTeacherScope(userId, institutionId, requestedMode = null) 
     (primarySubjects || []).forEach((s) => {
         if (s?.id) subjectsMap.set(s.id, s);
     });
-    (assocSubjects || []).map((a) => a.subject).filter(Boolean).forEach((s) => {
-        if (s?.id) subjectsMap.set(s.id, s);
+    (assocSubjects || []).forEach((a) => {
+        if (a?.subject?.id) subjectsMap.set(a.subject.id, a.subject);
+        else if (a?.subject_id && !subjectsMap.has(a.subject_id)) {
+            subjectsMap.set(a.subject_id, { id: a.subject_id, class_id: a.class_id });
+        }
     });
 
     const subjectIds = Array.from(subjectsMap.keys());
     const directClassIds = Array.from(subjectsMap.values()).map((s) => s.class_id).filter(Boolean);
+    const perClassAssignedClassIds = (assocSubjects || []).map((a) => a.class_id).filter(Boolean);
 
     // Fetch classes linked via subject_classes table
     let linkedClassIds = [];
@@ -66,7 +70,7 @@ async function resolveTeacherScope(userId, institutionId, requestedMode = null) 
             // Ignore if table unavailable
         }
     }
-    const subjectClassIds = [...new Set([...directClassIds, ...linkedClassIds])];
+    const subjectClassIds = [...new Set([...directClassIds, ...linkedClassIds, ...perClassAssignedClassIds])];
 
     // 3. Fetch classes where user is assigned Class Teacher
     let ctQuery = supabase
@@ -205,6 +209,15 @@ async function isTeacherAuthorizedForClass(teacherId, classId, institutionId, mo
         .eq('subject.class_id', classId)
         .limit(1);
     if (assocSubj && assocSubj.length > 0) return true;
+
+    // Check direct per-class assignment in subject_teachers
+    const { data: directClassSubj } = await supabase
+        .from('subject_teachers')
+        .select('id')
+        .eq('teacher_id', teacherId)
+        .eq('class_id', classId)
+        .limit(1);
+    if (directClassSubj && directClassSubj.length > 0) return true;
 
     // Check subject_classes table
     try {

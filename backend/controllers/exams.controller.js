@@ -317,7 +317,25 @@ exports.recordExamResult = async (req, res) => {
 
         let effectiveTeacherId = graded_by;
         if (userRole === 'teacher') {
-            const result = await authorizeTeacherForSubject(userId, subjectId, res);
+            let studentClassId = null;
+            const { data: stEnroll } = await supabase
+                .from('class_enrollments')
+                .select('class_id')
+                .eq('student_id', student_id)
+                .eq('status', 'enrolled')
+                .limit(1);
+            if (stEnroll && stEnroll.length > 0) {
+                studentClassId = stEnroll[0].class_id;
+            } else {
+                const { data: stData } = await supabase
+                    .from('students')
+                    .select('class_id')
+                    .eq('id', student_id)
+                    .single();
+                studentClassId = stData?.class_id || null;
+            }
+
+            const result = await authorizeTeacherForSubject(userId, subjectId, res, studentClassId);
             if (!result) return;
             effectiveTeacherId = result.teacherId;
         } else if (userRole !== 'admin') {

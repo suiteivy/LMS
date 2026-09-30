@@ -387,12 +387,12 @@ async function authMiddleware(req, res, next) {
       ({ data: profileData, error: profileError } = await withSupabaseRetry(() =>
         supabase
           .from('users')
-          .select('*, admins(id, is_main, can_manage_users), teachers(id, employment_status), parents(id), students(id, enrollment_status), platform_admins(id)')
+          .select('*, admins(id, is_main, can_manage_users, access_level), teachers(id, employment_status), parents(id), students(id, enrollment_status), platform_admins(id)')
           .eq('id', user.id)
           .maybeSingle()
       ));
 
-      if (profileError?.message && /can_manage_users does not exist|employment_status does not exist|enrollment_status does not exist/i.test(profileError.message)) {
+      if (profileError?.message && /can_manage_users does not exist|employment_status does not exist|enrollment_status does not exist|access_level does not exist/i.test(profileError.message)) {
         ({ data: profileData, error: profileError } = await withSupabaseRetry(() =>
           supabase
             .from('users')
@@ -470,6 +470,7 @@ async function authMiddleware(req, res, next) {
         : (profileData.admins || null);
       let isMain = adminRecord?.is_main || false;
       let canManageUsers = adminRecord?.can_manage_users || false;
+      let accessLevel = isMain ? 'read_write' : (adminRecord?.access_level || 'read_write');
 
       // Auto-heal and ensure institution admins have administrative rights
       if (profileData.role === 'admin' && profileData.institution_id) {
@@ -478,7 +479,7 @@ async function authMiddleware(req, res, next) {
             const { data: directAdmin } = await withSupabaseRetry(() =>
               supabase
                 .from('admins')
-                .select('id, is_main, can_manage_users')
+                .select('id, is_main, can_manage_users, access_level')
                 .eq('user_id', user.id)
                 .maybeSingle()
             );
@@ -486,6 +487,7 @@ async function authMiddleware(req, res, next) {
             if (directAdmin) {
               isMain = !!directAdmin.is_main;
               canManageUsers = !!directAdmin.can_manage_users || isMain;
+              accessLevel = isMain ? 'read_write' : (directAdmin.access_level || 'read_write');
             } else {
               // Check if another main admin exists for this institution
               const { data: otherMain } = await withSupabaseRetry(() =>
@@ -640,6 +642,7 @@ async function authMiddleware(req, res, next) {
         role_alias: canonicalRoleFrom(profileData.role, isPlatformAdmin),
         is_main: isMain,
         can_manage_users: canManageUsers,
+        access_level: accessLevel,
         isPlatformAdmin: isPlatformAdmin,
         is_librarian: isLibrarian,
         is_finance_admin: isFinanceAdmin,
@@ -682,6 +685,7 @@ async function authMiddleware(req, res, next) {
       role_scopes: profile.role_scopes || {},
       is_main: profile.is_main || false,
       can_manage_users: profile.can_manage_users || false,
+      access_level: profile.access_level || (profile.is_main ? 'read_write' : 'read_only'),
       is_platform_admin: profile.isPlatformAdmin || false,
       is_librarian: profile.is_librarian || false,
       is_finance_admin: profile.is_finance_admin || false,
@@ -696,6 +700,7 @@ async function authMiddleware(req, res, next) {
     req.userId = sanitizeId(profile.id);
     req.userRole = activeRole || profile.role || null;
     req.activeRole = activeRole;
+    req.accessLevel = req.user.access_level;
     req.isMain = req.user.is_main;
     req.isPlatformAdmin = req.user.is_platform_admin;
     req.isLibrarian = req.user.is_librarian;
@@ -772,6 +777,36 @@ async function authMiddleware(req, res, next) {
           error: "Leaver account is restricted to read-only historical records.",
           code: "LEAVER_READ_ONLY"
         });
+      }
+    }
+
+    // Admin Access Level Policy Guard:
+    // When active role is 'admin' and access_level is 'read_only', reject state-modifying requests (POST/PUT/PATCH/DELETE).
+    // Whitelisted: self-service endpoints, support tickets, internal messaging, report/pdf compilation, and read-like queries.
+    if (req.userRole === 'admin' && req.user.access_level === 'read_only') {
+      const method = (req.method || 'GET').toUpperCase();
+      const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+      if (isMutation) {
+        const reqPath = String(req.originalUrl || req.path || '').split('?')[0];
+        const isWhitelisted =
+          /^\/api\/auth\/(change-password|complete-credential-setup|security-questions|logout|ping|user-preferences|user-sessions)/i.test(reqPath) ||
+          /^\/api\/support\/tickets/i.test(reqPath) ||
+          /^\/api\/messaging\//i.test(reqPath) ||
+          /^\/api\/pdf\/compile/i.test(reqPath) ||
+          /^\/api\/transcripts\/compile/i.test(reqPath) ||
+          /^\/api\/promotion\/cycles\/[^/]+\/preview/i.test(reqPath) ||
+          /\/preview(\/|$)/i.test(reqPath) ||
+          /\/export(\/|$)/i.test(reqPath) ||
+          /\/download(\/|$)/i.test(reqPath) ||
+          /\/search(\/|$)/i.test(reqPath) ||
+          /\/filter(\/|$)/i.test(reqPath);
+
+        if (!isWhitelisted) {
+          return res.status(403).json({
+            error: "Read-only access: you do not have permission to modify data.",
+            code: "ADMIN_READ_ONLY"
+          });
+        }
       }
     }
 

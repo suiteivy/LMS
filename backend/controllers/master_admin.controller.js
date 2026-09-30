@@ -2562,6 +2562,7 @@ exports.addInstitutionAdmin = async (req, res) => {
                 institution_id: institutionId,
                 is_main: false,
                 can_manage_users: can_manage_users !== undefined ? !!can_manage_users : true,
+                access_level: req.body.access_level === 'read_only' ? 'read_only' : 'read_write',
             }, { onConflict: 'user_id' });
 
         if (adminRowError) {

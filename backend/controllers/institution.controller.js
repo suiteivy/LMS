@@ -1,5 +1,6 @@
 const supabase = require("../utils/supabaseClient.js");
 const configCache = require("../utils/configCache.js");
+const { VALID_COUNTRY_CODES } = require("../services/holiday.service.js");
 
 const isMissingRelationError = (error) => {
   const code = String(error?.code || '').toLowerCase();
@@ -246,7 +247,7 @@ exports.updateInstitution = async (req, res) => {
     const targetId = req.params.id || institution_id;
     if (!targetId) return res.status(400).json({ error: "Target institution ID required" });
 
-    const { name, location, phone, email, type, principal_name, category_id, logo_url, currency_id } = req.body;
+    const { name, location, phone, email, type, principal_name, category_id, logo_url, currency_id, country } = req.body;
     const categoryIds = normalizeCategoryIds(req.body);
 
     // We allow name to be NOT NULL, but others are nullable.
@@ -261,6 +262,13 @@ exports.updateInstitution = async (req, res) => {
     if (currency_id !== undefined) updates.currency_id = currency_id;
     if (category_id !== undefined) updates.category_id = category_id;
     if (req.body.category_ids !== undefined) updates.category_id = categoryIds[0] || null;
+    if (country !== undefined) {
+      const normCountry = String(country || '').trim().toUpperCase();
+      if (normCountry && !VALID_COUNTRY_CODES.has(normCountry)) {
+        return res.status(400).json({ error: 'Invalid country code. Supported countries: KE, UG, TZ, RW, BI, SS, ET, SO.' });
+      }
+      updates.country = normCountry || null;
+    }
 
     const { data, error } = await supabase
       .from("institutions")

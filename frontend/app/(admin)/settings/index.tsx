@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Platform } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Platform, Modal } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { supabase } from "@/libs/supabase";
-import { User, Phone, Mail, Shield, LogOut, ChevronRight, Save, Zap, Star, Search, Image as ImageIcon, Coins } from "lucide-react-native";
+import { User, Phone, Mail, Shield, LogOut, ChevronRight, Save, Zap, Star, Search, Image as ImageIcon, Coins, Globe, AlertTriangle } from "lucide-react-native";
 import { showSuccess, showError } from "@/utils/toast";
 import { AddonRequestModal } from "@/components/shared/SubscriptionComponents";
 import { InstitutionBrandingModal } from "@/components/InstitutionBrandingModal";
 import { getPlanLabel } from "@/services/SubscriptionService";
 import { api } from "@/services/api";
 import { getBackendRootUrl } from "@/utils/backendUrl";
+import { EAST_AFRICAN_COUNTRIES, CalendarAPI } from "@/services/CalendarService";
 
 export default function SettingsScreen() {
     const {
@@ -17,6 +18,7 @@ export default function SettingsScreen() {
         signOut,
         refreshProfile,
         isMain,
+        isReadOnlyAdmin,
         subscriptionPlan,
         subscriptionStatus,
         addonMessaging,
@@ -38,6 +40,10 @@ export default function SettingsScreen() {
     const [delegationFilter, setDelegationFilter] = useState<'all' | 'granted' | 'not_granted'>('all');
     const [selectedCurrencyId, setSelectedCurrencyId] = useState<string>('');
     const [savingCurrency, setSavingCurrency] = useState(false);
+    const [selectedCountryCode, setSelectedCountryCode] = useState<string>('KE');
+    const [pendingCountryCode, setPendingCountryCode] = useState<string | null>(null);
+    const [countryModalVisible, setCountryModalVisible] = useState(false);
+    const [savingCountry, setSavingCountry] = useState(false);
 
     useEffect(() => {
         if (defaultCurrency?.id) {
@@ -45,7 +51,57 @@ export default function SettingsScreen() {
         }
     }, [defaultCurrency]);
 
+    useEffect(() => {
+        const loadCountry = async () => {
+            try {
+                const res = await CalendarAPI.getNationalHolidays();
+                if (res?.country_code) {
+                    setSelectedCountryCode(res.country_code);
+                }
+            } catch (err) {
+                console.warn('Could not load institution country:', err);
+            }
+        };
+        loadCountry();
+    }, []);
+
+    const handleCountryPress = (code: string) => {
+        if (isReadOnlyAdmin) {
+            showError("Read-Only Access", "Read-only access — contact the main administrator to make changes.");
+            return;
+        }
+        if (code === selectedCountryCode) return;
+        setPendingCountryCode(code);
+        setCountryModalVisible(true);
+    };
+
+    const handleConfirmCountryChange = async () => {
+        if (!pendingCountryCode) return;
+        try {
+            setSavingCountry(true);
+            await api.put('/institution', { country: pendingCountryCode });
+            await CalendarAPI.syncNationalHolidays(pendingCountryCode);
+            setSelectedCountryCode(pendingCountryCode);
+            const countryObj = EAST_AFRICAN_COUNTRIES.find(c => c.code === pendingCountryCode);
+            showSuccess(
+                "Country & Holidays Updated",
+                `Institution country set to ${countryObj?.name || pendingCountryCode}. National holiday calendar updated.`
+            );
+            await refreshProfile();
+            setCountryModalVisible(false);
+            setPendingCountryCode(null);
+        } catch (err: any) {
+            showError("Country Update Failed", err?.response?.data?.error || err.message);
+        } finally {
+            setSavingCountry(false);
+        }
+    };
+
     const handleUpdateCurrency = async (newCurrencyId: string) => {
+        if (isReadOnlyAdmin) {
+            showError("Read-Only Access", "Read-only access — contact the main administrator to make changes.");
+            return;
+        }
         try {
             setSavingCurrency(true);
             await api.put('/institution', { currency_id: newCurrencyId });
@@ -442,6 +498,55 @@ export default function SettingsScreen() {
                     </View>
                 </View>
 
+                {/* Institution Country & National Calendar Card */}
+                <Text className="text-lg font-bold text-gray-900 dark:text-white mb-3 px-1">Country & National Calendar</Text>
+                <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-3xl p-6 mb-6">
+                    <View className="flex-row items-center justify-between mb-3">
+                        <View className="flex-row items-center">
+                            <View className="w-10 h-10 bg-blue-50 dark:bg-blue-950/40 rounded-xl items-center justify-center mr-3">
+                                <Globe size={20} color="#3b82f6" />
+                            </View>
+                            <View>
+                                <Text className="text-gray-900 dark:text-white font-extrabold text-base">Institution Country</Text>
+                                <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">Public holidays & national curriculum</Text>
+                            </View>
+                        </View>
+                        {savingCountry && <ActivityIndicator size="small" color="#3b82f6" />}
+                    </View>
+
+                    <Text className="text-xs text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">
+                        Select the country where your institution operates. Public and provisional holidays will automatically sync into your academic calendar.
+                    </Text>
+
+                    <View className="flex-row flex-wrap gap-2.5">
+                        {EAST_AFRICAN_COUNTRIES.map((c) => {
+                            const isSelected = selectedCountryCode === c.code;
+                            return (
+                                <TouchableOpacity
+                                    key={c.code}
+                                    disabled={savingCountry}
+                                    onPress={() => handleCountryPress(c.code)}
+                                    className={`flex-row items-center px-4 py-3 rounded-2xl border ${
+                                        isSelected 
+                                            ? 'bg-blue-600 border-blue-600 shadow-sm' 
+                                            : 'bg-white dark:bg-[#0D1117] border-gray-200 dark:border-gray-800'
+                                    }`}
+                                >
+                                    <Text className="text-lg mr-2">{c.flag}</Text>
+                                    <View>
+                                        <Text className={`font-bold text-xs ${isSelected ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                                            {c.name}
+                                        </Text>
+                                        <Text className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>
+                                            {c.code}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                </View>
+
                 {/* Account Actions */}
                 <Text className="text-lg font-bold text-gray-900 dark:text-white mb-3 px-1">Account</Text>
                 <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-3xl overflow-hidden mb-6">
@@ -580,6 +685,63 @@ export default function SettingsScreen() {
                 visible={brandingModalVisible}
                 onClose={() => setBrandingModalVisible(false)}
             />
+
+            {/* Country Change Confirmation Modal */}
+            <Modal
+                visible={countryModalVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => !savingCountry && setCountryModalVisible(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+                    <View style={{
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: 24,
+                        padding: 24,
+                        width: '100%',
+                        maxWidth: 440,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 10 },
+                        shadowOpacity: 0.25,
+                        shadowRadius: 20,
+                        elevation: 10,
+                    }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                            <View style={{ width: 48, height: 48, backgroundColor: '#fef3c7', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                <AlertTriangle size={24} color="#d97706" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827' }}>Change Country?</Text>
+                                <Text style={{ fontSize: 12, color: '#6b7280' }}>Public holiday & calendar sync</Text>
+                            </View>
+                        </View>
+
+                        <Text style={{ fontSize: 14, color: '#4b5563', lineHeight: 20, marginBottom: 20 }}>
+                            Changing your country to <Text style={{ fontWeight: '700', color: '#111827' }}>{EAST_AFRICAN_COUNTRIES.find(c => c.code === pendingCountryCode)?.name} ({pendingCountryCode})</Text> will update your school's national holiday schedule and sync public observances.
+                            {'\n\n'}Existing class schedules, term dates, and custom school events will remain unaffected.
+                        </Text>
+
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <TouchableOpacity
+                                disabled={savingCountry}
+                                onPress={() => setCountryModalVisible(false)}
+                                style={{ flex: 1, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: '#d1d5db', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                <Text style={{ color: '#374151', fontWeight: '700', fontSize: 14 }}>Cancel</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                disabled={savingCountry}
+                                onPress={handleConfirmCountryChange}
+                                style={{ flex: 1, paddingVertical: 14, borderRadius: 14, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }}
+                            >
+                                {savingCountry && <ActivityIndicator size="small" color="#fff" />}
+                                <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 14 }}>Confirm Update</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </ScrollView>
     );
 }

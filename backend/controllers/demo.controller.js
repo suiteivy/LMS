@@ -10,15 +10,19 @@ const FULL_NAME_MAP = {
     teacher: 'Sarah Chemutai',
     student: 'Kelson Otieno',
     parent: 'James Mwangi',
-    admin: 'Cloudora Admin'
+    admin: 'Cloudora Admin',
+    readonly_admin: 'Grace Wanjiku'
 };
 
 exports.startDemo = async (req, res) => {
     const { role } = req.body;
 
-    if (!role || !['student', 'teacher', 'parent', 'admin'].includes(role)) {
+    if (!role || !['student', 'teacher', 'parent', 'admin', 'readonly_admin'].includes(role)) {
         return res.status(400).json({ error: 'Invalid or missing role' });
     }
+
+    const isReadOnly = role === 'readonly_admin' || (role === 'admin' && req.body.access_level === 'read_only');
+    const dbRole = role === 'readonly_admin' ? 'admin' : role;
 
     try {
         const sessionId = crypto.randomBytes(4).toString('hex');
@@ -36,7 +40,8 @@ exports.startDemo = async (req, res) => {
             user_metadata: {
                 full_name: `${fullName} (Demo)`,
                 is_demo: true,
-                role,
+                role: dbRole,
+                access_level: isReadOnly ? 'read_only' : 'read_write',
                 session_id: sessionId
             }
         });
@@ -50,7 +55,8 @@ exports.startDemo = async (req, res) => {
             full_name: `${fullName} (Demo)`,
             first_name: firstName,
             last_name: lastName,
-            role,
+            role: dbRole,
+            access_level: isReadOnly ? 'read_only' : 'read_write',
             institution_id: TEMPLATE_INSTITUTION_ID,
             status: 'approved',
             is_demo: true
@@ -116,12 +122,13 @@ exports.startDemo = async (req, res) => {
                 enrolled_at: new Date().toISOString()
             });
 
-        } else if (role === 'admin') {
+        } else if (dbRole === 'admin') {
             const { error: e } = await supabase.from('admins').insert({
                 id: `ADM-DEMO-${sessionId}`,
                 user_id: userId,
                 institution_id: TEMPLATE_INSTITUTION_ID,
-                is_main: true
+                is_main: !isReadOnly,
+                access_level: isReadOnly ? 'read_only' : 'read_write'
             });
             if (e) throw new Error(`Admin insert failed: ${e.message}`);
 

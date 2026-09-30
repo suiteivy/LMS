@@ -47,7 +47,13 @@ const DEMO_USERS = [
         role: 'admin',
         email: 'demo.admin@lms.com',
         full_name: 'Admin User',
-        data: {}
+        data: { access_level: 'read_write', is_main: true }
+    },
+    {
+        role: 'admin',
+        email: 'demo.readonly.admin@lms.com',
+        full_name: 'Grace Wanjiku (Read-Only Admin)',
+        data: { access_level: 'read_only', is_main: false }
     }
 ];
 
@@ -102,9 +108,15 @@ async function seed() {
                 email: userDef.email,
                 full_name: userDef.full_name,
                 role: userDef.role,
+                access_level: userDef.data.access_level || 'read_write',
                 institution_id: defaultInstitutionId,
                 phone: userDef.data.phone || null
             });
+        } else {
+            await supabase.from('users').update({
+                access_level: userDef.data.access_level || 'read_write',
+                institution_id: defaultInstitutionId,
+            }).eq('id', userId);
         }
 
         // 3. Role specific updates
@@ -114,6 +126,13 @@ async function seed() {
             await supabase.from('teachers').upsert({ user_id: userId, ...userDef.data, institution_id: defaultInstitutionId }, { onConflict: 'user_id' });
         } else if (userDef.role === 'parent') {
             await supabase.from('parents').upsert({ user_id: userId, ...userDef.data, institution_id: defaultInstitutionId }, { onConflict: 'user_id' });
+        } else if (userDef.role === 'admin') {
+            await supabase.from('admins').upsert({
+                user_id: userId,
+                institution_id: defaultInstitutionId,
+                is_main: userDef.data.is_main !== undefined ? userDef.data.is_main : true,
+                access_level: userDef.data.access_level || 'read_write'
+            }, { onConflict: 'user_id' });
         }
     }
 

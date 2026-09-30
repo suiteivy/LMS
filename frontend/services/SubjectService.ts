@@ -1,10 +1,28 @@
 import { api } from "./api";
 
+export interface SubjectCategoryData {
+    id: string;
+    institution_id: string;
+    name: string;
+    description?: string | null;
+    color?: string | null;
+    sort_order?: number;
+    subject_count?: number;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface ClassTeacherAssignment {
+    class_id: string;
+    teacher_id: string;
+}
+
 export interface SubjectData {
     id: string;
     title: string;
     description?: string;
-    category?: string;
+    category?: any;
+    category_id?: string | null;
     fee_amount?: number;
     institution_id: string;
     teacher_id?: string;
@@ -12,6 +30,7 @@ export interface SubjectData {
     class_ids?: string[];
     level_ids?: string[] | null;
     teacher_ids?: string[];
+    class_teacher_assignments?: ClassTeacherAssignment[];
     hod_teacher_id?: string | null;
     hod_teacher?: {
         id: string;
@@ -27,11 +46,59 @@ export interface SubjectData {
             full_name?: string;
         }
     };
+    subject_teachers?: Array<{
+        teacher_id: string;
+        class_id?: string | null;
+        is_hod?: boolean;
+        teachers?: {
+            id: string;
+            user_id?: string;
+            users?: {
+                first_name?: string;
+                last_name?: string;
+                full_name?: string;
+            };
+        };
+        classes?: {
+            id: string;
+            name?: string;
+            display_name?: string;
+            grade_level?: number;
+            form_level?: number;
+            stream?: string;
+        };
+    }>;
 }
 
 export const SubjectAPI = {
+    // Subject Categories
+    getSubjectCategories: async (): Promise<SubjectCategoryData[]> => {
+        try {
+            const response = await api.get("/subject-categories");
+            return Array.isArray(response.data) ? response.data : [];
+        } catch (error) {
+            console.error("Get subject categories error", error);
+            return [];
+        }
+    },
+
+    createSubjectCategory: async (data: { name: string; description?: string; color?: string; sort_order?: number }): Promise<SubjectCategoryData> => {
+        const response = await api.post("/subject-categories", data);
+        return response.data;
+    },
+
+    updateSubjectCategory: async (id: string, data: { name?: string; description?: string; color?: string; sort_order?: number }): Promise<SubjectCategoryData> => {
+        const response = await api.put(`/subject-categories/${id}`, data);
+        return response.data;
+    },
+
+    deleteSubjectCategory: async (id: string, confirm?: boolean): Promise<{ message: string; unassigned_subjects_count?: number }> => {
+        const response = await api.delete(`/subject-categories/${id}`, { params: { confirm: confirm ? "true" : undefined } });
+        return response.data;
+    },
+
     // Get all subjects
-    getSubjects: async (params?: { page?: number; limit?: number; level_id?: string }): Promise<SubjectData[]> => {
+    getSubjects: async (params?: { page?: number; limit?: number; level_id?: string; category_id?: string }): Promise<SubjectData[]> => {
         try {
             const response = await api.get("/subjects", { params });
             return Array.isArray(response.data) ? response.data : (response.data?.data || []);

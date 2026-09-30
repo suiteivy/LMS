@@ -81,7 +81,21 @@ const enrichSubjectsWithClassIds = async (subjects = [], institution_id) => {
 // CREATE SUBJECT
 exports.createSubject = async (req, res) => {
   try {
-    const { title, description, fee_amount, teacher_id, teacher_ids, class_ids, level_ids, fee_config, materials, metadata, hod_teacher_id } = req.body;
+    const {
+      title,
+      description,
+      fee_amount,
+      teacher_id,
+      teacher_ids,
+      class_ids,
+      level_ids,
+      category_id,
+      class_teacher_assignments,
+      fee_config,
+      materials,
+      metadata,
+      hod_teacher_id
+    } = req.body;
     let teacherId;
     const institution_id = req.institution_id;
 
@@ -109,7 +123,30 @@ exports.createSubject = async (req, res) => {
       return res.status(400).json({ error: "Title is required" });
     }
 
-    const normalizedClassIds = normalizeClassIds(class_ids, null);
+    // Validate category_id if provided
+    let validCategoryId = null;
+    if (category_id) {
+      const { data: catData, error: catError } = await supabase
+        .from('subject_categories')
+        .select('id')
+        .eq('id', category_id)
+        .eq('institution_id', institution_id)
+        .maybeSingle();
+
+      if (catError || !catData) {
+        return res.status(400).json({ error: "Invalid subject category for institution" });
+      }
+      validCategoryId = catData.id;
+    }
+
+    // Determine normalized class IDs: union of class_ids and any classes in class_teacher_assignments
+    const rawClassIds = [...(class_ids || [])];
+    if (Array.isArray(class_teacher_assignments)) {
+      class_teacher_assignments.forEach(a => {
+        if (a && a.class_id) rawClassIds.push(a.class_id);
+      });
+    }
+    const normalizedClassIds = normalizeClassIds(rawClassIds, null);
     const primaryClassId = normalizedClassIds.length > 0 ? normalizedClassIds[0] : null;
 
     if (normalizedClassIds.length > 0) {
@@ -130,10 +167,16 @@ exports.createSubject = async (req, res) => {
       }
     }
 
+    // Collect all unique teacher IDs to validate
+    const assignmentTeacherIds = Array.isArray(class_teacher_assignments)
+      ? class_teacher_assignments.map(a => a?.teacher_id).filter(Boolean)
+      : [];
+
     const allTeacherIds = Array.from(new Set([
       ...(teacherId ? [teacherId] : []),
       ...(teacher_ids || []),
-      ...(hod_teacher_id ? [hod_teacher_id] : [])
+      ...(hod_teacher_id ? [hod_teacher_id] : []),
+      ...assignmentTeacherIds
     ]));
 
     if (allTeacherIds.length > 0) {
@@ -154,6 +197,7 @@ exports.createSubject = async (req, res) => {
       }
     }
 
+    const primaryTeacherId = teacherId || (assignmentTeacherIds.length > 0 ? assignmentTeacherIds[0] : hod_teacher_id || null);
     const normalizedFeeAmount = Number.isFinite(Number(fee_amount)) ? Number(fee_amount) : 0;
     const normalizedLevelIds = Array.isArray(level_ids) ? level_ids.filter(Boolean) : null;
     const finalLevelIds = normalizedLevelIds && normalizedLevelIds.length > 0 ? normalizedLevelIds : null;
@@ -163,8 +207,9 @@ exports.createSubject = async (req, res) => {
         title,
         description,
         fee_amount: normalizedFeeAmount,
-        teacher_id: teacherId,
+        teacher_id: primaryTeacherId,
         hod_teacher_id: hod_teacher_id || null,
+        category_id: validCategoryId,
         class_id: primaryClassId,
         level_ids: finalLevelIds,
         institution_id,
@@ -201,18 +246,57 @@ exports.createSubject = async (req, res) => {
       }
     }
 
-    // Populate subject_teachers many-to-many table using upsert to avoid conflicts with auto-sync trigger
-    if (allTeacherIds.length > 0) {
-      const records = allTeacherIds.map(tid => ({
-        subject_id: data.id,
-        teacher_id: tid,
-        institution_id,
-        is_hod: tid === hod_teacher_id,
-      }));
+    // Populate subject_teachers with per-class and HOD records
+    const subjectTeacherRecords = [];
+    const assignedClassTeacherPairs = new Set();
+
+    if (Array.isArray(class_teacher_assignments) && class_teacher_assignments.length > 0) {
+      for (const a of class_teacher_assignments) {
+        if (a && a.teacher_id && a.class_id) {
+          const key = `${a.subject_id || data.id}_${a.class_id}_${a.teacher_id}`;
+          if (!assignedClassTeacherPairs.has(key)) {
+            assignedClassTeacherPairs.add(key);
+            subjectTeacherRecords.push({
+              subject_id: data.id,
+              teacher_id: a.teacher_id,
+              class_id: a.class_id,
+              institution_id,
+              is_hod: a.teacher_id === hod_teacher_id,
+            });
+          }
+        }
+      }
+    } else if (allTeacherIds.length > 0) {
+      // Legacy fallback: if teacher(s) provided without explicit class breakdown
+      for (const tid of allTeacherIds) {
+        subjectTeacherRecords.push({
+          subject_id: data.id,
+          teacher_id: tid,
+          institution_id,
+          is_hod: tid === hod_teacher_id,
+        });
+      }
+    }
+
+    // Always ensure HOD is recorded with class_id: null if specified
+    if (hod_teacher_id) {
+      const hodAlreadyRecorded = subjectTeacherRecords.some(r => r.teacher_id === hod_teacher_id && r.class_id === null);
+      if (!hodAlreadyRecorded) {
+        subjectTeacherRecords.push({
+          subject_id: data.id,
+          teacher_id: hod_teacher_id,
+          class_id: null,
+          institution_id,
+          is_hod: true,
+        });
+      }
+    }
+
+    if (subjectTeacherRecords.length > 0) {
       const { error: assocError } = await supabase
         .from("subject_teachers")
-        .upsert(records, { onConflict: 'subject_id,teacher_id' });
-      if (assocError) {
+        .insert(subjectTeacherRecords);
+      if (assocError && assocError.code !== "23505") {
         console.error("Error creating subject teacher associations:", assocError);
       }
     }
@@ -304,8 +388,8 @@ exports.enrollStudentInSubject = async (req, res) => {
 exports.getSubjects = async (req, res) => {
   const { institution_id } = req;
   const { page, limit, from, to } = parsePagination(req.query);
-  const { level_id } = req.query || {};
-  const cacheKey = institution_id ? `${institution_id}:subjects:${page}:${limit}:${level_id || 'all'}` : null;
+  const { level_id, category_id } = req.query || {};
+  const cacheKey = institution_id ? `${institution_id}:subjects:${page}:${limit}:${level_id || 'all'}:${category_id || 'all'}` : null;
 
   if (cacheKey) {
     const cached = configCache.get(cacheKey);
@@ -317,9 +401,12 @@ exports.getSubjects = async (req, res) => {
   try {
     const richSelect = `
         *,
+        category:subject_categories(id, name, description, color, sort_order),
         teacher:teachers!courses_new_teacher_id_fkey(user:users(first_name, last_name, full_name)),
         subject_teachers(
           teacher_id,
+          class_id,
+          is_hod,
           teachers(
             id,
             user_id,
@@ -328,14 +415,30 @@ exports.getSubjects = async (req, res) => {
               last_name,
               full_name
             )
+          ),
+          classes(
+            id,
+            name,
+            display_name,
+            grade_level,
+            form_level,
+            stream
           )
         )
       `;
 
-    let { data, error, count } = await supabase
+    let query = supabase
       .from("subjects")
       .select(richSelect, { count: 'exact' })
-      .eq("institution_id", institution_id)
+      .eq("institution_id", institution_id);
+
+    if (category_id === 'uncategorized') {
+      query = query.is("category_id", null);
+    } else if (category_id) {
+      query = query.eq("category_id", category_id);
+    }
+
+    let { data, error, count } = await query
       .order('title')
       .range(from, to);
 
@@ -344,10 +447,18 @@ exports.getSubjects = async (req, res) => {
         return res.status(500).json({ error: error.message });
       }
 
-      const fallback = await supabase
+      let fallbackQuery = supabase
         .from('subjects')
         .select('*', { count: 'exact' })
-        .eq('institution_id', institution_id)
+        .eq('institution_id', institution_id);
+
+      if (category_id === 'uncategorized') {
+        fallbackQuery = fallbackQuery.is("category_id", null);
+      } else if (category_id) {
+        fallbackQuery = fallbackQuery.eq("category_id", category_id);
+      }
+
+      const fallback = await fallbackQuery
         .order('title')
         .range(from, to);
 
@@ -382,6 +493,7 @@ exports.getSubjects = async (req, res) => {
 // GET FILTERED SUBJECTS BASED ON USER ROLE
 exports.getFilteredSubjects = async (req, res) => {
   const { institution_id, userRole, userId } = req;
+  const { category_id } = req.query || {};
 
   try {
     if (!institution_id) {
@@ -397,37 +509,64 @@ exports.getFilteredSubjects = async (req, res) => {
     let data;
     let error;
 
-    if (userRole === "admin") {
-      // All subjects in the institution
-      ({ data, error } = await supabase
-        .from("subjects")
-        .select(`
-          *,
-          subject_teachers(
-            teacher_id,
-            teachers(
-              id,
-              user_id,
-              users:user_id(
-                first_name,
-                last_name,
-                full_name
-              )
-            )
+    const baseSelect = `
+      *,
+      category:subject_categories(id, name, description, color, sort_order),
+      subject_teachers(
+        teacher_id,
+        class_id,
+        is_hod,
+        teachers(
+          id,
+          user_id,
+          users:user_id(
+            first_name,
+            last_name,
+            full_name
           )
-        `)
-        .eq("institution_id", institution_id));
+        ),
+        classes(
+          id,
+          name,
+          display_name,
+          grade_level,
+          form_level,
+          stream
+        )
+      )
+    `;
+
+    if (userRole === "admin") {
+      let q = supabase
+        .from("subjects")
+        .select(baseSelect)
+        .eq("institution_id", institution_id);
+
+      if (category_id === 'uncategorized') {
+        q = q.is("category_id", null);
+      } else if (category_id) {
+        q = q.eq("category_id", category_id);
+      }
+
+      ({ data, error } = await q.order("title"));
 
       if (error && isRelationshipResolutionError(error)) {
-        const fallback = await supabase
+        let fallback = supabase
           .from("subjects")
           .select("*")
-          .eq("institution_id", institution_id)
-          .order("title");
-        if (fallback.error) {
-          return res.status(500).json({ error: fallback.error.message });
+          .eq("institution_id", institution_id);
+
+        if (category_id === 'uncategorized') {
+          fallback = fallback.is("category_id", null);
+        } else if (category_id) {
+          fallback = fallback.eq("category_id", category_id);
         }
-        data = attachSubjectRelationsFallback(fallback.data || []);
+
+        const fbRes = await fallback.order("title");
+        if (fbRes.error) {
+          return res.status(500).json({ error: fbRes.error.message });
+        }
+        data = attachSubjectRelationsFallback(fbRes.data || []);
         error = null;
       }
     } else if (userRole === "teacher") {
@@ -454,41 +593,41 @@ exports.getFilteredSubjects = async (req, res) => {
 
       const subjectIds = (subjectIdsData || []).map(s => s.subject_id);
 
-      ({ data, error } = await supabase
+      let q = supabase
         .from("subjects")
-        .select(`
-          *,
-          subject_teachers(
-            teacher_id,
-            teachers(
-              id,
-              user_id,
-              users:user_id(
-                first_name,
-                last_name,
-                full_name
-              )
-            )
-          )
-        `)
+        .select(baseSelect)
         .eq("institution_id", institution_id)
-        .or(`teacher_id.eq.${teacherId}${subjectIds.length > 0 ? `,id.in.(${subjectIds.join(',')})` : ''}`));
+        .or(`teacher_id.eq.${teacherId}${subjectIds.length > 0 ? `,id.in.(${subjectIds.join(',')})` : ''}`);
+
+      if (category_id === 'uncategorized') {
+        q = q.is("category_id", null);
+      } else if (category_id) {
+        q = q.eq("category_id", category_id);
+      }
+
+      ({ data, error } = await q.order("title"));
 
       if (error && isRelationshipResolutionError(error)) {
-        const fallback = await supabase
+        let fallback = supabase
           .from("subjects")
           .select("*")
           .eq("institution_id", institution_id)
-          .or(`teacher_id.eq.${teacherId}${subjectIds.length > 0 ? `,id.in.(${subjectIds.join(',')})` : ''}`)
-          .order("title");
-        if (fallback.error) {
-          return res.status(500).json({ error: fallback.error.message });
+          .or(`teacher_id.eq.${teacherId}${subjectIds.length > 0 ? `,id.in.(${subjectIds.join(',')})` : ''}`);
+
+        if (category_id === 'uncategorized') {
+          fallback = fallback.is("category_id", null);
+        } else if (category_id) {
+          fallback = fallback.eq("category_id", category_id);
         }
-        data = attachSubjectRelationsFallback(fallback.data || []);
+
+        const fbRes = await fallback.order("title");
+        if (fbRes.error) {
+          return res.status(500).json({ error: fbRes.error.message });
+        }
+        data = attachSubjectRelationsFallback(fbRes.data || []);
         error = null;
       }
     } else if (userRole === "student" || userRole === "parent") {
-      // For student or parent, get student enrollments
       let studentId;
       if (userRole === "student") {
         const { data: student } = await supabase
@@ -499,7 +638,6 @@ exports.getFilteredSubjects = async (req, res) => {
           .single();
         if (student) studentId = student.id;
       } else {
-        // Parent: get first student's enrollments for simplicity, or all students linked to the parent
         const { data: parent } = await supabase
           .from('parents')
           .select('id')
@@ -513,7 +651,7 @@ exports.getFilteredSubjects = async (req, res) => {
             .eq('parent_id', parent.id)
             .eq('institution_id', institution_id);
           if (children && children.length > 0) {
-            studentId = children[0].student_id; // For simplicity, pick first child
+            studentId = children[0].student_id;
           }
         }
       }
@@ -521,6 +659,19 @@ exports.getFilteredSubjects = async (req, res) => {
       if (!studentId) {
         return res.json([]);
       }
+
+      // Fetch student's assigned class for class-specific teacher scoping
+      let studentClassId = null;
+      const { data: currentEnrollment } = await supabase
+        .from('class_enrollments')
+        .select('class_id')
+        .eq('student_id', studentId)
+        .eq('institution_id', institution_id)
+        .order('enrolled_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      studentClassId = currentEnrollment?.class_id || null;
 
       const { data: enrollments, error: enrError } = await supabase
         .from("enrollments")
@@ -535,38 +686,68 @@ exports.getFilteredSubjects = async (req, res) => {
 
       if (subjectIds.length === 0) return res.json([]);
 
-      ({ data, error } = await supabase
+      let q = supabase
         .from("subjects")
-        .select(`
-          *,
-          subject_teachers(
-            teacher_id,
-            teachers(
-              id,
-              user_id,
-              users:user_id(
-                first_name,
-                last_name,
-                full_name
-              )
-            )
-          )
-        `)
+        .select(baseSelect)
         .in("id", subjectIds)
-        .eq("institution_id", institution_id));
+        .eq("institution_id", institution_id);
+
+      if (category_id === 'uncategorized') {
+        q = q.is("category_id", null);
+      } else if (category_id) {
+        q = q.eq("category_id", category_id);
+      }
+
+      ({ data, error } = await q.order("title"));
 
       if (error && isRelationshipResolutionError(error)) {
-        const fallback = await supabase
+        let fallback = supabase
           .from("subjects")
           .select("*")
           .in("id", subjectIds)
-          .eq("institution_id", institution_id)
-          .order("title");
-        if (fallback.error) {
-          return res.status(500).json({ error: fallback.error.message });
+          .eq("institution_id", institution_id);
+
+        if (category_id === 'uncategorized') {
+          fallback = fallback.is("category_id", null);
+        } else if (category_id) {
+          fallback = fallback.eq("category_id", category_id);
         }
-        data = attachSubjectRelationsFallback(fallback.data || []);
+
+        const fbRes = await fallback.order("title");
+        if (fbRes.error) {
+          return res.status(500).json({ error: fbRes.error.message });
+        }
+        data = attachSubjectRelationsFallback(fbRes.data || []);
         error = null;
+      }
+
+      // Enforce: students & parents see ONLY their own class's teacher for each subject
+      if (Array.isArray(data) && studentClassId) {
+        data = data.map(sub => {
+          const stList = Array.isArray(sub.subject_teachers) ? sub.subject_teachers : [];
+          // 1. Look for teacher assigned specifically to this class
+          const classSpecificTeacher = stList.find(st => st.class_id === studentClassId);
+          // 2. Fallback to HOD or general assignment
+          const hodTeacher = stList.find(st => st.is_hod);
+          const generalTeacher = stList.find(st => !st.class_id);
+
+          const chosenAssignment = classSpecificTeacher || hodTeacher || generalTeacher;
+          let teacherInfo = null;
+          if (chosenAssignment && chosenAssignment.teachers) {
+            teacherInfo = {
+              id: chosenAssignment.teachers.id,
+              user_id: chosenAssignment.teachers.user_id,
+              user: chosenAssignment.teachers.users,
+            };
+          }
+
+          return {
+            ...sub,
+            teacher: teacherInfo || sub.teacher,
+            // Only expose the relevant class teacher link to the student/parent
+            subject_teachers: chosenAssignment ? [chosenAssignment] : stList,
+          };
+        });
       }
     }
 
@@ -592,8 +773,12 @@ exports.getSubjectById = async (req, res) => {
       .from("subjects")
       .select(`
         *,
+        category:subject_categories(id, name, description, color, sort_order),
+        teacher:teachers!courses_new_teacher_id_fkey(user:users(first_name, last_name, full_name)),
         subject_teachers(
           teacher_id,
+          class_id,
+          is_hod,
           teachers(
             id,
             user_id,
@@ -602,6 +787,14 @@ exports.getSubjectById = async (req, res) => {
               last_name,
               full_name
             )
+          ),
+          classes(
+            id,
+            name,
+            display_name,
+            grade_level,
+            form_level,
+            stream
           )
         )
       `)
@@ -612,7 +805,21 @@ exports.getSubjectById = async (req, res) => {
     if (subjectError) return res.status(404).json({ error: "Subject not found" });
 
     const [enriched] = await enrichSubjectsWithClassIds([subject], institution_id);
-    res.json(enriched || hydrateSubjectClassIds(subject));
+    const result = enriched || hydrateSubjectClassIds(subject);
+
+    // Format class_teacher_assignments for straightforward client consumption
+    const stList = Array.isArray(result.subject_teachers) ? result.subject_teachers : [];
+    result.class_teacher_assignments = stList
+      .filter(st => st.class_id)
+      .map(st => ({
+        class_id: st.class_id,
+        teacher_id: st.teacher_id,
+        is_hod: !!st.is_hod,
+        class_name: st.classes?.display_name || st.classes?.name || '',
+        teacher_name: st.teachers?.users?.full_name || '',
+      }));
+
+    res.json(result);
   } catch (err) {
     console.error("getSubjectById error:", err);
     res.status(500).json({ error: "Server error" });
@@ -829,6 +1036,8 @@ exports.updateSubject = async (req, res) => {
       fee_amount,
       teacher_id,
       teacher_ids,
+      category_id,
+      class_teacher_assignments,
       class_id,
       class_ids,
       level_ids,
@@ -840,7 +1049,7 @@ exports.updateSubject = async (req, res) => {
 
     const { data: existing, error: existingError } = await supabase
       .from("subjects")
-      .select("id, metadata, teacher_id, hod_teacher_id")
+      .select("id, metadata, teacher_id, hod_teacher_id, category_id")
       .eq("id", id)
       .eq("institution_id", institution_id)
       .single();
@@ -849,8 +1058,36 @@ exports.updateSubject = async (req, res) => {
       return res.status(404).json({ error: "Subject not found" });
     }
 
-    const classesSpecified = class_id !== undefined || class_ids !== undefined;
-    const normalizedClassIds = normalizeClassIds(class_ids, class_id);
+    // Validate category_id if provided
+    let validCategoryId = undefined;
+    if (category_id !== undefined) {
+      if (category_id === null || category_id === '') {
+        validCategoryId = null;
+      } else {
+        const { data: catData, error: catError } = await supabase
+          .from('subject_categories')
+          .select('id')
+          .eq('id', category_id)
+          .eq('institution_id', institution_id)
+          .maybeSingle();
+
+        if (catError || !catData) {
+          return res.status(400).json({ error: "Invalid subject category for institution" });
+        }
+        validCategoryId = catData.id;
+      }
+    }
+
+    // Determine raw class IDs including any in class_teacher_assignments
+    const rawClassIds = class_ids !== undefined ? [...(class_ids || [])] : undefined;
+    if (Array.isArray(class_teacher_assignments) && rawClassIds !== undefined) {
+      class_teacher_assignments.forEach(a => {
+        if (a && a.class_id) rawClassIds.push(a.class_id);
+      });
+    }
+
+    const classesSpecified = class_id !== undefined || rawClassIds !== undefined;
+    const normalizedClassIds = classesSpecified ? normalizeClassIds(rawClassIds, class_id) : [];
     if (classesSpecified && normalizedClassIds.length > 0) {
       const { data: validClasses, error: validClassesError } = await supabase
         .from("classes")
@@ -869,9 +1106,17 @@ exports.updateSubject = async (req, res) => {
       }
     }
 
-    const teachersSpecified = teacher_id !== undefined || teacher_ids !== undefined;
+    const assignmentTeacherIds = Array.isArray(class_teacher_assignments)
+      ? class_teacher_assignments.map(a => a?.teacher_id).filter(Boolean)
+      : [];
+
+    const teachersSpecified = teacher_id !== undefined || teacher_ids !== undefined || class_teacher_assignments !== undefined;
     const allTeacherIds = Array.from(
-      new Set([...(teacher_id ? [teacher_id] : []), ...((teacher_ids || []).filter(Boolean))])
+      new Set([
+        ...(teacher_id ? [teacher_id] : []),
+        ...((teacher_ids || []).filter(Boolean)),
+        ...assignmentTeacherIds
+      ])
     );
 
     if (teachersSpecified && allTeacherIds.length > 0) {
@@ -925,6 +1170,7 @@ exports.updateSubject = async (req, res) => {
       ...(description !== undefined ? { description } : {}),
       ...(fee_amount !== undefined ? { fee_amount: Number.isFinite(Number(fee_amount)) ? Number(fee_amount) : 0 } : {}),
       ...(teachersSpecified ? { teacher_id: primaryTeacherId } : {}),
+      ...(validCategoryId !== undefined ? { category_id: validCategoryId } : {}),
       ...(hod_teacher_id !== undefined ? { hod_teacher_id: hod_teacher_id || null } : {}),
       ...(classesSpecified ? { class_id: primaryClassId } : {}),
       ...(finalLevelIds !== undefined ? { level_ids: finalLevelIds } : {}),
@@ -954,25 +1200,53 @@ exports.updateSubject = async (req, res) => {
         return res.status(500).json({ error: clearTeacherError.message });
       }
 
-      if (allTeacherIds.length > 0) {
-        const effectiveHod = hod_teacher_id !== undefined ? hod_teacher_id : existing?.hod_teacher_id;
-        const teacherRows = allTeacherIds.map((tid) => ({
-          subject_id: id,
-          teacher_id: tid,
-          institution_id,
-          is_hod: tid === effectiveHod,
-        }));
-        if (effectiveHod && !allTeacherIds.includes(effectiveHod)) {
-          teacherRows.push({
+      const effectiveHod = hod_teacher_id !== undefined ? hod_teacher_id : existing?.hod_teacher_id;
+      const subjectTeacherRecords = [];
+      const assignedPairs = new Set();
+
+      if (Array.isArray(class_teacher_assignments) && class_teacher_assignments.length > 0) {
+        for (const a of class_teacher_assignments) {
+          if (a && a.teacher_id && a.class_id) {
+            const key = `${id}_${a.class_id}_${a.teacher_id}`;
+            if (!assignedPairs.has(key)) {
+              assignedPairs.add(key);
+              subjectTeacherRecords.push({
+                subject_id: id,
+                teacher_id: a.teacher_id,
+                class_id: a.class_id,
+                institution_id,
+                is_hod: a.teacher_id === effectiveHod,
+              });
+            }
+          }
+        }
+      } else if (allTeacherIds.length > 0) {
+        for (const tid of allTeacherIds) {
+          subjectTeacherRecords.push({
+            subject_id: id,
+            teacher_id: tid,
+            institution_id,
+            is_hod: tid === effectiveHod,
+          });
+        }
+      }
+
+      if (effectiveHod) {
+        const hodRecorded = subjectTeacherRecords.some(r => r.teacher_id === effectiveHod && (!r.class_id || r.class_id === null));
+        if (!hodRecorded) {
+          subjectTeacherRecords.push({
             subject_id: id,
             teacher_id: effectiveHod,
             institution_id,
             is_hod: true,
           });
         }
+      }
+
+      if (subjectTeacherRecords.length > 0) {
         const { error: insertTeacherError } = await supabase
           .from("subject_teachers")
-          .insert(teacherRows);
+          .insert(subjectTeacherRecords);
 
         if (insertTeacherError && insertTeacherError.code !== "23505") {
           return res.status(500).json({ error: insertTeacherError.message });
@@ -1005,6 +1279,7 @@ exports.updateSubject = async (req, res) => {
             .insert({
               subject_id: id,
               teacher_id: hod_teacher_id,
+              class_id: null,
               institution_id,
               is_hod: true,
             });
@@ -1053,3 +1328,194 @@ exports.updateSubject = async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 };
+
+// ── SUBJECT CATEGORIES CRUD ──────────────────────────────────────────────────
+
+// GET /api/subject-categories
+exports.getSubjectCategories = async (req, res) => {
+  const { institution_id } = req;
+  try {
+    const { data: categories, error } = await supabase
+      .from("subject_categories")
+      .select(`
+        *,
+        subjects(count)
+      `)
+      .eq("institution_id", institution_id)
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true });
+
+    if (error) {
+      // In case relation metadata hasn't resolved
+      const { data: rawCategories, error: rawError } = await supabase
+        .from("subject_categories")
+        .select("*")
+        .eq("institution_id", institution_id)
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true });
+
+      if (rawError) return res.status(500).json({ error: rawError.message });
+      return res.json(rawCategories || []);
+    }
+
+    const formatted = (categories || []).map(cat => ({
+      ...cat,
+      subject_count: Array.isArray(cat.subjects) ? cat.subjects.length : (cat.subjects?.[0]?.count ?? 0),
+    }));
+
+    return res.json(formatted);
+  } catch (err) {
+    console.error("getSubjectCategories error:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+// POST /api/subject-categories
+exports.createSubjectCategory = async (req, res) => {
+  const { institution_id, userRole } = req;
+  if (!["admin", "master_admin"].includes(userRole)) {
+    return res.status(403).json({ error: "Only admins can manage subject categories" });
+  }
+
+  const { name, description, color, sort_order } = req.body || {};
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: "Category name is required" });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("subject_categories")
+      .insert([
+        {
+          institution_id,
+          name: name.trim(),
+          description: description?.trim() || null,
+          color: color?.trim() || null,
+          sort_order: Number.isFinite(Number(sort_order)) ? Number(sort_order) : 0,
+        }
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === "23505") {
+        return res.status(400).json({ error: "A category with this name already exists" });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.status(201).json(data);
+  } catch (err) {
+    console.error("createSubjectCategory error:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+// PUT /api/subject-categories/:id
+exports.updateSubjectCategory = async (req, res) => {
+  const { id } = req.params;
+  const { institution_id, userRole } = req;
+  if (!["admin", "master_admin"].includes(userRole)) {
+    return res.status(403).json({ error: "Only admins can manage subject categories" });
+  }
+
+  const { name, description, color, sort_order } = req.body || {};
+
+  try {
+    const updatePayload = {};
+    if (name !== undefined) {
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: "Category name cannot be empty" });
+      }
+      updatePayload.name = name.trim();
+    }
+    if (description !== undefined) updatePayload.description = description?.trim() || null;
+    if (color !== undefined) updatePayload.color = color?.trim() || null;
+    if (sort_order !== undefined) updatePayload.sort_order = Number.isFinite(Number(sort_order)) ? Number(sort_order) : 0;
+    updatePayload.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from("subject_categories")
+      .update(updatePayload)
+      .eq("id", id)
+      .eq("institution_id", institution_id)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === "23505") {
+        return res.status(400).json({ error: "A category with this name already exists" });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json(data);
+  } catch (err) {
+    console.error("updateSubjectCategory error:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+// DELETE /api/subject-categories/:id
+exports.deleteSubjectCategory = async (req, res) => {
+  const { id } = req.params;
+  const { institution_id, userRole } = req;
+  const confirm = req.query.confirm === "true" || req.body?.confirm === true;
+
+  if (!["admin", "master_admin"].includes(userRole)) {
+    return res.status(403).json({ error: "Only admins can manage subject categories" });
+  }
+
+  try {
+    // Check how many subjects use this category
+    const { data: assignedSubjects, error: checkError } = await supabase
+      .from("subjects")
+      .select("id, title")
+      .eq("category_id", id)
+      .eq("institution_id", institution_id);
+
+    if (checkError) return res.status(500).json({ error: checkError.message });
+
+    const count = (assignedSubjects || []).length;
+    if (count > 0 && !confirm) {
+      return res.status(409).json({
+        error: `Category is currently assigned to ${count} subject${count === 1 ? '' : 's'}. Deleting it will unassign those subjects. Please confirm deletion.`,
+        code: "CATEGORY_IN_USE",
+        assigned_count: count,
+        subjects: assignedSubjects.map(s => ({ id: s.id, title: s.title })),
+      });
+    }
+
+    // If confirmed and in use, unassign subjects first
+    if (count > 0) {
+      const { error: unassignError } = await supabase
+        .from("subjects")
+        .update({ category_id: null })
+        .eq("category_id", id)
+        .eq("institution_id", institution_id);
+
+      if (unassignError) return res.status(500).json({ error: unassignError.message });
+    }
+
+    const { error: deleteError } = await supabase
+      .from("subject_categories")
+      .delete()
+      .eq("id", id)
+      .eq("institution_id", institution_id);
+
+    if (deleteError) return res.status(500).json({ error: deleteError.message });
+
+    if (institution_id) {
+      configCache.invalidateSubjects(institution_id);
+    }
+
+    return res.json({
+      message: "Subject category deleted successfully",
+      unassigned_subjects_count: count
+    });
+  } catch (err) {
+    console.error("deleteSubjectCategory error:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+

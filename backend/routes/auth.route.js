@@ -22,6 +22,7 @@ const {
   transferMainAdmin,
   getInstitutionAdmins,
   updateAdminDelegation,
+  updateAdminAccessLevel,
   getActiveSessions,
   revokeSession,
   revokeAllOtherSessions,
@@ -148,6 +149,13 @@ router.put(
   authMiddleware,
   requireRole('admin', 'master_admin'),
   updateAdminDelegation,
+);
+
+router.put(
+  '/admin-access-level',
+  authMiddleware,
+  requireRole('admin', 'master_admin'),
+  updateAdminAccessLevel,
 );
 
 // Credential Change Requests (Name Change & Email Reset)

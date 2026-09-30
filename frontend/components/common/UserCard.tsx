@@ -16,6 +16,7 @@ interface UserCardProps extends BaseComponentProps {
     onMarkLeaverPress?: (user: User) => void;
     onReactivatePress?: (user: User) => void;
     onMasterRecordPress?: (user: User) => void;
+    onChangeAccessLevelPress?: (user: User) => void;
     showBackButton?: boolean;
     onBackPress?: () => void;
 }
@@ -31,6 +32,7 @@ export const UserCard: React.FC<UserCardProps> = ({
     onMarkLeaverPress,
     onReactivatePress,
     onMasterRecordPress,
+    onChangeAccessLevelPress,
     showBackButton = false,
     onBackPress,
     className = "",
@@ -72,6 +74,47 @@ export const UserCard: React.FC<UserCardProps> = ({
     };
 
     const roleColors = getRoleColor(user.role);
+
+    const renderRoleBadge = () => {
+        if (user.role === 'admin') {
+            if (user.is_main) {
+                return (
+                    <View className="flex-row items-center px-2.5 py-1 rounded-lg border bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/40">
+                        <Ionicons name="shield-checkmark" size={11} color="#7c3aed" style={{ marginRight: 4 }} />
+                        <Text className="text-[9px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
+                            Main Admin
+                        </Text>
+                    </View>
+                );
+            }
+            if (user.access_level === 'read_only') {
+                return (
+                    <View className="flex-row items-center px-2.5 py-1 rounded-lg border bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40">
+                        <Ionicons name="eye-outline" size={11} color="#b45309" style={{ marginRight: 4 }} />
+                        <Text className="text-[9px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                            Admin (Read-Only)
+                        </Text>
+                    </View>
+                );
+            }
+            return (
+                <View className="flex-row items-center px-2.5 py-1 rounded-lg border bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40">
+                    <Ionicons name="shield-outline" size={11} color="#2563eb" style={{ marginRight: 4 }} />
+                    <Text className="text-[9px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+                        Admin (Read & Write)
+                    </Text>
+                </View>
+            );
+        }
+
+        return (
+            <View className={`px-2.5 py-1 rounded-lg border ${roleColors.bg} dark:bg-orange-950/20 ${roleColors.border} dark:border-orange-500/20`}>
+                <Text className={`text-[9px] font-bold uppercase tracking-widest ${roleColors.text}`}>
+                    {user.role}
+                </Text>
+            </View>
+        );
+    };
 
     const handlePress = () => {
         onPress?.(user);
@@ -157,11 +200,7 @@ export const UserCard: React.FC<UserCardProps> = ({
                         {user.displayId || user.email}
                     </Text>
                 </View>
-                <View className={`px-3 py-1.5 rounded-xl border ${roleColors.bg} dark:bg-orange-950/20 ${roleColors.border} dark:border-orange-500/20`}>
-                    <Text className={`text-[10px] font-bold uppercase tracking-wider ${roleColors.text}`}>
-                        {user.role}
-                    </Text>
-                </View>
+                {renderRoleBadge()}
             </View>
         </View>
     );
@@ -204,11 +243,7 @@ export const UserCard: React.FC<UserCardProps> = ({
                                 </Text>
                             </View>
                         )}
-                        <View className={`px-2.5 py-1 rounded-lg border ${roleColors.bg} dark:bg-orange-950/20 ${roleColors.border} dark:border-orange-500/20`}>
-                            <Text className={`text-[9px] font-bold uppercase tracking-widest ${roleColors.text}`}>
-                                {user.role}
-                            </Text>
-                        </View>
+                        {renderRoleBadge()}
                     </View>
                 </View>
 
@@ -298,6 +333,19 @@ export const UserCard: React.FC<UserCardProps> = ({
                                     </ActionTooltip>
                                 )
                             )}
+                            {user.role === 'admin' && !user.is_main && onChangeAccessLevelPress && (
+                                <ActionTooltip text="Change access level">
+                                    <TouchableOpacity
+                                        onPress={(e) => { e.stopPropagation(); onChangeAccessLevelPress(user); }}
+                                        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                                        className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-500/20 items-center justify-center"
+                                        activeOpacity={0.7}
+                                        accessibilityLabel="Change access level"
+                                    >
+                                        <Ionicons name="key-outline" size={16} color="#6366F1" />
+                                    </TouchableOpacity>
+                                </ActionTooltip>
+                            )}
                             {onEditPress && (
                                 <ActionTooltip text="Edit user details">
                                     <TouchableOpacity
@@ -370,12 +418,7 @@ export const UserCard: React.FC<UserCardProps> = ({
                     {/* Right: Detailed Stats + Actions */}
                     <View className="flex-row items-center gap-6">
                         <View className="items-end gap-2">
-                            <View className={`flex-row items-center px-3 py-1.5 rounded-xl border ${roleColors.bg} dark:bg-orange-950/20 ${roleColors.border} dark:border-orange-500/20`}>
-                                <Ionicons name={roleColors.icon as any} size={12} color={roleColors.text.replace('text-', '')} style={{ marginRight: 6 }} />
-                                <Text className={`text-[10px] font-bold uppercase tracking-widest ${roleColors.text}`}>
-                                    {user.role}
-                                </Text>
-                            </View>
+                            {renderRoleBadge()}
                             <View className="items-end">
                                 <Text className="text-[9px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-tighter">Joined</Text>
                                 <Text className="text-xs font-bold text-gray-700 dark:text-gray-300">
@@ -409,6 +452,18 @@ export const UserCard: React.FC<UserCardProps> = ({
                                             accessibilityLabel="Reset credentials"
                                         >
                                             <MaterialCommunityIcons name="lock-reset" size={18} color="#FF6900" />
+                                        </TouchableOpacity>
+                                    </ActionTooltip>
+                                )}
+                                {user.role === 'admin' && !user.is_main && onChangeAccessLevelPress && (
+                                    <ActionTooltip text="Change access level">
+                                        <TouchableOpacity
+                                            onPress={(e) => { e.stopPropagation(); onChangeAccessLevelPress(user); }}
+                                            className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-500/20 items-center justify-center"
+                                            activeOpacity={0.7}
+                                            accessibilityLabel="Change access level"
+                                        >
+                                            <Ionicons name="key-outline" size={18} color="#6366F1" />
                                         </TouchableOpacity>
                                     </ActionTooltip>
                                 )}

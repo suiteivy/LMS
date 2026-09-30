@@ -25,6 +25,7 @@ const institution = {
   location: 'Westlands, Nairobi',
   phone: '+254 712 345 678',
   email: 'admin@cloudoraacademy.ac.ke',
+  country: 'KE' as const,
   type: 'secondary' as const,
   principal_name: 'Dr. Patricia Wambua',
   subscription_status: 'active' as const,
@@ -48,6 +49,7 @@ const users = {
     last_name: 'Muthoni',
     email: 'demo.admin@cloudora.lms',
     role: 'admin' as const,
+    access_level: 'read_write' as const,
     status: 'approved' as const,
     institution_id: 'DEMO-INST-001',
     phone: '+254 700 111 001',
@@ -55,6 +57,22 @@ const users = {
     avatar_url: null,
     created_at: daysAgo(180),
     updated_at: daysAgo(2),
+  },
+  readonlyAdmin: {
+    id: 'DEMO-USR-ADM-002',
+    full_name: 'Grace Wanjiku',
+    first_name: 'Grace',
+    last_name: 'Wanjiku',
+    email: 'demo.readonly.admin@cloudora.lms',
+    role: 'admin' as const,
+    access_level: 'read_only' as const,
+    status: 'approved' as const,
+    institution_id: 'DEMO-INST-001',
+    phone: '+254 700 111 005',
+    gender: 'female' as const,
+    avatar_url: null,
+    created_at: daysAgo(100),
+    updated_at: daysAgo(1),
   },
   teacher: {
     id: 'DEMO-USR-TCH-001',
@@ -141,8 +159,17 @@ const roleRecords = {
     id: 'ADM-DEMO-0001',
     user_id: users.admin.id,
     is_main: true,
+    access_level: 'read_write' as const,
     created_at: daysAgo(180),
     updated_at: daysAgo(2),
+  },
+  readonlyAdmin: {
+    id: 'ADM-DEMO-0002',
+    user_id: users.readonlyAdmin.id,
+    is_main: false,
+    access_level: 'read_only' as const,
+    created_at: daysAgo(100),
+    updated_at: daysAgo(1),
   },
   parent: {
     id: 'PAR-DEMO-0001',
@@ -191,6 +218,14 @@ const classes = [
   },
 ];
 
+// ── Subject Categories ────────────────────────────────────────────
+const subjectCategories = [
+  { id: 'CAT-DEMO-001', name: 'Sciences', color: '#10B981', institution_id: 'DEMO-INST-001', created_at: daysAgo(365) },
+  { id: 'CAT-DEMO-002', name: 'Languages', color: '#3B82F6', institution_id: 'DEMO-INST-001', created_at: daysAgo(365) },
+  { id: 'CAT-DEMO-003', name: 'Humanities', color: '#F59E0B', institution_id: 'DEMO-INST-001', created_at: daysAgo(365) },
+  { id: 'CAT-DEMO-004', name: 'Technicals', color: '#8B5CF6', institution_id: 'DEMO-INST-001', created_at: daysAgo(365) },
+];
+
 // ── Subjects ──────────────────────────────────────────────────────
 const subjects = [
   {
@@ -204,6 +239,13 @@ const subjects = [
     credits: 4,
     progress_percent: 68,
     category: 'Sciences',
+    category_id: 'CAT-DEMO-001',
+    category_name: 'Sciences',
+    category_color: '#10B981',
+    class_teacher_assignments: [
+      { class_id: 'CLS-DEMO-001', class_name: 'Form 2 East', teacher_id: 'TCH-DEMO-0001', teacher_name: 'Sarah Chemutai' },
+      { class_id: 'CLS-DEMO-002', class_name: 'Form 1 North', teacher_id: 'TCH-DEMO-0002', teacher_name: 'Brian Ochieng' },
+    ],
     level: 'Standard',
     rating: 4.6,
     reviews_count: 22,
@@ -220,6 +262,12 @@ const subjects = [
     credits: 3,
     progress_percent: 74,
     category: 'Languages',
+    category_id: 'CAT-DEMO-002',
+    category_name: 'Languages',
+    category_color: '#3B82F6',
+    class_teacher_assignments: [
+      { class_id: 'CLS-DEMO-001', class_name: 'Form 2 East', teacher_id: 'TCH-DEMO-0001', teacher_name: 'Sarah Chemutai' },
+    ],
     level: 'Standard',
     rating: 4.3,
     reviews_count: 18,
@@ -236,6 +284,12 @@ const subjects = [
     credits: 4,
     progress_percent: 55,
     category: 'Sciences',
+    category_id: 'CAT-DEMO-001',
+    category_name: 'Sciences',
+    category_color: '#10B981',
+    class_teacher_assignments: [
+      { class_id: 'CLS-DEMO-001', class_name: 'Form 2 East', teacher_id: 'TCH-DEMO-0002', teacher_name: 'Brian Ochieng' },
+    ],
     level: 'Standard',
     rating: 4.1,
     reviews_count: 14,
@@ -252,6 +306,12 @@ const subjects = [
     credits: 4,
     progress_percent: 61,
     category: 'Sciences',
+    category_id: 'CAT-DEMO-001',
+    category_name: 'Sciences',
+    category_color: '#10B981',
+    class_teacher_assignments: [
+      { class_id: 'CLS-DEMO-001', class_name: 'Form 2 East', teacher_id: 'TCH-DEMO-0002', teacher_name: 'Brian Ochieng' },
+    ],
     level: 'Advanced',
     rating: 4.7,
     reviews_count: 20,
@@ -268,6 +328,12 @@ const subjects = [
     credits: 3,
     progress_percent: 80,
     category: 'Humanities',
+    category_id: 'CAT-DEMO-003',
+    category_name: 'Humanities',
+    category_color: '#F59E0B',
+    class_teacher_assignments: [
+      { class_id: 'CLS-DEMO-001', class_name: 'Form 2 East', teacher_id: 'TCH-DEMO-0001', teacher_name: 'Sarah Chemutai' },
+    ],
     level: 'Standard',
     rating: 3.9,
     reviews_count: 12,
@@ -284,6 +350,12 @@ const subjects = [
     credits: 4,
     progress_percent: 47,
     category: 'Sciences',
+    category_id: 'CAT-DEMO-001',
+    category_name: 'Sciences',
+    category_color: '#10B981',
+    class_teacher_assignments: [
+      { class_id: 'CLS-DEMO-001', class_name: 'Form 2 East', teacher_id: 'TCH-DEMO-0002', teacher_name: 'Brian Ochieng' },
+    ],
     level: 'Advanced',
     rating: 4.2,
     reviews_count: 16,
@@ -1142,6 +1214,110 @@ const notifications = [
   { id: 'NOTIF-005', title: 'Library Book Due',       body: 'Your borrowed book "Form 2 Mathematics Textbook" is due in 4 days.', type: 'library', is_read: false, created_at: daysAgo(1) },
 ];
 
+// ── National Holidays ─────────────────────────────────────────────
+const nationalHolidays = [
+  {
+    id: 'HOL-DEMO-001',
+    country_code: 'KE',
+    holiday_date: '2026-01-01',
+    holiday_name: "New Year's Day",
+    year: 2026,
+    is_provisional: false,
+    is_pending_decision: false,
+    cancels_classes: true,
+    decision_status: 'cancel_classes',
+  },
+  {
+    id: 'HOL-DEMO-002',
+    country_code: 'KE',
+    holiday_date: '2026-04-03',
+    holiday_name: 'Good Friday',
+    year: 2026,
+    is_provisional: false,
+    is_pending_decision: false,
+    cancels_classes: true,
+    decision_status: 'cancel_classes',
+  },
+  {
+    id: 'HOL-DEMO-003',
+    country_code: 'KE',
+    holiday_date: '2026-04-06',
+    holiday_name: 'Easter Monday',
+    year: 2026,
+    is_provisional: false,
+    is_pending_decision: false,
+    cancels_classes: true,
+    decision_status: 'cancel_classes',
+  },
+  {
+    id: 'HOL-DEMO-004',
+    country_code: 'KE',
+    holiday_date: '2026-05-01',
+    holiday_name: 'Labour Day',
+    year: 2026,
+    is_provisional: false,
+    is_pending_decision: false,
+    cancels_classes: true,
+    decision_status: 'cancel_classes',
+  },
+  {
+    id: 'HOL-DEMO-005',
+    country_code: 'KE',
+    holiday_date: '2026-06-01',
+    holiday_name: 'Madaraka Day',
+    year: 2026,
+    is_provisional: false,
+    is_pending_decision: false,
+    cancels_classes: true,
+    decision_status: 'cancel_classes',
+  },
+  {
+    id: 'HOL-DEMO-006',
+    country_code: 'KE',
+    holiday_date: '2026-06-07',
+    holiday_name: 'Idd-ul-Adha',
+    year: 2026,
+    is_provisional: true,
+    is_pending_decision: true,
+    cancels_classes: false,
+    decision_status: 'pending',
+  },
+  {
+    id: 'HOL-DEMO-007',
+    country_code: 'KE',
+    holiday_date: '2026-10-10',
+    holiday_name: 'Utamaduni Day',
+    year: 2026,
+    is_provisional: false,
+    is_pending_decision: false,
+    cancels_classes: false,
+    decision_status: 'run_classes',
+    admin_notes: 'Cultural event scheduled on campus; classes run normally',
+  },
+  {
+    id: 'HOL-DEMO-008',
+    country_code: 'KE',
+    holiday_date: '2026-10-20',
+    holiday_name: 'Mashujaa Day',
+    year: 2026,
+    is_provisional: false,
+    is_pending_decision: true,
+    cancels_classes: false,
+    decision_status: 'pending',
+  },
+  {
+    id: 'HOL-DEMO-009',
+    country_code: 'KE',
+    holiday_date: '2026-12-12',
+    holiday_name: 'Jamhuri Day',
+    year: 2026,
+    is_provisional: false,
+    is_pending_decision: false,
+    cancels_classes: true,
+    decision_status: 'cancel_classes',
+  },
+];
+
 // ─────────────────────────────────────────────────────────────────
 // Master export – organized by consumer
 // ─────────────────────────────────────────────────────────────────
@@ -1154,6 +1330,8 @@ const demoDummyData = {
   /** Shared academic structure */
   classes,
   subjects,
+  subjectCategories,
+  nationalHolidays,
 
   /** Student-facing data */
   student: {
@@ -1220,6 +1398,8 @@ const demoDummyData = {
     teacherList,
     classes,
     subjects,
+    subjectCategories,
+    nationalHolidays,
     feeStructures,
     financialTransactions,
     bursaries,
@@ -1239,6 +1419,37 @@ const demoDummyData = {
       { id: 'PAY-006', student_id: 'STU-DEMO-0006', student_name: 'David Mutuku',    student_display_id: 'STU-DEMO-0006', amount: 15_000, payment_date: daysAgo(30), payment_method: 'cash'          as const, status: 'pending'   as const, reference_number: 'CSH20260501' },
     ],
 
+  },
+
+  /** Read-Only Admin-facing data */
+  readonlyAdmin: {
+    profile: users.readonlyAdmin,
+    roleRecord: roleRecords.readonlyAdmin,
+    dashboardStats,
+    revenueData,
+    recentUsers,
+    studentList,
+    teacherList,
+    classes,
+    subjects,
+    subjectCategories,
+    nationalHolidays,
+    feeStructures,
+    financialTransactions,
+    bursaries,
+    bursaryApplications,
+    libraryItems,
+    announcements,
+    exams,
+    examResults,
+    payments: [
+      { id: 'PAY-001', student_id: 'STU-DEMO-0001', student_name: 'Kelson Otieno',   student_display_id: 'STU-DEMO-0001', amount: 25_000, payment_date: daysAgo(2),  payment_method: 'mobile_money'  as const, status: 'completed' as const, reference_number: 'MPD20260601' },
+      { id: 'PAY-002', student_id: 'STU-DEMO-0002', student_name: 'Amina Hassan',    student_display_id: 'STU-DEMO-0002', amount: 29_500, payment_date: daysAgo(3),  payment_method: 'bank_transfer' as const, status: 'completed' as const, reference_number: 'KCB2026060X' },
+      { id: 'PAY-003', student_id: 'STU-DEMO-0003', student_name: 'Samuel Kipchoge', student_display_id: 'STU-DEMO-0003', amount: 32_500, payment_date: daysAgo(5),  payment_method: 'mobile_money'  as const, status: 'completed' as const, reference_number: 'MPD20260599' },
+      { id: 'PAY-004', student_id: 'STU-DEMO-0004', student_name: 'Grace Wanjiku',   student_display_id: 'STU-DEMO-0004', amount:  4_500, payment_date: daysAgo(15), payment_method: 'mobile_money'  as const, status: 'completed' as const, reference_number: 'MPD20260580' },
+      { id: 'PAY-005', student_id: 'STU-DEMO-0005', student_name: 'Faith Akinyi',    student_display_id: 'STU-DEMO-0005', amount: 21_000, payment_date: daysAgo(22), payment_method: 'bank_transfer' as const, status: 'completed' as const, reference_number: 'KCB2026051X' },
+      { id: 'PAY-006', student_id: 'STU-DEMO-0006', student_name: 'David Mutuku',    student_display_id: 'STU-DEMO-0006', amount: 15_000, payment_date: daysAgo(30), payment_method: 'cash'          as const, status: 'pending'   as const, reference_number: 'CSH20260501' },
+    ],
   },
 
   /** Parent-facing data */

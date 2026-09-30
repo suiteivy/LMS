@@ -61,10 +61,14 @@ async function seed() {
     console.error('❌  Template institution not found. Please create it first.');
     process.exit(1);
   }
-  log(`✅  Template institution: "${inst.name}"`);
+  // Ensure template institution is in Kenya
+  await supabase.from('institutions').update({ country: 'KE' }).eq('id', TEMPLATE_ID);
+  log(`✅  Template institution: "${inst.name}" (Country: KE)`);
 
   // ── 1. Clean up old template data (order matters for FK constraints) ──────
   log('\n🧹  Cleaning up existing template data…');
+  await deleteAll('holiday_decisions');
+  await deleteAll('national_holidays');
   await deleteAll('academic_reports');
   await deleteAll('class_enrollments');
   await deleteAll('timetables');
@@ -73,7 +77,9 @@ async function seed() {
   await deleteAll('exam_results');
   await deleteAll('assignments');
   await deleteAll('exams');
+  await deleteAll('subject_teachers');
   await deleteAll('subjects');
+  await deleteAll('subject_categories');
   await deleteAll('enrollments');
   await deleteAll('classes');
   await deleteAll('bursary_applications');
@@ -99,28 +105,30 @@ async function seed() {
   // ── 2. Seed placeholder Users (non-auth; cloner replaces IDs) ────────────
   log('👤  Seeding users…');
 
-  const teacherUserId  = uid();
-  const teacher2UserId = uid();
-  const adminUserId    = uid();
-  const student1UserId = uid();
-  const student2UserId = uid();
-  const student3UserId = uid();
-  const student4UserId = uid();
-  const student5UserId = uid();
-  const parent1UserId  = uid();
-  const parent2UserId  = uid();
+  const teacherUserId       = uid();
+  const teacher2UserId      = uid();
+  const adminUserId         = uid();
+  const readonlyAdminUserId = uid();
+  const student1UserId      = uid();
+  const student2UserId      = uid();
+  const student3UserId      = uid();
+  const student4UserId      = uid();
+  const student5UserId      = uid();
+  const parent1UserId       = uid();
+  const parent2UserId       = uid();
 
   const userRows = [
-    { id: teacherUserId,  email: `tpl.teacher@demo.lms`,  full_name: 'Sarah Chemutai',     first_name: 'Sarah',   last_name: 'Chemutai',   role: 'teacher', institution_id: TEMPLATE_ID },
-    { id: teacher2UserId, email: `tpl.teacher2@demo.lms`, full_name: 'Brian Ochieng',      first_name: 'Brian',   last_name: 'Ochieng',    role: 'teacher', institution_id: TEMPLATE_ID },
-    { id: adminUserId,    email: `tpl.admin@demo.lms`,    full_name: 'Cloudora Admin',      first_name: 'Cloudora',last_name: 'Admin',      role: 'admin',   institution_id: TEMPLATE_ID },
-    { id: student1UserId, email: `tpl.stu1@demo.lms`,     full_name: 'Kelson Otieno',      first_name: 'Kelson',  last_name: 'Otieno',     role: 'student', institution_id: TEMPLATE_ID },
-    { id: student2UserId, email: `tpl.stu2@demo.lms`,     full_name: 'Amina Hassan',       first_name: 'Amina',   last_name: 'Hassan',     role: 'student', institution_id: TEMPLATE_ID },
-    { id: student3UserId, email: `tpl.stu3@demo.lms`,     full_name: 'Peter Kamau',        first_name: 'Peter',   last_name: 'Kamau',      role: 'student', institution_id: TEMPLATE_ID },
-    { id: student4UserId, email: `tpl.stu4@demo.lms`,     full_name: 'Grace Wanjiku',      first_name: 'Grace',   last_name: 'Wanjiku',    role: 'student', institution_id: TEMPLATE_ID },
-    { id: student5UserId, email: `tpl.stu5@demo.lms`,     full_name: 'David Mutuku',       first_name: 'David',   last_name: 'Mutuku',     role: 'student', institution_id: TEMPLATE_ID },
-    { id: parent1UserId,  email: `tpl.par1@demo.lms`,     full_name: 'James Mwangi',       first_name: 'James',   last_name: 'Mwangi',     role: 'parent',  institution_id: TEMPLATE_ID },
-    { id: parent2UserId,  email: `tpl.par2@demo.lms`,     full_name: 'Mary Njeri',         first_name: 'Mary',    last_name: 'Njeri',      role: 'parent',  institution_id: TEMPLATE_ID },
+    { id: teacherUserId,       email: `tpl.teacher@demo.lms`,        full_name: 'Sarah Chemutai',     first_name: 'Sarah',   last_name: 'Chemutai',   role: 'teacher', institution_id: TEMPLATE_ID },
+    { id: teacher2UserId,      email: `tpl.teacher2@demo.lms`,       full_name: 'Brian Ochieng',      first_name: 'Brian',   last_name: 'Ochieng',    role: 'teacher', institution_id: TEMPLATE_ID },
+    { id: adminUserId,         email: `tpl.admin@demo.lms`,          full_name: 'Cloudora Admin',      first_name: 'Cloudora',last_name: 'Admin',      role: 'admin',   access_level: 'read_write', institution_id: TEMPLATE_ID },
+    { id: readonlyAdminUserId, email: `tpl.readonly.admin@demo.lms`, full_name: 'Grace Wanjiku',      first_name: 'Grace',   last_name: 'Wanjiku',    role: 'admin',   access_level: 'read_only',  institution_id: TEMPLATE_ID },
+    { id: student1UserId,      email: `tpl.stu1@demo.lms`,           full_name: 'Kelson Otieno',      first_name: 'Kelson',  last_name: 'Otieno',     role: 'student', institution_id: TEMPLATE_ID },
+    { id: student2UserId,      email: `tpl.stu2@demo.lms`,           full_name: 'Amina Hassan',       first_name: 'Amina',   last_name: 'Hassan',     role: 'student', institution_id: TEMPLATE_ID },
+    { id: student3UserId,      email: `tpl.stu3@demo.lms`,           full_name: 'Peter Kamau',        first_name: 'Peter',   last_name: 'Kamau',      role: 'student', institution_id: TEMPLATE_ID },
+    { id: student4UserId,      email: `tpl.stu4@demo.lms`,           full_name: 'Grace Wanjiku',      first_name: 'Grace',   last_name: 'Wanjiku',    role: 'student', institution_id: TEMPLATE_ID },
+    { id: student5UserId,      email: `tpl.stu5@demo.lms`,           full_name: 'David Mutuku',       first_name: 'David',   last_name: 'Mutuku',     role: 'student', institution_id: TEMPLATE_ID },
+    { id: parent1UserId,       email: `tpl.par1@demo.lms`,           full_name: 'James Mwangi',       first_name: 'James',   last_name: 'Mwangi',     role: 'parent',  institution_id: TEMPLATE_ID },
+    { id: parent2UserId,       email: `tpl.par2@demo.lms`,           full_name: 'Mary Njeri',         first_name: 'Mary',    last_name: 'Njeri',      role: 'parent',  institution_id: TEMPLATE_ID },
   ];
   await insert('users', userRows);
   log(`    ${userRows.length} users seeded.`);
@@ -137,7 +145,8 @@ async function seed() {
   // ── 4. Admin ──────────────────────────────────────────────────────────────
   log('🛡️   Seeding admins…');
   await insert('admins', [
-    { id: `ADM-TPL-0001`, user_id: adminUserId, institution_id: TEMPLATE_ID, is_main: true },
+    { id: `ADM-TPL-0001`, user_id: adminUserId,         institution_id: TEMPLATE_ID, is_main: true,  access_level: 'read_write' },
+    { id: `ADM-TPL-0002`, user_id: readonlyAdminUserId, institution_id: TEMPLATE_ID, is_main: false, access_level: 'read_only' },
   ]);
 
   // ── 5. Classes ────────────────────────────────────────────────────────────
@@ -189,6 +198,19 @@ async function seed() {
     { student_id: stu5Id, class_id: class2Id, institution_id: TEMPLATE_ID },
   ]);
 
+  // ── 9b. Subject Categories ────────────────────────────────────────────────
+  log('🏷️   Seeding subject categories…');
+  const catSciencesId   = uid();
+  const catLanguagesId  = uid();
+  const catHumanitiesId = uid();
+  const catTechnicalsId = uid();
+  await insert('subject_categories', [
+    { id: catSciencesId,   name: 'Sciences',   color: '#10B981', institution_id: TEMPLATE_ID },
+    { id: catLanguagesId,  name: 'Languages',  color: '#3B82F6', institution_id: TEMPLATE_ID },
+    { id: catHumanitiesId, name: 'Humanities', color: '#F59E0B', institution_id: TEMPLATE_ID },
+    { id: catTechnicalsId, name: 'Technicals', color: '#8B5CF6', institution_id: TEMPLATE_ID },
+  ]);
+
   // ── 10. Subjects ──────────────────────────────────────────────────────────
   log('📚  Seeding subjects…');
   const mathId    = uid();
@@ -199,12 +221,24 @@ async function seed() {
   const histId    = uid();
 
   await insert('subjects', [
-    { id: mathId, title: 'Mathematics',        description: 'Algebra, Geometry & Statistics',   teacher_id: teacherId,  class_id: class1Id, institution_id: TEMPLATE_ID, fee_amount: 500, category: 'Sciences',    level: 'Standard', rating: 4.5, reviews_count: 18, credits: 4 },
-    { id: engId,  title: 'English',            description: 'Grammar, Composition & Literature', teacher_id: teacherId,  class_id: class1Id, institution_id: TEMPLATE_ID, fee_amount: 400, category: 'Languages',   level: 'Standard', rating: 4.2, reviews_count: 15, credits: 3 },
-    { id: sciId,  title: 'Integrated Science', description: 'Physics concepts for Form 1',       teacher_id: teacher2Id, class_id: class1Id, institution_id: TEMPLATE_ID, fee_amount: 500, category: 'Sciences',    level: 'Standard', rating: 4.0, reviews_count: 12, credits: 3 },
-    { id: bioId,  title: 'Biology',            description: 'Cell biology & ecology',            teacher_id: teacher2Id, class_id: class2Id, institution_id: TEMPLATE_ID, fee_amount: 550, category: 'Sciences',    level: 'Advanced', rating: 4.7, reviews_count: 20, credits: 4 },
-    { id: chemId, title: 'Chemistry',          description: 'Periodic table & reactions',        teacher_id: teacher2Id, class_id: class2Id, institution_id: TEMPLATE_ID, fee_amount: 550, category: 'Sciences',    level: 'Advanced', rating: 4.3, reviews_count: 14, credits: 4 },
-    { id: histId, title: 'History & CRE',      description: 'African history & religious education', teacher_id: teacherId, class_id: class2Id, institution_id: TEMPLATE_ID, fee_amount: 350, category: 'Humanities', level: 'Standard', rating: 3.9, reviews_count: 10, credits: 3 },
+    { id: mathId, title: 'Mathematics',        description: 'Algebra, Geometry & Statistics',   teacher_id: teacherId,  class_id: class1Id, category_id: catSciencesId,   institution_id: TEMPLATE_ID, fee_amount: 500, category: 'Sciences',    level: 'Standard', rating: 4.5, reviews_count: 18, credits: 4 },
+    { id: engId,  title: 'English',            description: 'Grammar, Composition & Literature', teacher_id: teacherId,  class_id: class1Id, category_id: catLanguagesId,  institution_id: TEMPLATE_ID, fee_amount: 400, category: 'Languages',   level: 'Standard', rating: 4.2, reviews_count: 15, credits: 3 },
+    { id: sciId,  title: 'Integrated Science', description: 'Physics concepts for Form 1',       teacher_id: teacher2Id, class_id: class1Id, category_id: catSciencesId,   institution_id: TEMPLATE_ID, fee_amount: 500, category: 'Sciences',    level: 'Standard', rating: 4.0, reviews_count: 12, credits: 3 },
+    { id: bioId,  title: 'Biology',            description: 'Cell biology & ecology',            teacher_id: teacher2Id, class_id: class2Id, category_id: catSciencesId,   institution_id: TEMPLATE_ID, fee_amount: 550, category: 'Sciences',    level: 'Advanced', rating: 4.7, reviews_count: 20, credits: 4 },
+    { id: chemId, title: 'Chemistry',          description: 'Periodic table & reactions',        teacher_id: teacher2Id, class_id: class2Id, category_id: catSciencesId,   institution_id: TEMPLATE_ID, fee_amount: 550, category: 'Sciences',    level: 'Advanced', rating: 4.3, reviews_count: 14, credits: 4 },
+    { id: histId, title: 'History & CRE',      description: 'African history & religious education', teacher_id: teacherId, class_id: class2Id, category_id: catHumanitiesId, institution_id: TEMPLATE_ID, fee_amount: 350, category: 'Humanities', level: 'Standard', rating: 3.9, reviews_count: 10, credits: 3 },
+  ]);
+
+  // ── 10b. Per-Class Subject Teacher Assignments ────────────────────────────
+  log('👨‍🏫  Seeding per-class subject teacher assignments…');
+  await insert('subject_teachers', [
+    { subject_id: mathId, teacher_id: teacherId,  class_id: class1Id, institution_id: TEMPLATE_ID },
+    { subject_id: mathId, teacher_id: teacher2Id, class_id: class2Id, institution_id: TEMPLATE_ID },
+    { subject_id: engId,  teacher_id: teacherId,  class_id: class1Id, institution_id: TEMPLATE_ID },
+    { subject_id: sciId,  teacher_id: teacher2Id, class_id: class1Id, institution_id: TEMPLATE_ID },
+    { subject_id: bioId,  teacher_id: teacher2Id, class_id: class2Id, institution_id: TEMPLATE_ID },
+    { subject_id: chemId, teacher_id: teacher2Id, class_id: class2Id, institution_id: TEMPLATE_ID },
+    { subject_id: histId, teacher_id: teacherId,  class_id: class2Id, institution_id: TEMPLATE_ID },
   ]);
 
   // ── 11. Assignments ───────────────────────────────────────────────────────
@@ -372,6 +406,28 @@ async function seed() {
     { institution_id: TEMPLATE_ID, class_id: class1Id, teacher_id: teacherId,  title: 'Lesson: Introduction to Quadratics', content: 'Introduced quadratic expressions. Students practised factoring (a+b)(a-b). Homework: Exercise 3B.', entry_date: '2026-05-12' },
     { institution_id: TEMPLATE_ID, class_id: class1Id, teacher_id: teacherId,  title: 'Lesson: Comprehension – Newspaper Extract', content: 'Students read and answered questions on a newspaper extract. Discussed vocabulary in context.', entry_date: '2026-05-13' },
     { institution_id: TEMPLATE_ID, class_id: class2Id, teacher_id: teacher2Id, title: 'Lesson: Cell Division – Mitosis',       content: 'Covered the stages of mitosis. Drew and labelled diagrams in notebooks. Quiz next lesson.', entry_date: '2026-05-14' },
+  ]);
+
+  // ── 26. National Holidays & Decisions ─────────────────────────────────────
+  log('🇰🇪  Seeding national holidays & administrative decisions…');
+  const holidayRows = [
+    { id: uid(), institution_id: TEMPLATE_ID, country_code: 'KE', holiday_date: '2026-01-01', holiday_name: "New Year's Day", year: 2026, is_provisional: false },
+    { id: uid(), institution_id: TEMPLATE_ID, country_code: 'KE', holiday_date: '2026-04-03', holiday_name: 'Good Friday', year: 2026, is_provisional: false },
+    { id: uid(), institution_id: TEMPLATE_ID, country_code: 'KE', holiday_date: '2026-04-06', holiday_name: 'Easter Monday', year: 2026, is_provisional: false },
+    { id: uid(), institution_id: TEMPLATE_ID, country_code: 'KE', holiday_date: '2026-05-01', holiday_name: 'Labour Day', year: 2026, is_provisional: false },
+    { id: uid(), institution_id: TEMPLATE_ID, country_code: 'KE', holiday_date: '2026-06-01', holiday_name: 'Madaraka Day', year: 2026, is_provisional: false },
+    { id: uid(), institution_id: TEMPLATE_ID, country_code: 'KE', holiday_date: '2026-06-07', holiday_name: 'Idd-ul-Adha', year: 2026, is_provisional: true },
+    { id: uid(), institution_id: TEMPLATE_ID, country_code: 'KE', holiday_date: '2026-10-10', holiday_name: 'Utamaduni Day', year: 2026, is_provisional: false },
+    { id: uid(), institution_id: TEMPLATE_ID, country_code: 'KE', holiday_date: '2026-10-20', holiday_name: 'Mashujaa Day', year: 2026, is_provisional: false },
+    { id: uid(), institution_id: TEMPLATE_ID, country_code: 'KE', holiday_date: '2026-12-12', holiday_name: 'Jamhuri Day', year: 2026, is_provisional: false },
+  ];
+  await insert('national_holidays', holidayRows);
+
+  await insert('holiday_decisions', [
+    { institution_id: TEMPLATE_ID, holiday_id: holidayRows[0].id, cancel_classes: true, decision_status: 'cancel_classes' },
+    { institution_id: TEMPLATE_ID, holiday_id: holidayRows[3].id, cancel_classes: true, decision_status: 'cancel_classes' },
+    { institution_id: TEMPLATE_ID, holiday_id: holidayRows[4].id, cancel_classes: true, decision_status: 'cancel_classes' },
+    { institution_id: TEMPLATE_ID, holiday_id: holidayRows[6].id, cancel_classes: false, decision_status: 'run_classes', notes: 'Cultural event scheduled on campus; classes run normally' },
   ]);
 
   log('\n🎉  Demo template seeding COMPLETE!');

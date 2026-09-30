@@ -256,18 +256,33 @@ async function checkConflicts(
   if (teacher_id) {
     incomingTeacherIds.add(teacher_id);
   } else if (subject_id) {
-    const { data: primaryRow } = await supabase
-      .from("subjects")
-      .select("teacher_id")
-      .eq("id", subject_id)
-      .single();
-    const { data: assocRows } = await supabase
-      .from("subject_teachers")
-      .select("teacher_id")
-      .eq("subject_id", subject_id);
+    let classTeacherFound = false;
+    if (class_id) {
+      const { data: classAssoc } = await supabase
+        .from("subject_teachers")
+        .select("teacher_id")
+        .eq("subject_id", subject_id)
+        .eq("class_id", class_id)
+        .limit(1);
+      if (classAssoc && classAssoc.length > 0 && classAssoc[0].teacher_id) {
+        incomingTeacherIds.add(classAssoc[0].teacher_id);
+        classTeacherFound = true;
+      }
+    }
+    if (!classTeacherFound) {
+      const { data: primaryRow } = await supabase
+        .from("subjects")
+        .select("teacher_id")
+        .eq("id", subject_id)
+        .single();
+      const { data: assocRows } = await supabase
+        .from("subject_teachers")
+        .select("teacher_id")
+        .eq("subject_id", subject_id);
 
-    if (primaryRow?.teacher_id) incomingTeacherIds.add(primaryRow.teacher_id);
-    (assocRows || []).forEach(r => { if (r.teacher_id) incomingTeacherIds.add(r.teacher_id); });
+      if (primaryRow?.teacher_id) incomingTeacherIds.add(primaryRow.teacher_id);
+      (assocRows || []).forEach(r => { if (r.teacher_id) incomingTeacherIds.add(r.teacher_id); });
+    }
   }
 
   for (const e of existing) {
@@ -287,18 +302,33 @@ async function checkConflicts(
     if (e.teacher_id) {
       existingTeacherIds.add(e.teacher_id);
     } else if (e.subject_id) {
-      const { data: existingPrimary } = await supabase
-        .from("subjects")
-        .select("teacher_id")
-        .eq("id", e.subject_id)
-        .single();
-      const { data: existingAssoc } = await supabase
-        .from("subject_teachers")
-        .select("teacher_id")
-        .eq("subject_id", e.subject_id);
+      let existingClassTeacherFound = false;
+      if (e.class_id) {
+        const { data: existingClassAssoc } = await supabase
+          .from("subject_teachers")
+          .select("teacher_id")
+          .eq("subject_id", e.subject_id)
+          .eq("class_id", e.class_id)
+          .limit(1);
+        if (existingClassAssoc && existingClassAssoc.length > 0 && existingClassAssoc[0].teacher_id) {
+          existingTeacherIds.add(existingClassAssoc[0].teacher_id);
+          existingClassTeacherFound = true;
+        }
+      }
+      if (!existingClassTeacherFound) {
+        const { data: existingPrimary } = await supabase
+          .from("subjects")
+          .select("teacher_id")
+          .eq("id", e.subject_id)
+          .single();
+        const { data: existingAssoc } = await supabase
+          .from("subject_teachers")
+          .select("teacher_id")
+          .eq("subject_id", e.subject_id);
 
-      if (existingPrimary?.teacher_id) existingTeacherIds.add(existingPrimary.teacher_id);
-      (existingAssoc || []).forEach(r => { if (r.teacher_id) existingTeacherIds.add(r.teacher_id); });
+        if (existingPrimary?.teacher_id) existingTeacherIds.add(existingPrimary.teacher_id);
+        (existingAssoc || []).forEach(r => { if (r.teacher_id) existingTeacherIds.add(r.teacher_id); });
+      }
     }
 
     let hasTeacherConflict = false;
@@ -1077,11 +1107,34 @@ async function getClassTimetable(req, res) {
 
     const classLabel = cls ? buildClassLabel(cls) : null;
 
-    const normalized = (data || []).map(row => ({
-      ...row,
-      room_number: row.room_number || classLabel || "Main Classroom",
-      teacher_name: row.teachers?.full_name || row.teachers?.users?.full_name || null
-    }));
+    // Resolve per-class subject teacher assignments if row.teacher_id is not directly set
+    const subjectIds = [...new Set((data || []).map(r => r.subject_id).filter(Boolean))];
+    const classTeacherMap = new Map();
+    if (subjectIds.length > 0) {
+      const { data: stRows } = await supabase
+        .from("subject_teachers")
+        .select("subject_id, teacher_id, teachers ( id, full_name, user_id, users(full_name) )")
+        .eq("class_id", class_id)
+        .in("subject_id", subjectIds);
+      if (stRows) {
+        stRows.forEach(st => {
+          if (st.teachers) {
+            classTeacherMap.set(st.subject_id, st.teachers);
+          }
+        });
+      }
+    }
+
+    const normalized = (data || []).map(row => {
+      const classTeacher = classTeacherMap.get(row.subject_id);
+      const effectiveTeacher = row.teachers || classTeacher;
+      return {
+        ...row,
+        teachers: effectiveTeacher || null,
+        room_number: row.room_number || classLabel || "Main Classroom",
+        teacher_name: effectiveTeacher?.full_name || effectiveTeacher?.users?.full_name || null
+      };
+    });
 
     res.json(normalized);
   } catch (err) {
@@ -1169,7 +1222,7 @@ async function getTeacherTimetable(req, res) {
 
       const { data: assocSubjectRows } = await supabase
         .from("subject_teachers")
-        .select("subject_id")
+        .select("subject_id, class_id")
         .eq("teacher_id", teacherId)
         .eq("institution_id", institution_id);
 
@@ -1189,7 +1242,30 @@ async function getTeacherTimetable(req, res) {
       .order("start_time", { ascending: true });
 
     if (error) throw error;
-    const normalized = (data || []).map((row) => {
+
+    // Filter to ensure that if timetable row is assigned via subject_id, teacher is actually assigned to that class
+    let filteredData = data || [];
+    if (activeMode !== "class" && filteredData.length > 0) {
+      const { data: allStForSubjs } = await supabase
+        .from("subject_teachers")
+        .select("subject_id, class_id, teacher_id")
+        .eq("institution_id", institution_id);
+
+      filteredData = filteredData.filter((row) => {
+        if (row.teacher_id === teacherId) return true;
+        // Check if there is an explicit per-class assignment for this subject and class
+        const classAssignments = (allStForSubjs || []).filter(
+          (st) => st.subject_id === row.subject_id && st.class_id === row.class_id
+        );
+        if (classAssignments.length > 0) {
+          return classAssignments.some((st) => st.teacher_id === teacherId);
+        }
+        // Fall back to subject's generic assignment
+        return (primarySubjectRows || []).some((s) => s.id === row.subject_id);
+      });
+    }
+
+    const normalized = filteredData.map((row) => {
       const classLabel = row.classes ? buildClassLabel(row.classes) : null;
       return {
         ...row,

@@ -57,6 +57,7 @@ interface FormData {
     parent_address: string;
     linked_students: { student_id: string; relationship: string; name?: string }[];
     create_parent: boolean;
+    admin_access_level?: 'read_write' | 'read_only' | null;
     parent_info: {
         first_name: string;
         last_name: string;
@@ -131,6 +132,7 @@ const initialFormData: FormData = {
     occupation: '', parent_address: '',
     linked_students: [],
     create_parent: false,
+    admin_access_level: null,
     parent_info: { first_name: '', last_name: '', full_name: '', email: '', phone: '', occupation: '', address: '' },
 };
 
@@ -145,7 +147,7 @@ export default function CreateUserScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
-    const { profile, session, isProfileLoading } = useAuth();
+    const { profile, session, isProfileLoading, isMain, isReadOnlyAdmin } = useAuth();
 
     const instClassTypeLabel =
         (profile as any)?.institutions?.school_categories?.class_type ||
@@ -529,6 +531,10 @@ export default function CreateUserScreen() {
                 delete payload.parent_info;
             }
 
+            if (form.role === 'admin') {
+                payload.access_level = form.admin_access_level || 'read_write';
+            }
+
             if (form.role === 'student') {
                 if (form.existing_parent_id) {
                     payload.linked_parents = [form.existing_parent_id];
@@ -584,6 +590,9 @@ export default function CreateUserScreen() {
     };
 
     const canGoNext = (): boolean => {
+        if (isReadOnlyAdmin) {
+            return false;
+        }
         if (step === 0) {
             if (!form.role) return false;
             const cap = getRoleCapacityState(form.role);
@@ -597,6 +606,12 @@ export default function CreateUserScreen() {
             return hasFirstName && hasLastName && hasEmail;
         }
         if (step === 2) {
+            if (form.role === 'admin') {
+                if (isMain) {
+                    return !!form.admin_access_level;
+                }
+                return true;
+            }
             if (form.role === 'student') {
                 const hasCategory = domainCategories.length === 0 || !!form.class_category_id;
                 const hasLevel = domainLevels.length === 0 || !!form.class_level_id;
@@ -625,6 +640,10 @@ export default function CreateUserScreen() {
             const isParentRole = form.role === 'parent';
             const hasPersonalFields = !!form.first_name.trim() && !!form.last_name.trim() && (isParentRole ? !!form.email.trim() : true);
             if (!hasPersonalFields) return false;
+
+            if (form.role === 'admin' && isMain && !form.admin_access_level) {
+                return false;
+            }
 
             if (form.role === 'student') {
                 const hasCategory = domainCategories.length === 0 || !!form.class_category_id;
@@ -1214,9 +1233,116 @@ export default function CreateUserScreen() {
             {form.role === 'teacher' && renderTeacherDetails()}
             {form.role === 'parent' && renderParentDetails()}
             {form.role === 'admin' && (
-                <View style={{ backgroundColor: isDark ? '#161B22' : '#f9fafb', borderRadius: 12, padding: 24, alignItems: 'center' }}>
-                    <Ionicons name="shield-checkmark" size={48} color={textSecondary} />
-                    <Text style={{ color: textSecondary, marginTop: 12, textAlign: 'center' }}>No additional details needed for admin accounts</Text>
+                <View>
+                    <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary, marginBottom: 16 }}>Administrator Access Level</Text>
+                    {isMain ? (
+                        <View style={{ gap: 12 }}>
+                            <TouchableOpacity
+                                onPress={() => updateForm('admin_access_level', 'read_write')}
+                                activeOpacity={0.8}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    padding: 16,
+                                    borderRadius: 14,
+                                    borderWidth: 2,
+                                    backgroundColor: form.admin_access_level === 'read_write' ? (isDark ? '#1e3a8a25' : '#eff6ff') : card,
+                                    borderColor: form.admin_access_level === 'read_write' ? '#3b82f6' : border
+                                }}
+                            >
+                                <View style={{
+                                    width: 44,
+                                    height: 44,
+                                    borderRadius: 12,
+                                    backgroundColor: form.admin_access_level === 'read_write' ? '#3b82f6' : (isDark ? '#1f2937' : '#f3f4f6'),
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginRight: 14
+                                }}>
+                                    <Ionicons name="create-outline" size={22} color={form.admin_access_level === 'read_write' ? '#ffffff' : textSecondary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                        <Text style={{ fontWeight: '700', fontSize: 16, color: textPrimary }}>Read & Write</Text>
+                                        <View style={{ backgroundColor: '#dcfce7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#15803d' }}>Full Access</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={{ fontSize: 13, color: textSecondary, lineHeight: 18 }}>
+                                        Can manage classes, subjects, enrollments, users, and modify records across the institution.
+                                    </Text>
+                                </View>
+                                <View style={{
+                                    width: 22,
+                                    height: 22,
+                                    borderRadius: 11,
+                                    borderWidth: 2,
+                                    borderColor: form.admin_access_level === 'read_write' ? '#3b82f6' : border,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginLeft: 10
+                                }}>
+                                    {form.admin_access_level === 'read_write' && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#3b82f6' }} />}
+                                </View>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={() => updateForm('admin_access_level', 'read_only')}
+                                activeOpacity={0.8}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    padding: 16,
+                                    borderRadius: 14,
+                                    borderWidth: 2,
+                                    backgroundColor: form.admin_access_level === 'read_only' ? (isDark ? '#e0e7ff25' : '#eef2ff') : card,
+                                    borderColor: form.admin_access_level === 'read_only' ? '#6366f1' : border
+                                }}
+                            >
+                                <View style={{
+                                    width: 44,
+                                    height: 44,
+                                    borderRadius: 12,
+                                    backgroundColor: form.admin_access_level === 'read_only' ? '#6366f1' : (isDark ? '#1f2937' : '#f3f4f6'),
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginRight: 14
+                                }}>
+                                    <Ionicons name="eye-outline" size={22} color={form.admin_access_level === 'read_only' ? '#ffffff' : textSecondary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                        <Text style={{ fontWeight: '700', fontSize: 16, color: textPrimary }}>Read-Only</Text>
+                                        <View style={{ backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#b45309' }}>Audit & Reports</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={{ fontSize: 13, color: textSecondary, lineHeight: 18 }}>
+                                        Can view dashboards, student profiles, and download exports. Cannot add, edit, or delete any institution data.
+                                    </Text>
+                                </View>
+                                <View style={{
+                                    width: 22,
+                                    height: 22,
+                                    borderRadius: 11,
+                                    borderWidth: 2,
+                                    borderColor: form.admin_access_level === 'read_only' ? '#6366f1' : border,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginLeft: 10
+                                }}>
+                                    {form.admin_access_level === 'read_only' && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#6366f1' }} />}
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <View style={{ backgroundColor: isDark ? '#161B22' : '#f9fafb', borderRadius: 12, padding: 20, alignItems: 'center' }}>
+                            <Ionicons name="shield-checkmark" size={40} color={textSecondary} />
+                            <Text style={{ color: textSecondary, marginTop: 10, textAlign: 'center' }}>
+                                Only the Main Administrator can assign admin access levels. Default is Read & Write.
+                            </Text>
+                        </View>
+                    )}
                 </View>
             )}
         </View>
@@ -1273,6 +1399,12 @@ export default function CreateUserScreen() {
                     {renderReviewRow('Parent/Guardian Email', form.parent_info.email)}
                     {renderReviewRow('Parent/Guardian Phone', form.parent_info.phone)}
                     {renderReviewRow('Occupation', form.parent_info.occupation)}
+                </View>
+            )}
+            {form.role === 'admin' && (
+                <View style={{ backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16, marginBottom: 16 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Administrator Privileges</Text>
+                    {renderReviewRow('Access Level', form.admin_access_level === 'read_only' ? 'Read-Only (Audit & Reports)' : 'Read & Write (Full Access)')}
                 </View>
             )}
             {form.role === 'teacher' && (

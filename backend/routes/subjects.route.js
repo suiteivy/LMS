@@ -12,12 +12,22 @@ const {
   getSubjectsByClass,
   updateProgress,
   deleteSubject,
+  getSubjectCategories,
+  createSubjectCategory,
+  updateSubjectCategory,
+  deleteSubjectCategory,
 } = require("../controllers/subject.controller.js");
 const curriculumController = require("../controllers/curriculumContent.controller.js");
 
 const { authorizeRoles } = require("../middleware/authRole.js");
 
 router.use(authMiddleware);
+
+// Subject Categories
+router.get("/categories", authorizeRoles(["admin", "master_admin", "teacher", "student", "parent"]), getSubjectCategories);
+router.post("/categories", authorizeRoles(["admin", "master_admin"]), createSubjectCategory);
+router.put("/categories/:id", authorizeRoles(["admin", "master_admin"]), updateSubjectCategory);
+router.delete("/categories/:id", authorizeRoles(["admin", "master_admin"]), deleteSubjectCategory);
 
 // Create a new subject
 router.post("/", authorizeRoles(["admin", "master_admin", "teacher"]), createSubject);

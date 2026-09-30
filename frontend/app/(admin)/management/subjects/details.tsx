@@ -2,7 +2,7 @@ import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
-import { SubjectAPI } from "@/services/SubjectService";
+import { SubjectAPI, SubjectCategoryData } from "@/services/SubjectService";
 import { ClassService } from "@/services/ClassService";
 import { Subject } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,7 +23,7 @@ import {
 
 function SubjectDetailsScreen() {
   const { isDark } = useTheme();
-  const { profile } = useAuth();
+  const { profile, isReadOnlyAdmin } = useAuth();
   const { id } = useLocalSearchParams();
   const [subject, setSubject] = useState<Subject | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,6 +33,7 @@ function SubjectDetailsScreen() {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [levels, setLevels] = useState<any[]>([]);
+  const [categories, setCategories] = useState<SubjectCategoryData[]>([]);
 
   const assignedTeacherNames = teachers
     .filter((t) => (form.teacher_ids || []).includes(t.id))
@@ -52,7 +53,7 @@ function SubjectDetailsScreen() {
   const loadLookupData = async () => {
     if (!profile?.institution_id) return;
     try {
-      const [teacherRes, classRes, levelsData] = await Promise.all([
+      const [teacherRes, classRes, levelsData, categoriesData] = await Promise.all([
         supabase
           .from("teachers")
           .select("id, user_id, users:user_id(full_name, institution_id)")
@@ -100,6 +101,13 @@ function SubjectDetailsScreen() {
             .order("level_number", { ascending: true });
           return data || [];
         })(),
+        (async () => {
+          try {
+            return await SubjectAPI.getSubjectCategories();
+          } catch {
+            return [];
+          }
+        })(),
       ]);
 
       if (teacherRes.data) setTeachers(teacherRes.data);
@@ -107,6 +115,7 @@ function SubjectDetailsScreen() {
         setClasses(classRes.data);
       }
       if (levelsData) setLevels(levelsData);
+      if (categoriesData) setCategories(categoriesData);
     } catch (err) {
       console.error("Failed to load lookup data:", err);
     }
@@ -121,8 +130,16 @@ function SubjectDetailsScreen() {
         .from("subjects")
         .select(`
           *,
+          categories:category_id(
+            id,
+            name,
+            color,
+            description
+          ),
           subject_teachers(
-            teacher_id
+            teacher_id,
+            class_id,
+            is_primary
           )
         `)
         .eq("id", subjectId)
@@ -131,10 +148,20 @@ function SubjectDetailsScreen() {
       if (error) throw error;
       
       const subjectData = data as any;
-      const teacherIds = subjectData.subject_teachers ? subjectData.subject_teachers.map((st: any) => st.teacher_id) : [];
+      const teacherIds = subjectData.subject_teachers
+        ? Array.from(new Set(subjectData.subject_teachers.map((st: any) => st.teacher_id).filter(Boolean)))
+        : [];
+      const classTeacherAssignments = (subjectData.subject_teachers || [])
+        .filter((st: any) => st.class_id)
+        .map((st: any) => ({
+          class_id: st.class_id,
+          teacher_id: st.teacher_id,
+        }));
       const populatedSubject = { 
         ...subjectData, 
+        category_id: subjectData.category_id || null,
         teacher_ids: teacherIds,
+        class_teacher_assignments: classTeacherAssignments,
         level_ids: Array.isArray(subjectData.level_ids) ? subjectData.level_ids : [],
       };
       setSubject(populatedSubject as any);
@@ -170,6 +197,10 @@ function SubjectDetailsScreen() {
   };
 
   const handleSave = async () => {
+    if (isReadOnlyAdmin) {
+      showError("Read-Only Access", "Read-only access — contact the main administrator to make changes.");
+      return;
+    }
     if (!subject) return;
     setSaving(true);
     try {
@@ -194,6 +225,8 @@ function SubjectDetailsScreen() {
 
       const refreshed = await SubjectAPI.updateSubject(String(subjectId), {
         ...subjectUpdateData,
+        category_id: form.category_id || null,
+        class_teacher_assignments: form.class_teacher_assignments || [],
         level_ids: Array.isArray(form.level_ids) && form.level_ids.length > 0 ? form.level_ids : null,
         teacher_ids: teacher_ids || [],
         hod_teacher_id: form.hod_teacher_id || null,
@@ -229,9 +262,14 @@ function SubjectDetailsScreen() {
       const refreshedTeacherIds = Array.isArray((refreshed as any)?.subject_teachers)
         ? (refreshed as any).subject_teachers.map((st: any) => st.teacher_id).filter(Boolean)
         : (teacher_ids || []);
+      const refreshedAssignments = Array.isArray((refreshed as any)?.subject_teachers)
+        ? (refreshed as any).subject_teachers.filter((st: any) => st.class_id).map((st: any) => ({ class_id: st.class_id, teacher_id: st.teacher_id }))
+        : (form.class_teacher_assignments || []);
       const nextSubject = {
         ...(refreshed as any),
+        category_id: (refreshed as any)?.category_id ?? form.category_id,
         teacher_ids: refreshedTeacherIds,
+        class_teacher_assignments: refreshedAssignments,
         level_ids: Array.isArray((refreshed as any)?.level_ids) ? (refreshed as any).level_ids : (form.level_ids || []),
       };
 
@@ -303,14 +341,20 @@ function SubjectDetailsScreen() {
           }}
         >
           {!editing && (
-            <ActionTooltip text="Edit subject details">
+            <ActionTooltip text={isReadOnlyAdmin ? "Read-only access — contact the main administrator to make changes." : "Edit subject details"}>
               <TouchableOpacity
-                onPress={() => setEditing(true)}
-                style={{ backgroundColor: "transparent", padding: 8 }}
+                onPress={() => {
+                  if (isReadOnlyAdmin) {
+                    showError("Read-Only Access", "Read-only access — contact the main administrator to make changes.");
+                    return;
+                  }
+                  setEditing(true);
+                }}
+                style={{ backgroundColor: "transparent", padding: 8, opacity: isReadOnlyAdmin ? 0.4 : 1 }}
                 accessibilityRole="button"
                 accessibilityLabel="Edit subject"
               >
-                <Ionicons name="pencil" size={24} color="#FF6B00" />
+                <Ionicons name="pencil" size={24} color={isReadOnlyAdmin ? "#9CA3AF" : "#FF6B00"} />
               </TouchableOpacity>
             </ActionTooltip>
           )}
@@ -358,6 +402,74 @@ function SubjectDetailsScreen() {
             multiline
             onChangeText={(v) => handleChange("description", v)}
           />
+
+          {/* Curriculum Category */}
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ color: textMuted, fontSize: 13, marginBottom: 4 }}>
+              Curriculum Category
+            </Text>
+            {editing ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+                <TouchableOpacity
+                  onPress={() => handleChange("category_id", null)}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: !form.category_id ? '#FF6B00' : border,
+                    backgroundColor: !form.category_id ? (isDark ? '#21262D' : '#FFF7ED') : inputBg,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: !form.category_id ? '700' : '500', color: !form.category_id ? '#FF6B00' : textPrimary }}>
+                    None (Uncategorized)
+                  </Text>
+                </TouchableOpacity>
+                {categories.map((cat) => {
+                  const isSelected = form.category_id === cat.id;
+                  const catColor = cat.color || '#3B82F6';
+                  return (
+                    <TouchableOpacity
+                      key={cat.id}
+                      onPress={() => handleChange("category_id", cat.id)}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 20,
+                        borderWidth: 1,
+                        borderColor: isSelected ? catColor : border,
+                        backgroundColor: isSelected ? `${catColor}20` : inputBg,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: catColor }} />
+                      <Text style={{ fontSize: 12, fontWeight: isSelected ? '700' : '500', color: isSelected ? catColor : textPrimary }}>
+                        {cat.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            ) : (
+              <View style={{ backgroundColor: inputBg, borderRadius: 8, borderWidth: 1, borderColor: border, padding: 10 }}>
+                {(() => {
+                  const cat = categories.find(c => c.id === form.category_id) || form.categories;
+                  if (!cat) {
+                    return <Text style={{ color: textMuted, fontSize: 14 }}>None (Uncategorized)</Text>;
+                  }
+                  const color = cat.color || '#3B82F6';
+                  return (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
+                      <Text style={{ color: textPrimary, fontSize: 14, fontWeight: '600' }}>{cat.name}</Text>
+                    </View>
+                  );
+                })()}
+              </View>
+            )}
+          </View>
 
           {/* Grade/Level Scoping */}
           <View style={{ marginBottom: 16 }}>
@@ -655,6 +767,141 @@ function SubjectDetailsScreen() {
               </Text>
             </View>
           )}
+
+          {/* Per-Class Teacher Assignment Breakdown */}
+          {(() => {
+            const classIds = Array.from(new Set<string>([
+              ...(Array.isArray(form?.metadata?.class_ids) ? form.metadata.class_ids : []),
+              ...(form.class_id ? [form.class_id] : []),
+            ]));
+            if (classIds.length === 0) return null;
+            const assignedClassObjects = classes.filter((c) => classIds.includes(c.id));
+
+            const handleClassTeacherChange = (classId: string, teacherId: string) => {
+              const currentAssignments = form.class_teacher_assignments || [];
+              const nextAssignments = currentAssignments.filter((a: any) => a.class_id !== classId);
+              if (teacherId) {
+                nextAssignments.push({ class_id: classId, teacher_id: teacherId });
+              }
+              handleChange("class_teacher_assignments", nextAssignments);
+
+              const allTids = Array.from(new Set([
+                ...nextAssignments.map((a: any) => a.teacher_id),
+                ...(form.hod_teacher_id ? [form.hod_teacher_id] : []),
+              ]));
+              handleChange("teacher_ids", allTids);
+            };
+
+            return (
+              <View style={{ marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <Text style={{ color: textMuted, fontSize: 13 }}>
+                    Per-Class Teacher Assignment
+                  </Text>
+                  <View style={{ backgroundColor: isDark ? '#21262D' : '#E5E7EB', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: textMuted }}>
+                      {assignedClassObjects.length} Class{assignedClassObjects.length > 1 ? 'es' : ''}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={{ fontSize: 11, color: textMuted, marginBottom: 8 }}>
+                  Specifies which instructor teaches this subject in each class stream.
+                </Text>
+
+                <View style={{ backgroundColor: inputBg, borderRadius: 12, borderWidth: 1, borderColor: border, overflow: 'hidden' }}>
+                  {assignedClassObjects.map((c, idx) => {
+                    const assignment = (form.class_teacher_assignments || []).find((a: any) => a.class_id === c.id);
+                    const teacher = teachers.find(t => t.id === assignment?.teacher_id);
+                    const teacherName = teacher?.users?.full_name || assignment?.teacher_id;
+                    const isUnassigned = !assignment?.teacher_id;
+
+                    return (
+                      <View
+                        key={c.id}
+                        style={{
+                          padding: 12,
+                          borderBottomWidth: idx < assignedClassObjects.length - 1 ? 1 : 0,
+                          borderBottomColor: border,
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: editing ? 6 : 0 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Ionicons name="school-outline" size={16} color="#FF6B00" />
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: textPrimary }}>{c.name}</Text>
+                          </View>
+                          {!editing && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              {isUnassigned ? (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : '#FEF3C7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                                  <Ionicons name="warning-outline" size={12} color="#F59E0B" />
+                                  <Text style={{ fontSize: 11, color: '#F59E0B', fontWeight: '700' }}>Unassigned</Text>
+                                </View>
+                              ) : (
+                                <Text style={{ fontSize: 13, color: textPrimary, fontWeight: '600' }}>
+                                  {teacherName}
+                                </Text>
+                              )}
+                            </View>
+                          )}
+                        </View>
+
+                        {editing && (
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
+                            <TouchableOpacity
+                              onPress={() => handleClassTeacherChange(c.id, "")}
+                              style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 4,
+                                borderRadius: 14,
+                                borderWidth: 1,
+                                borderColor: isUnassigned ? '#F59E0B' : border,
+                                backgroundColor: isUnassigned ? (isDark ? '#21262D' : '#FEF3C7') : 'transparent',
+                              }}
+                            >
+                              <Text style={{ fontSize: 11, fontWeight: isUnassigned ? '700' : '400', color: isUnassigned ? '#F59E0B' : textMuted }}>
+                                None
+                              </Text>
+                            </TouchableOpacity>
+                            {teachers.map((t) => {
+                              const isSelected = assignment?.teacher_id === t.id;
+                              const tName = t.users?.full_name || t.id;
+                              return (
+                                <TouchableOpacity
+                                  key={`${c.id}-${t.id}`}
+                                  onPress={() => handleClassTeacherChange(c.id, t.id)}
+                                  style={{
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 4,
+                                    borderRadius: 14,
+                                    borderWidth: 1,
+                                    borderColor: isSelected ? '#FF6B00' : border,
+                                    backgroundColor: isSelected ? (isDark ? '#21262D' : '#FFF7ED') : 'transparent',
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                  }}
+                                >
+                                  {isSelected && <Ionicons name="checkmark-circle" size={12} color="#FF6B00" />}
+                                  <Text style={{ fontSize: 11, fontWeight: isSelected ? '700' : '500', color: isSelected ? '#FF6B00' : textPrimary }}>
+                                    {tName}
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </ScrollView>
+                        )}
+                        {isUnassigned && editing && (
+                          <Text style={{ fontSize: 11, color: '#F59E0B', marginTop: 4, fontWeight: '500' }}>
+                            ⚠️ No teacher assigned for {c.name}
+                          </Text>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            );
+          })()}
 
           {/* Edit/Save Buttons */}
           {editing && (

@@ -56,8 +56,50 @@ export default function UserDetailsScreen() {
     const id = Array.isArray(idParam) ? idParam[0] : idParam;
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const { profile, isMain, isReadOnlyAdmin } = useAuth();
     const { isDark } = useTheme();
-    const { profile } = useAuth();
+
+    // Admin access level management
+    const [showAccessLevelModal, setShowAccessLevelModal] = useState(false);
+    const [selectedAccessLevel, setSelectedAccessLevel] = useState<'read_write' | 'read_only'>('read_write');
+    const [savingAccessLevel, setSavingAccessLevel] = useState(false);
+
+    const showReadOnlyNotice = () => {
+        Toast.show({
+            type: 'info',
+            text1: 'Read-Only Access',
+            text2: 'Read-only access — contact the main administrator to make changes.',
+            position: 'top',
+        });
+    };
+
+    const handleSaveAccessLevel = async () => {
+        if (!user) return;
+        try {
+            setSavingAccessLevel(true);
+            await api.put('/auth/admin-access-level', {
+                admin_user_id: user.id,
+                access_level: selectedAccessLevel,
+            });
+            Toast.show({
+                type: 'success',
+                text1: 'Access Level Updated',
+                text2: `Admin access level changed to ${selectedAccessLevel === 'read_only' ? 'Read-Only' : 'Read & Write'}.`,
+                position: 'top',
+            });
+            setShowAccessLevelModal(false);
+            await fetchUserDetails();
+        } catch (err: any) {
+            Toast.show({
+                type: 'error',
+                text1: 'Update Failed',
+                text2: err?.response?.data?.error || err.message || 'Failed to update access level',
+                position: 'top',
+            });
+        } finally {
+            setSavingAccessLevel(false);
+        }
+    };
 
     // Theme shorthands
     const bg = isDark ? '#161B22' : '#FFFFFF';
@@ -166,6 +208,8 @@ export default function UserDetailsScreen() {
         })(),
         avatar: user.avatar_url || undefined,
         is_active: (user as any).is_active !== false,
+        access_level: roleData?.access_level || (user.role === 'admin' ? 'read_write' : undefined),
+        is_main: !!roleData?.is_main,
     } : null;
 
     const isSelf = !!(user && profile && user.id === profile.id);
@@ -1158,9 +1202,31 @@ export default function UserDetailsScreen() {
                             user={mappedUser} variant="detailed" showBackButton
                             onBackPress={() => router.back()} showActions={!isEditing}
                             onMasterRecordPress={() => router.push(`/(admin)/users/${id}/master-record`)}
-                            onEditPress={() => setIsEditing(true)}
-                            onResetCredentialsPress={isSelf ? undefined : () => setShowResetModal(true)}
-                            onDeletePress={isSelf ? undefined : handleDelete}
+                            onEditPress={() => {
+                                if (isReadOnlyAdmin) {
+                                    showReadOnlyNotice();
+                                    return;
+                                }
+                                setIsEditing(true);
+                            }}
+                            onResetCredentialsPress={
+                                isSelf
+                                    ? undefined
+                                    : (isReadOnlyAdmin ? showReadOnlyNotice : () => setShowResetModal(true))
+                            }
+                            onDeletePress={
+                                isSelf
+                                    ? undefined
+                                    : (isReadOnlyAdmin ? showReadOnlyNotice : handleDelete)
+                            }
+                            onChangeAccessLevelPress={
+                                isMain && mappedUser.role === 'admin' && !mappedUser.is_main
+                                    ? () => {
+                                        setSelectedAccessLevel(mappedUser.access_level === 'read_only' ? 'read_only' : 'read_write');
+                                        setShowAccessLevelModal(true);
+                                    }
+                                    : undefined
+                            }
                         />
                     )}
                 </View>
@@ -1173,7 +1239,7 @@ export default function UserDetailsScreen() {
 
                             {!isSelf && (
                                 <TouchableOpacity 
-                                    onPress={() => setShowResetModal(true)}
+                                    onPress={isReadOnlyAdmin ? showReadOnlyNotice : () => setShowResetModal(true)}
                                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#1e293b' : '#f1f5f9', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#334155' : '#e2e8f0' }}>
                                     <MaterialCommunityIcons name="lock-reset" size={20} color={textPrimary} />
                                     <Text style={{ color: textPrimary, fontWeight: '700', marginLeft: 8 }}>Reset Credentials</Text>
@@ -1182,7 +1248,7 @@ export default function UserDetailsScreen() {
 
                             {!isSelf && (
                                 <TouchableOpacity
-                                    onPress={() => setShowStatusConfirm(true)}
+                                    onPress={isReadOnlyAdmin ? showReadOnlyNotice : () => setShowStatusConfirm(true)}
                                     style={{
                                         flexDirection: 'row',
                                         alignItems: 'center',
@@ -1205,7 +1271,7 @@ export default function UserDetailsScreen() {
                             )}
 
                             {!isSelf && (
-                                <TouchableOpacity onPress={handleDelete}
+                                <TouchableOpacity onPress={isReadOnlyAdmin ? showReadOnlyNotice : handleDelete}
                                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#2c1a1a' : '#fef2f2', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#7f1d1d' : '#fecaca' }}>
                                     <Ionicons name="trash-outline" size={18} color="#ef4444" />
                                     <Text style={{ color: '#ef4444', fontWeight: '700', marginLeft: 8 }}>Delete User</Text>
@@ -1490,6 +1556,82 @@ export default function UserDetailsScreen() {
                                 const isLinkedToOther = s.parent_students && s.parent_students.length > 0 && s.parent_students[0].parent_id !== roleData?.id;
                                 return !!isLinkedToOther;
                             }
+                        )}
+                    </View>
+                )}
+
+                {/* Admin Access Level & Privileges */}
+                {user.role === 'admin' && (
+                    <View style={{ marginHorizontal: 24, marginTop: 16, backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <View style={{ flex: 1, marginRight: 12 }}>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: textPrimary }}>
+                                    🛡️ Administrator Access Level
+                                </Text>
+                                <Text style={{ fontSize: 11, color: textSecondary, marginTop: 2 }}>
+                                    {roleData?.is_main 
+                                        ? 'Main Administrator account with unrestricted institutional control.' 
+                                        : 'Institutional administrative privileges and write permissions.'}
+                                </Text>
+                            </View>
+                            <View style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 4,
+                                borderRadius: 8,
+                                backgroundColor: roleData?.is_main 
+                                    ? (isDark ? '#4c1d9530' : '#f3e8ff') 
+                                    : (roleData?.access_level === 'read_only' ? (isDark ? '#78350f30' : '#fef3c7') : (isDark ? '#1e3a8a30' : '#dbeafe')),
+                                borderWidth: 1,
+                                borderColor: roleData?.is_main 
+                                    ? '#a855f7' 
+                                    : (roleData?.access_level === 'read_only' ? '#f59e0b' : '#3b82f6'),
+                            }}>
+                                <Text style={{
+                                    fontSize: 11,
+                                    fontWeight: '700',
+                                    color: roleData?.is_main 
+                                        ? '#9333ea' 
+                                        : (roleData?.access_level === 'read_only' ? '#b45309' : '#1d4ed8'),
+                                    textTransform: 'uppercase',
+                                }}>
+                                    {roleData?.is_main ? 'Main Admin' : (roleData?.access_level === 'read_only' ? 'Read-Only' : 'Read & Write')}
+                                </Text>
+                            </View>
+                        </View>
+
+                        <Text style={{ fontSize: 12, color: textSecondary, marginTop: 4, lineHeight: 18 }}>
+                            {roleData?.is_main
+                                ? 'This account created the school workspace and has permanent full access. It cannot be demoted or changed to read-only.'
+                                : (roleData?.access_level === 'read_only'
+                                    ? 'This administrator has audit and reporting access only. Cannot add, edit, or delete institutional data.'
+                                    : 'This administrator has full access to manage students, classes, subjects, enrollments, and settings.')}
+                        </Text>
+
+                        {isMain && !roleData?.is_main && (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setSelectedAccessLevel(roleData?.access_level === 'read_only' ? 'read_only' : 'read_write');
+                                    setShowAccessLevelModal(true);
+                                }}
+                                style={{
+                                    marginTop: 12,
+                                    paddingVertical: 10,
+                                    paddingHorizontal: 14,
+                                    borderRadius: 10,
+                                    borderWidth: 1,
+                                    borderColor: '#6366f1',
+                                    backgroundColor: isDark ? '#312e8130' : '#eef2ff',
+                                    alignSelf: 'flex-start',
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                }}
+                            >
+                                <Ionicons name="key-outline" size={14} color="#6366f1" />
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: '#6366f1' }}>
+                                    Change Access Level
+                                </Text>
+                            </TouchableOpacity>
                         )}
                     </View>
                 )}
@@ -1808,6 +1950,119 @@ export default function UserDetailsScreen() {
                 onConfirm={confirmDelete}
                 onClose={() => !deleteLoading && setShowDeleteConfirm(false)}
             />
+
+            {/* Change Admin Access Level Modal */}
+            <Modal
+                visible={showAccessLevelModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => !savingAccessLevel && setShowAccessLevelModal(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                    <View style={{ width: '100%', maxWidth: 450, backgroundColor: card, borderRadius: 20, borderWidth: 1, borderColor: border, padding: 24 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#6366f120', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Ionicons name="shield-outline" size={22} color="#6366f1" />
+                                </View>
+                                <View>
+                                    <Text style={{ fontSize: 18, fontWeight: '700', color: textPrimary }}>Change Access Level</Text>
+                                    <Text style={{ fontSize: 12, color: textSecondary }}>{mappedUser?.name}</Text>
+                                </View>
+                            </View>
+                            <TouchableOpacity onPress={() => setShowAccessLevelModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                <Ionicons name="close" size={22} color={textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={{ fontSize: 13, color: textSecondary, marginBottom: 16, lineHeight: 18 }}>
+                            Configure administrative permissions for this account. As Main Admin, you can switch access between full read & write and read-only at any time.
+                        </Text>
+
+                        <View style={{ gap: 12, marginBottom: 24 }}>
+                            {/* Read & Write Option */}
+                            <TouchableOpacity
+                                onPress={() => setSelectedAccessLevel('read_write')}
+                                activeOpacity={0.8}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    padding: 14,
+                                    borderRadius: 14,
+                                    borderWidth: 2,
+                                    backgroundColor: selectedAccessLevel === 'read_write' ? (isDark ? '#1e3a8a25' : '#eff6ff') : bg,
+                                    borderColor: selectedAccessLevel === 'read_write' ? '#3b82f6' : border
+                                }}
+                            >
+                                <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: selectedAccessLevel === 'read_write' ? '#3b82f6' : (isDark ? '#1f2937' : '#f3f4f6'), alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                    <Ionicons name="create-outline" size={18} color={selectedAccessLevel === 'read_write' ? '#fff' : textSecondary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                                        <Text style={{ fontWeight: '700', fontSize: 14, color: textPrimary }}>Read & Write</Text>
+                                        <View style={{ backgroundColor: '#dcfce7', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#15803d' }}>Full Access</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={{ fontSize: 12, color: textSecondary }}>Can modify records, classes, subjects, and users.</Text>
+                                </View>
+                                <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: selectedAccessLevel === 'read_write' ? '#3b82f6' : border, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}>
+                                    {selectedAccessLevel === 'read_write' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#3b82f6' }} />}
+                                </View>
+                            </TouchableOpacity>
+
+                            {/* Read-Only Option */}
+                            <TouchableOpacity
+                                onPress={() => setSelectedAccessLevel('read_only')}
+                                activeOpacity={0.8}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    padding: 14,
+                                    borderRadius: 14,
+                                    borderWidth: 2,
+                                    backgroundColor: selectedAccessLevel === 'read_only' ? (isDark ? '#e0e7ff25' : '#eef2ff') : bg,
+                                    borderColor: selectedAccessLevel === 'read_only' ? '#6366f1' : border
+                                }}
+                            >
+                                <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: selectedAccessLevel === 'read_only' ? '#6366f1' : (isDark ? '#1f2937' : '#f3f4f6'), alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                    <Ionicons name="eye-outline" size={18} color={selectedAccessLevel === 'read_only' ? '#fff' : textSecondary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                                        <Text style={{ fontWeight: '700', fontSize: 14, color: textPrimary }}>Read-Only</Text>
+                                        <View style={{ backgroundColor: '#fef3c7', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#b45309' }}>Audit & Reports</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={{ fontSize: 12, color: textSecondary }}>Can view and export reports. Write actions are locked.</Text>
+                                </View>
+                                <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: selectedAccessLevel === 'read_only' ? '#6366f1' : border, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}>
+                                    {selectedAccessLevel === 'read_only' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#6366f1' }} />}
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <TouchableOpacity
+                                onPress={() => setShowAccessLevelModal(false)}
+                                disabled={savingAccessLevel}
+                                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: border, alignItems: 'center' }}
+                            >
+                                <Text style={{ fontWeight: '600', color: textSecondary }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={handleSaveAccessLevel}
+                                disabled={savingAccessLevel}
+                                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#6366f1', alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+                            >
+                                {savingAccessLevel && <ActivityIndicator size="small" color="#fff" />}
+                                <Text style={{ fontWeight: '700', color: '#fff' }}>Save Changes</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }

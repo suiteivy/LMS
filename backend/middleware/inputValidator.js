@@ -279,6 +279,7 @@ const schemas = {
         logo_url: { type: 'string', required: false },
         category_id: { ...commonRules.uuid, required: false },
         category_ids: { type: 'array', required: false },
+        country: { type: 'string', enum: ['KE', 'UG', 'TZ', 'RW', 'BI', 'SS', 'ET', 'SO'], required: false },
     },
 
     idParam: {

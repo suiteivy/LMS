@@ -19,6 +19,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { formatClassLabel } from "@/utils/classLabel";
 import { ClassService } from "@/services/ClassService";
 import { ActionTooltip } from "@/components/common/ActionTooltip";
+import { SubjectAPI, SubjectCategoryData } from "@/services/SubjectService";
+import { SubjectCategoryModal } from "@/components/admin/SubjectCategoryModal";
 
 const CreateSubject = () => {
     const router = useRouter();
@@ -31,10 +33,24 @@ const CreateSubject = () => {
         handleInputChange,
         handleSubmit,
     } = useSubjectForm();
-    const { profile } = useAuth();
+    const { profile, isReadOnlyAdmin } = useAuth();
     const [classes, setClasses] = React.useState<any[]>([]);
     const [teachers, setTeachers] = React.useState<any[]>([]);
     const [levels, setLevels] = React.useState<any[]>([]);
+    const [categories, setCategories] = React.useState<SubjectCategoryData[]>([]);
+    const [showCategoryModal, setShowCategoryModal] = React.useState(false);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const data = await SubjectAPI.getSubjectCategories();
+                setCategories(data || []);
+            } catch (err) {
+                console.warn('Error fetching subject categories:', err);
+            }
+        };
+        fetchCategories();
+    }, []);
 
     useEffect(() => {
         const fetchClasses = async () => {
@@ -254,6 +270,67 @@ const CreateSubject = () => {
                                 />
                             </View>
 
+                            {/* Curriculum Category (Optional) */}
+                            <View style={{ marginBottom: 16 }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                    <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary }}>
+                                        Curriculum Category (Optional)
+                                    </Text>
+                                    <TouchableOpacity onPress={() => setShowCategoryModal(true)}>
+                                        <Text style={{ fontSize: 11, color: '#FF6B00', fontWeight: '600' }}>
+                                            {categories.length === 0 ? '+ Create Category' : 'Manage Categories'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <Text style={{ fontSize: 11, color: textSecondary, marginBottom: 8 }}>
+                                    Classify subjects into curriculum areas (e.g. Sciences, Languages, Humanities).
+                                </Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
+                                    {/* Uncategorized / None option */}
+                                    <TouchableOpacity
+                                        onPress={() => handleInputChange("category_id", null)}
+                                        style={{
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 6,
+                                            borderRadius: 20,
+                                            borderWidth: 1,
+                                            borderColor: !formData.category_id ? '#FF6B00' : border,
+                                            backgroundColor: !formData.category_id ? (isDark ? '#21262D' : '#FFF7ED') : inputBg,
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 12, fontWeight: !formData.category_id ? '700' : '500', color: !formData.category_id ? '#FF6B00' : textPrimary }}>
+                                            None (Uncategorized)
+                                        </Text>
+                                    </TouchableOpacity>
+                                    {categories.map((cat) => {
+                                        const isSelected = formData.category_id === cat.id;
+                                        const catColor = cat.color || '#3B82F6';
+                                        return (
+                                            <TouchableOpacity
+                                                key={cat.id}
+                                                onPress={() => handleInputChange("category_id", cat.id)}
+                                                style={{
+                                                    paddingHorizontal: 12,
+                                                    paddingVertical: 6,
+                                                    borderRadius: 20,
+                                                    borderWidth: 1,
+                                                    borderColor: isSelected ? catColor : border,
+                                                    backgroundColor: isSelected ? `${catColor}20` : inputBg,
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    gap: 6,
+                                                }}
+                                            >
+                                                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: catColor }} />
+                                                <Text style={{ fontSize: 12, fontWeight: isSelected ? '700' : '500', color: isSelected ? catColor : textPrimary }}>
+                                                    {cat.name}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </ScrollView>
+                            </View>
+
                             {/* Level Scoping */}
                             <View style={{ marginBottom: 16 }}>
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -350,6 +427,135 @@ const CreateSubject = () => {
                                 </View>
                             </View>
 
+                            {/* Per-Class Teacher Assignment Matrix */}
+                            {(() => {
+                                const selectedClassIds = Array.from(new Set([...(formData.class_ids || []), ...(formData.class_id ? [formData.class_id] : [])]));
+                                if (selectedClassIds.length === 0) return null;
+                                const selectedClassObjects = classes.filter(c => selectedClassIds.includes(c.value));
+
+                                const handleClassTeacherSelect = (classId: string, teacherId: string) => {
+                                    const existingAssignments = formData.class_teacher_assignments || [];
+                                    const nextAssignments = existingAssignments.filter(a => a.class_id !== classId);
+                                    if (teacherId) {
+                                        nextAssignments.push({ class_id: classId, teacher_id: teacherId });
+                                    }
+                                    handleInputChange("class_teacher_assignments", nextAssignments);
+
+                                    // Keep teacher_ids in sync with all assigned teachers
+                                    const assignedTids = Array.from(new Set([
+                                        ...nextAssignments.map(a => a.teacher_id),
+                                        ...(formData.hod_teacher_id ? [formData.hod_teacher_id] : [])
+                                    ]));
+                                    handleInputChange("teacher_ids", assignedTids);
+                                };
+
+                                return (
+                                    <View style={{ marginBottom: 16 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                            <Text style={{ fontSize: 13, fontWeight: '700', color: textPrimary }}>
+                                                Per-Class Teacher Assignment Matrix
+                                            </Text>
+                                            <View style={{ backgroundColor: isDark ? '#21262D' : '#E5E7EB', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                                                <Text style={{ fontSize: 11, fontWeight: '600', color: textSecondary }}>
+                                                    {selectedClassObjects.length} Class{selectedClassObjects.length > 1 ? 'es' : ''}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        <Text style={{ fontSize: 11, color: textSecondary, marginBottom: 10 }}>
+                                            Assign the primary teacher responsible for this subject in each class. Students and parents will see their specific class&apos;s assigned teacher.
+                                        </Text>
+
+                                        <View style={{ backgroundColor: inputBg, borderRadius: 12, borderWidth: 1, borderColor: border, overflow: 'hidden' }}>
+                                            {selectedClassObjects.map((c, idx) => {
+                                                const currentAssignment = (formData.class_teacher_assignments || []).find(a => a.class_id === c.value);
+                                                const assignedTeacherId = currentAssignment?.teacher_id || "";
+                                                const isUnassigned = !assignedTeacherId;
+
+                                                return (
+                                                    <View
+                                                        key={c.value}
+                                                        style={{
+                                                            padding: 12,
+                                                            borderBottomWidth: idx < selectedClassObjects.length - 1 ? 1 : 0,
+                                                            borderBottomColor: border,
+                                                        }}
+                                                    >
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                                <Ionicons name="school-outline" size={16} color="#FF6B00" />
+                                                                <Text style={{ fontSize: 13, fontWeight: '700', color: textPrimary }}>{c.label}</Text>
+                                                            </View>
+                                                            {isUnassigned ? (
+                                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : '#FEF3C7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                                                                    <Ionicons name="warning-outline" size={12} color="#F59E0B" />
+                                                                    <Text style={{ fontSize: 11, color: '#F59E0B', fontWeight: '700' }}>Unassigned</Text>
+                                                                </View>
+                                                            ) : (
+                                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : '#D1FAE5', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                                                                    <Ionicons name="checkmark-circle-outline" size={12} color="#10B981" />
+                                                                    <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '700' }}>Assigned</Text>
+                                                                </View>
+                                                            )}
+                                                        </View>
+
+                                                        {/* Teacher chips for this class */}
+                                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
+                                                            <TouchableOpacity
+                                                                onPress={() => handleClassTeacherSelect(c.value, "")}
+                                                                style={{
+                                                                    paddingHorizontal: 10,
+                                                                    paddingVertical: 5,
+                                                                    borderRadius: 14,
+                                                                    borderWidth: 1,
+                                                                    borderColor: isUnassigned ? '#F59E0B' : border,
+                                                                    backgroundColor: isUnassigned ? (isDark ? '#21262D' : '#FEF3C7') : 'transparent',
+                                                                }}
+                                                            >
+                                                                <Text style={{ fontSize: 11, fontWeight: isUnassigned ? '700' : '400', color: isUnassigned ? '#F59E0B' : textSecondary }}>
+                                                                    None
+                                                                </Text>
+                                                            </TouchableOpacity>
+                                                            {teachers.map((t) => {
+                                                                const isSelected = assignedTeacherId === t.id;
+                                                                const teacherName = t.users?.full_name || t.id;
+                                                                return (
+                                                                    <TouchableOpacity
+                                                                        key={`${c.value}-${t.id}`}
+                                                                        onPress={() => handleClassTeacherSelect(c.value, t.id)}
+                                                                        style={{
+                                                                            paddingHorizontal: 10,
+                                                                            paddingVertical: 5,
+                                                                            borderRadius: 14,
+                                                                            borderWidth: 1,
+                                                                            borderColor: isSelected ? '#FF6B00' : border,
+                                                                            backgroundColor: isSelected ? (isDark ? '#21262D' : '#FFF7ED') : 'transparent',
+                                                                            flexDirection: 'row',
+                                                                            alignItems: 'center',
+                                                                            gap: 4,
+                                                                        }}
+                                                                    >
+                                                                        {isSelected && <Ionicons name="checkmark-circle" size={12} color="#FF6B00" />}
+                                                                        <Text style={{ fontSize: 11, fontWeight: isSelected ? '700' : '500', color: isSelected ? '#FF6B00' : textPrimary }}>
+                                                                            {teacherName}
+                                                                        </Text>
+                                                                    </TouchableOpacity>
+                                                                );
+                                                            })}
+                                                        </ScrollView>
+
+                                                        {isUnassigned && (
+                                                            <Text style={{ fontSize: 11, color: '#F59E0B', marginTop: 4, fontWeight: '500' }}>
+                                                                ⚠️ No teacher assigned for {c.label}
+                                                            </Text>
+                                                        )}
+                                                    </View>
+                                                );
+                                            })}
+                                        </View>
+                                    </View>
+                                );
+                            })()}
+
                             {/* Head of Department (HOD) Picker */}
                             <View style={{ marginBottom: 16 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 6 }}>
@@ -424,7 +630,7 @@ const CreateSubject = () => {
 
                             {/* Assigned Teachers Checkbox List */}
                             <View style={{ marginBottom: 16 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary, marginBottom: 6 }}>Assigned Teachers</Text>
+                                <Text style={{ fontSize: 13, fontWeight: '500', color: textSecondary, marginBottom: 6 }}>All Assigned Teachers</Text>
                                 <View style={{ backgroundColor: inputBg, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: border }}>
                                     {teachers.map((t) => {
                                         const isSelected = (formData.teacher_ids || []).includes(t.id);
@@ -477,31 +683,44 @@ const CreateSubject = () => {
                             gap: 12,
                         }}>
                     <ActionTooltip
-                        text={!isValid ? "Enter a subject title to create subject" : "Save and create new subject"}
+                        text={isReadOnlyAdmin ? "Read-only access — contact the main administrator to make changes." : (!isValid ? "Enter a subject title to create subject" : "Save and create new subject")}
                         style={{ flex: 2 }}
                     >
                        <TouchableOpacity
                             onPress={handleSubmit}
-                            disabled={!isValid || isSubmitting}
+                            disabled={!isValid || isSubmitting || isReadOnlyAdmin}
                             style={{
                                 alignSelf: 'center',
                                 paddingVertical: 14,
                                 paddingHorizontal: 24,
                                 borderRadius: 16,
                                 alignItems: 'center',
-                                backgroundColor: (!isValid || isSubmitting) ? (isDark ? '#374151' : '#D1D5DB') : '#FF6B00',
-                                opacity: (!isValid || isSubmitting) ? 0.6 : 1,
-                                cursor: ((!isValid || isSubmitting) ? 'not-allowed' : 'pointer') as any,
+                                backgroundColor: (!isValid || isSubmitting || isReadOnlyAdmin) ? (isDark ? '#374151' : '#D1D5DB') : '#FF6B00',
+                                opacity: (!isValid || isSubmitting || isReadOnlyAdmin) ? 0.6 : 1,
+                                cursor: ((!isValid || isSubmitting || isReadOnlyAdmin) ? 'not-allowed' : 'pointer') as any,
                             }}
                         >
-                            <Text style={{ color: (!isValid || isSubmitting) ? (isDark ? '#9CA3AF' : '#6B7280') : 'white', fontWeight: '700', fontSize: 15 }}>
-                                {isSubmitting ? "Creating..." : "Create Subject"}
+                            <Text style={{ color: (!isValid || isSubmitting || isReadOnlyAdmin) ? (isDark ? '#9CA3AF' : '#6B7280') : 'white', fontWeight: '700', fontSize: 15 }}>
+                                {isReadOnlyAdmin ? "Read-Only Access" : isSubmitting ? "Creating..." : "Create Subject"}
                             </Text>
                         </TouchableOpacity>
                     </ActionTooltip>
                         </View>
                     </View>
                 </View>
+
+                {/* Subject Category Modal */}
+                <SubjectCategoryModal
+                    visible={showCategoryModal}
+                    onClose={() => setShowCategoryModal(false)}
+                    isReadOnly={isReadOnlyAdmin}
+                    onCategoriesChanged={async () => {
+                        try {
+                            const data = await SubjectAPI.getSubjectCategories();
+                            setCategories(data || []);
+                        } catch {}
+                    }}
+                />
             </Modal>
         </View>
     );

@@ -2,6 +2,7 @@ const supabase = require('../utils/supabaseClient.js');
 const { withSupabaseRetry } = require('../utils/supabaseRetry.js');
 const logger = require('../utils/logger.js');
 const outboxService = require('../services/outbox.service.js');
+const holidayService = require('../services/holiday.service.js');
 
 function isValidDateOnlyString(value) {
   if (typeof value !== 'string') return false;
@@ -239,6 +240,42 @@ exports.getEvents = async (req, res) => {
 
     const effectiveStart = start_date || monthRange?.start;
     const effectiveEnd = end_date || monthRange?.end;
+
+    // Merge national holidays as reference events
+    if (institutionId) {
+      try {
+        const holidays = await holidayService.getHolidaysForInstitution(institutionId, {
+          startDate: effectiveStart || undefined,
+          endDate: effectiveEnd || undefined,
+          year: year || undefined,
+          month: month || undefined,
+        });
+        for (const h of holidays) {
+          if (h.cancels_classes) {
+            cancelledDates.add(h.holiday_date);
+          }
+          events.push({
+            id: `nh-${h.id}`,
+            title: `🏛️ ${h.name}`,
+            description: h.is_provisional ? 'Provisional national holiday' : 'National holiday',
+            event_date: h.holiday_date,
+            start_time: null,
+            end_time: null,
+            event_type: 'national_holiday',
+            cancel_classes: h.cancels_classes,
+            is_timetable: false,
+            is_holiday: true,
+            holiday_decision: h.decision,
+            is_pending_decision: h.is_pending_decision,
+            is_provisional: h.is_provisional,
+            country_code: h.country_code,
+          });
+        }
+      } catch (holidayErr) {
+        // Non-fatal: national holidays table may not exist yet
+        logger.warn('Failed to load national holidays for calendar events:', { error: holidayErr?.message });
+      }
+    }
 
     if (effectiveStart && effectiveEnd) {
       const timetableEvents = await getUserTimetableEvents({
@@ -686,9 +723,149 @@ exports.getCancelledDates = async (req, res) => {
       }
     }
 
+    // Also include national holidays with cancel_classes decision
+    if (institutionId) {
+      try {
+        const holidays = await holidayService.getHolidaysForInstitution(institutionId);
+        for (const h of holidays) {
+          if (h.cancels_classes) {
+            cancelledDates.push({
+              id: `nh-${h.id}`,
+              event_date: h.holiday_date,
+              start_date: h.holiday_date,
+              end_date: h.holiday_date,
+              title: h.name,
+              description: h.is_provisional ? 'Provisional national holiday' : 'National holiday',
+              start_time: null,
+              end_time: null,
+              is_holiday: true,
+            });
+          }
+        }
+      } catch (holidayErr) {
+        logger.warn('Failed to load national holidays for cancelled dates:', { error: holidayErr?.message });
+      }
+    }
+
     return res.status(200).json({ cancelled_dates: cancelledDates });
   } catch (err) {
     console.error('getCancelledDates error:', err);
     return res.status(500).json({ error: 'Failed to fetch cancelled dates' });
+  }
+};
+
+/**
+ * GET /calendar/holidays
+ * Get national holidays for the institution's country with decision overlay
+ */
+exports.getNationalHolidays = async (req, res) => {
+  try {
+    const institutionId = req.institution_id;
+    if (!institutionId) {
+      return res.status(400).json({ error: 'Institution context missing' });
+    }
+
+    const { year, month, start_date, end_date } = req.query || {};
+
+    const holidays = await holidayService.getHolidaysForInstitution(institutionId, {
+      startDate: start_date || undefined,
+      endDate: end_date || undefined,
+      year: year || undefined,
+      month: month || undefined,
+    });
+
+    const country = await holidayService.getInstitutionCountry(institutionId);
+    const countryInfo = holidayService.EAST_AFRICAN_COUNTRIES.find(c => c.code === country);
+
+    return res.status(200).json({
+      country_code: country,
+      country_name: countryInfo?.name || country,
+      holidays,
+      pending_count: holidays.filter(h => h.is_pending_decision).length,
+    });
+  } catch (err) {
+    console.error('getNationalHolidays error:', err);
+    return res.status(500).json({ error: 'Failed to fetch national holidays' });
+  }
+};
+
+/**
+ * POST /calendar/holidays/sync
+ * Sync national holidays for the institution (optionally set country)
+ */
+exports.syncNationalHolidays = async (req, res) => {
+  try {
+    const institutionId = req.institution_id;
+    const userRole = req.userRole;
+    const userId = req.userId;
+
+    if (userRole !== 'admin' && userRole !== 'master_admin') {
+      return res.status(403).json({ error: 'Only administrators can sync national holidays.' });
+    }
+
+    if (!institutionId) {
+      return res.status(400).json({ error: 'Institution context missing' });
+    }
+
+    const { country_code } = req.body || {};
+
+    const holidays = await holidayService.syncHolidaysForInstitution(institutionId, country_code || null, userId);
+    const country = await holidayService.getInstitutionCountry(institutionId);
+    const countryInfo = holidayService.EAST_AFRICAN_COUNTRIES.find(c => c.code === country);
+
+    return res.status(200).json({
+      message: `National holidays synced for ${countryInfo?.name || country}`,
+      country_code: country,
+      country_name: countryInfo?.name || country,
+      holidays,
+      pending_count: holidays.filter(h => h.is_pending_decision).length,
+    });
+  } catch (err) {
+    console.error('syncNationalHolidays error:', err);
+    const statusCode = err?.message?.includes('Invalid country') ? 400 : 500;
+    return res.status(statusCode).json({ error: err.message || 'Failed to sync national holidays' });
+  }
+};
+
+/**
+ * POST /calendar/holidays/:id/decision
+ * Set decision on a national holiday: 'cancel_classes', 'run_classes', or 'pending'
+ */
+exports.setHolidayDecision = async (req, res) => {
+  try {
+    const institutionId = req.institution_id;
+    const userRole = req.userRole;
+    const userId = req.userId;
+
+    if (userRole !== 'admin' && userRole !== 'master_admin') {
+      return res.status(403).json({ error: 'Only administrators can set holiday decisions.' });
+    }
+
+    if (!institutionId) {
+      return res.status(400).json({ error: 'Institution context missing' });
+    }
+
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: 'National holiday ID is required.' });
+    }
+
+    const { decision, notes } = req.body || {};
+    if (!decision || !['pending', 'cancel_classes', 'run_classes'].includes(decision)) {
+      return res.status(400).json({
+        error: "Invalid decision. Must be 'pending', 'cancel_classes', or 'run_classes'.",
+      });
+    }
+
+    const result = await holidayService.setHolidayDecision(institutionId, id, decision, notes || null, userId);
+
+    return res.status(200).json({
+      message: `Holiday decision set to '${decision}' for ${result.name} on ${result.holiday_date}`,
+      holiday: result,
+    });
+  } catch (err) {
+    console.error('setHolidayDecision error:', err);
+    const statusCode = err?.message?.includes('not found') ? 404 : 500;
+    return res.status(statusCode).json({ error: err.message || 'Failed to set holiday decision' });
   }
 };

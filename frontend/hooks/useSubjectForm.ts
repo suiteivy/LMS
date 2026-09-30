@@ -15,10 +15,12 @@ export const useSubjectForm = () => {
   const [formData, setFormData] = useState<SubjectFormData>({
     title: "",
     description: "",
+    category_id: null,
     class_id: "",
     class_ids: [],
     level_ids: [],
     teacher_ids: [],
+    class_teacher_assignments: [],
     hod_teacher_id: "",
   });
 
@@ -54,11 +56,13 @@ export const useSubjectForm = () => {
       await SubjectAPI.createSubject({
         title: formData.title.trim(),
         description: formData.description || "",
+        category_id: formData.category_id || null,
         institution_id: profile?.institution_id || "",
         class_id: formData.class_id || undefined,
         class_ids: formData.class_ids || [],
         level_ids: formData.level_ids && formData.level_ids.length > 0 ? formData.level_ids : undefined,
         teacher_ids: formData.teacher_ids || [],
+        class_teacher_assignments: formData.class_teacher_assignments || [],
         hod_teacher_id: formData.hod_teacher_id || null,
         fee_amount: 0,
       });

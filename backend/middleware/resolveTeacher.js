@@ -21,32 +21,74 @@ async function resolveTeacher(userId, res) {
 }
 
 /**
- * Check if a teacher is assigned to a specific subject (primary via subjects.teacher_id or assistant via subject_teachers).
- * Returns { isAssigned, subject } — subject always included for downstream class_id access.
+ * Check if a teacher is assigned to a specific subject (primary via subjects.teacher_id, HOD, or assistant via subject_teachers).
+ * When classId is supplied, validates that this teacher is assigned to this subject FOR this specific class (or is HOD).
+ * Returns { isAssigned, subject, isHod } — subject always included for downstream class_id access.
  */
-async function isTeacherAssignedToSubject(teacherId, subjectId) {
+async function isTeacherAssignedToSubject(teacherId, subjectId, classId = null) {
     const { data: subject, error: sError } = await supabase
         .from('subjects')
-        .select('id, teacher_id, class_id')
+        .select('id, teacher_id, class_id, hod_teacher_id')
         .eq('id', subjectId)
         .single();
 
     if (sError || !subject) {
-        return { isAssigned: false, subject: null };
+        return { isAssigned: false, subject: null, isHod: false };
     }
 
-    if (subject.teacher_id === teacherId) {
-        return { isAssigned: true, subject };
+    const isHodDirect = subject.hod_teacher_id === teacherId;
+    if (isHodDirect) {
+        return { isAssigned: true, subject, isHod: true };
     }
 
-    const { data: assoc } = await supabase
+    // Check if teacher is HOD via subject_teachers
+    const { data: hodAssoc } = await supabase
         .from('subject_teachers')
         .select('id')
         .eq('subject_id', subjectId)
         .eq('teacher_id', teacherId)
+        .eq('is_hod', true)
         .maybeSingle();
 
-    return { isAssigned: !!assoc, subject };
+    if (hodAssoc) {
+        return { isAssigned: true, subject, isHod: true };
+    }
+
+    // If classId is specified, check class-specific assignment
+    if (classId) {
+        const { data: classAssoc } = await supabase
+            .from('subject_teachers')
+            .select('id, teacher_id')
+            .eq('subject_id', subjectId)
+            .eq('class_id', classId)
+            .maybeSingle();
+
+        if (classAssoc) {
+            // There is an explicit teacher assignment for this class!
+            return { isAssigned: classAssoc.teacher_id === teacherId, subject, isHod: false };
+        }
+    }
+
+    // Fallback: check general subject assignment
+    if (subject.teacher_id === teacherId) {
+        return { isAssigned: true, subject, isHod: false };
+    }
+
+    const { data: assoc } = await supabase
+        .from('subject_teachers')
+        .select('id, class_id')
+        .eq('subject_id', subjectId)
+        .eq('teacher_id', teacherId)
+        .limit(1);
+
+    if (assoc && assoc.length > 0) {
+        if (classId && assoc[0].class_id && assoc[0].class_id !== classId) {
+            return { isAssigned: false, subject, isHod: false };
+        }
+        return { isAssigned: true, subject, isHod: false };
+    }
+
+    return { isAssigned: false, subject, isHod: false };
 }
 
 /**
@@ -104,11 +146,11 @@ async function isStudentEnrolled(studentId, subjectId) {
  * Checks: 1) teacher exists, 2) teacher is assigned to subject.
  * Returns { teacherId, subject } on success, or sends error and returns null.
  */
-async function authorizeTeacherForSubject(userId, subjectId, res) {
+async function authorizeTeacherForSubject(userId, subjectId, res, classId = null) {
     const teacher = await resolveTeacher(userId, res);
     if (!teacher) return null;
 
-    const { isAssigned, subject } = await isTeacherAssignedToSubject(teacher.id, subjectId);
+    const { isAssigned, subject } = await isTeacherAssignedToSubject(teacher.id, subjectId, classId);
     if (!isAssigned) {
         if (res && !res.headersSent) {
             res.status(403).json({ error: "Access denied: You do not teach this subject" });

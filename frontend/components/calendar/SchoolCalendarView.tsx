@@ -20,6 +20,7 @@ import {
   ChevronsRight,
   Clock,
   Edit2,
+  Globe,
   Plus,
   RefreshCw,
   Trash2,
@@ -94,7 +95,7 @@ function LegendPill({ label, color, bg, textColor }: { label: string; color: str
 
 export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalendarViewProps) {
   const { isDark } = useTheme();
-  const { profile } = useAuth();
+  const { profile, isReadOnlyAdmin } = useAuth();
   const { width } = useWindowDimensions();
   const isAdmin = profile?.role === 'admin' || profile?.role === 'master_admin' || userRole === 'admin';
   const colors = isDark ? darkColors : lightColors;
@@ -120,6 +121,14 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
   const [modalVisible, setModalVisible] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // National Holiday State & Decisions
+  const [syncingHolidays, setSyncingHolidays] = useState(false);
+  const [decisionModalVisible, setDecisionModalVisible] = useState(false);
+  const [selectedHolidayEvent, setSelectedHolidayEvent] = useState<CalendarEvent | null>(null);
+  const [selectedDecision, setSelectedDecision] = useState<'cancel_classes' | 'run_classes' | 'pending'>('cancel_classes');
+  const [decisionNotes, setDecisionNotes] = useState('');
+  const [savingDecision, setSavingDecision] = useState(false);
 
   // Form State
   const [formTitle, setFormTitle] = useState('');
@@ -235,6 +244,69 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
       year: 'numeric',
     });
   }, [selectedDateStr]);
+
+  const pendingHolidays = useMemo(() => {
+    return events.filter((e) => e.is_national_holiday && e.is_pending_decision);
+  }, [events]);
+
+  const showReadOnlyNotice = () => {
+    showError('Read-Only Access', 'Read-only access — contact the main administrator to make changes.');
+  };
+
+  const handleSyncHolidays = async () => {
+    if (isReadOnlyAdmin) {
+      showReadOnlyNotice();
+      return;
+    }
+    try {
+      setSyncingHolidays(true);
+      const res = await CalendarAPI.syncNationalHolidays();
+      showSuccess('Holidays Synced', `National holidays updated for ${res.country_name || res.country_code}.`);
+      await fetchEvents();
+    } catch (err: any) {
+      showError('Sync Failed', err?.message || 'Failed to sync national holidays');
+    } finally {
+      setSyncingHolidays(false);
+    }
+  };
+
+  const handleOpenDecisionModal = (event: CalendarEvent) => {
+    if (isReadOnlyAdmin) {
+      showReadOnlyNotice();
+      return;
+    }
+    setSelectedHolidayEvent(event);
+    setSelectedDecision(event.decision || (event.cancel_classes ? 'cancel_classes' : 'run_classes'));
+    setDecisionNotes(event.description || '');
+    setDecisionModalVisible(true);
+  };
+
+  const handleSaveDecision = async () => {
+    if (!selectedHolidayEvent?.national_holiday_id) return;
+    try {
+      setSavingDecision(true);
+      await CalendarAPI.setHolidayDecision(
+        selectedHolidayEvent.national_holiday_id,
+        selectedDecision,
+        decisionNotes
+      );
+      showSuccess(
+        'Decision Saved',
+        selectedDecision === 'cancel_classes'
+          ? 'Classes cancelled for this national holiday.'
+          : selectedDecision === 'run_classes'
+          ? 'Classes will run as normal (observance only).'
+          : 'Holiday marked as pending decision.'
+      );
+      setDecisionModalVisible(false);
+      setSelectedHolidayEvent(null);
+      await fetchEvents();
+    } catch (err: any) {
+      showError('Failed to save decision', err?.message || 'Failed to update holiday decision');
+    } finally {
+      setSavingDecision(false);
+    }
+  };
 
   const handlePrevMonth = () => {
     setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
@@ -358,21 +430,56 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
         rightActions={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             {isAdmin && (
-              <ActionTooltip
-                label="Add Calendar Event"
-                description="Schedule an institution event, examination window, holiday, or class cancellation."
-                learnMoreAnchor="school-calendar"
-              >
-                <TouchableOpacity
-                  onPress={() => handleOpenCreateModal()}
-                  style={styles.addButton}
-                  accessibilityRole="button"
-                  accessibilityLabel="Create Calendar Event"
+              <>
+                <ActionTooltip
+                  label="Sync National Holidays"
+                  description="Synchronize official public and gazetted holidays for your institution's country."
+                  learnMoreAnchor="school-calendar"
                 >
-                  <Plus size={15} color="#ffffff" style={{ marginRight: 4 }} />
-                  <Text className="text-white font-bold text-xs">Add Event</Text>
-                </TouchableOpacity>
-              </ActionTooltip>
+                  <TouchableOpacity
+                    onPress={handleSyncHolidays}
+                    disabled={syncingHolidays}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: isDark ? '#1e293b' : '#f1f5f9',
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      paddingHorizontal: 12,
+                      paddingVertical: 7,
+                      borderRadius: 999,
+                      gap: 4,
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Sync National Holidays"
+                  >
+                    {syncingHolidays ? (
+                      <ActivityIndicator size="small" color={colors.accent} />
+                    ) : (
+                      <Globe size={14} color={colors.text} />
+                    )}
+                    <Text style={{ color: colors.text, fontWeight: '700', fontSize: 12 }}>
+                      {syncingHolidays ? 'Syncing...' : 'Sync Holidays'}
+                    </Text>
+                  </TouchableOpacity>
+                </ActionTooltip>
+
+                <ActionTooltip
+                  label="Add Calendar Event"
+                  description="Schedule an institution event, examination window, holiday, or class cancellation."
+                  learnMoreAnchor="school-calendar"
+                >
+                  <TouchableOpacity
+                    onPress={isReadOnlyAdmin ? showReadOnlyNotice : () => handleOpenCreateModal()}
+                    style={styles.addButton}
+                    accessibilityRole="button"
+                    accessibilityLabel="Create Calendar Event"
+                  >
+                    <Plus size={15} color="#ffffff" style={{ marginRight: 4 }} />
+                    <Text className="text-white font-bold text-xs">Add Event</Text>
+                  </TouchableOpacity>
+                </ActionTooltip>
+              </>
             )}
             <ActionTooltip
               label="Refresh Calendar"
@@ -403,6 +510,53 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: isTablet ? 32 : 110 }} showsVerticalScrollIndicator={false}>
         <View style={{ gap: 14 }}>
+          {/* Pending National Holidays Warning Banner */}
+          {pendingHolidays.length > 0 && (
+            <View style={{
+              backgroundColor: isDark ? '#78350f30' : '#fef3c7',
+              borderColor: '#f59e0b',
+              borderWidth: 1,
+              borderRadius: 18,
+              padding: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#fef3c7', alignItems: 'center', justifyContent: 'center' }}>
+                  <AlertTriangle size={20} color="#b45309" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontWeight: '800', fontSize: 13, color: isDark ? '#fbbf24' : '#92400e' }}>
+                    {pendingHolidays.length} National Holiday{pendingHolidays.length !== 1 ? 's' : ''} Awaiting Decision
+                  </Text>
+                  <Text style={{ fontSize: 11, color: isDark ? '#d1d5db' : '#78350f', marginTop: 2, lineHeight: 16 }}>
+                    Classes continue as normal until administration explicitly decides to cancel classes.
+                  </Text>
+                </View>
+              </View>
+              {isAdmin && (
+                <TouchableOpacity
+                  onPress={() => {
+                    const first = pendingHolidays[0];
+                    if (first) {
+                      setSelectedDateStr(first.event_date);
+                      handleOpenDecisionModal(first);
+                    }
+                  }}
+                  style={{
+                    backgroundColor: '#f59e0b',
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderRadius: 10,
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>Review Decisions</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
           <GlassCard
             variant="modal"
             borderRadius={22}
@@ -453,7 +607,8 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
               <LegendPill label="Today" color={colors.blue} bg={colors.blueDim} textColor={colors.text} />
               <LegendPill label="Selected" color={colors.accent} bg={colors.accentDim} textColor={colors.text} />
               <LegendPill label="Has Event" color={EVENT_TYPE_STYLES.event.color} bg={'rgba(255,107,0,0.12)'} textColor={colors.text} />
-              <LegendPill label="Class" color={EVENT_TYPE_STYLES.class.color} bg={'rgba(139,92,246,0.12)'} textColor={colors.text} />
+              <LegendPill label="🏛️ National Holiday" color={'#6366f1'} bg={'rgba(99,102,241,0.12)'} textColor={colors.text} />
+              <LegendPill label="⚠️ Pending Decision" color={'#f59e0b'} bg={'rgba(245,158,11,0.12)'} textColor={colors.text} />
               <LegendPill label="Cancelled Classes" color={colors.red} bg={colors.redDim} textColor={colors.text} />
             </View>
           </GlassCard>
@@ -526,6 +681,9 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
                           </Text>
 
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, minHeight: 10 }}>
+                            {dayEvents.some((e) => e.is_national_holiday) && (
+                              <Text style={{ fontSize: 9 }}>🏛️</Text>
+                            )}
                             {markerEvents.map((event, idx) => {
                               const marker = getEventTypeStyle(event);
                               return <View key={`${event.id}-${idx}`} style={{ width: 6, height: 6, borderRadius: 99, backgroundColor: marker.color }} />;
@@ -540,6 +698,10 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
                           {hasCancelClasses ? (
                             <View style={{ marginTop: 4, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, backgroundColor: colors.redDim, borderWidth: 1, borderColor: colors.redBorder }}>
                               <Text style={{ color: colors.red, fontSize: 8, fontWeight: '900', textTransform: 'uppercase' }}>Cancelled</Text>
+                            </View>
+                          ) : dayEvents.some((e) => e.is_national_holiday && e.is_pending_decision) ? (
+                            <View style={{ marginTop: 4, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#f59e0b' }}>
+                              <Text style={{ color: '#b45309', fontSize: 8, fontWeight: '900', textTransform: 'uppercase' }}>Pending</Text>
                             </View>
                           ) : null}
                         </View>
@@ -602,10 +764,36 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                             <View style={{ flex: 1 }}>
                               <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>{event.title}</Text>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                                <View style={{ borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: `${typeChip.color}1A`, borderWidth: 1, borderColor: `${typeChip.color}66` }}>
-                                  <Text style={{ fontSize: 10, fontWeight: '800', color: typeChip.color, textTransform: 'uppercase' }}>{typeChip.label}</Text>
-                                </View>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                                {event.is_national_holiday ? (
+                                  <>
+                                    <View style={{ borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: '#6366f11A', borderWidth: 1, borderColor: '#6366f166' }}>
+                                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#6366f1', textTransform: 'uppercase' }}>🏛️ National Holiday</Text>
+                                    </View>
+                                    {event.is_provisional && (
+                                      <View style={{ borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: '#f59e0b1A', borderWidth: 1, borderColor: '#f59e0b66' }}>
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#f59e0b', textTransform: 'uppercase' }}>Provisional</Text>
+                                      </View>
+                                    )}
+                                    {event.is_pending_decision ? (
+                                      <View style={{ borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#f59e0b' }}>
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#b45309', textTransform: 'uppercase' }}>⚠️ Pending Decision (Classes Run)</Text>
+                                      </View>
+                                    ) : event.cancel_classes ? (
+                                      <View style={{ borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: colors.redDim, borderWidth: 1, borderColor: colors.redBorder }}>
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: colors.red, textTransform: 'uppercase' }}>Classes Cancelled</Text>
+                                      </View>
+                                    ) : (
+                                      <View style={{ borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: '#dcfce7', borderWidth: 1, borderColor: '#22c55e' }}>
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#15803d', textTransform: 'uppercase' }}>Classes Run Normally</Text>
+                                      </View>
+                                    )}
+                                  </>
+                                ) : (
+                                  <View style={{ borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: `${typeChip.color}1A`, borderWidth: 1, borderColor: `${typeChip.color}66` }}>
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: typeChip.color, textTransform: 'uppercase' }}>{typeChip.label}</Text>
+                                  </View>
+                                )}
                                 {(event.start_time || event.end_time) ? (
                                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                     <Clock size={12} color={colors.textSub} style={{ marginRight: 4 }} />
@@ -618,14 +806,33 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
                             </View>
 
                             {isAdmin ? (
-                              <View style={{ flexDirection: 'row', gap: 6 }}>
-                                <TouchableOpacity onPress={() => handleOpenEditModal(event)} style={[styles.iconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} accessibilityLabel="Edit event">
-                                  <Edit2 size={13} color={colors.textSub} />
+                              event.is_national_holiday ? (
+                                <TouchableOpacity
+                                  onPress={() => handleOpenDecisionModal(event)}
+                                  style={{
+                                    backgroundColor: event.is_pending_decision ? '#f59e0b' : '#3b82f6',
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 6,
+                                    borderRadius: 8,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                  }}
+                                >
+                                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>
+                                    {event.is_pending_decision ? 'Set Decision' : 'Change Decision'}
+                                  </Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity onPress={() => handleDeleteEvent(event)} style={[styles.iconBtn, { backgroundColor: colors.redDim, borderColor: colors.redBorder }]} accessibilityLabel="Delete event">
-                                  <Trash2 size={13} color={colors.red} />
-                                </TouchableOpacity>
-                              </View>
+                              ) : (
+                                <View style={{ flexDirection: 'row', gap: 6 }}>
+                                  <TouchableOpacity onPress={() => isReadOnlyAdmin ? showReadOnlyNotice() : handleOpenEditModal(event)} style={[styles.iconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} accessibilityLabel="Edit event">
+                                    <Edit2 size={13} color={colors.textSub} />
+                                  </TouchableOpacity>
+                                  <TouchableOpacity onPress={() => isReadOnlyAdmin ? showReadOnlyNotice() : handleDeleteEvent(event)} style={[styles.iconBtn, { backgroundColor: colors.redDim, borderColor: colors.redBorder }]} accessibilityLabel="Delete event">
+                                    <Trash2 size={13} color={colors.red} />
+                                  </TouchableOpacity>
+                                </View>
+                              )
                             ) : null}
                           </View>
 
@@ -903,6 +1110,153 @@ export function SchoolCalendarView({ roleTitle, userRole, onBack }: SchoolCalend
                     </TouchableOpacity>
                   );
                 })()}
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Admin Holiday Decision Modal */}
+      {isAdmin && (
+        <Modal
+          visible={decisionModalVisible}
+          animationType="fade"
+          transparent
+          onRequestClose={() => !savingDecision && setDecisionModalVisible(false)}
+        >
+          <View className="flex-1 bg-black/60 justify-center items-center p-4">
+            <View className={`w-full max-w-md rounded-3xl p-6 border shadow-2xl ${isDark ? 'bg-[#161B22] border-[#21262D]' : 'bg-white border-gray-200'}`}>
+              <View className="flex-row justify-between items-center mb-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-xl">🏛️</Text>
+                  <View>
+                    <Text className={`text-base font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      National Holiday Decision
+                    </Text>
+                    <Text className="text-xs text-gray-500">
+                      {selectedHolidayEvent?.event_date}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={() => setDecisionModalVisible(false)} className="p-1 rounded-full">
+                  <X size={18} color={isDark ? '#9CA3AF' : '#4B5563'} />
+                </TouchableOpacity>
+              </View>
+
+              <Text className={`font-bold text-sm mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {selectedHolidayEvent?.title}
+              </Text>
+              <Text className="text-xs text-gray-500 mb-4 leading-relaxed">
+                Choose whether regular classes are cancelled for this holiday, or if classes run normally while observing the day.
+              </Text>
+
+              <View className="gap-3 mb-5">
+                {/* Cancel Classes Option */}
+                <TouchableOpacity
+                  onPress={() => setSelectedDecision('cancel_classes')}
+                  activeOpacity={0.8}
+                  style={{
+                    padding: 14,
+                    borderRadius: 14,
+                    borderWidth: 2,
+                    borderColor: selectedDecision === 'cancel_classes' ? '#ef4444' : (isDark ? '#21262D' : '#e5e7eb'),
+                    backgroundColor: selectedDecision === 'cancel_classes' ? (isDark ? '#7f1d1d25' : '#fef2f2') : (isDark ? '#161B22' : '#ffffff'),
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text style={{ fontWeight: '800', fontSize: 13, color: selectedDecision === 'cancel_classes' ? '#ef4444' : (isDark ? '#ffffff' : '#111827') }}>
+                      🚫 Cancel Classes (Full Holiday)
+                    </Text>
+                    <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: selectedDecision === 'cancel_classes' ? '#ef4444' : '#9ca3af', alignItems: 'center', justifyContent: 'center' }}>
+                      {selectedDecision === 'cancel_classes' && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444' }} />}
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: 11, color: isDark ? '#9ca3af' : '#6b7280' }}>
+                    Classes are suspended. Date will count as a school closure in timetable and attendance.
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Run Classes Option */}
+                <TouchableOpacity
+                  onPress={() => setSelectedDecision('run_classes')}
+                  activeOpacity={0.8}
+                  style={{
+                    padding: 14,
+                    borderRadius: 14,
+                    borderWidth: 2,
+                    borderColor: selectedDecision === 'run_classes' ? '#3b82f6' : (isDark ? '#21262D' : '#e5e7eb'),
+                    backgroundColor: selectedDecision === 'run_classes' ? (isDark ? '#1e3a8a25' : '#eff6ff') : (isDark ? '#161B22' : '#ffffff'),
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text style={{ fontWeight: '800', fontSize: 13, color: selectedDecision === 'run_classes' ? '#3b82f6' : (isDark ? '#ffffff' : '#111827') }}>
+                      📚 Classes Run as Normal (Observance Only)
+                    </Text>
+                    <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: selectedDecision === 'run_classes' ? '#3b82f6' : '#9ca3af', alignItems: 'center', justifyContent: 'center' }}>
+                      {selectedDecision === 'run_classes' && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#3b82f6' }} />}
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: 11, color: isDark ? '#9ca3af' : '#6b7280' }}>
+                    School operates on standard timetable. Holiday is marked for awareness without closure.
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Keep Pending Option */}
+                <TouchableOpacity
+                  onPress={() => setSelectedDecision('pending')}
+                  activeOpacity={0.8}
+                  style={{
+                    padding: 14,
+                    borderRadius: 14,
+                    borderWidth: 2,
+                    borderColor: selectedDecision === 'pending' ? '#f59e0b' : (isDark ? '#21262D' : '#e5e7eb'),
+                    backgroundColor: selectedDecision === 'pending' ? (isDark ? '#78350f25' : '#fef3c7') : (isDark ? '#161B22' : '#ffffff'),
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text style={{ fontWeight: '800', fontSize: 13, color: selectedDecision === 'pending' ? '#b45309' : (isDark ? '#ffffff' : '#111827') }}>
+                      ⏳ Pending Decision
+                    </Text>
+                    <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: selectedDecision === 'pending' ? '#f59e0b' : '#9ca3af', alignItems: 'center', justifyContent: 'center' }}>
+                      {selectedDecision === 'pending' && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#f59e0b' }} />}
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: 11, color: isDark ? '#9ca3af' : '#6b7280' }}>
+                    Decision is deferred. Classes run as normal until confirmed.
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View className="mb-4">
+                <Text className={`text-xs font-bold mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Decision Notes (Optional)
+                </Text>
+                <TextInput
+                  value={decisionNotes}
+                  onChangeText={setDecisionNotes}
+                  placeholder="e.g. Board approved half-day observance"
+                  placeholderTextColor="#9CA3AF"
+                  className={`px-3.5 py-2.5 rounded-xl border text-sm font-medium ${isDark ? 'bg-[#0D1117] border-[#30363D] text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
+                />
+              </View>
+
+              <View className="flex-row gap-3">
+                <TouchableOpacity
+                  disabled={savingDecision}
+                  onPress={() => setDecisionModalVisible(false)}
+                  className="flex-1 py-3 rounded-xl border border-gray-300 dark:border-gray-700 items-center justify-center"
+                >
+                  <Text className="text-gray-700 dark:text-gray-300 font-bold text-sm">Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  disabled={savingDecision}
+                  onPress={handleSaveDecision}
+                  className="flex-1 py-3 rounded-xl bg-orange-500 items-center justify-center flex-row gap-2"
+                >
+                  {savingDecision && <ActivityIndicator size="small" color="#fff" />}
+                  <Text className="text-white font-bold text-sm">Save Decision</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>

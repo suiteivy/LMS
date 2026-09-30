@@ -53,6 +53,7 @@ const seedDemoUsers = async (): Promise<DemoUser[]> => {
   const dummy = await getDemoDummyData();
   return [
     { user: dummy.users.admin, roleRecord: dummy.roleRecords.admin },
+    { user: dummy.users.readonlyAdmin, roleRecord: dummy.roleRecords.readonlyAdmin },
     { user: dummy.users.teacher, roleRecord: dummy.roleRecords.teacher },
     { user: dummy.users.student, roleRecord: dummy.roleRecords.student },
     { user: dummy.users.parent, roleRecord: dummy.roleRecords.parent },

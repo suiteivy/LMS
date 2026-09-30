@@ -30,6 +30,8 @@ export interface User {
   exit_date?: string;
   exit_reason?: string;
   retention_until?: string;
+  access_level?: 'read_write' | 'read_only' | string;
+  is_main?: boolean;
 }
 
 export interface CreateUserData {
@@ -69,10 +71,12 @@ export interface StatsData {
 export interface SubjectFormData {
   title: string;
   description: string;
+  category_id?: string | null;
   class_id?: string;
   class_ids?: string[];
   level_ids?: string[];
   teacher_ids?: string[];
+  class_teacher_assignments?: Array<{ class_id: string; teacher_id: string }>;
   hod_teacher_id?: string | null;
 }
 
@@ -183,6 +187,20 @@ export interface Subject {
   lessons: Lesson[];
   class_id?: string;
   level_ids?: string[] | null;
+  category_id?: string | null;
+  categories?: {
+    id: string;
+    name: string;
+    color?: string;
+    description?: string;
+  } | null;
+  category_name?: string;
+  class_teacher_assignments?: Array<{
+    class_id: string;
+    teacher_id: string;
+    class_name?: string;
+    teacher_name?: string;
+  }>;
 }
 
 export interface Lesson {
