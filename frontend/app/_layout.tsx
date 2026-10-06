@@ -182,7 +182,13 @@ function AppShell() {
   }, []);
 
   React.useEffect(() => {
-    if (Platform.OS === 'web') return;
+    if (Platform.OS === 'web') {
+      const isEntrancePreview = typeof window !== 'undefined' && (
+        new URLSearchParams(window.location.search).get('entrance') === '1' ||
+        window.sessionStorage?.getItem('preview_entrance') === 'true'
+      );
+      if (!isEntrancePreview) return;
+    }
     if (hasCompletedColdLaunch) {
       SplashScreen.hideAsync().catch(() => {});
       return;
@@ -218,7 +224,7 @@ function AppShell() {
       {Platform.OS === 'android' ? (
         <StatusBar
           style={showEntrance ? "light" : (isDark ? "light" : "dark")}
-          backgroundColor={showEntrance ? '#070514' : (isDark ? '#0F0B2E' : '#ffffff')}
+          backgroundColor={showEntrance ? '#0D1117' : (isDark ? '#0D1117' : '#ffffff')}
           translucent={true}
         />
       ) : (
@@ -247,7 +253,7 @@ function GlobalNotifications() {
 
 // AuthHandler 
 function AuthHandler() {
-  const { loading, isInitializing, isNavReady, resetSessionTimer, session, profile, isPlatformAdmin, activeRole, availableRoles, getRoleRedirect, signOut, wasDemo, clearWasDemo, maintenanceModeEnabled, maintenanceModeMessage, isDemoExiting } = useAuth();
+  const { loading, isInitializing, isNavReady, isProfileLoading, resetSessionTimer, session, profile, isPlatformAdmin, activeRole, availableRoles, getRoleRedirect, signOut, wasDemo, clearWasDemo, maintenanceModeEnabled, maintenanceModeMessage, isDemoExiting, isRoleSwitching, switchingToRole } = useAuth();
   const { isDark } = useTheme();
   const segments = useSegments();
   const router = useRouter();
@@ -317,7 +323,8 @@ function AuthHandler() {
   }, [segments]);
 
   React.useEffect(() => {
-    if (isInitializing || !isNavReady) return;
+    if (isInitializing || !isNavReady || loading || isProfileLoading || isRoleSwitching || isDemoExiting) return;
+    if (session && !profile) return;
 
     const isRoot = routePath === '/' || routePath === '';
     const isCredentialDelivery = currentPath === '/credential-delivery';
@@ -456,7 +463,7 @@ function AuthHandler() {
 
   return (
     <View
-      style={{ flex: 1, backgroundColor: isDark ? '#070514' : '#ffffff' }}
+      style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#ffffff' }}
       onStartShouldSetResponder={handleInteraction}
     >
       <Stack
@@ -464,7 +471,7 @@ function AuthHandler() {
           headerShown: false,
           animation: Platform.OS === 'web' ? 'none' : 'slide_from_right',
           animationDuration: 220,
-          contentStyle: { backgroundColor: isDark ? '#070514' : '#ffffff' },
+          contentStyle: { backgroundColor: isDark ? '#0D1117' : '#ffffff' },
         }}
       >
         <Stack.Screen name="index" />
@@ -504,7 +511,7 @@ function AuthHandler() {
             <View
               style={{
                 flex: 1,
-                backgroundColor: isDark ? '#070514' : '#F6F8FA',
+                backgroundColor: isDark ? '#0D1117' : '#F6F8FA',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -512,6 +519,50 @@ function AuthHandler() {
               <ActivityIndicator size="large" color="#FF6B00" />
             </View>
           )}
+        </View>
+      )}
+
+      {isRoleSwitching && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: isDark ? 'rgba(7, 5, 20, 0.8)' : 'rgba(15, 23, 42, 0.65)',
+            zIndex: 115000,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 24,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: isDark ? '#161B22' : '#FFFFFF',
+              borderRadius: 20,
+              paddingVertical: 26,
+              paddingHorizontal: 32,
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: isDark ? '#30363D' : '#E1E4E8',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.25,
+              shadowRadius: 20,
+              elevation: 10,
+              minWidth: 260,
+              maxWidth: 340,
+            }}
+          >
+            <ActivityIndicator size="large" color="#FF6900" style={{ marginBottom: 16 }} />
+            <Text style={{ fontSize: 16, fontWeight: '700', color: isDark ? '#FFFFFF' : '#1F2937', marginBottom: 6, textAlign: 'center' }}>
+              Switching Workspace...
+            </Text>
+            <Text style={{ fontSize: 13, color: isDark ? '#8B949E' : '#6B7280', textAlign: 'center', textTransform: 'capitalize' }}>
+              Preparing {switchingToRole || 'new'} portal
+            </Text>
+          </View>
         </View>
       )}
 
@@ -543,7 +594,7 @@ function AuthHandler() {
           />
           <View
             style={{
-              backgroundColor: 'rgba(19,16,58,0.75)',
+              backgroundColor: 'rgba(22,27,34,0.92)',
               borderColor: 'rgba(255,105,0,0.35)',
               borderWidth: 1,
               borderRadius: 24,
@@ -574,7 +625,7 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => voi
     <View
       style={{
         flex: 1,
-        backgroundColor: '#0F0B2E',
+        backgroundColor: '#0D1117',
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 24,
@@ -582,7 +633,7 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => voi
     >
       <View
         style={{
-          backgroundColor: 'rgba(19,16,58,0.85)',
+          backgroundColor: 'rgba(22,27,34,0.95)',
           borderColor: 'rgba(255,107,0,0.3)',
           borderWidth: 1,
           borderRadius: 20,

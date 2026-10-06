@@ -28,10 +28,10 @@ export const lightColors = {
 } as const;
 
 export const darkColors = {
-    bg:           "#0F0B2E",
-    surface:      "#13103A",
-    surface2:     "#1a1645",
-    border:       "rgba(255,255,255,0.1)",
+    bg:           "#0D1117",
+    surface:      "#161B22",
+    surface2:     "#21262D",
+    border:       "#21262D",
     borderLight:  "rgba(255,255,255,0.06)",
     text:         "#f9fafb",
     textSub:      "#9ca3af",

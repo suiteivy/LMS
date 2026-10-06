@@ -1,5 +1,6 @@
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
 import { Spinner } from '@/components/ui/Spinner';
+import { TableScreenSkeleton } from '@/components/ui/skeletons';
 import { SubscriptionGate } from '@/components/shared/SubscriptionComponents';
 import { HelpTooltip } from '@/components/settings/HelpTooltip';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -425,8 +426,8 @@ export default function AdminPromotionsScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#FFFFFF' }}>
         <UnifiedHeader title="Promotions" subtitle="Progression Engine" role="Admin" onBack={() => router.back()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#FF6900" />
+        <View style={{ flex: 1, padding: 16 }}>
+          <TableScreenSkeleton rows={6} columns={4} />
         </View>
       </View>
     );

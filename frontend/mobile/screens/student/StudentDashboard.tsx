@@ -359,7 +359,7 @@ export function StudentDashboardMobile() {
           <MobileCard
             style={[
               styles.metricCard,
-              { backgroundColor: isDark ? '#1a1a2e' : '#111827' }
+              { backgroundColor: isDark ? '#161B22' : '#111827' }
             ]}
           >
             <View style={styles.metricIconWrap}>
@@ -500,10 +500,10 @@ export function StudentDashboardMobile() {
         </View>
       )}
 
-      {/* ── Academic Tools ── */}
+      {/* ── Quick Actions ── */}
       <View style={[styles.sectionHeaderRow, { marginTop: spacing.lg }]}>
         <Text style={[styles.sectionTitle, { color: isDark ? '#f1f5f9' : '#111827' }]}>
-          Academic Tools
+          Quick Actions
         </Text>
       </View>
 
@@ -514,12 +514,12 @@ export function StudentDashboardMobile() {
             <TouchableOpacity
               key={action.label}
               onPress={() => router.push({ pathname: action.route as any, params: { backTo: '/(student)' } } as any)}
-              activeOpacity={0.75}
+              activeOpacity={0.7}
               style={[
                 styles.quickActionButton,
                 {
-                  backgroundColor: isDark ? '#161B22' : '#ffffff',
-                  borderColor: isDark ? '#1f2937' : '#f1f5f9',
+                  backgroundColor: isDark ? mobileColors.bgCard : mobileColors.bgLightCard,
+                  borderColor: isDark ? mobileColors.borderSubtle : mobileColors.borderLight,
                 }
               ]}
             >
@@ -529,10 +529,10 @@ export function StudentDashboardMobile() {
                   { backgroundColor: `${action.color}15` }
                 ]}
               >
-                <Icon size={22} color={action.color} />
+                <Icon size={18} color={action.color} />
               </View>
               <Text
-                style={[styles.quickActionLabel, { color: isDark ? '#e2e8f0' : '#111827' }]}
+                style={[styles.quickActionLabel, { color: isDark ? mobileColors.textPrimary : mobileColors.textDark }]}
                 numberOfLines={1}
               >
                 {action.label}
@@ -730,30 +730,31 @@ const styles = StyleSheet.create({
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    justifyContent: 'space-between',
+    gap: 8,
   },
   quickActionButton: {
-    width: '48%',
-    minHeight: MIN_TOUCH_TARGET + 16,
-    padding: spacing.md,
-    borderRadius: 20,
-    borderWidth: 1,
+    width: '48.5%',
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    minHeight: MIN_TOUCH_TARGET,
   },
   quickActionIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    justifyContent: 'center',
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 6,
+    justifyContent: 'center',
+    marginRight: 8,
   },
   quickActionLabel: {
+    flex: 1,
     fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.1,
-    textAlign: 'center',
   },
   trendsCard: {
     marginTop: spacing.md,

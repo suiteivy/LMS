@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StatusBar, TextInput, Modal } from "react-native";
 import { ArrowLeft, Users, Search, Download, Calendar, GraduationCap, X, Phone, User, MapPin, AlertCircle, ShieldAlert, BookOpen, Award, ArrowLeftRight, FileText } from "lucide-react-native";
 import { router } from "expo-router";
-import { ListItemSkeleton } from "@/components/ui/skeletons";
+import { TableScreenSkeleton, UserProfileSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { StudentService } from "@/services/StudentService";
@@ -167,7 +167,7 @@ export default function StudentsPage() {
                 </View>
 
                 {loading ? (
-                    <ListItemSkeleton loading={loading} count={4} label="Loading students..." />
+                    <TableScreenSkeleton rows={6} columns={3} />
                 ) : (
                     <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
                         {filteredStudents.length === 0 ? (
@@ -245,9 +245,8 @@ export default function StudentsPage() {
                         </View>
 
                         {detailsLoading ? (
-                            <View className="flex-1 items-center justify-center">
-                                <ActivityIndicator size="large" color="#FF6900" />
-                                <Text className="text-gray-400 dark:text-gray-500 mt-4 font-semibold text-sm">Loading details...</Text>
+                            <View className="flex-1">
+                                <UserProfileSkeleton />
                             </View>
                         ) : !studentDetails ? (
                             <View className="flex-1 items-center justify-center p-6">

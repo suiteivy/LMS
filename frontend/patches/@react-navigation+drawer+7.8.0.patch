@@ -1,0 +1,186 @@
+diff --git a/node_modules/@react-navigation/drawer/README.md b/node_modules/@react-navigation/drawer/README.md
+index 9a8829d..e9e68ff 100644
+--- a/node_modules/@react-navigation/drawer/README.md
++++ b/node_modules/@react-navigation/drawer/README.md
+@@ -1,4 +1,4 @@
+-# `@react-navigation/drawer`
++﻿# `@react-navigation/drawer`
+ 
+ Drawer navigator for React Navigation following Material Design guidelines.
+ 
+diff --git a/node_modules/@react-navigation/drawer/lib/module/views/DrawerItemList.js b/node_modules/@react-navigation/drawer/lib/module/views/DrawerItemList.js
+index 9041df2..cbce39e 100644
+--- a/node_modules/@react-navigation/drawer/lib/module/views/DrawerItemList.js
++++ b/node_modules/@react-navigation/drawer/lib/module/views/DrawerItemList.js
+@@ -34,7 +34,7 @@ export function DrawerItemList({
+       });
+       if (!event.defaultPrevented) {
+         navigation.dispatch({
+-          ...(focused ? DrawerActions.closeDrawer() : CommonActions.navigate(route)),
++          ...(focused ? DrawerActions.closeDrawer() : CommonActions.navigate(route.name, route.params)),
+           target: state.key
+         });
+       }
+diff --git a/node_modules/@react-navigation/drawer/src/index.tsx b/node_modules/@react-navigation/drawer/src/index.tsx
+index 968cefd..cc7ca53 100644
+--- a/node_modules/@react-navigation/drawer/src/index.tsx
++++ b/node_modules/@react-navigation/drawer/src/index.tsx
+@@ -1,4 +1,4 @@
+-/**
++﻿/**
+  * Navigators
+  */
+ export { createDrawerNavigator } from './navigators/createDrawerNavigator';
+diff --git a/node_modules/@react-navigation/drawer/src/navigators/createDrawerNavigator.tsx b/node_modules/@react-navigation/drawer/src/navigators/createDrawerNavigator.tsx
+index eec3b89..adcea72 100644
+--- a/node_modules/@react-navigation/drawer/src/navigators/createDrawerNavigator.tsx
++++ b/node_modules/@react-navigation/drawer/src/navigators/createDrawerNavigator.tsx
+@@ -1,4 +1,4 @@
+-import {
++﻿import {
+   createNavigatorFactory,
+   type DrawerActionHelpers,
+   type DrawerNavigationState,
+diff --git a/node_modules/@react-navigation/drawer/src/types.tsx b/node_modules/@react-navigation/drawer/src/types.tsx
+index 8e66060..ba56cee 100644
+--- a/node_modules/@react-navigation/drawer/src/types.tsx
++++ b/node_modules/@react-navigation/drawer/src/types.tsx
+@@ -1,4 +1,4 @@
+-import type { HeaderOptions } from '@react-navigation/elements';
++﻿import type { HeaderOptions } from '@react-navigation/elements';
+ import type {
+   DefaultNavigatorOptions,
+   Descriptor,
+diff --git a/node_modules/@react-navigation/drawer/src/utils/DrawerPositionContext.tsx b/node_modules/@react-navigation/drawer/src/utils/DrawerPositionContext.tsx
+index 5bef34b..72a9cb4 100644
+--- a/node_modules/@react-navigation/drawer/src/utils/DrawerPositionContext.tsx
++++ b/node_modules/@react-navigation/drawer/src/utils/DrawerPositionContext.tsx
+@@ -1,4 +1,4 @@
+-import * as React from 'react';
++﻿import * as React from 'react';
+ 
+ export const DrawerPositionContext = React.createContext<
+   'left' | 'right' | undefined
+diff --git a/node_modules/@react-navigation/drawer/src/utils/DrawerStatusContext.tsx b/node_modules/@react-navigation/drawer/src/utils/DrawerStatusContext.tsx
+index 6ce24a7..27f1c6d 100644
+--- a/node_modules/@react-navigation/drawer/src/utils/DrawerStatusContext.tsx
++++ b/node_modules/@react-navigation/drawer/src/utils/DrawerStatusContext.tsx
+@@ -1,4 +1,4 @@
+-import type { DrawerStatus } from '@react-navigation/native';
++﻿import type { DrawerStatus } from '@react-navigation/native';
+ import * as React from 'react';
+ 
+ export const DrawerStatusContext = React.createContext<
+diff --git a/node_modules/@react-navigation/drawer/src/utils/addCancelListener.native.tsx b/node_modules/@react-navigation/drawer/src/utils/addCancelListener.native.tsx
+index 8ce8f36..3b6ccd2 100644
+--- a/node_modules/@react-navigation/drawer/src/utils/addCancelListener.native.tsx
++++ b/node_modules/@react-navigation/drawer/src/utils/addCancelListener.native.tsx
+@@ -1,4 +1,4 @@
+-import { BackHandler } from 'react-native';
++﻿import { BackHandler } from 'react-native';
+ 
+ export const addCancelListener = (callback: () => boolean) => {
+   const subscription = BackHandler.addEventListener(
+diff --git a/node_modules/@react-navigation/drawer/src/utils/addCancelListener.tsx b/node_modules/@react-navigation/drawer/src/utils/addCancelListener.tsx
+index 1189248..a65c4cf 100644
+--- a/node_modules/@react-navigation/drawer/src/utils/addCancelListener.tsx
++++ b/node_modules/@react-navigation/drawer/src/utils/addCancelListener.tsx
+@@ -1,4 +1,4 @@
+-export const addCancelListener = (callback: () => boolean) => {
++﻿export const addCancelListener = (callback: () => boolean) => {
+   const handleEscape = (e: KeyboardEvent) => {
+     if (e.key === 'Escape') {
+       callback();
+diff --git a/node_modules/@react-navigation/drawer/src/utils/getDrawerStatusFromState.tsx b/node_modules/@react-navigation/drawer/src/utils/getDrawerStatusFromState.tsx
+index 8aff84e..1a86962 100644
+--- a/node_modules/@react-navigation/drawer/src/utils/getDrawerStatusFromState.tsx
++++ b/node_modules/@react-navigation/drawer/src/utils/getDrawerStatusFromState.tsx
+@@ -1,4 +1,4 @@
+-import type {
++﻿import type {
+   DrawerNavigationState,
+   DrawerStatus,
+   ParamListBase,
+diff --git a/node_modules/@react-navigation/drawer/src/utils/useDrawerStatus.tsx b/node_modules/@react-navigation/drawer/src/utils/useDrawerStatus.tsx
+index 7bb90a3..0c789c2 100644
+--- a/node_modules/@react-navigation/drawer/src/utils/useDrawerStatus.tsx
++++ b/node_modules/@react-navigation/drawer/src/utils/useDrawerStatus.tsx
+@@ -1,4 +1,4 @@
+-import type { DrawerStatus } from '@react-navigation/native';
++﻿import type { DrawerStatus } from '@react-navigation/native';
+ import * as React from 'react';
+ 
+ import { DrawerStatusContext } from './DrawerStatusContext';
+diff --git a/node_modules/@react-navigation/drawer/src/views/DrawerContent.tsx b/node_modules/@react-navigation/drawer/src/views/DrawerContent.tsx
+index cb751c1..51caa76 100644
+--- a/node_modules/@react-navigation/drawer/src/views/DrawerContent.tsx
++++ b/node_modules/@react-navigation/drawer/src/views/DrawerContent.tsx
+@@ -1,4 +1,4 @@
+-import type { DrawerContentComponentProps } from '../types';
++﻿import type { DrawerContentComponentProps } from '../types';
+ import { DrawerContentScrollView } from './DrawerContentScrollView';
+ import { DrawerItemList } from './DrawerItemList';
+ 
+diff --git a/node_modules/@react-navigation/drawer/src/views/DrawerContentScrollView.tsx b/node_modules/@react-navigation/drawer/src/views/DrawerContentScrollView.tsx
+index c9aeaf9..b8892c0 100644
+--- a/node_modules/@react-navigation/drawer/src/views/DrawerContentScrollView.tsx
++++ b/node_modules/@react-navigation/drawer/src/views/DrawerContentScrollView.tsx
+@@ -1,4 +1,4 @@
+-import { useLocale } from '@react-navigation/native';
++﻿import { useLocale } from '@react-navigation/native';
+ import * as React from 'react';
+ import { ScrollView, type ScrollViewProps, StyleSheet } from 'react-native';
+ import { useSafeAreaInsets } from 'react-native-safe-area-context';
+diff --git a/node_modules/@react-navigation/drawer/src/views/DrawerItem.tsx b/node_modules/@react-navigation/drawer/src/views/DrawerItem.tsx
+index a9a1c75..49b5130 100644
+--- a/node_modules/@react-navigation/drawer/src/views/DrawerItem.tsx
++++ b/node_modules/@react-navigation/drawer/src/views/DrawerItem.tsx
+@@ -1,4 +1,4 @@
+-import { PlatformPressable, Text } from '@react-navigation/elements';
++﻿import { PlatformPressable, Text } from '@react-navigation/elements';
+ import { type Route, useTheme } from '@react-navigation/native';
+ import Color from 'color';
+ import * as React from 'react';
+diff --git a/node_modules/@react-navigation/drawer/src/views/DrawerItemList.tsx b/node_modules/@react-navigation/drawer/src/views/DrawerItemList.tsx
+index a8a91b2..d715ce1 100644
+--- a/node_modules/@react-navigation/drawer/src/views/DrawerItemList.tsx
++++ b/node_modules/@react-navigation/drawer/src/views/DrawerItemList.tsx
+@@ -47,7 +47,7 @@ export function DrawerItemList({ state, navigation, descriptors }: Props) {
+         navigation.dispatch({
+           ...(focused
+             ? DrawerActions.closeDrawer()
+-            : CommonActions.navigate(route)),
++            : CommonActions.navigate(route.name, route.params)),
+           target: state.key,
+         });
+       }
+diff --git a/node_modules/@react-navigation/drawer/src/views/DrawerToggleButton.tsx b/node_modules/@react-navigation/drawer/src/views/DrawerToggleButton.tsx
+index 533a046..d44b53d 100644
+--- a/node_modules/@react-navigation/drawer/src/views/DrawerToggleButton.tsx
++++ b/node_modules/@react-navigation/drawer/src/views/DrawerToggleButton.tsx
+@@ -1,4 +1,4 @@
+-import { HeaderButton } from '@react-navigation/elements';
++﻿import { HeaderButton } from '@react-navigation/elements';
+ import {
+   DrawerActions,
+   type ParamListBase,
+diff --git a/node_modules/@react-navigation/drawer/src/views/DrawerView.tsx b/node_modules/@react-navigation/drawer/src/views/DrawerView.tsx
+index 885ec0b..33c298c 100644
+--- a/node_modules/@react-navigation/drawer/src/views/DrawerView.tsx
++++ b/node_modules/@react-navigation/drawer/src/views/DrawerView.tsx
+@@ -1,4 +1,4 @@
+-import {
++﻿import {
+   getHeaderTitle,
+   Header,
+   SafeAreaProviderCompat,
+diff --git a/node_modules/@react-navigation/drawer/src/views/ScreenFallback.tsx b/node_modules/@react-navigation/drawer/src/views/ScreenFallback.tsx
+index 264f0a1..5f2d5a2 100644
+--- a/node_modules/@react-navigation/drawer/src/views/ScreenFallback.tsx
++++ b/node_modules/@react-navigation/drawer/src/views/ScreenFallback.tsx
+@@ -1,4 +1,4 @@
+-import { ResourceSavingView } from '@react-navigation/elements';
++﻿import { ResourceSavingView } from '@react-navigation/elements';
+ import * as React from 'react';
+ import {
+   type StyleProp,

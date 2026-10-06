@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { router } from "expo-router";
 import {
@@ -401,12 +402,20 @@ export default function ManagementIndex() {
                     {/* Header Text */}
                     <View className="mb-6 px-2">
                         <Text className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-[3px] mb-2">Faculty Hub</Text>
-                        <Text className="text-gray-900 dark:text-white font-bold text-3xl tracking-tight">Academic Tools</Text>
+                        <View className="flex-row items-center">
+                            <Text className="text-gray-900 dark:text-white font-bold text-3xl tracking-tight">Academic Tools</Text>
+                            <HelpTooltip
+                                id="teacher.manage.faculty_hub"
+                                role="teacher"
+                                tier={tier}
+                                onLearnMore={(a) => router.push({ pathname: '/(teacher)/accessibility/settings', params: { manual: '1', anchor: a || 'coverage-planner' } } as any)}
+                            />
+                        </View>
                     </View>
 
                     {/* Mode Selector - Tabs */}
                     {canToggle && (
-                        <View className="flex-row bg-gray-100 dark:bg-[#0D1117] rounded-2xl p-1 mb-6 border border-gray-200 dark:border-gray-800 gap-1">
+                        <View className="flex-row items-center bg-gray-100 dark:bg-[#0D1117] rounded-2xl p-1 mb-6 border border-gray-200 dark:border-gray-800 gap-1">
                             {isSubjectTeacher && (
                                 <TouchableOpacity 
                                     onPress={() => setMode('subject')}
@@ -447,54 +456,99 @@ export default function ManagementIndex() {
                                     </Text>
                                 </TouchableOpacity>
                             )}
+                            <View className="pr-1">
+                                <HelpTooltip
+                                    id="teacher.manage.mode_selector"
+                                    role="teacher"
+                                    tier={tier}
+                                    onLearnMore={(a) => router.push({ pathname: '/(teacher)/accessibility/settings', params: { manual: '1', anchor: a || 'coverage-planner' } } as any)}
+                                />
+                            </View>
                         </View>
                     )}
 
                     {/* Quick Stats Row */}
                     <View className="flex-row gap-4 mb-8">
-                        <TouchableOpacity
-                            activeOpacity={0.8}
-                            onPress={() => router.push((mode === 'class' ? '/(teacher)/classes' : '/(teacher)/management/assignments') as any)}
-                            className="flex-1 bg-gray-900 dark:bg-[#161B22] p-6 rounded-[32px] shadow-lg border border-transparent dark:border-gray-800 justify-center active:opacity-90"
+                        <ActionTooltip
+                            label={mode === 'class' ? "Class Students" : "Awaiting Grading"}
+                            description={mode === 'class' ? "Enrolled students in your designated homeroom class." : "Pending assignments awaiting teacher review and score entry."}
+                            learnMoreAnchor={mode === 'class' ? "attendance-ops" : "grading-ops"}
+                            style={{ flex: 1 }}
                         >
-                            <Text className="text-white/40 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">
-                                {mode === 'class' ? 'Class Students' : 'Awaiting Grading'}
-                            </Text>
-                            {statsLoading ? (
-                                <ActivityIndicator size="small" color="white" className="mt-2" style={{ alignSelf: 'flex-start' }} />
-                            ) : (
-                                <Text className="text-white text-3xl font-bold mt-1">
-                                    {mode === 'class' ? (classStudentCount ?? 0) : (pendingCount ?? 0)}
+                            <TouchableOpacity
+                                activeOpacity={0.8}
+                                onPress={() => router.push((mode === 'class' ? '/(teacher)/classes' : '/(teacher)/management/assignments') as any)}
+                                className="w-full bg-gray-900 dark:bg-[#161B22] p-6 rounded-[32px] shadow-lg border border-transparent dark:border-gray-800 justify-center active:opacity-90"
+                            >
+                                <View className="flex-row items-center justify-between">
+                                    <Text className="text-white/40 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">
+                                        {mode === 'class' ? 'Class Students' : 'Awaiting Grading'}
+                                    </Text>
+                                    <HelpTooltip
+                                        id="teacher.manage.stats_submissions"
+                                        role="teacher"
+                                        tier={tier}
+                                        onLearnMore={(a) => router.push({ pathname: '/(teacher)/accessibility/settings', params: { manual: '1', anchor: a || 'grading-ops' } } as any)}
+                                    />
+                                </View>
+                                {statsLoading ? (
+                                    <ActivityIndicator size="small" color="white" className="mt-2" style={{ alignSelf: 'flex-start' }} />
+                                ) : (
+                                    <Text className="text-white text-3xl font-bold mt-1">
+                                        {mode === 'class' ? (classStudentCount ?? 0) : (pendingCount ?? 0)}
+                                    </Text>
+                                )}
+                                <Text className="text-white/50 text-[9px] font-medium mt-1">
+                                    {mode === 'class' ? 'View class roster →' : 'Review pending submissions →'}
                                 </Text>
-                            )}
-                            <Text className="text-white/50 text-[9px] font-medium mt-1">
-                                {mode === 'class' ? 'View class roster →' : 'Review pending submissions →'}
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            activeOpacity={0.8}
-                            onPress={() => router.push((mode === 'class' ? '/(teacher)/management/attendance' : '/(teacher)/management/assignments') as any)}
-                            className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm justify-center active:opacity-90"
+                            </TouchableOpacity>
+                        </ActionTooltip>
+
+                        <ActionTooltip
+                            label={mode === 'class' ? "Attendance Today" : "Graded Submissions"}
+                            description={mode === 'class' ? "Today's student attendance count for your homeroom." : "Completed assignment submissions with final marks recorded."}
+                            learnMoreAnchor={mode === 'class' ? "attendance-ops" : "grading-ops"}
+                            style={{ flex: 1 }}
                         >
-                            <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">
-                                {mode === 'class' ? 'Attendance Today' : 'Graded Submissions'}
-                            </Text>
-                            {statsLoading ? (
-                                <ActivityIndicator size="small" color="#FF6900" className="mt-2" style={{ alignSelf: 'flex-start' }} />
-                            ) : (
-                                <Text className="text-gray-900 dark:text-white text-3xl font-bold mt-1">
-                                    {mode === 'class' ? `${classAttendanceCount ?? 0}` : `${submittedCount ?? 0}`}
+                            <TouchableOpacity
+                                activeOpacity={0.8}
+                                onPress={() => router.push((mode === 'class' ? '/(teacher)/management/attendance' : '/(teacher)/management/assignments') as any)}
+                                className="w-full bg-[#F6F8FA] dark:bg-[#161B22] p-6 rounded-[32px] border border-gray-100 dark:border-gray-800 shadow-sm justify-center active:opacity-90"
+                            >
+                                <View className="flex-row items-center justify-between">
+                                    <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-widest">
+                                        {mode === 'class' ? 'Attendance Today' : 'Graded Submissions'}
+                                    </Text>
+                                    <HelpTooltip
+                                        id="teacher.manage.stats_attendance"
+                                        role="teacher"
+                                        tier={tier}
+                                        onLearnMore={(a) => router.push({ pathname: '/(teacher)/accessibility/settings', params: { manual: '1', anchor: a || 'attendance-ops' } } as any)}
+                                    />
+                                </View>
+                                {statsLoading ? (
+                                    <ActivityIndicator size="small" color="#FF6900" className="mt-2" style={{ alignSelf: 'flex-start' }} />
+                                ) : (
+                                    <Text className="text-gray-900 dark:text-white text-3xl font-bold mt-1">
+                                        {mode === 'class' ? `${classAttendanceCount ?? 0}` : `${submittedCount ?? 0}`}
+                                    </Text>
+                                )}
+                                <Text className="text-gray-400 dark:text-gray-500 text-[9px] font-medium mt-1">
+                                    {mode === 'class' ? 'Mark homeroom attendance →' : 'Completed grading →'}
                                 </Text>
-                            )}
-                            <Text className="text-gray-400 dark:text-gray-500 text-[9px] font-medium mt-1">
-                                {mode === 'class' ? 'Mark homeroom attendance →' : 'Completed grading →'}
-                            </Text>
-                        </TouchableOpacity>
+                            </TouchableOpacity>
+                        </ActionTooltip>
                     </View>
 
-                    {/* Feature Cards */}
-                    <View className="px-2 mb-4">
+                    {/* Feature Cards Header */}
+                    <View className="px-2 mb-4 flex-row items-center">
                         <Text className="text-gray-400 font-bold text-[10px] uppercase tracking-widest">Management Suite</Text>
+                        <HelpTooltip
+                            id="teacher.manage.suite_header"
+                            role="teacher"
+                            tier={tier}
+                            onLearnMore={(a) => router.push({ pathname: '/(teacher)/accessibility/settings', params: { manual: '1', anchor: a || 'coverage-planner' } } as any)}
+                        />
                     </View>
                     {visibleFeatures.map((feature, index) => (
                         <FeatureCard key={index} {...feature} tier={tier} />

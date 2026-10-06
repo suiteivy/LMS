@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { ClearanceScreenSkeleton } from '@/components/ui/skeletons';
 import { api } from '@/services/api';
 import { ClearanceService, ClearanceProcess, CategoryStatusResult } from '@/services/ClearanceService';
 import { PdfPreviewModal } from '@/components/pdf/PdfPreviewModal';
@@ -180,11 +181,8 @@ export default function StudentClearanceScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={orange} />
-        <Text style={{ color: textSecondary, marginTop: 12, fontSize: 13, fontWeight: '600' }}>
-          Loading clearance status...
-        </Text>
+      <View style={{ flex: 1, backgroundColor: bg }}>
+        <ClearanceScreenSkeleton />
       </View>
     );
   }

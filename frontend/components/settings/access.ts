@@ -10,7 +10,8 @@ export type AccessFeatureKey =
   | 'billing'
   | 'analytics'
   | 'messaging'
-  | 'library';
+  | 'library'
+  | 'diary';
 
 export function hasFeatureAccess(tier: SubscriptionTierInfo, feature?: AccessFeatureKey): boolean {
   if (!feature) return true;
@@ -26,6 +27,8 @@ export function hasFeatureAccess(tier: SubscriptionTierInfo, feature?: AccessFea
       return tier.hasMessaging;
     case 'library':
       return tier.hasLibrary;
+    case 'diary':
+      return tier.hasDiary;
     case 'promotion':
     case 'grading':
     case 'reports':

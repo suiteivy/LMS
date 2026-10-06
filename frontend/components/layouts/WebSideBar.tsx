@@ -8,7 +8,7 @@ import {
   ArrowLeftRight,
 } from "lucide-react-native";
 import React, { useState } from "react";
-import { Text, TouchableOpacity, View, Image } from "react-native";
+import { Text, TouchableOpacity, View, Image, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CloudoraLogo } from "@/components/common/CloudoraLogo";
 
@@ -28,7 +28,7 @@ interface WebSidebarProps {
 
 export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps) => {
   const { isDark } = useTheme();
-  const { availableRoles, activeRole, switchActiveRole, institutionName, institutionLogo } = useAuth();
+  const { availableRoles, activeRole, switchActiveRole, isRoleSwitching, switchingToRole, institutionName, institutionLogo } = useAuth();
   const insets = useSafeAreaInsets();
   const segments = useSegments();
   const [collapsed, setCollapsed] = useState(false);
@@ -110,20 +110,26 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
               <Text style={{ fontSize: 10, fontWeight: '800', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>
                 Active Role
               </Text>
-              <ArrowLeftRight size={12} color="#FF6900" />
+              {isRoleSwitching ? (
+                <ActivityIndicator size="small" color="#FF6900" />
+              ) : (
+                <ArrowLeftRight size={12} color="#FF6900" />
+              )}
             </View>
             <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
               {availableRoles.map((r) => {
                 const isSelected = currentActiveRole === r;
+                const isTargetOfSwitch = isRoleSwitching && switchingToRole === r;
                 const roleLabel = r === 'admin' ? 'Admin' : r === 'teacher' ? 'Teacher' : r === 'parent' ? 'Parent' : r === 'student' ? 'Student' : r;
                 return (
                   <TouchableOpacity
                     key={r}
                     onPress={() => {
-                      if (!isSelected) {
+                      if (!isSelected && !isRoleSwitching) {
                         switchActiveRole(r);
                       }
                     }}
+                    disabled={isRoleSwitching}
                     activeOpacity={0.7}
                     style={{
                       flex: 1,
@@ -139,8 +145,16 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
                       shadowOpacity: isSelected ? 0.2 : 0.05,
                       shadowRadius: 2,
                       elevation: isSelected ? 2 : 1,
+                      opacity: isRoleSwitching && !isSelected && !isTargetOfSwitch ? 0.6 : 1,
                     }}
                   >
+                    {isTargetOfSwitch && (
+                      <ActivityIndicator
+                        size="small"
+                        color={isSelected ? '#FFFFFF' : '#FF6900'}
+                        style={{ marginRight: 5 }}
+                      />
+                    )}
                     <Text style={{
                       fontSize: 12,
                       fontWeight: isSelected ? '700' : '600',
@@ -159,10 +173,12 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
         {availableRoles && availableRoles.length > 1 && collapsed && (
           <TouchableOpacity
             onPress={() => {
+              if (isRoleSwitching) return;
               const currentIndex = availableRoles.indexOf(currentActiveRole);
               const nextIndex = (currentIndex + 1) % availableRoles.length;
               switchActiveRole(availableRoles[nextIndex]);
             }}
+            disabled={isRoleSwitching}
             activeOpacity={0.7}
             style={{
               alignItems: 'center',
@@ -174,9 +190,14 @@ export const WebSidebar = ({ items, basePath, role, children }: WebSidebarProps)
               backgroundColor: isDark ? '#1C2128' : '#EAEEF2',
               borderWidth: 1,
               borderColor: isDark ? '#30363D' : '#D0D7DE',
+              opacity: isRoleSwitching ? 0.7 : 1,
             }}
           >
-            <ArrowLeftRight size={16} color="#FF6900" />
+            {isRoleSwitching ? (
+              <ActivityIndicator size="small" color="#FF6900" />
+            ) : (
+              <ArrowLeftRight size={16} color="#FF6900" />
+            )}
             <Text style={{ fontSize: 9, fontWeight: '800', color: '#FF6900', marginTop: 2, textTransform: 'uppercase' }}>
               {currentActiveRole.slice(0, 3)}
             </Text>

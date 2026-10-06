@@ -1,6 +1,9 @@
-﻿#!/bin/bash
+#!/bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Synchronize frontend LAN IP with active network interface
+node "$SCRIPT_DIR/scripts/sync-dev-ip.js"
 
 # Start backend in a new PowerShell window
 powershell.exe -NoExit -Command "cd '$SCRIPT_DIR/backend'; npm start" &

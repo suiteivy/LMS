@@ -4,6 +4,7 @@ const path = require('node:path');
 
 const parentControllerPath = path.resolve(__dirname, '../controllers/parent.controller.js');
 const reportCardsControllerPath = path.resolve(__dirname, '../controllers/reportCards.controller.js');
+const violationsControllerPath = path.resolve(__dirname, '../controllers/violations.controller.js');
 const supabaseClientPath = path.resolve(__dirname, '../utils/supabaseClient.js');
 
 function createRes() {
@@ -201,3 +202,90 @@ test('reportCards.getReportCards filters by student_id when parent supplies spec
   require.cache[supabaseClientPath] = { exports: originalSupabase };
   delete require.cache[reportCardsControllerPath];
 });
+
+test('violations.getStudentViolations returns 403 when parent is not linked to student', async () => {
+  const originalSupabase = require(supabaseClientPath);
+
+  const mockSupabase = createSupabaseMock((state) => {
+    if (state.table === 'students') {
+      return {
+        data: { id: 'child-123', user_id: 'u-child', enrollment_status: 'enrolled', users: { full_name: 'Child Student' } },
+        error: null,
+      };
+    }
+    if (state.table === 'parents') {
+      return { data: { id: 'p-1', user_id: 'parent-user-1' }, error: null };
+    }
+    if (state.table === 'parent_students') {
+      // Not linked
+      return { data: null, error: null };
+    }
+    return { data: [], error: null };
+  });
+
+  require.cache[supabaseClientPath] = { exports: mockSupabase };
+  delete require.cache[violationsControllerPath];
+  const violationsController = require(violationsControllerPath);
+
+  const req = {
+    params: { studentId: 'child-123' },
+    user: { id: 'parent-user-1', role: 'parent', institution_id: 'inst-1' },
+  };
+  const res = createRes();
+
+  await violationsController.getStudentViolations(req, res);
+
+  assert.equal(res.statusCode, 403);
+  assert.equal(res.body?.success, false);
+  assert.match(res.body?.error, /not linked/i);
+
+  require.cache[supabaseClientPath] = { exports: originalSupabase };
+  delete require.cache[violationsControllerPath];
+});
+
+test('violations.getStudentViolations returns violations when parent is linked to student', async () => {
+  const originalSupabase = require(supabaseClientPath);
+
+  const mockSupabase = createSupabaseMock((state) => {
+    if (state.table === 'students') {
+      return {
+        data: { id: 'child-123', user_id: 'u-child', enrollment_status: 'enrolled', users: { full_name: 'Child Student' } },
+        error: null,
+      };
+    }
+    if (state.table === 'parents') {
+      return { data: { id: 'p-1', user_id: 'parent-user-1' }, error: null };
+    }
+    if (state.table === 'parent_students') {
+      return { data: { id: 'link-1', parent_id: 'p-1', student_id: 'child-123' }, error: null };
+    }
+    if (state.table === 'student_violations') {
+      return {
+        data: [{ id: 'viol-1', title: 'Uniform violation', severity: 'minor' }],
+        error: null,
+      };
+    }
+    return { data: [], error: null };
+  });
+
+  require.cache[supabaseClientPath] = { exports: mockSupabase };
+  delete require.cache[violationsControllerPath];
+  const violationsController = require(violationsControllerPath);
+
+  const req = {
+    params: { studentId: 'child-123' },
+    user: { id: 'parent-user-1', role: 'parent', institution_id: 'inst-1' },
+  };
+  const res = createRes();
+
+  await violationsController.getStudentViolations(req, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body?.success, true);
+  assert.equal(res.body?.data?.length, 1);
+  assert.equal(res.body?.data[0]?.title, 'Uniform violation');
+
+  require.cache[supabaseClientPath] = { exports: originalSupabase };
+  delete require.cache[violationsControllerPath];
+});
+

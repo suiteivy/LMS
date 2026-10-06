@@ -23,18 +23,18 @@ export const SubjectDetails: React.FC<SubjectDetailsProps> = ({
   const [activeTab, setActiveTab] = useState<"overview" | "lessons" | "reviews">("overview");
 
   const t = {
-    bg: isDark ? '#0F0B2E' : '#ffffff',
-    surface: isDark ? '#13103A' : '#ffffff',
-    surfaceAlt: isDark ? '#1A1650' : '#f9fafb',
-    border: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
+    bg: isDark ? '#0D1117' : '#ffffff',
+    surface: isDark ? '#161B22' : '#ffffff',
+    surfaceAlt: isDark ? '#21262D' : '#f9fafb',
+    border: isDark ? '#21262D' : '#f3f4f6',
     textPrimary: isDark ? '#ffffff' : '#111827',
     textSecondary: isDark ? '#9ca3af' : '#6b7280',
     textMuted: isDark ? '#6b7280' : '#9ca3af',
-    tabBg: isDark ? '#1A1650' : '#f3f4f6',
-    tabActive: isDark ? '#13103A' : '#ffffff',
-    detailsBg: isDark ? '#1A1650' : '#f9fafb',
+    tabBg: isDark ? '#21262D' : '#f3f4f6',
+    tabActive: isDark ? '#161B22' : '#ffffff',
+    detailsBg: isDark ? '#21262D' : '#f9fafb',
     divider: isDark ? 'rgba(255,255,255,0.08)' : '#f3f4f6',
-    tagBg: isDark ? '#1A1650' : '#f9fafb',
+    tagBg: isDark ? '#21262D' : '#f9fafb',
     tagBorder: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
   };
 

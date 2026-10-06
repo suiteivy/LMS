@@ -2,6 +2,7 @@ import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 import { DatePicker } from "@/components/common/DatePicker";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { DiaryRecordSkeleton } from "@/components/ui/skeletons";
 import { WeekPickerModal } from "@/components/common/WeekPickerModal";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
@@ -451,69 +452,74 @@ export default function AdminCoveragePlanner() {
                     showsVerticalScrollIndicator={false}
                 >
                     {/* KPI Summary Cards */}
-                    <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
-                        <View style={{
-                            flex: 1,
-                            padding: 14,
-                            borderRadius: 16,
-                            backgroundColor: isDark ? '#161b22' : '#ffffff',
-                            borderWidth: 1,
-                            borderColor: isDark ? '#30363d' : '#e2e8f0'
-                        }}>
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#94a3b8' : '#64748b', textTransform: 'uppercase' }}>
-                                Total Subjects
-                            </Text>
-                            <Text style={{ fontSize: 24, fontWeight: 'bold', color: isDark ? '#f0f6fc' : '#0f172a', marginTop: 4 }}>
-                                {oversightData.total_subjects}
-                            </Text>
-                            <Text style={{ fontSize: 11, color: '#10b981', marginTop: 2 }}>
-                                {oversightData.subjects_with_plans} with active plan
-                            </Text>
-                        </View>
-
-                        <View style={{
-                            flex: 1,
-                            padding: 14,
-                            borderRadius: 16,
-                            backgroundColor: isDark ? '#161b22' : '#ffffff',
-                            borderWidth: 1,
-                            borderColor: isDark ? '#30363d' : '#e2e8f0'
-                        }}>
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#94a3b8' : '#64748b', textTransform: 'uppercase' }}>
-                                Total Topics
-                            </Text>
-                            <Text style={{ fontSize: 24, fontWeight: 'bold', color: isDark ? '#f0f6fc' : '#0f172a', marginTop: 4 }}>
-                                {oversightData.total_topics_planned}
-                            </Text>
-                            <Text style={{ fontSize: 11, color: isDark ? '#94a3b8' : '#64748b', marginTop: 2 }}>
-                                {oversightData.total_completed} completed
-                            </Text>
-                        </View>
-
-                        <View style={{
-                            flex: 1,
-                            padding: 14,
-                            borderRadius: 16,
-                            backgroundColor: isDark ? '#161b22' : '#ffffff',
-                            borderWidth: 1,
-                            borderColor: isDark ? '#30363d' : '#e2e8f0'
-                        }}>
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#94a3b8' : '#64748b', textTransform: 'uppercase' }}>
-                                School Coverage
-                            </Text>
-                            <Text style={{
-                                fontSize: 24,
-                                fontWeight: 'bold',
-                                color: oversightData.overall_coverage_rate >= 70 ? '#10b981' : (oversightData.overall_coverage_rate >= 40 ? '#f59e0b' : '#ef4444'),
-                                marginTop: 4
+                    <ActionTooltip targetId="admin.coverage.oversight" position="bottom" className="w-full">
+                        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16, width: '100%' }}>
+                            <View style={{
+                                flex: 1,
+                                padding: 14,
+                                borderRadius: 16,
+                                backgroundColor: isDark ? '#161b22' : '#ffffff',
+                                borderWidth: 1,
+                                borderColor: isDark ? '#30363d' : '#e2e8f0'
                             }}>
-                                {oversightData.overall_coverage_rate}%
-                            </Text>
-                            <Text style={{ fontSize: 11, color: isDark ? '#94a3b8' : '#64748b', marginTop: 2 }}>
-                                term progress
-                            </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#94a3b8' : '#64748b', textTransform: 'uppercase' }}>
+                                        Total Subjects
+                                    </Text>
+                                    <HelpTooltip targetId="admin.coverage.oversight" size={13} />
+                                </View>
+                                <Text style={{ fontSize: 24, fontWeight: 'bold', color: isDark ? '#f0f6fc' : '#0f172a', marginTop: 4 }}>
+                                    {oversightData.total_subjects}
+                                </Text>
+                                <Text style={{ fontSize: 11, color: '#10b981', marginTop: 2 }}>
+                                    {oversightData.subjects_with_plans} with active plan
+                                </Text>
+                            </View>
+
+                            <View style={{
+                                flex: 1,
+                                padding: 14,
+                                borderRadius: 16,
+                                backgroundColor: isDark ? '#161b22' : '#ffffff',
+                                borderWidth: 1,
+                                borderColor: isDark ? '#30363d' : '#e2e8f0'
+                            }}>
+                                <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#94a3b8' : '#64748b', textTransform: 'uppercase' }}>
+                                    Total Topics
+                                </Text>
+                                <Text style={{ fontSize: 24, fontWeight: 'bold', color: isDark ? '#f0f6fc' : '#0f172a', marginTop: 4 }}>
+                                    {oversightData.total_topics_planned}
+                                </Text>
+                                <Text style={{ fontSize: 11, color: isDark ? '#94a3b8' : '#64748b', marginTop: 2 }}>
+                                    {oversightData.total_completed} completed
+                                </Text>
+                            </View>
+
+                            <View style={{
+                                flex: 1,
+                                padding: 14,
+                                borderRadius: 16,
+                                backgroundColor: isDark ? '#161b22' : '#ffffff',
+                                borderWidth: 1,
+                                borderColor: isDark ? '#30363d' : '#e2e8f0'
+                            }}>
+                                <Text style={{ fontSize: 11, fontWeight: '600', color: isDark ? '#94a3b8' : '#64748b', textTransform: 'uppercase' }}>
+                                    School Coverage
+                                </Text>
+                                <Text style={{
+                                    fontSize: 24,
+                                    fontWeight: 'bold',
+                                    color: oversightData.overall_coverage_rate >= 70 ? '#10b981' : (oversightData.overall_coverage_rate >= 40 ? '#f59e0b' : '#ef4444'),
+                                    marginTop: 4
+                                }}>
+                                    {oversightData.overall_coverage_rate}%
+                                </Text>
+                                <Text style={{ fontSize: 11, color: isDark ? '#94a3b8' : '#64748b', marginTop: 2 }}>
+                                    term progress
+                                </Text>
+                            </View>
                         </View>
-                    </View>
+                    </ActionTooltip>
 
                     {/* Term Selector & Search Bar */}
                     <View style={{
@@ -663,12 +669,7 @@ export default function AdminCoveragePlanner() {
                     </View>
 
                     {oversightLoading ? (
-                        <View style={{ padding: 40, alignItems: 'center' }}>
-                            <ActivityIndicator size="large" color="#FF6900" />
-                            <Text style={{ color: isDark ? '#94a3b8' : '#64748b', marginTop: 12, fontSize: 13 }}>
-                                Computing departmental coverage metrics...
-                            </Text>
-                        </View>
+                        <DiaryRecordSkeleton />
                     ) : filteredSubjects.length === 0 ? (
                         <View style={{
                             padding: 32,
@@ -947,9 +948,7 @@ export default function AdminCoveragePlanner() {
 
                     {/* Plan Items List */}
                     {builderLoading ? (
-                        <View style={{ padding: 40, alignItems: 'center' }}>
-                            <ActivityIndicator size="large" color="#FF6900" />
-                        </View>
+                        <DiaryRecordSkeleton />
                     ) : availableTerms.length === 0 ? (
                         <View style={{
                             padding: 36,

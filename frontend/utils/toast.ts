@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { getSigningOutState } from './sessionState';
+import { formatNotificationDisplay } from './notificationLabel';
 
 const activeToasts = new Set<string>();
 
@@ -56,15 +57,18 @@ const resolveToastConfig = (
 };
 
 export const showSuccess = (title: string, message?: string, options?: ToastOptions) => {
-    const key = toastKey(title, message);
+    const display = formatNotificationDisplay({ title, message });
+    const cleanTitle = display.title;
+    const cleanMessage = display.message;
+    const key = toastKey(cleanTitle, cleanMessage);
     if (activeToasts.has(key)) return;
-    const { autoHide, visibilityTime, topOffset } = resolveToastConfig(title, message, options, 3500);
+    const { autoHide, visibilityTime, topOffset } = resolveToastConfig(cleanTitle, cleanMessage, options, 3500);
     registerToastKey(key, visibilityTime);
 
     Toast.show({
         type: 'success',
-        text1: title,
-        text2: message,
+        text1: cleanTitle,
+        text2: cleanMessage,
         position: 'top',
         topOffset,
         autoHide,
@@ -82,15 +86,18 @@ export const showError = (title: string, message?: string, options?: ToastOption
     if (getSigningOutState() && options?.code !== 'ACCOUNT_LOCKED' && options?.code !== 'ACCOUNT_DISABLED') {
         return;
     }
-    const key = toastKey(title, message);
+    const display = formatNotificationDisplay({ title, message });
+    const cleanTitle = display.title;
+    const cleanMessage = display.message;
+    const key = toastKey(cleanTitle, cleanMessage);
     if (activeToasts.has(key)) return;
-    const { autoHide, visibilityTime, topOffset } = resolveToastConfig(title, message, options, 4500);
+    const { autoHide, visibilityTime, topOffset } = resolveToastConfig(cleanTitle, cleanMessage, options, 4500);
     registerToastKey(key, visibilityTime);
 
     Toast.show({
         type: 'error',
-        text1: title,
-        text2: message,
+        text1: cleanTitle,
+        text2: cleanMessage,
         position: 'top',
         topOffset,
         autoHide,
@@ -106,15 +113,18 @@ export const showError = (title: string, message?: string, options?: ToastOption
 
 export const showWarning = (title: string, message?: string, options?: ToastOptions) => {
     if (getSigningOutState()) return;
-    const key = toastKey(title, message);
+    const display = formatNotificationDisplay({ title, message });
+    const cleanTitle = display.title;
+    const cleanMessage = display.message;
+    const key = toastKey(cleanTitle, cleanMessage);
     if (activeToasts.has(key)) return;
-    const { autoHide, visibilityTime, topOffset } = resolveToastConfig(title, message, options, 4000);
+    const { autoHide, visibilityTime, topOffset } = resolveToastConfig(cleanTitle, cleanMessage, options, 4000);
     registerToastKey(key, visibilityTime);
 
     Toast.show({
         type: 'warning',
-        text1: title,
-        text2: message,
+        text1: cleanTitle,
+        text2: cleanMessage,
         position: 'top',
         topOffset,
         autoHide,
@@ -130,15 +140,18 @@ export const showWarning = (title: string, message?: string, options?: ToastOpti
 
 export const showInfo = (title: string, message?: string, options?: ToastOptions) => {
     if (getSigningOutState()) return;
-    const key = toastKey(title, message);
+    const display = formatNotificationDisplay({ title, message });
+    const cleanTitle = display.title;
+    const cleanMessage = display.message;
+    const key = toastKey(cleanTitle, cleanMessage);
     if (activeToasts.has(key)) return;
-    const { autoHide, visibilityTime, topOffset } = resolveToastConfig(title, message, options, 3500);
+    const { autoHide, visibilityTime, topOffset } = resolveToastConfig(cleanTitle, cleanMessage, options, 3500);
     registerToastKey(key, visibilityTime);
 
     Toast.show({
         type: 'info',
-        text1: title,
-        text2: message,
+        text1: cleanTitle,
+        text2: cleanMessage,
         position: 'top',
         topOffset,
         autoHide,

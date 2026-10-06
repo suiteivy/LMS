@@ -24,6 +24,7 @@ import { BorrowedBooksOverview } from "./BorrowedBooksOverview";
 import { BorrowLimitConfiguration } from "./BorrowLimitConfiguration";
 import { LibrarianManagement } from "./LibrarianManagement";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { LibraryCatalogSkeleton } from "@/components/ui/skeletons";
 
 type LibrarySection = "overview" | "books" | "borrowed" | "config" | "librarians";
 
@@ -223,6 +224,9 @@ const LibraryAction = () => {
     };
 
     const renderSectionContent = () => {
+        if (loading && books.length === 0) {
+            return <LibraryCatalogSkeleton />;
+        }
         switch (activeSection) {
             case "overview": return renderOverview();
             case "books": return <AddUpdateDeleteBooksForm books={books} onAddBook={handleAddBook} onUpdateBook={handleUpdateBook} onDeleteBook={handleDeleteBook} />;
@@ -273,10 +277,10 @@ const LibraryAction = () => {
 
             <View style={{ flex: 1 }}>{renderSectionContent()}</View>
 
-            {loading && (
+            {false && (
                 <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
                     <View style={{ backgroundColor: surface, borderRadius: 16, padding: 24, alignItems: 'center' }}>
-                        <ActivityIndicator size="large" color="#FF6900" />
+                        {null}
                         <Text style={{ marginTop: 12, color: textSecondary, fontWeight: '500' }}>Loading...</Text>
                     </View>
                 </View>

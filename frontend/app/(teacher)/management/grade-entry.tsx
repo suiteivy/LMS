@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1019,28 +1020,31 @@ export default function GradeEntryPage() {
             >
                 <View className="p-4 md:p-8">
                     {/* ── Workflow Stepper ── */}
-                    <View className="flex-row items-center justify-between mb-5 bg-white dark:bg-[#161B22] p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-                        <View className="flex-row items-center gap-2">
-                            <View className={`w-6 h-6 rounded-full items-center justify-center ${selectedSubjectId && selectedClassId ? 'bg-emerald-500' : 'bg-[#FF6900]'}`}>
-                                {selectedSubjectId && selectedClassId ? <Check size={12} color="#FFF" /> : <Text className="text-white text-[10px] font-bold">1</Text>}
+                    <ActionTooltip targetId="teacher.grade_entry.stepper" position="bottom" className="w-full">
+                        <View className="flex-row items-center justify-between mb-5 bg-white dark:bg-[#161B22] p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm w-full">
+                            <View className="flex-row items-center gap-2">
+                                <View className={`w-6 h-6 rounded-full items-center justify-center ${selectedSubjectId && selectedClassId ? 'bg-emerald-500' : 'bg-[#FF6900]'}`}>
+                                    {selectedSubjectId && selectedClassId ? <Check size={12} color="#FFF" /> : <Text className="text-white text-[10px] font-bold">1</Text>}
+                                </View>
+                                <Text className="text-xs font-bold text-gray-900 dark:text-gray-100">Scope</Text>
                             </View>
-                            <Text className="text-xs font-bold text-gray-900 dark:text-gray-100">Scope</Text>
-                        </View>
-                        <ArrowRight size={14} color="#9CA3AF" />
-                        <View className="flex-row items-center gap-2">
-                            <View className={`w-6 h-6 rounded-full items-center justify-center ${gradedCount > 0 ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                                {gradedCount === totalStudents && totalStudents > 0 ? <Check size={12} color="#FFF" /> : <Text className="text-white text-[10px] font-bold">2</Text>}
+                            <ArrowRight size={14} color="#9CA3AF" />
+                            <View className="flex-row items-center gap-2">
+                                <View className={`w-6 h-6 rounded-full items-center justify-center ${gradedCount > 0 ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                    {gradedCount === totalStudents && totalStudents > 0 ? <Check size={12} color="#FFF" /> : <Text className="text-white text-[10px] font-bold">2</Text>}
+                                </View>
+                                <Text className="text-xs font-bold text-gray-900 dark:text-gray-100">Grades</Text>
                             </View>
-                            <Text className="text-xs font-bold text-gray-900 dark:text-gray-100">Grades</Text>
-                        </View>
-                        <ArrowRight size={14} color="#9CA3AF" />
-                        <View className="flex-row items-center gap-2">
-                            <View className={`w-6 h-6 rounded-full items-center justify-center ${existingCount > 0 ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                                <Text className="text-white text-[10px] font-bold">3</Text>
+                            <ArrowRight size={14} color="#9CA3AF" />
+                            <View className="flex-row items-center gap-2">
+                                <View className={`w-6 h-6 rounded-full items-center justify-center ${existingCount > 0 ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                    <Text className="text-white text-[10px] font-bold">3</Text>
+                                </View>
+                                <Text className="text-xs font-bold text-gray-900 dark:text-gray-100">Save</Text>
                             </View>
-                            <Text className="text-xs font-bold text-gray-900 dark:text-gray-100">Save</Text>
+                            <HelpTooltip targetId="teacher.grade_entry.stepper" size={13} />
                         </View>
-                    </View>
+                    </ActionTooltip>
 
                     {/* ── Missing Upstream Setup Warnings ── */}
                     {!loadingScales && gradingScales.length === 0 && (
@@ -1069,7 +1073,10 @@ export default function GradeEntryPage() {
 
                     {/* ── Summary Stats ── */}
                     <View className="flex-row items-center justify-between mb-2 px-1">
-                        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Grade Entry Summary</Text>
+                        <View className="flex-row items-center gap-1.5">
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Grade Entry Summary</Text>
+                            <HelpTooltip targetId="teacher.grade_entry.summary" size={12} />
+                        </View>
                         <TouchableOpacity
                             onPress={() => setShowScaleModal(true)}
                             className="flex-row items-center gap-1 bg-orange-50 dark:bg-orange-950/30 px-2.5 py-1 rounded-lg border border-orange-200 dark:border-orange-800"
@@ -1078,23 +1085,25 @@ export default function GradeEntryPage() {
                             <Text className="text-[#FF6900] text-[10px] font-bold">Grading Scale</Text>
                         </TouchableOpacity>
                     </View>
-                    <View className="flex-row gap-3 mb-4">
-                        <View className="flex-1 bg-[#FF6900] p-4 rounded-3xl shadow-sm">
-                            <Text className="text-orange-100 text-[10px] font-bold uppercase tracking-wider">Graded</Text>
-                            <Text className="text-white text-2xl font-bold mt-1">
-                                {gradedCount}
-                                <Text className="text-orange-200 text-sm font-medium">/{totalStudents}</Text>
-                            </Text>
+                    <ActionTooltip targetId="teacher.grade_entry.summary" position="bottom" className="w-full">
+                        <View className="flex-row gap-3 mb-4 w-full">
+                            <View className="flex-1 bg-[#FF6900] p-4 rounded-3xl shadow-sm">
+                                <Text className="text-orange-100 text-[10px] font-bold uppercase tracking-wider">Graded</Text>
+                                <Text className="text-white text-2xl font-bold mt-1">
+                                    {gradedCount}
+                                    <Text className="text-orange-200 text-sm font-medium">/{totalStudents}</Text>
+                                </Text>
+                            </View>
+                            <View className="flex-1 bg-green-500 p-4 rounded-3xl shadow-sm">
+                                <Text className="text-green-100 text-[10px] font-bold uppercase tracking-wider">Finalized</Text>
+                                <Text className="text-white text-2xl font-bold mt-1">{existingCount}</Text>
+                            </View>
+                            <View className="flex-1 bg-gray-800 dark:bg-[#161B22] p-4 rounded-3xl shadow-sm">
+                                <Text className="text-gray-300 text-[10px] font-bold uppercase tracking-wider">Pending</Text>
+                                <Text className="text-white text-2xl font-bold mt-1">{totalStudents - gradedCount}</Text>
+                            </View>
                         </View>
-                        <View className="flex-1 bg-green-500 p-4 rounded-3xl shadow-sm">
-                            <Text className="text-green-100 text-[10px] font-bold uppercase tracking-wider">Finalized</Text>
-                            <Text className="text-white text-2xl font-bold mt-1">{existingCount}</Text>
-                        </View>
-                        <View className="flex-1 bg-gray-800 dark:bg-[#161B22] p-4 rounded-3xl shadow-sm">
-                            <Text className="text-gray-300 text-[10px] font-bold uppercase tracking-wider">Pending</Text>
-                            <Text className="text-white text-2xl font-bold mt-1">{totalStudents - gradedCount}</Text>
-                        </View>
-                    </View>
+                    </ActionTooltip>
 
                     {/* Live Class Performance Pill */}
                     {classStats && (

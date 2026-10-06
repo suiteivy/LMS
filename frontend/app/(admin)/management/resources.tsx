@@ -1,5 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ActionTooltip } from "@/components/common/ActionTooltip";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { CardGridScreenSkeleton } from "@/components/ui/skeletons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { ResourceAPI, Resource } from "@/services/ResourceService";
 import { router } from "expo-router";
@@ -118,24 +120,29 @@ export default function AdminResourceManager() {
             >
                 <View className="p-4 md:p-8 pb-24">
                     {/* Header stats */}
-                    <View className="flex-row gap-3 mb-6">
-                        <View className="flex-1 bg-[#0ea5e9] rounded-3xl p-4">
-                            <Text className="text-white/80 text-[10px] font-bold uppercase tracking-widest">Total Published</Text>
-                            <Text className="text-white text-2xl font-black mt-1">{resources.length}</Text>
+                    <ActionTooltip targetId="admin.resources.metrics" position="bottom" className="w-full">
+                        <View className="flex-row gap-3 mb-6 w-full">
+                            <View className="flex-1 bg-[#0ea5e9] rounded-3xl p-4">
+                                <View className="flex-row items-center justify-between">
+                                    <Text className="text-white/80 text-[10px] font-bold uppercase tracking-widest">Total Published</Text>
+                                    <HelpTooltip targetId="admin.resources.metrics" size={12} />
+                                </View>
+                                <Text className="text-white text-2xl font-black mt-1">{resources.length}</Text>
+                            </View>
+                            <View className="flex-1 bg-[#10b981] rounded-3xl p-4">
+                                <Text className="text-white/80 text-[10px] font-bold uppercase tracking-widest">General Access</Text>
+                                <Text className="text-white text-2xl font-black mt-1">
+                                    {resources.filter(r => r.target_audience !== 'staff_only').length}
+                                </Text>
+                            </View>
+                            <View className="flex-1 bg-[#8b5cf6] rounded-3xl p-4">
+                                <Text className="text-white/80 text-[10px] font-bold uppercase tracking-widest">Staff Only</Text>
+                                <Text className="text-white text-2xl font-black mt-1">
+                                    {resources.filter(r => r.target_audience === 'staff_only').length}
+                                </Text>
+                            </View>
                         </View>
-                        <View className="flex-1 bg-[#10b981] rounded-3xl p-4">
-                            <Text className="text-white/80 text-[10px] font-bold uppercase tracking-widest">General Access</Text>
-                            <Text className="text-white text-2xl font-black mt-1">
-                                {resources.filter(r => r.target_audience !== 'staff_only').length}
-                            </Text>
-                        </View>
-                        <View className="flex-1 bg-[#8b5cf6] rounded-3xl p-4">
-                            <Text className="text-white/80 text-[10px] font-bold uppercase tracking-widest">Staff Only</Text>
-                            <Text className="text-white text-2xl font-black mt-1">
-                                {resources.filter(r => r.target_audience === 'staff_only').length}
-                            </Text>
-                        </View>
-                    </View>
+                    </ActionTooltip>
 
                     {/* Search Bar */}
                     <View style={{ backgroundColor: cardBg, borderColor: border }} className="flex-row items-center border rounded-2xl px-4 py-3 mb-4">
@@ -176,7 +183,7 @@ export default function AdminResourceManager() {
                     </ScrollView>
 
                     {loading ? (
-                        <ActivityIndicator size="large" color="#FF6B00" style={{ marginTop: 40 }} />
+                        <CardGridScreenSkeleton count={5} />
                     ) : filteredResources.length === 0 ? (
                         <View className="items-center p-12">
                             <File size={48} color={isDark ? "#374151" : "#d1d5db"} />

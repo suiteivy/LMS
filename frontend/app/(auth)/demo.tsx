@@ -883,9 +883,19 @@ export default function Demo() {
       const { error } = await startDemo(selectedRoleData.id);
 
       if (error) {
+        const errorMsg = typeof error === 'string' ? error : (error?.message || '');
+        const isNetworkErr =
+          errorMsg.includes('fetch') ||
+          errorMsg.includes('network') ||
+          errorMsg.includes('Network') ||
+          errorMsg.includes('Failed to fetch') ||
+          errorMsg.includes('ECONNREFUSED');
+
         Alert.alert(
           "Demo Access Failed",
-          "Could not start the demo session. Please try again."
+          isNetworkErr
+            ? "Cannot reach the API server. Please verify the backend is running at http://localhost:4001 and try again."
+            : errorMsg || "Could not start the demo session. Please try again."
         );
         setIsLoading(false);
         return;

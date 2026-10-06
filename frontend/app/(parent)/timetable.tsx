@@ -150,16 +150,16 @@ export default function ParentStudentTimetablePage() {
                                 key={index}
                                 activeOpacity={0.7}
                                 onPress={() => setSelectedDay(date)}
-                                className={`mr-3 p-3.5 rounded-2xl items-center min-w-[62px] shadow-sm border ${isSelected ? 'bg-gray-900 border-gray-900' : 'bg-white dark:bg-[#161B22] border-gray-100 dark:border-gray-800'}`}
+                                className={`mr-3 p-3.5 rounded-2xl items-center min-w-[62px] shadow-sm border ${isSelected ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-white dark:bg-[#161B22] border-gray-100 dark:border-gray-800'}`}
                             >
-                                <Text className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isSelected ? 'text-white/40' : 'text-gray-400'}`}>
+                                <Text className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>
                                     {format(date, 'EEE')}
                                 </Text>
                                 <Text className={`text-lg font-black ${isSelected ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
                                     {format(date, 'd')}
                                 </Text>
                                 {isToday && (
-                                    <View className="w-1.5 h-1.5 rounded-full mt-1.5 bg-[#FF6900]" />
+                                    <View className={`w-1.5 h-1.5 rounded-full mt-1.5 ${isSelected ? 'bg-white' : 'bg-[#FF6900]'}`} />
                                 )}
                             </TouchableOpacity>
                         );

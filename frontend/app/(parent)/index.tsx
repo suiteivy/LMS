@@ -37,10 +37,10 @@ import { ViolationList } from "@/components/violations/ViolationList";
 export default function ParentIndex() {
   const { profile, loading, logout } = useAuth();
 
-  if (loading) {
+  if (loading || !profile) {
     return (
       <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
-        <ParentDashboardSkeleton loading={loading} label="Loading parent dashboard..." />
+        <ParentDashboardSkeleton loading={loading || !profile} label="Loading parent dashboard..." />
       </View>
     );
   }
@@ -67,6 +67,11 @@ function ParentDashboard({ user, logout }: any) {
   const cacheKey = user?.id ? `parent_linked_students_${user.id}` : null;
 
   const fetchLinkedStudents = async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+
     // Check cache first
     if (cacheKey && linkedStudents.length === 0) {
       const cached = await CacheService.get<any[]>(cacheKey, { allowStale: true });
@@ -99,8 +104,10 @@ function ParentDashboard({ user, logout }: any) {
       } else {
         await clearParentSelectedChild();
       }
-    } catch (error) {
-      console.error("Error fetching linked students:", error);
+    } catch (error: any) {
+      if (!error?.isAuthError && error?.response?.status !== 401) {
+        console.error("Error fetching linked students:", error);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -147,8 +154,10 @@ function ParentDashboard({ user, logout }: any) {
   };
 
   useEffect(() => {
-    fetchLinkedStudents();
-  }, []);
+    if (user?.id) {
+      fetchLinkedStudents();
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (selectedStudent) {
@@ -361,20 +370,20 @@ function ParentDashboard({ user, logout }: any) {
                   offsetX: 0,
                   offsetY: 15,
                   blurRadius: 30,
-                  color: 'rgba(0, 0, 0, 0.3)',
+                  color: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.05)',
                 }],
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 15 },
-                shadowOpacity: 0.3,
+                shadowOpacity: isDark ? 0.3 : 0.05,
                 shadowRadius: 30,
                 elevation: 20,
               }}
-              className="bg-gray-900 p-5 rounded-3xl mb-6"
+              className="bg-white dark:bg-[#161B22] p-5 rounded-3xl mb-6 border border-gray-100 dark:border-gray-800"
             >
               <View className="flex-row justify-between items-center mb-6">
                 <View className="flex-1 mr-3">
-                  <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[2px] mb-1">Child Profile</Text>
-                  <Text className="text-white text-2xl font-black tracking-tight" numberOfLines={1}>
+                  <Text className="text-gray-400 dark:text-white/40 text-[10px] font-bold uppercase tracking-[2px] mb-1">Child Profile</Text>
+                  <Text className="text-gray-900 dark:text-white text-2xl font-black tracking-tight" numberOfLines={1}>
                     {selectedStudent?.users?.first_name ? `${selectedStudent.users.first_name} ${selectedStudent.users.last_name || ''}` : selectedStudent?.users?.full_name}
                   </Text>
                   <View className="bg-[#FF6900]/20 self-start px-2.5 py-1 rounded-full mt-2">
@@ -383,15 +392,15 @@ function ParentDashboard({ user, logout }: any) {
                     </Text>
                   </View>
                 </View>
-                <View className="w-12 h-12 rounded-full bg-white/5 items-center justify-center border border-white/10">
-                  <UserCircle size={24} color="white" />
+                <View className="w-12 h-12 rounded-full bg-gray-100 dark:bg-white/5 items-center justify-center border border-gray-200 dark:border-white/10">
+                  <UserCircle size={24} color={isDark ? "white" : "#4b5563"} />
                 </View>
               </View>
 
               {/* Multi-student switcher (only appears when >1 child) */}
               {linkedStudents.length > 1 && (
-                <View className="border-t border-white/10 pt-6">
-                  <Text className="text-white/30 text-[8px] font-bold uppercase tracking-widest mb-4">
+                <View className="border-t border-gray-100 dark:border-white/10 pt-6">
+                  <Text className="text-gray-400 dark:text-white/30 text-[8px] font-bold uppercase tracking-widest mb-4">
                     Switch Child ({linkedStudents.length} linked)
                   </Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -399,13 +408,13 @@ function ParentDashboard({ user, logout }: any) {
                       <TouchableOpacity
                         key={stu.id}
                         onPress={() => setSelectedStudent(stu)}
-                        className={`mr-3 px-6 py-2.5 rounded-2xl border ${selectedStudent?.id === stu.id ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-white/5 border-white/10'}`}
+                        className={`mr-3 px-6 py-2.5 rounded-2xl border ${selectedStudent?.id === stu.id ? 'bg-[#FF6900] border-[#FF6900]' : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10'}`}
                       >
-                        <Text className={`font-bold text-xs ${selectedStudent?.id === stu.id ? 'text-white' : 'text-gray-400'}`}>
+                        <Text className={`font-bold text-xs ${selectedStudent?.id === stu.id ? 'text-white' : 'text-gray-700 dark:text-gray-400'}`}>
                           {stu.users?.first_name || stu.users?.full_name?.split(' ')[0]}
                         </Text>
                         { (stu.grade_level || stu.form_level) && (
-                          <Text className={`text-[9px] mt-0.5 ${selectedStudent?.id === stu.id ? 'text-white/70' : 'text-gray-600'}`}>
+                          <Text className={`text-[9px] mt-0.5 ${selectedStudent?.id === stu.id ? 'text-white/70' : 'text-gray-500 dark:text-gray-600'}`}>
                             {classTypeLabel.substring(0, 2)} {stu.grade_level || stu.form_level}
                           </Text>
                         )}

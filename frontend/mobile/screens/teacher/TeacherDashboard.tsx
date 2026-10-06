@@ -340,7 +340,7 @@ export function TeacherDashboardMobile() {
                 <TouchableOpacity
                   key={idx}
                   onPress={() => router.push(action.route as any)}
-                  activeOpacity={0.75}
+                  activeOpacity={0.7}
                   style={[
                     styles.actionTile,
                     {
@@ -355,7 +355,7 @@ export function TeacherDashboardMobile() {
                       { backgroundColor: `${action.color}18` },
                     ]}
                   >
-                    <ActionIcon size={22} color={action.color} />
+                    <ActionIcon size={18} color={action.color} />
                   </View>
                   <Text
                     style={[
@@ -528,29 +528,31 @@ const styles = StyleSheet.create({
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    justifyContent: 'space-between',
+    gap: 8,
     marginBottom: spacing.lg,
   },
   actionTile: {
     width: '48.5%',
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 60,
-    gap: 10,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    minHeight: MIN_TOUCH_TARGET,
   },
   actionIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 8,
   },
   actionLabel: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   emptyScheduleCard: {

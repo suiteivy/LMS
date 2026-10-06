@@ -1,3 +1,4 @@
+import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { TableRowSkeleton } from "@/components/ui/skeletons";
@@ -570,54 +571,57 @@ export const PaymentManagementSection: React.FC<
         </View>
       </View>
 
-      <View
-        className="mb-4 p-3 rounded-xl border"
-        style={{
-          backgroundColor: isDark ? '#0F141C' : '#F6F8FA',
-          borderColor: isDark ? '#21262D' : '#D0D7DE',
-        }}
-      >
-        <Text className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: isDark ? '#9CA3AF' : '#6B7280' }}>
-          Retention Badge Legend
-        </Text>
-        <View className="flex-row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          {['<30 days', '>=30 days', 'Floor met'].map((label) => {
-            const sample =
-              label === '<30 days'
-                ? { bg: isDark ? '#78350f' : '#fef3c7', color: isDark ? '#fcd34d' : '#92400e' }
-                : label === '>=30 days'
-                  ? { bg: isDark ? '#1e3a8a' : '#dbeafe', color: isDark ? '#93c5fd' : '#1d4ed8' }
-                  : { bg: isDark ? '#14532d' : '#dcfce7', color: isDark ? '#86efac' : '#166534' };
+      <ActionTooltip targetId="admin.finance.retention_legend">
+        <View
+          className="mb-4 p-3 rounded-xl border"
+          style={{
+            backgroundColor: isDark ? '#0F141C' : '#F6F8FA',
+            borderColor: isDark ? '#21262D' : '#D0D7DE',
+          }}
+        >
+          <Text className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: isDark ? '#9CA3AF' : '#6B7280' }}>
+            Retention Badge Legend
+          </Text>
+          <View className="flex-row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            {['<30 days', '>=30 days', 'Floor met'].map((label) => {
+              const sample =
+                label === '<30 days'
+                  ? { bg: isDark ? '#78350f' : '#fef3c7', color: isDark ? '#fcd34d' : '#92400e' }
+                  : label === '>=30 days'
+                    ? { bg: isDark ? '#1e3a8a' : '#dbeafe', color: isDark ? '#93c5fd' : '#1d4ed8' }
+                    : { bg: isDark ? '#14532d' : '#dcfce7', color: isDark ? '#86efac' : '#166534' };
 
-            return (
-              <View
-                key={label}
-                style={{
-                  backgroundColor: sample.bg,
-                  paddingHorizontal: 8,
-                  paddingVertical: 4,
-                  borderRadius: 999,
-                }}
-              >
-                <Text
+              return (
+                <View
+                  key={label}
                   style={{
-                    color: sample.color,
-                    fontSize: 10,
-                    fontWeight: '700',
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.5,
+                    backgroundColor: sample.bg,
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 999,
                   }}
                 >
-                  {label}
-                </Text>
-              </View>
-            );
-          })}
+                  <Text
+                    style={{
+                      color: sample.color,
+                      fontSize: 10,
+                      fontWeight: '700',
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {label}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
         </View>
-      </View>
+      </ActionTooltip>
 
       {/* Tab Switcher */}
-      <View className="flex-row bg-[#EAEEF2] dark:bg-[#0F141C] p-1 rounded-lg mb-6 border border-[#D0D7DE] dark:border-[#21262D]">
+      <ActionTooltip targetId="admin.finance.view_mode">
+        <View className="flex-row bg-[#EAEEF2] dark:bg-[#0F141C] p-1 rounded-lg mb-6 border border-[#D0D7DE] dark:border-[#21262D]">
         <TouchableOpacity
           onPress={() => setViewMode('list')}
           className={`flex-1 py-3 rounded-xl items-center justify-center ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 ' : ''}`}
@@ -638,6 +642,7 @@ export const PaymentManagementSection: React.FC<
           )}
         </TouchableOpacity>
       </View>
+      </ActionTooltip>
 
       {viewMode === 'list' ? (
         <>

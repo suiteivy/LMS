@@ -420,10 +420,18 @@ exports.getActiveClearance = async (req, res) => {
     if (targetUserId !== currentUser.id && currentUser.role !== "admin" && currentUser.role !== "master_admin") {
       if (currentUser.role === "parent") {
         // Verify target is child
+        const { data: parent } = await supabase
+          .from("parents")
+          .select("id")
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+
+        const parentId = parent ? parent.id : currentUser.id;
+
         const { data: link } = await supabase
           .from("parent_students")
           .select("id, student:students!inner(user_id)")
-          .eq("parent_id", currentUser.id)
+          .or(`parent_id.eq.${parentId},parent_id.eq.${currentUser.id}`)
           .eq("student.user_id", targetUserId)
           .maybeSingle();
 

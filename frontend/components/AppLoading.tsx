@@ -645,7 +645,7 @@ export function AppLoading({
 const styles = StyleSheet.create({
   canvasContainer: {
     flex: 1,
-    backgroundColor: '#070514',
+    backgroundColor: '#0D1117',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Platform.OS === 'ios' ? 24 : 18,

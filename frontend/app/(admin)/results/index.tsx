@@ -1,6 +1,7 @@
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
 import { ActionTooltip } from '@/components/common/ActionTooltip';
 import { Spinner } from '@/components/ui/Spinner';
+import { GradesReportSkeleton } from '@/components/ui/skeletons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { router } from 'expo-router';
 import {
@@ -1042,10 +1043,7 @@ export default function AdminResults() {
                                     </Text>
                                 </View>
                             ) : loadingReportCards ? (
-                                <View style={{ padding: 40, alignItems: 'center' }}>
-                                    <ActivityIndicator size="large" color="#FF6900" />
-                                    <Text style={{ color: textSecondary, marginTop: 12 }}>Loading report cards...</Text>
-                                </View>
+                                <GradesReportSkeleton />
                             ) : (
                                 <>
                                     {/* Summary Stats */}

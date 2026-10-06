@@ -2,7 +2,7 @@ import { ConfirmationModal } from '@/components/common/ConfirmationModal';
 import { DatePicker } from '@/components/common/DatePicker';
 import { UserCard } from '@/components/common/UserCard';
 import { NotFoundView } from '@/components/common/NotFoundView';
-import { ListItemSkeleton } from '@/components/ui/skeletons';
+import { ListItemSkeleton, UserProfileSkeleton } from '@/components/ui/skeletons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/libs/supabase';
@@ -1171,8 +1171,8 @@ export default function UserDetailsScreen() {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, backgroundColor: bg, paddingHorizontal: 16, paddingTop: 20 }}>
-                <ListItemSkeleton loading={loading} count={6} label="Loading user profile..." />
+            <View style={{ flex: 1, backgroundColor: bg }}>
+                <UserProfileSkeleton />
             </View>
         );
     }

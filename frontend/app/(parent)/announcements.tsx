@@ -143,8 +143,9 @@ export default function StudentAnnouncementsPage() {
                         <MessageSquare size={14} color="#FF6900" />
                       </View>
                       <View>
-                        <Text className="text-gray-900 dark:text-white text-xs font-bold tracking-tight">System Notification</Text>
-                        <Text className="text-gray-500 dark:text-gray-400 text-[8px] font-bold uppercase tracking-widest mt-0.5">{item.type}</Text>
+                        <Text className="text-gray-900 dark:text-white text-xs font-bold tracking-tight">
+                          {item.author || item.sender_name || "School Administration"}
+                        </Text>
                       </View>
                     </View>
                   </View>

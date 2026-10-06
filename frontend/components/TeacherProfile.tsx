@@ -16,6 +16,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { api } from "@/services/api";
 import { resolveAvatarUri } from "@/utils/avatar";
 import { showSuccess, showError } from "@/utils/toast";
+import { UserProfileSkeleton } from "@/components/ui/skeletons";
 import {
   UserCircle,
   BookOpen,
@@ -111,12 +112,7 @@ export default function TeacherProfile() {
   };
 
   if (loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: bg, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator size="large" color={orange} />
-        <Text style={{ color: textSecondary, marginTop: 12, fontWeight: "600" }}>Loading Profile...</Text>
-      </View>
-    );
+    return <UserProfileSkeleton />;
   }
 
   const personal = profileData?.personal || profile;

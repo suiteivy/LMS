@@ -14,6 +14,7 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { FinanceService } from '@/services/FinanceService';
 import { supabase } from '@/libs/supabase';
 import { showError, showSuccess } from '@/utils/toast';
+import { FinanceScreenSkeleton } from '@/components/ui/skeletons';
 import {
   Search,
   User,
@@ -599,7 +600,7 @@ export const IndividualRecordsSection: React.FC = () => {
       {selectedPerson ? (
         loadingRecord ? (
           <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#FF6900" />
+            <FinanceScreenSkeleton />
             <Text style={{ marginTop: 12, color: textMuted, fontSize: 13 }}>
               Loading financial ledger for {selectedPerson.name}...
             </Text>

@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { DatePicker } from "@/components/common/DatePicker";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
@@ -268,36 +269,41 @@ export default function AttendancePage() {
                 <View className="px-5 pt-4">
 
                     {/* Teacher Presence Indication Card (Item 14) */}
-                    <View className="bg-[#F6F8FA] dark:bg-[#0D1117] p-4 rounded-2xl border border-[#D0D7DE] dark:border-[#21262D] mb-5 flex-row items-center justify-between shadow-sm">
-                        <View className="flex-row items-center flex-1 mr-3">
-                            <View className={`w-10 h-10 rounded-xl items-center justify-center mr-3 ${teacherCheckedIn ? 'bg-green-100 dark:bg-green-950/30' : 'bg-orange-100 dark:bg-orange-950/30'}`}>
-                                <UserCheck size={20} color={teacherCheckedIn ? "#16A34A" : "#FF6900"} />
+                    <ActionTooltip targetId="teacher.attendance.presence" position="bottom" className="w-full">
+                        <View className="bg-[#F6F8FA] dark:bg-[#0D1117] p-4 rounded-2xl border border-[#D0D7DE] dark:border-[#21262D] mb-5 flex-row items-center justify-between shadow-sm w-full">
+                            <View className="flex-row items-center flex-1 mr-3">
+                                <View className={`w-10 h-10 rounded-xl items-center justify-center mr-3 ${teacherCheckedIn ? 'bg-green-100 dark:bg-green-950/30' : 'bg-orange-100 dark:bg-orange-950/30'}`}>
+                                    <UserCheck size={20} color={teacherCheckedIn ? "#16A34A" : "#FF6900"} />
+                                </View>
+                                <View className="flex-1">
+                                    <View className="flex-row items-center gap-1.5">
+                                        <Text className="text-gray-900 dark:text-white font-bold text-xs">
+                                            {teacherCheckedIn ? "Presence Confirmed" : "Teacher Daily Presence"}
+                                        </Text>
+                                        <HelpTooltip targetId="teacher.attendance.presence" size={13} />
+                                    </View>
+                                    <Text className="text-gray-500 text-[10px] mt-0.5">
+                                        {teacherCheckedIn ? "Synced to Admin in real time" : "Check in to confirm presence today"}
+                                    </Text>
+                                </View>
                             </View>
-                            <View className="flex-1">
-                                <Text className="text-gray-900 dark:text-white font-bold text-xs">
-                                    {teacherCheckedIn ? "Presence Confirmed" : "Teacher Daily Presence"}
-                                </Text>
-                                <Text className="text-gray-500 text-[10px] mt-0.5">
-                                    {teacherCheckedIn ? "Synced to Admin in real time" : "Check in to confirm presence today"}
-                                </Text>
-                            </View>
-                        </View>
 
-                        <TouchableOpacity
-                            onPress={handleSelfCheckIn}
-                            disabled={teacherCheckedIn || checkingIn}
-                            activeOpacity={0.7}
-                            className={`px-3.5 py-2 rounded-xl ${teacherCheckedIn ? 'bg-green-600' : 'bg-[#FF6900]'}`}
-                        >
-                            {checkingIn ? (
-                                <ActivityIndicator color="white" size="small" />
-                            ) : (
-                                <Text className="text-white text-xs font-bold uppercase tracking-wider">
-                                    {teacherCheckedIn ? "Present" : "I'm Present"}
-                                </Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
+                            <TouchableOpacity
+                                onPress={handleSelfCheckIn}
+                                disabled={teacherCheckedIn || checkingIn}
+                                activeOpacity={0.7}
+                                className={`px-3.5 py-2 rounded-xl ${teacherCheckedIn ? 'bg-green-600' : 'bg-[#FF6900]'}`}
+                            >
+                                {checkingIn ? (
+                                    <ActivityIndicator color="white" size="small" />
+                                ) : (
+                                    <Text className="text-white text-xs font-bold uppercase tracking-wider">
+                                        {teacherCheckedIn ? "Present" : "I'm Present"}
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </ActionTooltip>
 
                     {/* Date Selection & Student Count (Item 15A) */}
                     <View className="mb-4">

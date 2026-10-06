@@ -14,7 +14,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
 import Toast from 'react-native-toast-message';
-import { ListItemSkeleton } from '@/components/ui/skeletons';
+import { ListItemSkeleton, TableScreenSkeleton } from '@/components/ui/skeletons';
 import { getApiBaseUrl } from '@/utils/backendUrl';
 import { formatCredentialExpiry } from '@/utils/formatExpiry';
 import { api } from '@/services/api';
@@ -741,7 +741,7 @@ export default function MasterAdminUsersScreen() {
 
             {loading ? (
                 <View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
-                    <ListItemSkeleton loading={loading} count={8} label="Loading users..." />
+                    <TableScreenSkeleton rows={6} columns={4} />
                 </View>
             ) : (
                 <FlatList

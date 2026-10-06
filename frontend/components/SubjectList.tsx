@@ -30,7 +30,7 @@ export const SubjectList: React.FC<SubjectListProps> = ({
  // ── tokens ────────────────────────────────────────────────────────────────
  const textPrimary = isDark ? '#f1f1f1' : '#111827';
  const textSecondary = isDark ? '#9ca3af' : '#6b7280';
- const surface = isDark ? '#13103A' : '#ffffff';
+ const surface = isDark ? '#161B22' : '#ffffff';
  const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
  const accent = '#FF6900';
 

@@ -15,6 +15,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { SubjectAPI, SubjectCategoryData } from '@/services/SubjectService';
 import { ConfirmationModal } from '@/components/common/ConfirmationModal';
 import { showSuccess, showError } from '@/utils/toast';
+import { ListSkeleton } from '@/components/ui/skeletons';
 
 interface SubjectCategoryModalProps {
   visible: boolean;
@@ -406,7 +407,7 @@ export const SubjectCategoryModal: React.FC<SubjectCategoryModalProps> = ({
             {/* Loading */}
             {loading ? (
               <View style={{ padding: 40, alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#FF6B00" />
+                <ListSkeleton count={4} />
               </View>
             ) : categories.length === 0 && !isCreating ? (
               /* Empty state with Quick-Start Suggestions */

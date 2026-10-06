@@ -19,8 +19,14 @@ const isRelationshipResolutionError = (error) => {
   return (
     code === "PGRST200" ||
     code === "PGRST201" ||
+    code === "PGRST204" ||
+    code === "PGRST205" ||
+    code === "42703" ||
+    code === "42P01" ||
     message.includes("relationship") ||
-    message.includes("foreign key")
+    message.includes("foreign key") ||
+    message.includes("does not exist") ||
+    message.includes("schema cache")
   );
 };
 

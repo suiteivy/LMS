@@ -5,7 +5,7 @@ import { ThemeMode, useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { ChevronRight, HelpCircle, LogOut, Settings, ShieldCheck, UserCircle, Laptop, AlertTriangle, ArrowLeftRight } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, Image, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Platform, ScrollView, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { SubscriptionStatusBadge } from '@/components/shared/SubscriptionComponents';
 import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
 import { HelpTooltip } from './settings/HelpTooltip';
@@ -158,7 +158,7 @@ const MenuItem = ({ icon, label, onPress, danger, isDark }: MenuItemProps) => (
 );
 
 function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: (screen: 'profile' | 'settings' | 'help' | 'overview' | 'ownership' | 'sessions') => void }) {
-  const { signOut, profile, loading, displayId, isTrial, isMain, availableRoles, activeRole, switchActiveRole } = useAuth();
+  const { signOut, profile, loading, displayId, isTrial, isMain, availableRoles, activeRole, switchActiveRole, isRoleSwitching, switchingToRole } = useAuth();
   const { isDark } = useTheme();
   const tier = useSubscriptionTier();
   const isPlatformAdminRole = userRole === 'master_admin' || userRole === 'platform_admin';
@@ -232,22 +232,29 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
               <Text style={{ fontSize: 11, fontWeight: '800', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>
                 Switch Active Role
               </Text>
-              <ArrowLeftRight size={13} color="#FF6900" />
+              {isRoleSwitching ? (
+                <ActivityIndicator size="small" color="#FF6900" />
+              ) : (
+                <ArrowLeftRight size={13} color="#FF6900" />
+              )}
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {availableRoles.map((r) => {
                 const isCurrent = (activeRole || profile?.role) === r;
+                const isTargetOfSwitch = isRoleSwitching && switchingToRole === r;
                 const label = r === 'admin' ? 'Admin' : r === 'teacher' ? 'Teacher' : r === 'parent' ? 'Parent' : r === 'student' ? 'Student' : r;
                 return (
                   <TouchableOpacity
                     key={r}
                     onPress={() => {
-                      if (!isCurrent) {
+                      if (!isCurrent && !isRoleSwitching) {
                         switchActiveRole(r);
                       }
                     }}
+                    disabled={isRoleSwitching}
                     style={{
                       flex: 1,
+                      flexDirection: 'row',
                       paddingVertical: 8,
                       borderRadius: 8,
                       backgroundColor: isCurrent ? '#FF6900' : (isDark ? '#1f2937' : '#ffffff'),
@@ -255,8 +262,16 @@ function SettingsMenu({ userRole, onNavigate }: { userRole: string; onNavigate: 
                       justifyContent: 'center',
                       borderWidth: isCurrent ? 0 : 1,
                       borderColor: isDark ? '#374151' : '#d1d5db',
+                      opacity: isRoleSwitching && !isCurrent && !isTargetOfSwitch ? 0.6 : 1,
                     }}
                   >
+                    {isTargetOfSwitch && (
+                      <ActivityIndicator
+                        size="small"
+                        color={isCurrent ? '#ffffff' : '#FF6900'}
+                        style={{ marginRight: 5 }}
+                      />
+                    )}
                     <Text style={{
                       fontSize: 12,
                       fontWeight: isCurrent ? '700' : '600',

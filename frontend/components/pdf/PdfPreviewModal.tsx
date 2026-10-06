@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { PdfService, PdfDocumentPayload } from '@/services/PdfService';
+import { DetailSkeleton } from '@/components/ui/skeletons';
 
 export interface PdfPreviewModalProps {
   visible: boolean;
@@ -273,7 +274,7 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
           >
             {loadingPreview ? (
               <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, gap: 14 }}>
-                <ActivityIndicator size="large" color="#FF6B00" />
+                <DetailSkeleton />
                 <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 15 }}>
                   Compiling vector PDF document...
                 </Text>

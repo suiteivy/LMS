@@ -1,4 +1,5 @@
 import { EmptyState } from "@/components/common/EmptyState";
+import { LibraryCatalogSkeleton } from "@/components/ui/skeletons";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { LibraryAPI, useLibraryAPI } from "@/services/LibraryService";
@@ -660,7 +661,7 @@ const BorrowedBooksOverview: React.FC<BorrowedBooksOverviewProps> = ({
     if (loading && borrowedBooks.length === 0) {
         return (
             <View className="flex-1 justify-center items-center" style={{ backgroundColor: pageBg }}>
-                <ActivityIndicator size="large" color="#fd6900" />
+                <LibraryCatalogSkeleton />
                 <Text className="mt-2" style={{ color: textMuted }}>Loading borrowed books...</Text>
             </View>
         );

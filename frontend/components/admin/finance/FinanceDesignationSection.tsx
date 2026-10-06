@@ -13,6 +13,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { FinanceService } from '@/services/FinanceService';
 import { showError, showSuccess } from '@/utils/toast';
+import { CardGridScreenSkeleton } from '@/components/ui/skeletons';
 import { Shield, ShieldAlert, ShieldCheck, UserCheck, UserX, History, Search } from 'lucide-react-native';
 
 interface StaffUser {
@@ -197,7 +198,7 @@ export const FinanceDesignationSection: React.FC = () => {
 
       {loading ? (
         <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#FF6900" />
+          <CardGridScreenSkeleton />
           <Text style={{ marginTop: 12, color: textMuted, fontSize: 13 }}>Loading Finance Administrators...</Text>
         </View>
       ) : activeSubTab === 'designations' ? (

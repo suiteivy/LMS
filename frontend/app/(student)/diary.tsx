@@ -1,3 +1,4 @@
+import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { DiaryService, DiaryEntry } from "@/services/DiaryService";
@@ -81,8 +82,8 @@ export default function StudentDiaryPage() {
                                 const statusStyle = assignment ? getStatusColor(assignment.status) : null;
 
                                 return (
+                                    <ActionTooltip key={item.id} targetId="student.diary.entry_card">
                                     <View
-                                        key={item.id}
                                         className="p-5 mb-4 rounded-xl bg-[#FFFFFF] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] shadow-sm"
                                     >
                                         <View className="flex-row items-start mb-4">
@@ -198,6 +199,7 @@ export default function StudentDiaryPage() {
                                             )}
                                         </View>
                                     </View>
+                                    </ActionTooltip>
                                 );
                             })
                         ) : (

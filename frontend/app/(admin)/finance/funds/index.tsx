@@ -2,6 +2,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Tex
 import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { ChevronLeft, Plus, PieChart, Wallet } from "lucide-react-native";
+import { FinanceScreenSkeleton } from "@/components/ui/skeletons";
 import { FundsAPI, Fund, Allocation } from "@/services/FundsService";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useCurrency } from "@/contexts/CurrencyContext";
@@ -119,7 +120,7 @@ export default function FundManager() {
             </View>
 
             {loading ? (
-                <ActivityIndicator size="large" color="#f97316" className="mt-10" />
+                <FinanceScreenSkeleton />
             ) : (
                 <View className="flex-1 p-6">
                     {/* Fund List Horizontal */}

@@ -1,7 +1,8 @@
 import { useTheme } from '@/contexts/ThemeContext';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import React, { useRef, useState, useEffect } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SETTINGS_TOOLTIPS, type TooltipTargetId } from '@/components/settings/tooltips.config';
 
 let createPortal: any = null;
 if (Platform.OS === 'web') {
@@ -14,6 +15,7 @@ if (Platform.OS === 'web') {
 }
 
 interface ActionTooltipProps {
+    targetId?: TooltipTargetId;
     text?: string;
     label?: string;
     description?: string;
@@ -22,9 +24,11 @@ interface ActionTooltipProps {
     learnMoreAnchor?: string;
     onLearnMore?: () => void;
     style?: any;
+    className?: string;
 }
 
 export const ActionTooltip: React.FC<ActionTooltipProps> = ({
+    targetId,
     text,
     label,
     description,
@@ -33,16 +37,23 @@ export const ActionTooltip: React.FC<ActionTooltipProps> = ({
     learnMoreAnchor,
     onLearnMore,
     style,
+    className,
 }) => {
     const { isDark } = useTheme();
     const router = useRouter();
+    const pathname = usePathname();
     const [visible, setVisible] = useState(false);
     const [coords, setCoords] = useState<{ top: number; left: number; isTop: boolean } | null>(null);
     const containerRef = useRef<any>(null);
     const hideTimeoutRef = useRef<any>(null);
 
+    const entry = targetId ? SETTINGS_TOOLTIPS[targetId] : undefined;
+    const resolvedLabel = label || entry?.title;
+    const resolvedText = description || text || entry?.text;
+    const resolvedAnchor = learnMoreAnchor || entry?.learnMoreAnchor;
+
     if (Platform.OS !== 'web') {
-        return <View style={style}>{children}</View>;
+        return <View style={style} className={className}>{children}</View>;
     }
 
     const clearHideTimer = () => {
@@ -76,7 +87,7 @@ export const ActionTooltip: React.FC<ActionTooltipProps> = ({
     };
 
     const handleMouseLeave = () => {
-        if (learnMoreAnchor) {
+        if (resolvedAnchor) {
             clearHideTimer();
             hideTimeoutRef.current = setTimeout(() => {
                 setVisible(false);
@@ -90,10 +101,12 @@ export const ActionTooltip: React.FC<ActionTooltipProps> = ({
         setVisible(false);
         if (onLearnMore) {
             onLearnMore();
-        } else if (learnMoreAnchor) {
+        } else if (resolvedAnchor) {
+            const isTeacher = pathname?.includes('(teacher)') || (typeof window !== 'undefined' && window.location.pathname.includes('/teacher'));
+            const targetPath = isTeacher ? '/(teacher)/accessibility/settings' : '/(admin)/accessibility/settings';
             router.push({
-                pathname: '/(admin)/accessibility/settings' as any,
-                params: { manual: '1', anchor: learnMoreAnchor },
+                pathname: targetPath as any,
+                params: { manual: '1', anchor: resolvedAnchor },
             });
         }
     };
@@ -129,23 +142,23 @@ export const ActionTooltip: React.FC<ActionTooltipProps> = ({
                         backgroundColor: isDark ? '#1F2937' : '#111827',
                         borderColor: isDark ? '#374151' : '#1F2937',
                         // @ts-ignore - web-specific
-                        pointerEvents: learnMoreAnchor ? 'auto' : 'none',
+                        pointerEvents: resolvedAnchor ? 'auto' : 'none',
                     },
                 ]}
             >
                 <View style={{ flexDirection: 'column', maxWidth: 260, minWidth: 60 }}>
-                    {label ? (
-                        <Text style={[styles.tooltipText, { fontWeight: '700', fontSize: 12, marginBottom: description || text ? 2 : 0 }]}>
-                            {label}
+                    {resolvedLabel ? (
+                        <Text style={[styles.tooltipText, { fontWeight: '700', fontSize: 12, marginBottom: resolvedText ? 2 : 0 }]}>
+                            {resolvedLabel}
                         </Text>
                     ) : null}
-                    {(description || text) ? (
-                        <Text style={[styles.tooltipText, { fontSize: label ? 11 : 12, opacity: label ? 0.9 : 1 }]}>
-                            {description || text}
+                    {resolvedText ? (
+                        <Text style={[styles.tooltipText, { fontSize: resolvedLabel ? 11 : 12, opacity: resolvedLabel ? 0.9 : 1 }]}>
+                            {resolvedText}
                         </Text>
                     ) : null}
                 </View>
-                {learnMoreAnchor ? (
+                {resolvedAnchor ? (
                     <TouchableOpacity
                         onPress={handleLearnMorePress}
                         style={styles.learnMoreBtn}
@@ -168,6 +181,7 @@ export const ActionTooltip: React.FC<ActionTooltipProps> = ({
         <View
             ref={containerRef}
             style={[styles.container, style]}
+            className={className}
             // @ts-ignore - Web DOM event props supported by react-native-web
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
@@ -183,9 +197,6 @@ export const ActionTooltip: React.FC<ActionTooltipProps> = ({
 const styles: any = StyleSheet.create({
     container: {
         position: 'relative',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
     },
     tooltipBubblePortal: {
         position: 'fixed' as any,

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { CardGridScreenSkeleton } from '@/components/ui/skeletons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
@@ -218,8 +219,8 @@ export default function AdminMaterialsScreen() {
 
             {/* List */}
             {loading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color={themeColors.primary} />
+                <View style={{ flex: 1, paddingHorizontal: 20 }}>
+                    <CardGridScreenSkeleton count={5} />
                 </View>
             ) : (
                 <FlatList

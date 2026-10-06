@@ -1,0 +1,295 @@
+diff --git a/node_modules/@react-navigation/bottom-tabs/README.md b/node_modules/@react-navigation/bottom-tabs/README.md
+index e31eb02..e60d82e 100644
+--- a/node_modules/@react-navigation/bottom-tabs/README.md
++++ b/node_modules/@react-navigation/bottom-tabs/README.md
+@@ -1,4 +1,4 @@
+-# `@react-navigation/bottom-tabs`
++﻿# `@react-navigation/bottom-tabs`
+ 
+ Bottom tab navigator for React Navigation following iOS design guidelines.
+ 
+diff --git a/node_modules/@react-navigation/bottom-tabs/lib/module/views/BottomTabBar.js b/node_modules/@react-navigation/bottom-tabs/lib/module/views/BottomTabBar.js
+index cb4e310..fa33ea1 100644
+--- a/node_modules/@react-navigation/bottom-tabs/lib/module/views/BottomTabBar.js
++++ b/node_modules/@react-navigation/bottom-tabs/lib/module/views/BottomTabBar.js
+@@ -274,7 +274,7 @@ export function BottomTabBar({
+           });
+           if (!focused && !event.defaultPrevented) {
+             navigation.dispatch({
+-              ...CommonActions.navigate(route),
++              ...CommonActions.navigate(route.name, route.params),
+               target: state.key
+             });
+           }
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/TransitionConfigs/SceneStyleInterpolators.tsx b/node_modules/@react-navigation/bottom-tabs/src/TransitionConfigs/SceneStyleInterpolators.tsx
+index 299845c..036833d 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/TransitionConfigs/SceneStyleInterpolators.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/TransitionConfigs/SceneStyleInterpolators.tsx
+@@ -1,4 +1,4 @@
+-import type {
++﻿import type {
+   BottomTabSceneInterpolatedStyle,
+   BottomTabSceneInterpolationProps,
+ } from '../types';
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/TransitionConfigs/TransitionPresets.tsx b/node_modules/@react-navigation/bottom-tabs/src/TransitionConfigs/TransitionPresets.tsx
+index 7c6d26f..bcd0cfb 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/TransitionConfigs/TransitionPresets.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/TransitionConfigs/TransitionPresets.tsx
+@@ -1,4 +1,4 @@
+-import type { BottomTabTransitionPreset } from '../types';
++﻿import type { BottomTabTransitionPreset } from '../types';
+ import { forFade, forShift } from './SceneStyleInterpolators';
+ import { FadeSpec, ShiftSpec } from './TransitionSpecs';
+ 
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/TransitionConfigs/TransitionSpecs.tsx b/node_modules/@react-navigation/bottom-tabs/src/TransitionConfigs/TransitionSpecs.tsx
+index 23c2086..360896d 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/TransitionConfigs/TransitionSpecs.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/TransitionConfigs/TransitionSpecs.tsx
+@@ -1,4 +1,4 @@
+-import { Easing } from 'react-native';
++﻿import { Easing } from 'react-native';
+ 
+ import type { TransitionSpec } from '../types';
+ 
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/index.tsx b/node_modules/@react-navigation/bottom-tabs/src/index.tsx
+index 6de84a3..a761cfd 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/index.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/index.tsx
+@@ -1,4 +1,4 @@
+-import * as SceneStyleInterpolators from './TransitionConfigs/SceneStyleInterpolators';
++﻿import * as SceneStyleInterpolators from './TransitionConfigs/SceneStyleInterpolators';
+ import * as TransitionPresets from './TransitionConfigs/TransitionPresets';
+ import * as TransitionSpecs from './TransitionConfigs/TransitionSpecs';
+ 
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/navigators/createBottomTabNavigator.tsx b/node_modules/@react-navigation/bottom-tabs/src/navigators/createBottomTabNavigator.tsx
+index dfc39c6..ffc8860 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/navigators/createBottomTabNavigator.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/navigators/createBottomTabNavigator.tsx
+@@ -1,4 +1,4 @@
+-import {
++﻿import {
+   createNavigatorFactory,
+   type NavigatorTypeBagBase,
+   type ParamListBase,
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/types.tsx b/node_modules/@react-navigation/bottom-tabs/src/types.tsx
+index 2438b03..3dfb240 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/types.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/types.tsx
+@@ -1,4 +1,4 @@
+-import type {
++﻿import type {
+   HeaderOptions,
+   PlatformPressable,
+ } from '@react-navigation/elements';
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeBottomTabView.native.tsx b/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeBottomTabView.native.tsx
+index 9670d47..d73eb9f 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeBottomTabView.native.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeBottomTabView.native.tsx
+@@ -1,4 +1,4 @@
+-import {
++﻿import {
+   getLabel,
+   Lazy,
+   SafeAreaProviderCompat,
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeBottomTabView.tsx b/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeBottomTabView.tsx
+index 5dbe4af..61fad96 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeBottomTabView.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeBottomTabView.tsx
+@@ -1,4 +1,4 @@
+-import {
++﻿import {
+   type ParamListBase,
+   type TabNavigationState,
+ } from '@react-navigation/native';
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/NativeScreen.tsx b/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/NativeScreen.tsx
+index 5c760ca..e279c3b 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/NativeScreen.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/NativeScreen.tsx
+@@ -1,4 +1,4 @@
+-import {
++﻿import {
+   getDefaultHeaderHeight,
+   HeaderHeightContext,
+   HeaderShownContext,
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/debounce.tsx b/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/debounce.tsx
+index 699674a..78695fa 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/debounce.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/debounce.tsx
+@@ -1,4 +1,4 @@
+-export function debounce<T extends (...args: any[]) => void>(
++﻿export function debounce<T extends (...args: any[]) => void>(
+   func: T,
+   duration: number
+ ): T {
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/useAnimatedHeaderHeight.tsx b/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/useAnimatedHeaderHeight.tsx
+index b484c96..d192b43 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/useAnimatedHeaderHeight.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/useAnimatedHeaderHeight.tsx
+@@ -1,4 +1,4 @@
+-import * as React from 'react';
++﻿import * as React from 'react';
+ import type { Animated } from 'react-native';
+ 
+ export const AnimatedHeaderHeightContext = React.createContext<
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/useHeaderConfig.tsx b/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/useHeaderConfig.tsx
+index 260d7cc..b79cd3f 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/useHeaderConfig.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/unstable/NativeScreen/useHeaderConfig.tsx
+@@ -1,4 +1,4 @@
+-import { getHeaderTitle, HeaderTitle } from '@react-navigation/elements';
++﻿import { getHeaderTitle, HeaderTitle } from '@react-navigation/elements';
+ import {
+   type Route,
+   type Theme,
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/unstable/createNativeBottomTabNavigator.native.tsx b/node_modules/@react-navigation/bottom-tabs/src/unstable/createNativeBottomTabNavigator.native.tsx
+index acd15c8..f45b7b4 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/unstable/createNativeBottomTabNavigator.native.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/unstable/createNativeBottomTabNavigator.native.tsx
+@@ -1,4 +1,4 @@
+-import {
++﻿import {
+   createNavigatorFactory,
+   type NavigatorTypeBagBase,
+   type ParamListBase,
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/unstable/createNativeBottomTabNavigator.tsx b/node_modules/@react-navigation/bottom-tabs/src/unstable/createNativeBottomTabNavigator.tsx
+index 668c27f..67abfcd 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/unstable/createNativeBottomTabNavigator.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/unstable/createNativeBottomTabNavigator.tsx
+@@ -1,4 +1,4 @@
+-export const createNativeBottomTabNavigator: typeof import('./createNativeBottomTabNavigator.native').createNativeBottomTabNavigator =
++﻿export const createNativeBottomTabNavigator: typeof import('./createNativeBottomTabNavigator.native').createNativeBottomTabNavigator =
+   () => {
+     throw new Error('Native Bottom Tabs are not supported on this platform.');
+   };
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/unstable/index.tsx b/node_modules/@react-navigation/bottom-tabs/src/unstable/index.tsx
+index a87a918..0aa238a 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/unstable/index.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/unstable/index.tsx
+@@ -1,4 +1,4 @@
+-/**
++﻿/**
+  * Navigators
+  */
+ export { createNativeBottomTabNavigator } from './createNativeBottomTabNavigator';
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/unstable/types.tsx b/node_modules/@react-navigation/bottom-tabs/src/unstable/types.tsx
+index 6509447..1fb3b66 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/unstable/types.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/unstable/types.tsx
+@@ -1,4 +1,4 @@
+-import type {
++﻿import type {
+   DefaultNavigatorOptions,
+   Descriptor,
+   NavigationHelpers,
+@@ -275,7 +275,7 @@ export type NativeBottomTabNavigationOptions = NativeHeaderOptions & {
+    *
+    * The following values are currently supported:
+    *
+-   * - `auto` - the system sets the display mode based on the tab’s content
++   * - `auto` - the system sets the display mode based on the tabâ€™s content
+    * - `tabBar` - the system displays the content only as a tab bar
+    * - `tabSidebar` - the tab bar is displayed as a sidebar
+    *
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/utils/BottomTabBarHeightCallbackContext.tsx b/node_modules/@react-navigation/bottom-tabs/src/utils/BottomTabBarHeightCallbackContext.tsx
+index b323f3d..16aa42e 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/utils/BottomTabBarHeightCallbackContext.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/utils/BottomTabBarHeightCallbackContext.tsx
+@@ -1,4 +1,4 @@
+-import * as React from 'react';
++﻿import * as React from 'react';
+ 
+ export const BottomTabBarHeightCallbackContext = React.createContext<
+   ((height: number) => void) | undefined
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/utils/BottomTabBarHeightContext.tsx b/node_modules/@react-navigation/bottom-tabs/src/utils/BottomTabBarHeightContext.tsx
+index 15c1c7a..8eaaaf7 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/utils/BottomTabBarHeightContext.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/utils/BottomTabBarHeightContext.tsx
+@@ -1,4 +1,4 @@
+-import * as React from 'react';
++﻿import * as React from 'react';
+ 
+ export const BottomTabBarHeightContext = React.createContext<
+   number | undefined
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/utils/useAnimatedHashMap.tsx b/node_modules/@react-navigation/bottom-tabs/src/utils/useAnimatedHashMap.tsx
+index 503bb78..3745974 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/utils/useAnimatedHashMap.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/utils/useAnimatedHashMap.tsx
+@@ -1,4 +1,4 @@
+-import type { NavigationState } from '@react-navigation/routers';
++﻿import type { NavigationState } from '@react-navigation/routers';
+ import * as React from 'react';
+ import { Animated } from 'react-native';
+ 
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/utils/useBottomTabBarHeight.tsx b/node_modules/@react-navigation/bottom-tabs/src/utils/useBottomTabBarHeight.tsx
+index 3d917b2..d6dffd2 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/utils/useBottomTabBarHeight.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/utils/useBottomTabBarHeight.tsx
+@@ -1,4 +1,4 @@
+-import * as React from 'react';
++﻿import * as React from 'react';
+ 
+ import { BottomTabBarHeightContext } from './BottomTabBarHeightContext';
+ 
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/utils/useIsKeyboardShown.tsx b/node_modules/@react-navigation/bottom-tabs/src/utils/useIsKeyboardShown.tsx
+index 2ee04ac..7d42a7c 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/utils/useIsKeyboardShown.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/utils/useIsKeyboardShown.tsx
+@@ -1,4 +1,4 @@
+-import * as React from 'react';
++﻿import * as React from 'react';
+ import { type EmitterSubscription, Keyboard, Platform } from 'react-native';
+ 
+ export function useIsKeyboardShown() {
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabBar.tsx b/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabBar.tsx
+index 55b9c8f..1951e91 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabBar.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabBar.tsx
+@@ -405,7 +405,7 @@ export function BottomTabBar({
+ 
+             if (!focused && !event.defaultPrevented) {
+               navigation.dispatch({
+-                ...CommonActions.navigate(route),
++                ...CommonActions.navigate(route.name, route.params),
+                 target: state.key,
+               });
+             }
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabItem.tsx b/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabItem.tsx
+index 9288c02..8c0b2b8 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabItem.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabItem.tsx
+@@ -1,4 +1,4 @@
+-import { getLabel, Label, PlatformPressable } from '@react-navigation/elements';
++﻿import { getLabel, Label, PlatformPressable } from '@react-navigation/elements';
+ import { type Route, useTheme } from '@react-navigation/native';
+ import Color from 'color';
+ import React from 'react';
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabView.tsx b/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabView.tsx
+index c2b6316..146b328 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabView.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabView.tsx
+@@ -1,4 +1,4 @@
+-import {
++﻿import {
+   getHeaderTitle,
+   Header,
+   SafeAreaProviderCompat,
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/views/ScreenFallback.tsx b/node_modules/@react-navigation/bottom-tabs/src/views/ScreenFallback.tsx
+index c792cda..7a5ae75 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/views/ScreenFallback.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/views/ScreenFallback.tsx
+@@ -1,4 +1,4 @@
+-import * as React from 'react';
++﻿import * as React from 'react';
+ import {
+   Animated,
+   type StyleProp,
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/views/TabBarIcon.tsx b/node_modules/@react-navigation/bottom-tabs/src/views/TabBarIcon.tsx
+index a86cdd4..70da7a7 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/views/TabBarIcon.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/views/TabBarIcon.tsx
+@@ -1,4 +1,4 @@
+-import { Badge } from '@react-navigation/elements';
++﻿import { Badge } from '@react-navigation/elements';
+ import type { Route } from '@react-navigation/native';
+ import React from 'react';
+ import {

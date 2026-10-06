@@ -1,5 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { ActionTooltip } from "@/components/common/ActionTooltip";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { TableScreenSkeleton, CardGridScreenSkeleton } from "@/components/ui/skeletons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useRouter } from 'expo-router';
 import { 
@@ -1128,69 +1130,75 @@ export default function RolesAndPermissions() {
 
             {/* Segmented Responsive Tab Bar */}
             <View className="px-4 pt-3 pb-1">
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-                    <View className="flex-row bg-[#F6F8FA] dark:bg-[#0F141C] p-1 rounded-2xl border border-gray-200 dark:border-gray-800">
-                        <TouchableOpacity
-                            onPress={() => setActiveTab('roles')}
-                            className={`flex-row items-center justify-center px-4 py-2.5 rounded-xl ${
-                                activeTab === 'roles' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
-                            }`}
-                        >
-                            <Shield size={15} color={activeTab === 'roles' ? '#FF6900' : textSecondary} style={{ marginRight: 6 }} />
-                            <Text className={`font-bold text-xs ${activeTab === 'roles' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
-                                Custom Roles
-                            </Text>
-                        </TouchableOpacity>
+                <ActionTooltip targetId="admin.roles.tabs" position="bottom" className="w-full">
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+                        <View className="flex-row items-center bg-[#F6F8FA] dark:bg-[#0F141C] p-1 rounded-2xl border border-gray-200 dark:border-gray-800">
+                            <TouchableOpacity
+                                onPress={() => setActiveTab('roles')}
+                                className={`flex-row items-center justify-center px-4 py-2.5 rounded-xl ${
+                                    activeTab === 'roles' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
+                                }`}
+                            >
+                                <Shield size={15} color={activeTab === 'roles' ? '#FF6900' : textSecondary} style={{ marginRight: 6 }} />
+                                <Text className={`font-bold text-xs ${activeTab === 'roles' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
+                                    Custom Roles
+                                </Text>
+                            </TouchableOpacity>
 
-                        <TouchableOpacity
-                            onPress={() => setActiveTab('users')}
-                            className={`flex-row items-center justify-center px-4 py-2.5 rounded-xl ${
-                                activeTab === 'users' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
-                            }`}
-                        >
-                            <Users size={15} color={activeTab === 'users' ? '#FF6900' : textSecondary} style={{ marginRight: 6 }} />
-                            <Text className={`font-bold text-xs ${activeTab === 'users' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
-                                User Assignment
-                            </Text>
-                        </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setActiveTab('users')}
+                                className={`flex-row items-center justify-center px-4 py-2.5 rounded-xl ${
+                                    activeTab === 'users' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
+                                }`}
+                            >
+                                <Users size={15} color={activeTab === 'users' ? '#FF6900' : textSecondary} style={{ marginRight: 6 }} />
+                                <Text className={`font-bold text-xs ${activeTab === 'users' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
+                                    User Assignment
+                                </Text>
+                            </TouchableOpacity>
 
-                        <TouchableOpacity
-                            onPress={() => setActiveTab('librarians')}
-                            className={`flex-row items-center justify-center px-4 py-2.5 rounded-xl ${
-                                activeTab === 'librarians' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
-                            }`}
-                        >
-                            <BookOpen size={15} color={activeTab === 'librarians' ? '#FF6900' : textSecondary} style={{ marginRight: 6 }} />
-                            <Text className={`font-bold text-xs ${activeTab === 'librarians' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
-                                Librarians
-                            </Text>
-                        </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setActiveTab('librarians')}
+                                className={`flex-row items-center justify-center px-4 py-2.5 rounded-xl ${
+                                    activeTab === 'librarians' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
+                                }`}
+                            >
+                                <BookOpen size={15} color={activeTab === 'librarians' ? '#FF6900' : textSecondary} style={{ marginRight: 6 }} />
+                                <Text className={`font-bold text-xs ${activeTab === 'librarians' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
+                                    Librarians
+                                </Text>
+                            </TouchableOpacity>
 
-                        <TouchableOpacity
-                            onPress={() => setActiveTab('finance')}
-                            className={`flex-row items-center justify-center px-4 py-2.5 rounded-xl ${
-                                activeTab === 'finance' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
-                            }`}
-                        >
-                            <Wallet size={15} color={activeTab === 'finance' ? '#FF6900' : textSecondary} style={{ marginRight: 6 }} />
-                            <Text className={`font-bold text-xs ${activeTab === 'finance' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
-                                Finance Admins
-                            </Text>
-                        </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setActiveTab('finance')}
+                                className={`flex-row items-center justify-center px-4 py-2.5 rounded-xl ${
+                                    activeTab === 'finance' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
+                                }`}
+                            >
+                                <Wallet size={15} color={activeTab === 'finance' ? '#FF6900' : textSecondary} style={{ marginRight: 6 }} />
+                                <Text className={`font-bold text-xs ${activeTab === 'finance' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
+                                    Finance Admins
+                                </Text>
+                            </TouchableOpacity>
 
-                        <TouchableOpacity
-                            onPress={() => setActiveTab('hod')}
-                            className={`flex-row items-center justify-center px-4 py-2.5 rounded-xl ${
-                                activeTab === 'hod' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
-                            }`}
-                        >
-                            <GraduationCap size={15} color={activeTab === 'hod' ? '#FF6900' : textSecondary} style={{ marginRight: 6 }} />
-                            <Text className={`font-bold text-xs ${activeTab === 'hod' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
-                                HOD Assignment
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                </ScrollView>
+                            <TouchableOpacity
+                                onPress={() => setActiveTab('hod')}
+                                className={`flex-row items-center justify-center px-4 py-2.5 rounded-xl ${
+                                    activeTab === 'hod' ? 'bg-white dark:bg-[#1C2128] shadow-sm' : 'bg-transparent'
+                                }`}
+                            >
+                                <GraduationCap size={15} color={activeTab === 'hod' ? '#FF6900' : textSecondary} style={{ marginRight: 6 }} />
+                                <Text className={`font-bold text-xs ${activeTab === 'hod' ? 'text-[#FF6900]' : 'text-gray-500 dark:text-gray-400'}`}>
+                                    HOD Assignment
+                                </Text>
+                            </TouchableOpacity>
+
+                            <View className="px-2">
+                                <HelpTooltip targetId="admin.roles.tabs" size={13} />
+                            </View>
+                        </View>
+                    </ScrollView>
+                </ActionTooltip>
             </View>
 
             {/* TAB CONTENT: LIBRARIANS */}
@@ -1233,8 +1241,8 @@ export default function RolesAndPermissions() {
                     </View>
 
                     {staffLoading ? (
-                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <ActivityIndicator size="large" color="#FF6900" />
+                        <View style={{ flex: 1, padding: 16 }}>
+                            <TableScreenSkeleton rows={6} columns={3} />
                         </View>
                     ) : filteredStaff.length === 0 ? (
                         <View className="bg-white dark:bg-[#161B22] p-12 rounded-[28px] items-center border border-gray-200 dark:border-gray-800 border-dashed">
@@ -1352,8 +1360,8 @@ export default function RolesAndPermissions() {
                     </View>
 
                     {hodLoading ? (
-                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <ActivityIndicator size="large" color="#FF6900" />
+                        <View style={{ flex: 1, padding: 16 }}>
+                            <TableScreenSkeleton rows={5} columns={2} />
                         </View>
                     ) : filteredSubjects.length === 0 ? (
                         <View className="bg-white dark:bg-[#161B22] p-12 rounded-[28px] items-center border border-gray-200 dark:border-gray-800 border-dashed">
@@ -1461,8 +1469,8 @@ export default function RolesAndPermissions() {
                 </View>
             ) : loading ? (
                 /* TAB CONTENT: CUSTOM ROLES */
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color="#FF6900" />
+                <View style={{ flex: 1, padding: 16 }}>
+                    <CardGridScreenSkeleton count={4} />
                 </View>
             ) : (
                 <ScrollView style={{ flex: 1, padding: 20 }} showsVerticalScrollIndicator={false}>

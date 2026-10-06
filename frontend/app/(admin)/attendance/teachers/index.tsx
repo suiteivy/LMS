@@ -2,6 +2,7 @@ import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeacherAttendance, AdminTeacherAttendanceAPI } from "@/services/TeacherAttendanceService";
 import { DatePicker } from '@/components/common/DatePicker';
+import { TableScreenSkeleton } from '@/components/ui/skeletons';
 import { useRouter } from "expo-router";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { Check, Clock, X } from "lucide-react-native";
@@ -173,8 +174,8 @@ export default function TeacherAttendancePage() {
             </View>
 
             {loading ? (
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <ActivityIndicator size="large" color="#FF6B00" />
+                <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 10 }}>
+                    <TableScreenSkeleton rows={6} columns={3} />
                 </View>
             ) : (
                 <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 10 }} contentContainerStyle={{ paddingBottom: 110 }}>

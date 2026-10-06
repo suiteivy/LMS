@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SupportService, type SupportTicket } from '@/services/SupportService';
 import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
 import { HelpTooltip } from '@/components/settings/HelpTooltip';
+import { formatNotificationDisplay } from '@/utils/notificationLabel';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertCircle, Bell, CheckCircle, Info, Trash2 } from 'lucide-react-native';
 import React, { useEffect } from "react";
@@ -364,7 +365,9 @@ export const NotificationsHub = () => {
           </View>
         ) : (
           <>
-            {notifications.map((item) => (
+            {notifications.map((item) => {
+              const display = formatNotificationDisplay(item);
+              return (
               <TouchableOpacity
                 key={item.id}
                 activeOpacity={0.85}
@@ -396,12 +399,14 @@ export const NotificationsHub = () => {
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <Text style={{ fontWeight: '700', fontSize: 15, color: tokens.textPrimary }}>{item.title}</Text>
+                    <Text style={{ fontWeight: '700', fontSize: 15, color: tokens.textPrimary }}>{display.title}</Text>
                     <Text style={{ fontSize: 10, color: tokens.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                       {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
                     </Text>
                   </View>
-                  <Text style={{ color: tokens.textSecondary, fontSize: 14, lineHeight: 20 }}>{item.message}</Text>
+                  {!!display.message && (
+                    <Text style={{ color: tokens.textSecondary, fontSize: 14, lineHeight: 20 }}>{display.message}</Text>
+                  )}
                   {!!item.expires_at && (
                     <Text style={{ color: '#D97706', fontSize: 11, marginTop: 6, fontWeight: '700' }}>
                       {formatExpiryCountdown(item.expires_at)}
@@ -416,7 +421,8 @@ export const NotificationsHub = () => {
                   <Trash2 size={16} color={tokens.textMuted} />
                 </TouchableOpacity>
               </TouchableOpacity>
-            ))}
+            );
+            })}
 
             <TouchableOpacity
               style={{

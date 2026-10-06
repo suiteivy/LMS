@@ -28,7 +28,29 @@ export type TooltipTargetId =
   | 'admin.manage.resources'
   | 'admin.manage.academic_setup'
   | 'admin.manage.results'
+  | 'admin.manage.coverage'
+  | 'admin.manage.exams'
+  | 'admin.manage.rankings'
+  | 'admin.manage.stats_students'
+  | 'admin.manage.stats_teachers'
+  | 'admin.manage.system_tools'
+  | 'admin.coverage.oversight'
+  | 'admin.exams.periods'
+  | 'admin.resources.metrics'
+  | 'admin.roles.tabs'
   | 'admin.support.tickets'
+  | 'teacher.manage.faculty_hub'
+  | 'teacher.manage.mode_selector'
+  | 'teacher.manage.stats_submissions'
+  | 'teacher.manage.stats_attendance'
+  | 'teacher.manage.suite_header'
+  | 'teacher.attendance.presence'
+  | 'teacher.grade_entry.stepper'
+  | 'teacher.grade_entry.summary'
+  | 'teacher.rankings.scope'
+  | 'teacher.rankings.distribution'
+  | 'teacher.report_cards.modes'
+  | 'teacher.report_cards.scope'
   | 'teacher.manage.performance'
   | 'teacher.manage.coursework'
   | 'teacher.manage.registrar'
@@ -92,7 +114,21 @@ export type TooltipTargetId =
   | 'settings.password.admin'
   | 'settings.password.teacher'
   | 'settings.password.student'
-  | 'settings.password.parent';
+  | 'settings.password.parent'
+  | 'admin.academic_setup.years_card'
+  | 'admin.academic_setup.weighting_card'
+  | 'admin.academic_setup.scales_card'
+  | 'admin.academic_setup.types_card'
+  | 'admin.academic_setup.transcripts_card'
+  | 'admin.timetable.cohort_card'
+  | 'admin.timetable.grid_card'
+  | 'admin.finance.retention_legend'
+  | 'admin.finance.view_mode'
+  | 'admin.finance.structure_card'
+  | 'teacher.diary.class_selector'
+  | 'teacher.diary.entry_card'
+  | 'student.diary.entry_card'
+  | 'parent.diary.entry_card';
 
 export interface TooltipEntry {
   id: TooltipTargetId;
@@ -326,12 +362,177 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     feature: 'reports',
     roles: ['admin'],
   },
+  'admin.manage.coverage': {
+    id: 'admin.manage.coverage',
+    title: 'Coverage Planner',
+    text: 'Track termly syllabus pacing and verify departmental curriculum coverage progress.',
+    learnMoreAnchor: 'coverage-planner',
+    roles: ['admin'],
+  },
+  'admin.manage.exams': {
+    id: 'admin.manage.exams',
+    title: 'Exam Periods',
+    text: 'Define institutional assessment periods and monitor departmental exam paper schedules.',
+    learnMoreAnchor: 'exams-module',
+    feature: 'grading',
+    roles: ['admin'],
+  },
+  'admin.manage.rankings': {
+    id: 'admin.manage.rankings',
+    title: 'Student Rankings',
+    text: 'Review school-wide academic leaderboards, subject percentiles, and performance bands.',
+    learnMoreAnchor: 'grading-ops',
+    feature: 'grading',
+    roles: ['admin'],
+  },
+  'admin.manage.stats_students': {
+    id: 'admin.manage.stats_students',
+    title: 'Students Overview',
+    text: 'View total enrolled student body across all active streams and grade levels.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin'],
+  },
+  'admin.manage.stats_teachers': {
+    id: 'admin.manage.stats_teachers',
+    title: 'Teachers Overview',
+    text: 'Monitor active faculty headcounts and instructional staff assignments across departments.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin'],
+  },
+  'admin.manage.system_tools': {
+    id: 'admin.manage.system_tools',
+    title: 'Management Suite',
+    text: 'Access institution-wide administrative tools, curriculum workflows, and academic setup.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin'],
+  },
+  'admin.coverage.oversight': {
+    id: 'admin.coverage.oversight',
+    title: 'Curriculum oversight',
+    text: 'Review institution-wide curriculum progress, planned subjects, and topic completion rates across departments.',
+    learnMoreAnchor: 'coverage-planner',
+    roles: ['admin'],
+  },
+  'admin.exams.periods': {
+    id: 'admin.exams.periods',
+    title: 'Assessment periods',
+    text: 'Configure institutional examination windows required for department heads to schedule exam papers and seat learners.',
+    learnMoreAnchor: 'exams-module',
+    roles: ['admin'],
+  },
+  'admin.resources.metrics': {
+    id: 'admin.resources.metrics',
+    title: 'Resource metrics',
+    text: 'Monitor overall uploaded academic materials, public learner access files, and restricted staff reference documents.',
+    learnMoreAnchor: 'academic-vault',
+    feature: 'library',
+    roles: ['admin'],
+  },
+  'admin.roles.tabs': {
+    id: 'admin.roles.tabs',
+    title: 'Permission views',
+    text: 'Switch between custom role policy definition and institutional staff user role assignments.',
+    learnMoreAnchor: 'custom-roles',
+    roles: ['admin'],
+  },
   'admin.support.tickets': {
     id: 'admin.support.tickets',
     title: 'Your Support Tickets',
     text: 'Create and track support requests with clear issue details so resolution and follow-up stay auditable.',
     learnMoreAnchor: 'reports-ops',
     roles: ['admin'],
+  },
+  'teacher.manage.faculty_hub': {
+    id: 'teacher.manage.faculty_hub',
+    title: 'Academic Hub',
+    text: 'Access teacher workspace tools, curriculum plans, attendance rolls, and grading workflows.',
+    learnMoreAnchor: 'coverage-planner',
+    roles: ['teacher'],
+  },
+  'teacher.manage.mode_selector': {
+    id: 'teacher.manage.mode_selector',
+    title: 'Role Mode',
+    text: 'Switch between Subject Teacher, Class Homeroom, Librarian, or Finance Desk views.',
+    learnMoreAnchor: 'coverage-planner',
+    roles: ['teacher'],
+  },
+  'teacher.manage.stats_submissions': {
+    id: 'teacher.manage.stats_submissions',
+    title: 'Submissions Signal',
+    text: 'Track pending student assignments and graded submissions needing teacher evaluation.',
+    learnMoreAnchor: 'grading-ops',
+    roles: ['teacher'],
+  },
+  'teacher.manage.stats_attendance': {
+    id: 'teacher.manage.stats_attendance',
+    title: 'Attendance Today',
+    text: 'Monitor daily student presence rates and mark designated homeroom attendance registers.',
+    learnMoreAnchor: 'attendance-ops',
+    feature: 'attendance',
+    roles: ['teacher'],
+  },
+  'teacher.manage.suite_header': {
+    id: 'teacher.manage.suite_header',
+    title: 'Teacher Suite',
+    text: 'Navigate pedagogical tools, grade entry forms, report cards, and communication desks.',
+    learnMoreAnchor: 'coverage-planner',
+    roles: ['teacher'],
+  },
+  'teacher.attendance.presence': {
+    id: 'teacher.attendance.presence',
+    title: 'Teacher presence',
+    text: 'Confirm your daily classroom presence and sync your attendance timestamp directly to administrative oversight.',
+    learnMoreAnchor: 'attendance-ops',
+    feature: 'attendance',
+    roles: ['teacher'],
+  },
+  'teacher.grade_entry.stepper': {
+    id: 'teacher.grade_entry.stepper',
+    title: 'Entry progress',
+    text: 'Follow the guided sequence from class selection and score entry to final persistence and validation.',
+    learnMoreAnchor: 'grading-ops',
+    feature: 'grading',
+    roles: ['teacher'],
+  },
+  'teacher.grade_entry.summary': {
+    id: 'teacher.grade_entry.summary',
+    title: 'Scoring summary',
+    text: 'Track graded learner counts, finalized records, and pending score entries for the active subject assessment.',
+    learnMoreAnchor: 'grading-ops',
+    feature: 'grading',
+    roles: ['teacher'],
+  },
+  'teacher.rankings.scope': {
+    id: 'teacher.rankings.scope',
+    title: 'Ranking scope',
+    text: 'Switch between whole-class overall standings and subject-specific academic rankings for your enrolled learners.',
+    learnMoreAnchor: 'grading-ops',
+    feature: 'grading',
+    roles: ['teacher'],
+  },
+  'teacher.rankings.distribution': {
+    id: 'teacher.rankings.distribution',
+    title: 'Performance bands',
+    text: 'Filter student rankings by academic performance tiers and competency attainment distributions.',
+    learnMoreAnchor: 'grading-ops',
+    feature: 'grading',
+    roles: ['teacher'],
+  },
+  'teacher.report_cards.modes': {
+    id: 'teacher.report_cards.modes',
+    title: 'Reporting mode',
+    text: 'Toggle between compiling complete class report cards and entering individual subject assessment contributions.',
+    learnMoreAnchor: 'reports-ops',
+    feature: 'reports',
+    roles: ['teacher'],
+  },
+  'teacher.report_cards.scope': {
+    id: 'teacher.report_cards.scope',
+    title: 'Compilation scope',
+    text: 'Select target class, assessment components, and term criteria for generating student academic evaluations.',
+    learnMoreAnchor: 'reports-ops',
+    feature: 'reports',
+    roles: ['teacher'],
   },
   'teacher.manage.performance': {
     id: 'teacher.manage.performance',
@@ -796,6 +997,115 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     title: 'Parent password',
     text: 'Protect guardian access to linked-child records and communication history.',
     learnMoreAnchor: 'parent-workflow',
+    roles: ['parent'],
+  },
+  'admin.academic_setup.years_card': {
+    id: 'admin.academic_setup.years_card',
+    title: 'Academic calendar',
+    text: 'Configures school calendar years, active instructional terms, and period lock dates.',
+    learnMoreAnchor: 'school-calendar',
+    roles: ['admin'],
+  },
+  'admin.academic_setup.weighting_card': {
+    id: 'admin.academic_setup.weighting_card',
+    title: 'Assessment split',
+    text: 'Establishes continuous assessment versus final exam weighting ratios across report cards.',
+    learnMoreAnchor: 'grading-ops',
+    feature: 'grading',
+    roles: ['admin'],
+  },
+  'admin.academic_setup.scales_card': {
+    id: 'admin.academic_setup.scales_card',
+    title: 'Grading scale',
+    text: 'Sets score intervals, letter grades, and GPA points for terminal evaluations.',
+    learnMoreAnchor: 'exams-module',
+    feature: 'grading',
+    roles: ['admin'],
+  },
+  'admin.academic_setup.types_card': {
+    id: 'admin.academic_setup.types_card',
+    title: 'Assessment types',
+    text: 'Categorizes continuous assessment tasks and terminal exams with default component weights.',
+    learnMoreAnchor: 'exams-module',
+    feature: 'grading',
+    roles: ['admin'],
+  },
+  'admin.academic_setup.transcripts_card': {
+    id: 'admin.academic_setup.transcripts_card',
+    title: 'Report criteria',
+    text: 'Controls visibility of fee balances, attendance metrics, and calculation models on generated PDFs.',
+    learnMoreAnchor: 'reports-ops',
+    feature: 'reports',
+    roles: ['admin'],
+  },
+  'admin.timetable.cohort_card': {
+    id: 'admin.timetable.cohort_card',
+    title: 'Class cohort schedule',
+    text: 'Selects the active grade stream and filters timetable slots across school days.',
+    learnMoreAnchor: 'timetable-builder',
+    roles: ['admin', 'teacher'],
+  },
+  'admin.timetable.grid_card': {
+    id: 'admin.timetable.grid_card',
+    title: 'Timetable period grid',
+    text: 'Displays scheduled lesson periods with room allocation, teacher assignment, and conflict alerts.',
+    learnMoreAnchor: 'timetable-builder',
+    roles: ['admin', 'teacher'],
+  },
+  'admin.finance.retention_legend': {
+    id: 'admin.finance.retention_legend',
+    title: 'Retention period rules',
+    text: 'Outlines audit retention windows and minimum data floor criteria for student financial records.',
+    learnMoreAnchor: 'billing-ops',
+    feature: 'billing',
+    roles: ['admin'],
+  },
+  'admin.finance.view_mode': {
+    id: 'admin.finance.view_mode',
+    title: 'Payment queue filter',
+    text: 'Switches between all recorded transactions and payments flagged for administrative verification.',
+    learnMoreAnchor: 'billing-ops',
+    feature: 'billing',
+    roles: ['admin'],
+  },
+  'admin.finance.structure_card': {
+    id: 'admin.finance.structure_card',
+    title: 'Fee structure card',
+    text: 'Displays base fees, category breakdowns, grade level scopes, and release status.',
+    learnMoreAnchor: 'billing-ops',
+    feature: 'billing',
+    roles: ['admin'],
+  },
+  'teacher.diary.class_selector': {
+    id: 'teacher.diary.class_selector',
+    title: 'Designated homeroom',
+    text: 'Selects your assigned class homeroom to view and post daily diary observations.',
+    learnMoreAnchor: 'diary-workflow',
+    feature: 'diary',
+    roles: ['teacher'],
+  },
+  'teacher.diary.entry_card': {
+    id: 'teacher.diary.entry_card',
+    title: 'Daily diary log',
+    text: 'Captures daily instructional summaries, homework tasks, and notes shared with learners and parents.',
+    learnMoreAnchor: 'diary-workflow',
+    feature: 'diary',
+    roles: ['teacher'],
+  },
+  'student.diary.entry_card': {
+    id: 'student.diary.entry_card',
+    title: 'Classroom observation',
+    text: 'Chronological lesson notes, homework deadlines, and submission requirements from your teacher.',
+    learnMoreAnchor: 'diary-workflow',
+    feature: 'diary',
+    roles: ['student'],
+  },
+  'parent.diary.entry_card': {
+    id: 'parent.diary.entry_card',
+    title: 'Home-school sign-off',
+    text: 'Review daily classroom instruction notes and provide verified parent acknowledgment.',
+    learnMoreAnchor: 'diary-workflow',
+    feature: 'diary',
     roles: ['parent'],
   },
 };

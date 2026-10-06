@@ -8,6 +8,7 @@ import Toast from 'react-native-toast-message';
 import { supabase } from '@/libs/supabase';
 import { resolveAvatarUri } from "@/utils/avatar";
 import { getApiBaseUrl } from '@/utils/backendUrl';
+import { UserProfileSkeleton } from "@/components/ui/skeletons";
 
 export default function MasterAdminProfile() {
     const { profile, refreshProfile, displayId } = useAuth();
@@ -20,8 +21,8 @@ export default function MasterAdminProfile() {
     const avatarUri = resolveAvatarUri(profile?.avatar_url);
 
     const tokens = {
-        bg: isDark ? "#0F0B2E" : "#ffffff",
-        surface: isDark ? "#13103A" : "#ffffff",
+        bg: isDark ? "#0D1117" : "#ffffff",
+        surface: isDark ? "#161B22" : "#ffffff",
         border: isDark ? "rgba(255,255,255,0.05)" : "#e2e8f0",
         textPrimary: isDark ? "#ffffff" : "#0f172a",
         textSecondary: isDark ? "#94a3b8" : "#64748b",
@@ -84,7 +85,7 @@ export default function MasterAdminProfile() {
     if (!profile) {
         return (
             <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: tokens.bg }}>
-                <ActivityIndicator size="large" color="#FF6900" />
+                <UserProfileSkeleton />
             </View>
         );
     }

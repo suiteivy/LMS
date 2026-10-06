@@ -38,6 +38,7 @@ import {
 } from '@/services/TimetableService';
 import { SubjectData } from '@/services/SubjectService';
 import { showError, showSuccess } from '@/utils/toast';
+import { ActionTooltip } from '@/components/common/ActionTooltip';
 
 interface ManualBuilderModalProps {
     visible: boolean;
@@ -73,7 +74,6 @@ export const ManualBuilderModal: React.FC<ManualBuilderModalProps> = ({
     const [endTime, setEndTime] = useState<string>('08:45');
     const [subjectId, setSubjectId] = useState<string>('');
     const [teacherId, setTeacherId] = useState<string>('');
-    const [trackId, setTrackId] = useState<string>('');
     const [cohortName, setCohortName] = useState<string>(selectedClassName);
 
     const [saving, setSaving] = useState<boolean>(false);
@@ -91,7 +91,6 @@ export const ManualBuilderModal: React.FC<ManualBuilderModalProps> = ({
                 setEndTime(editingEntry.end_time ? editingEntry.end_time.slice(0, 5) : '08:45');
                 setSubjectId(editingEntry.subject_id || '');
                 setTeacherId(editingEntry.teacher_id || editingEntry.subjects?.teacher_id || '');
-                setTrackId(editingEntry.track_id || '');
                 setCohortName(editingEntry.room_number || selectedClassName);
             } else {
                 setBuilderMode('quick');
@@ -100,7 +99,6 @@ export const ManualBuilderModal: React.FC<ManualBuilderModalProps> = ({
                 setEndTime('08:45');
                 setSubjectId(subjects[0]?.id || '');
                 setTeacherId(subjects[0]?.teacher_id || '');
-                setTrackId('');
                 setCohortName(selectedClassName);
             }
             setConflictResult(null);
@@ -134,8 +132,7 @@ export const ManualBuilderModal: React.FC<ManualBuilderModalProps> = ({
                 day_of_week: dayOfWeek,
                 start_time: startTime,
                 end_time: endTime,
-                exclude_id: editingEntry?.id,
-                track_id: trackId || null
+                exclude_id: editingEntry?.id
             });
             setConflictResult(res);
         } catch (err: any) {
@@ -197,8 +194,7 @@ export const ManualBuilderModal: React.FC<ManualBuilderModalProps> = ({
                 day_of_week: dayOfWeek,
                 start_time: startTime,
                 end_time: endTime,
-                room_number: cohortName.trim() || selectedClassName || 'Cohort',
-                track_id: trackId.trim() || null
+                room_number: cohortName.trim() || selectedClassName || 'Cohort'
             };
 
             if (editingEntry) {
@@ -246,26 +242,38 @@ export const ManualBuilderModal: React.FC<ManualBuilderModalProps> = ({
 
                             {/* Mode Toggle: Quick Form vs Step-by-Step */}
                             <View style={[styles.modeToggle, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                                <TouchableOpacity
-                                    style={[styles.modeBtn, builderMode === 'quick' && styles.modeBtnActive]}
-                                    onPress={() => setBuilderMode('quick')}
-                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                <ActionTooltip
+                                    label="Quick Form Mode"
+                                    description="Configure all parameters on a single streamlined form."
+                                    learnMoreAnchor="timetable-builder"
                                 >
-                                    <Zap size={13} color={builderMode === 'quick' ? '#fff' : colors.textSub} />
-                                    <Text style={[styles.modeBtnText, { color: builderMode === 'quick' ? '#fff' : colors.textSub }]}>
-                                        Quick
-                                    </Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.modeBtn, builderMode === 'wizard' && styles.modeBtnActive]}
-                                    onPress={() => setBuilderMode('wizard')}
-                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    <TouchableOpacity
+                                        style={[styles.modeBtn, builderMode === 'quick' && styles.modeBtnActive]}
+                                        onPress={() => setBuilderMode('quick')}
+                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    >
+                                        <Zap size={13} color={builderMode === 'quick' ? '#fff' : colors.textSub} />
+                                        <Text style={[styles.modeBtnText, { color: builderMode === 'quick' ? '#fff' : colors.textSub }]}>
+                                            Quick
+                                        </Text>
+                                    </TouchableOpacity>
+                                </ActionTooltip>
+                                <ActionTooltip
+                                    label="Step-by-Step Wizard"
+                                    description="Guided 3-step setup with detailed validation and summary."
+                                    learnMoreAnchor="timetable-builder"
                                 >
-                                    <Sliders size={13} color={builderMode === 'wizard' ? '#fff' : colors.textSub} />
-                                    <Text style={[styles.modeBtnText, { color: builderMode === 'wizard' ? '#fff' : colors.textSub }]}>
-                                        Steps
-                                    </Text>
-                                </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.modeBtn, builderMode === 'wizard' && styles.modeBtnActive]}
+                                        onPress={() => setBuilderMode('wizard')}
+                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    >
+                                        <Sliders size={13} color={builderMode === 'wizard' ? '#fff' : colors.textSub} />
+                                        <Text style={[styles.modeBtnText, { color: builderMode === 'wizard' ? '#fff' : colors.textSub }]}>
+                                            Steps
+                                        </Text>
+                                    </TouchableOpacity>
+                                </ActionTooltip>
                             </View>
 
                             <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
@@ -410,6 +418,7 @@ export const ManualBuilderModal: React.FC<ManualBuilderModalProps> = ({
                                             onChangeText={setCohortName}
                                         />
                                     </View>
+
 
                                     {/* Live Conflict Check Status */}
                                     <View style={{ marginTop: 2 }}>
@@ -624,25 +633,31 @@ export const ManualBuilderModal: React.FC<ManualBuilderModalProps> = ({
                                         <Text style={{ color: colors.textSub, fontWeight: '600', fontSize: 14 }}>Cancel</Text>
                                     </TouchableOpacity>
 
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.saveBtn,
-                                            (saving || conflictResult?.has_conflict) && { opacity: 0.65 }
-                                        ]}
-                                        onPress={handleSave}
-                                        disabled={saving}
+                                    <ActionTooltip
+                                        label="Commit Timetable Entry"
+                                        description="Save this teaching slot directly into the timetable schedule."
+                                        learnMoreAnchor="timetable-builder"
                                     >
-                                        {saving ? (
-                                            <ActivityIndicator size="small" color="#fff" />
-                                        ) : (
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                                <Check size={16} color="#fff" />
-                                                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
-                                                    {editingEntry ? 'Save Changes' : 'Create Entry'}
-                                                </Text>
-                                            </View>
-                                        )}
-                                    </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.saveBtn,
+                                                (saving || conflictResult?.has_conflict) && { opacity: 0.65 }
+                                            ]}
+                                            onPress={handleSave}
+                                            disabled={saving}
+                                        >
+                                            {saving ? (
+                                                <ActivityIndicator size="small" color="#fff" />
+                                            ) : (
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                    <Check size={16} color="#fff" />
+                                                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                                                        {editingEntry ? 'Save Changes' : 'Create Entry'}
+                                                    </Text>
+                                                </View>
+                                            )}
+                                        </TouchableOpacity>
+                                    </ActionTooltip>
                                 </>
                             ) : (
                                 <>
@@ -659,37 +674,55 @@ export const ManualBuilderModal: React.FC<ManualBuilderModalProps> = ({
 
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                         {step === 2 && subjectId && (
-                                            <TouchableOpacity
-                                                style={[styles.quickSaveBtn, { borderColor: colors.border }]}
-                                                onPress={handleSave}
-                                                disabled={saving}
+                                            <ActionTooltip
+                                                label="Instant Save"
+                                                description="Commit this timetable slot immediately without proceeding to step 3."
+                                                learnMoreAnchor="timetable-builder"
                                             >
-                                                <Text style={{ color: colors.text, fontWeight: '600', fontSize: 13 }}>Quick Save</Text>
-                                            </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.quickSaveBtn, { borderColor: colors.border }]}
+                                                    onPress={handleSave}
+                                                    disabled={saving}
+                                                >
+                                                    <Text style={{ color: colors.text, fontWeight: '600', fontSize: 13 }}>Quick Save</Text>
+                                                </TouchableOpacity>
+                                            </ActionTooltip>
                                         )}
 
                                         {step < 3 ? (
-                                            <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
-                                                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Next Step</Text>
-                                                <ArrowRight size={16} color="#fff" />
-                                            </TouchableOpacity>
-                                        ) : (
-                                            <TouchableOpacity
-                                                style={[
-                                                    styles.saveBtn,
-                                                    (conflictResult?.has_conflict || saving) && { opacity: 0.6 }
-                                                ]}
-                                                onPress={handleSave}
-                                                disabled={saving}
+                                            <ActionTooltip
+                                                label="Proceed to Next Step"
+                                                description="Advance to subsequent configuration and validation step."
+                                                learnMoreAnchor="timetable-builder"
                                             >
-                                                {saving ? (
-                                                    <ActivityIndicator size="small" color="#fff" />
-                                                ) : (
-                                                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
-                                                        {editingEntry ? 'Update Slot' : 'Commit Slot'}
-                                                    </Text>
-                                                )}
-                                            </TouchableOpacity>
+                                                <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
+                                                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Next Step</Text>
+                                                    <ArrowRight size={16} color="#fff" />
+                                                </TouchableOpacity>
+                                            </ActionTooltip>
+                                        ) : (
+                                            <ActionTooltip
+                                                label="Commit Schedule Slot"
+                                                description="Finalize and save this configured lesson period into the weekly schedule."
+                                                learnMoreAnchor="timetable-builder"
+                                            >
+                                                <TouchableOpacity
+                                                    style={[
+                                                        styles.saveBtn,
+                                                        (conflictResult?.has_conflict || saving) && { opacity: 0.6 }
+                                                    ]}
+                                                    onPress={handleSave}
+                                                    disabled={saving}
+                                                >
+                                                    {saving ? (
+                                                        <ActivityIndicator size="small" color="#fff" />
+                                                    ) : (
+                                                        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                                                            {editingEntry ? 'Update Slot' : 'Commit Slot'}
+                                                        </Text>
+                                                    )}
+                                                </TouchableOpacity>
+                                            </ActionTooltip>
                                         )}
                                     </View>
                                 </>

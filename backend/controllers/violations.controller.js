@@ -129,17 +129,29 @@ const ViolationsController = {
         });
       }
 
+      const effectiveRole = req.userRole || req.user?.active_role || req.user?.role;
+
       // Security check: if student role, can only view own
-      if (req.user.role === 'student' && student.user_id !== req.user.id) {
+      if (effectiveRole === 'student' && student.user_id !== req.user.id) {
         return res.status(403).json({ success: false, error: 'Forbidden. You may only view your own records.' });
       }
 
       // If parent role, verify linked student
-      if (req.user.role === 'parent') {
-        const { data: link } = await supabase
-          .from('parent_student_links')
+      if (effectiveRole === 'parent') {
+        const { data: parent } = await supabase
+          .from('parents')
           .select('id')
-          .eq('parent_id', req.user.id)
+          .eq('user_id', req.user.id)
+          .maybeSingle();
+
+        if (!parent) {
+          return res.status(403).json({ success: false, error: 'Forbidden. Parent profile not found.' });
+        }
+
+        const { data: link } = await supabase
+          .from('parent_students')
+          .select('id')
+          .eq('parent_id', parent.id)
           .eq('student_id', studentId)
           .maybeSingle();
 
@@ -325,11 +337,45 @@ const ViolationsController = {
       }
 
       // Fetch student details
-      const { data: student } = await supabase
+      const { data: student, error: studentError } = await supabase
         .from('students')
         .select('*, users(full_name, email), classes(name)')
         .eq('id', targetStudentId)
+        .eq('institution_id', institutionId)
         .single();
+
+      if (studentError || !student) {
+        return res.status(404).json({ success: false, error: 'Student record not found.' });
+      }
+
+      // Security check: if student role, can only view own
+      if (req.user.role === 'student' && student.user_id !== req.user.id) {
+        return res.status(403).json({ success: false, error: 'Forbidden. You may only view your own records.' });
+      }
+
+      // If parent role, verify linked student
+      if (req.user.role === 'parent') {
+        const { data: parent } = await supabase
+          .from('parents')
+          .select('id')
+          .eq('user_id', req.user.id)
+          .maybeSingle();
+
+        if (!parent) {
+          return res.status(403).json({ success: false, error: 'Forbidden. Parent profile not found.' });
+        }
+
+        const { data: link } = await supabase
+          .from('parent_students')
+          .select('id')
+          .eq('parent_id', parent.id)
+          .eq('student_id', targetStudentId)
+          .maybeSingle();
+
+        if (!link) {
+          return res.status(403).json({ success: false, error: 'Forbidden. This student is not linked to your account.' });
+        }
+      }
 
       // Fetch all violations for this student
       const { data: allViolations } = await supabase

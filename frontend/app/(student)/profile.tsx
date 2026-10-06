@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { UserProfileSkeleton } from '@/components/ui/skeletons';
 import { api } from '@/services/api';
 import { PdfService } from '@/services/PdfService';
 import { Ionicons } from '@expo/vector-icons';
@@ -155,11 +156,8 @@ export default function StudentProfileScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={orange} />
-        <Text style={{ color: textSecondary, marginTop: 12, fontWeight: '600', fontSize: 13 }}>
-          Loading Student Profile...
-        </Text>
+      <View style={{ flex: 1, backgroundColor: bg }}>
+        <UserProfileSkeleton />
       </View>
     );
   }

@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -243,30 +244,53 @@ export default function AdminManagement() {
                     {/* Quick Stats Row */}
                     <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
                         {/* Total Students */}
-                        <View style={{ flex: 1, padding: 16, borderRadius: 24, backgroundColor: '#2563eb' }}>
-                            <Text style={{ color: '#bfdbfe', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>
-                                Students
-                            </Text>
-                            <Text style={{ color: 'white', fontSize: 22, fontWeight: 'bold', marginTop: 4, letterSpacing: -0.5 }}>
-                                {loading ? "..." : getStatValue("Total Students")}
-                            </Text>
-                        </View>
+                        <ActionTooltip
+                            label="Students Overview"
+                            description="View total enrolled student body across all active streams and grade levels."
+                            learnMoreAnchor="reports-ops"
+                            style={{ flex: 1 }}
+                        >
+                            <View style={{ width: '100%', padding: 16, borderRadius: 24, backgroundColor: '#2563eb' }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Text style={{ color: '#bfdbfe', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>
+                                        Students
+                                    </Text>
+                                    <HelpTooltip id="admin.manage.stats_students" role="admin" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(admin)/accessibility/settings', params: { manual: '1', anchor: a || 'reports-ops' } } as any)} />
+                                </View>
+                                <Text style={{ color: 'white', fontSize: 22, fontWeight: 'bold', marginTop: 4, letterSpacing: -0.5 }}>
+                                    {loading ? "..." : getStatValue("Total Students")}
+                                </Text>
+                            </View>
+                        </ActionTooltip>
 
                         {/* Teachers — always orange, brand color */}
-                        <View style={{ flex: 1, padding: 16, borderRadius: 24, backgroundColor: '#FF6B00' }}>
-                            <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>
-                                Teachers
-                            </Text>
-                            <Text style={{ color: 'white', fontSize: 22, fontWeight: 'bold', marginTop: 4, letterSpacing: -0.5 }}>
-                                {loading ? "..." : getStatValue("Teachers")}
-                            </Text>
-                        </View>
+                        <ActionTooltip
+                            label="Teachers Overview"
+                            description="Monitor active faculty headcounts and instructional staff assignments across departments."
+                            learnMoreAnchor="reports-ops"
+                            style={{ flex: 1 }}
+                        >
+                            <View style={{ width: '100%', padding: 16, borderRadius: 24, backgroundColor: '#FF6B00' }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>
+                                        Teachers
+                                    </Text>
+                                    <HelpTooltip id="admin.manage.stats_teachers" role="admin" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(admin)/accessibility/settings', params: { manual: '1', anchor: a || 'reports-ops' } } as any)} />
+                                </View>
+                                <Text style={{ color: 'white', fontSize: 22, fontWeight: 'bold', marginTop: 4, letterSpacing: -0.5 }}>
+                                    {loading ? "..." : getStatValue("Teachers")}
+                                </Text>
+                            </View>
+                        </ActionTooltip>
                     </View>
 
-                    {/* Feature Cards */}
-                    <Text style={{ color: isDark ? '#f1f1f1' : '#111827', fontSize: 17, fontWeight: 'bold', marginBottom: 12, letterSpacing: -0.3 }}>
-                        System Tools
-                    </Text>
+                    {/* Feature Cards Header Container */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                        <Text style={{ color: isDark ? '#f1f1f1' : '#111827', fontSize: 17, fontWeight: 'bold', letterSpacing: -0.3 }}>
+                            System Tools
+                        </Text>
+                        <HelpTooltip id="admin.manage.system_tools" role="admin" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(admin)/accessibility/settings', params: { manual: '1', anchor: a || 'reports-ops' } } as any)} />
+                    </View>
                     {features.map((feature, index) => (
                         <FeatureCard key={index} {...feature} isDark={isDark} tier={tier} />
                     ))}

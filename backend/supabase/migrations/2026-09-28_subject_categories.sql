@@ -6,11 +6,15 @@ CREATE TABLE IF NOT EXISTS public.subject_categories (
     institution_id UUID REFERENCES public.institutions(id) ON DELETE CASCADE NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
+    color TEXT,
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT uq_subject_categories_inst_name UNIQUE (institution_id, name)
 );
+
+ALTER TABLE public.subject_categories
+    ADD COLUMN IF NOT EXISTS color TEXT;
 
 ALTER TABLE public.subjects
     ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES public.subject_categories(id) ON DELETE SET NULL;

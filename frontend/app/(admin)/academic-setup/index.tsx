@@ -3,6 +3,7 @@ import { ActionTooltip } from '@/components/common/ActionTooltip';
 import { DatePicker } from '@/components/common/DatePicker';
 import { ConfirmationModal } from '@/components/common/ConfirmationModal';
 import { Spinner } from '@/components/ui/Spinner';
+import { AcademicSetupSkeleton, FormScreenSkeleton } from '@/components/ui/skeletons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { GradingAPI } from '@/services/GradingService';
 import { TranscriptService, TranscriptConfig, TranscriptConfigsResponse } from '@/services/TranscriptService';
@@ -750,9 +751,15 @@ export default function AcademicSetupPage() {
     // ─── Render ────────────────────────────────────────────
     if (loading) {
         return (
-            <View style={{ flex: 1, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
-                <Spinner size="large" color={accent} label="Loading academic setup" />
-                <Text style={{ color: textSecondary, marginTop: 12, fontSize: 14 }}>Loading academic setup...</Text>
+            <View style={{ flex: 1, backgroundColor: bg }}>
+                <UnifiedHeader
+                    title="Academic Setup"
+                    subtitle="Manage years, scales & assessments"
+                    role="Admin"
+                    onBack={() => router.back()}
+                    showNotification={true}
+                />
+                <AcademicSetupSkeleton />
             </View>
         );
     }
@@ -914,18 +921,18 @@ export default function AcademicSetupPage() {
                                 const isExpanded = expandedYear === year.id;
 
                                 return (
-                                    <View
-                                        key={year.id}
-                                        style={{
-                                            backgroundColor: card,
-                                            borderRadius: 20,
-                                            borderWidth: 1.5,
-                                            borderColor: year.is_current ? accent : border,
-                                            marginBottom: 12,
-                                            overflow: 'hidden',
-                                        }}
-                                    >
-                                        {/* Year Header */}
+                                    <ActionTooltip key={year.id} targetId="admin.academic_setup.years_card">
+                                        <View
+                                            style={{
+                                                backgroundColor: card,
+                                                borderRadius: 20,
+                                                borderWidth: 1.5,
+                                                borderColor: year.is_current ? accent : border,
+                                                marginBottom: 12,
+                                                overflow: 'hidden',
+                                            }}
+                                        >
+                                            {/* Year Header */}
                                         <TouchableOpacity
                                             onPress={() => setExpandedYear(isExpanded ? null : year.id)}
                                             style={{ padding: 16 }}
@@ -1106,7 +1113,8 @@ export default function AcademicSetupPage() {
                                                 )}
                                             </View>
                                         )}
-                                    </View>
+                                        </View>
+                                    </ActionTooltip>
                                 );
                             })
                         )}
@@ -1119,17 +1127,18 @@ export default function AcademicSetupPage() {
                 {activeTab === 'grading_scales' && (
                     <View>
                         {/* ── Institutional Assessment Weighting Configuration ── */}
-                        <View
-                            style={{
-                                backgroundColor: card,
-                                borderRadius: 20,
-                                borderWidth: 1.5,
-                                borderColor: border,
-                                padding: 18,
-                                marginBottom: 20,
-                            }}
-                        >
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 }}>
+                        <ActionTooltip targetId="admin.academic_setup.weighting_card">
+                            <View
+                                style={{
+                                    backgroundColor: card,
+                                    borderRadius: 20,
+                                    borderWidth: 1.5,
+                                    borderColor: border,
+                                    padding: 18,
+                                    marginBottom: 20,
+                                }}
+                            >
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 }}>
                                 <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: isDark ? '#2A1A0A' : '#FFF3E8', alignItems: 'center', justifyContent: 'center' }}>
                                     <Award size={18} color={accent} />
                                 </View>
@@ -1339,7 +1348,8 @@ export default function AcademicSetupPage() {
                                     </TouchableOpacity>
                                 );
                             })()}
-                        </View>
+                            </View>
+                        </ActionTooltip>
 
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                             <Text style={{ fontSize: 12, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>
@@ -1392,10 +1402,11 @@ export default function AcademicSetupPage() {
                             </View>
                         ) : (
                             Object.entries(groupedScales).map(([name, scales]) => (
-                                <View key={name} style={{ marginBottom: 20 }}>
-                                    <Text style={{
-                                        fontSize: 14, fontWeight: '700', color: textPrimary, marginBottom: 10,
-                                    }}>
+                                <ActionTooltip key={name} targetId="admin.academic_setup.scales_card">
+                                    <View style={{ marginBottom: 20 }}>
+                                        <Text style={{
+                                            fontSize: 14, fontWeight: '700', color: textPrimary, marginBottom: 10,
+                                        }}>
                                         {name}
                                     </Text>
 
@@ -1452,7 +1463,8 @@ export default function AcademicSetupPage() {
                                             </TouchableOpacity>
                                         </View>
                                     ))}
-                                </View>
+                                    </View>
+                                </ActionTooltip>
                             ))
                         )}
                     </View>
@@ -1494,19 +1506,19 @@ export default function AcademicSetupPage() {
                             </View>
                         ) : (
                             sortedTypes.map((type, index) => (
-                                <TouchableOpacity
-                                    key={type.id}
-                                    onPress={() => openEditType(type)}
-                                    activeOpacity={0.7}
-                                    style={{
-                                        backgroundColor: card,
-                                        padding: 16,
-                                        borderRadius: 16,
-                                        borderWidth: 1.5,
-                                        borderColor: border,
-                                        marginBottom: 10,
-                                    }}
-                                >
+                                <ActionTooltip key={type.id} targetId="admin.academic_setup.types_card">
+                                    <TouchableOpacity
+                                        onPress={() => openEditType(type)}
+                                        activeOpacity={0.7}
+                                        style={{
+                                            backgroundColor: card,
+                                            padding: 16,
+                                            borderRadius: 16,
+                                            borderWidth: 1.5,
+                                            borderColor: border,
+                                            marginBottom: 10,
+                                        }}
+                                    >
                                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                                             <View style={{
@@ -1574,7 +1586,8 @@ export default function AcademicSetupPage() {
                                             </TouchableOpacity>
                                         </View>
                                     </View>
-                                </TouchableOpacity>
+                                    </TouchableOpacity>
+                                </ActionTooltip>
                             ))
                         )}
                     </View>
@@ -1643,9 +1656,8 @@ export default function AcademicSetupPage() {
                             const currentCfg = transcriptConfigs?.[selectedConfigClassification];
                             if (!currentCfg) {
                                 return (
-                                    <View style={{ padding: 30, alignItems: 'center' }}>
-                                        <Spinner size="small" color={accent} label="Loading configuration" />
-                                        <Text style={{ marginTop: 8, color: textSecondary, fontSize: 13 }}>Loading configuration...</Text>
+                                    <View style={{ paddingVertical: 12 }}>
+                                        <FormScreenSkeleton fieldCount={4} />
                                     </View>
                                 );
                             }
@@ -1705,13 +1717,14 @@ export default function AcademicSetupPage() {
                             };
 
                             return (
-                                <View style={{
-                                    backgroundColor: card,
-                                    borderRadius: 18,
-                                    padding: 20,
-                                    borderWidth: 1,
-                                    borderColor: border,
-                                }}>
+                                <ActionTooltip targetId="admin.academic_setup.transcripts_card">
+                                    <View style={{
+                                        backgroundColor: card,
+                                        borderRadius: 18,
+                                        padding: 20,
+                                        borderWidth: 1,
+                                        borderColor: border,
+                                    }}>
                                     <View style={{ marginBottom: 16, borderBottomWidth: 1, borderBottomColor: border, paddingBottom: 12 }}>
                                         <Text style={{ fontSize: 16, fontWeight: '800', color: textPrimary }}>
                                             {selectedConfigClassification.toUpperCase()} Report Content Rules
@@ -1868,7 +1881,8 @@ export default function AcademicSetupPage() {
                                             </Text>
                                         )}
                                     </TouchableOpacity>
-                                </View>
+                                    </View>
+                                </ActionTooltip>
                             );
                         })()}
                     </View>

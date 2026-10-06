@@ -142,7 +142,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
                     flex: 1,
                     justifyContent: 'center',
                     alignItems: 'center',
-                    backgroundColor: '#0F0B2E',
+                    backgroundColor: isDark ? '#0D1117' : '#ffffff',
                 }}
             >
                 <ActivityIndicator size="large" color="#FF6900" />
@@ -182,7 +182,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        backgroundColor: isDark ? '#0F0B2E' : '#ffffff',
+                        backgroundColor: isDark ? '#0D1117' : '#ffffff',
                         zIndex: 9999,
                     }}
                 />

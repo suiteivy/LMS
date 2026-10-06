@@ -226,10 +226,9 @@ async function canAccessClassTimetable({ userRole, userId, class_id, institution
  * Run institution-wide conflict checks before inserting/updating.
  * Note: room_number represents the class's identity/name (e.g. "Grade 4 East").
  * Physical room clash is NOT performed per system specification.
- * Parallel elective slots for Senior Secondary are permitted if subjects/teachers differ.
  */
 async function checkConflicts(
-  { class_id, subject_id, teacher_id, day_of_week, start_time, end_time, is_elective, track_id },
+  { class_id, subject_id, teacher_id, day_of_week, start_time, end_time },
   institution_id,
   excludeId = null,
 ) {
@@ -238,7 +237,7 @@ async function checkConflicts(
   let query = supabase
     .from("timetables")
     .select(
-      "id, class_id, subject_id, teacher_id, start_time, end_time, room_number, is_elective, track_id, is_draft"
+      "id, class_id, subject_id, teacher_id, start_time, end_time, room_number, is_draft"
     )
     .eq("institution_id", institution_id)
     .eq("day_of_week", day_of_week);
@@ -366,9 +365,7 @@ async function liveCheckConflict(req, res) {
       day_of_week,
       start_time,
       end_time,
-      exclude_id,
-      is_elective,
-      track_id
+      exclude_id
     } = req.body;
 
     if (!class_id || !day_of_week || !start_time || !end_time) {
@@ -376,7 +373,7 @@ async function liveCheckConflict(req, res) {
     }
 
     const conflicts = await checkConflicts(
-      { class_id, subject_id, teacher_id, day_of_week, start_time, end_time, is_elective, track_id },
+      { class_id, subject_id, teacher_id, day_of_week, start_time, end_time },
       institution_id,
       exclude_id
     );
@@ -681,8 +678,31 @@ async function generateTimetable(req, res) {
     const {
       save_as_draft = true,
       target_class_ids = null,
-      replace_active = false
+      replace_active = false,
+      term_id = null
     } = req.body;
+
+    let activeTerm = null;
+    if (term_id) {
+      const { data: termRow } = await supabase
+        .from("terms")
+        .select("id, name, start_date, end_date, academic_year_id")
+        .eq("id", term_id)
+        .eq("institution_id", institution_id)
+        .maybeSingle();
+      activeTerm = termRow;
+    }
+    if (!activeTerm) {
+      const today = new Date().toISOString().split("T")[0];
+      const { data: termRows } = await supabase
+        .from("terms")
+        .select("id, name, start_date, end_date, academic_year_id, is_current")
+        .eq("institution_id", institution_id)
+        .order("start_date", { ascending: false });
+      activeTerm = (termRows || []).find(t => t.is_current) ||
+                   (termRows || []).find(t => t.start_date <= today && t.end_date >= today) ||
+                   (termRows || [])[0] || null;
+    }
 
     const { data: config } = await supabase
       .from("timetable_configs")
@@ -732,12 +752,12 @@ async function generateTimetable(req, res) {
 
     const { data: teachersData } = await supabase
       .from("teachers")
-      .select("id, full_name, user_id, users(full_name)")
+      .select("id, user_id, users(full_name)")
       .eq("institution_id", institution_id);
 
     const teachers = (teachersData || []).map(t => ({
       id: t.id,
-      name: t.full_name || t.users?.full_name || `Teacher ${t.id}`
+      name: t.users?.full_name || `Teacher ${t.id}`
     }));
 
     const { data: subjectsData } = await supabase
@@ -878,6 +898,7 @@ async function generateTimetable(req, res) {
       message: replace_active ? "Timetable generated and published directly." : "Timetable generated successfully as draft.",
       total_scheduled: generatedEntries.length,
       solver_engine: solveResult.solver_engine,
+      term: activeTerm,
       entries: generatedEntries
     });
   } catch (err) {
@@ -975,9 +996,7 @@ async function createTimetableEntry(req, res) {
       start_time,
       end_time,
       room_number,
-      is_draft = false,
-      is_elective = false,
-      track_id = null
+      is_draft = false
     } = req.body;
 
     if (!class_id || !subject_id || !day_of_week || !start_time || !end_time) {
@@ -1006,7 +1025,7 @@ async function createTimetableEntry(req, res) {
     }
 
     const issues = await checkConflicts(
-      { class_id, subject_id, teacher_id: finalTeacherId, day_of_week, start_time, end_time, is_elective, track_id },
+      { class_id, subject_id, teacher_id: finalTeacherId, day_of_week, start_time, end_time },
       institution_id,
     );
     if (issues.length > 0) {
@@ -1025,8 +1044,6 @@ async function createTimetableEntry(req, res) {
           end_time,
           room_number: finalRoomNumber,
           is_draft: !!is_draft,
-          is_elective: !!is_elective,
-          track_id,
           institution_id,
         },
       ])
@@ -1081,9 +1098,9 @@ async function getClassTimetable(req, res) {
       .select(
         `
         id, class_id, subject_id, teacher_id, institution_id, day_of_week, start_time, end_time, room_number,
-        is_draft, is_elective, track_id,
+        is_draft,
         subjects ( id, title, category, teacher_id ),
-        teachers ( id, full_name, user_id, users(full_name) )
+        teachers ( id, user_id, users(full_name) )
       `,
       )
       .eq("class_id", class_id)
@@ -1094,10 +1111,31 @@ async function getClassTimetable(req, res) {
       query = query.or("is_draft.is.null,is_draft.eq.false");
     }
 
-    const { data, error } = await query
+    let { data, error } = await query
       .order("start_time", { ascending: true });
 
-    if (error) throw error;
+    if (error) {
+      console.warn("[Timetable] Primary query join failed, falling back to base select:", error.message);
+      let fallbackQuery = supabase
+        .from("timetables")
+        .select(
+          `
+          id, class_id, subject_id, teacher_id, institution_id, day_of_week, start_time, end_time, room_number,
+          is_draft,
+          subjects ( id, title, category, teacher_id )
+        `,
+        )
+        .eq("class_id", class_id)
+        .eq("institution_id", institution_id);
+
+      if (!includeDrafts) {
+        fallbackQuery = fallbackQuery.or("is_draft.is.null,is_draft.eq.false");
+      }
+
+      const { data: fbData, error: fbError } = await fallbackQuery.order("start_time", { ascending: true });
+      if (fbError) throw fbError;
+      data = fbData;
+    }
 
     const { data: cls } = await supabase
       .from("classes")
@@ -1107,32 +1145,58 @@ async function getClassTimetable(req, res) {
 
     const classLabel = cls ? buildClassLabel(cls) : null;
 
+    // Resolve direct teachers from teacher_id if not joined
+    const directTeacherIds = [...new Set((data || []).map(r => r.teacher_id).filter(Boolean))];
+    const directTeacherMap = new Map();
+    if (directTeacherIds.length > 0) {
+      try {
+        const { data: directTeachers } = await supabase
+          .from("teachers")
+          .select("id, user_id, users(full_name)")
+          .in("id", directTeacherIds);
+        if (directTeachers) {
+          directTeachers.forEach(t => directTeacherMap.set(t.id, t));
+        }
+      } catch (dtErr) {
+        console.warn("[Timetable] Failed to resolve direct teachers:", dtErr.message);
+      }
+    }
+
     // Resolve per-class subject teacher assignments if row.teacher_id is not directly set
     const subjectIds = [...new Set((data || []).map(r => r.subject_id).filter(Boolean))];
     const classTeacherMap = new Map();
     if (subjectIds.length > 0) {
-      const { data: stRows } = await supabase
-        .from("subject_teachers")
-        .select("subject_id, teacher_id, teachers ( id, full_name, user_id, users(full_name) )")
-        .eq("class_id", class_id)
-        .in("subject_id", subjectIds);
-      if (stRows) {
-        stRows.forEach(st => {
-          if (st.teachers) {
-            classTeacherMap.set(st.subject_id, st.teachers);
-          }
-        });
+      try {
+        const { data: stRows } = await supabase
+          .from("subject_teachers")
+          .select("subject_id, teacher_id, teachers ( id, user_id, users(full_name) )")
+          .eq("class_id", class_id)
+          .in("subject_id", subjectIds);
+        if (stRows) {
+          stRows.forEach(st => {
+            if (st.teachers) {
+              classTeacherMap.set(st.subject_id, st.teachers);
+            }
+          });
+        }
+      } catch (stErr) {
+        console.warn("[Timetable] Failed to resolve class subject teachers:", stErr.message);
       }
     }
 
     const normalized = (data || []).map(row => {
       const classTeacher = classTeacherMap.get(row.subject_id);
-      const effectiveTeacher = row.teachers || classTeacher;
+      const directTeacher = row.teacher_id ? directTeacherMap.get(row.teacher_id) : null;
+      const effectiveTeacher = row.teachers || directTeacher || classTeacher;
+      const teacherName = effectiveTeacher?.users?.full_name || effectiveTeacher?.full_name || null;
       return {
         ...row,
-        teachers: effectiveTeacher || null,
+        teachers: effectiveTeacher ? {
+          ...effectiveTeacher,
+          full_name: teacherName
+        } : null,
         room_number: row.room_number || classLabel || "Main Classroom",
-        teacher_name: effectiveTeacher?.full_name || effectiveTeacher?.users?.full_name || null
+        teacher_name: teacherName
       };
     });
 
@@ -1202,7 +1266,7 @@ async function getTeacherTimetable(req, res) {
       .from("timetables")
       .select(
         `
-        id, day_of_week, start_time, end_time, room_number, class_id, subject_id, teacher_id, is_draft, is_elective, track_id,
+        id, day_of_week, start_time, end_time, room_number, class_id, subject_id, teacher_id, is_draft,
         classes ( id, name, display_name, grade_level, form_level, stream, class_type ),
         subjects ( id, title, category )
         `,
@@ -1297,7 +1361,7 @@ async function updateTimetableEntry(req, res) {
     const { data: current } = await supabase
       .from("timetables")
       .select(
-        "id,class_id,subject_id,teacher_id,day_of_week,start_time,end_time,room_number,institution_id,is_elective,track_id,is_draft",
+        "id,class_id,subject_id,teacher_id,day_of_week,start_time,end_time,room_number,institution_id,is_draft",
       )
       .eq("id", id)
       .eq("institution_id", institution_id)

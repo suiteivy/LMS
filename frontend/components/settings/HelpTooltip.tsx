@@ -1,15 +1,19 @@
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSubscriptionTier, type SubscriptionTierInfo } from '@/hooks/useSubscriptionTier';
+import { useRouter, usePathname } from 'expo-router';
 import { HelpCircle } from 'lucide-react-native';
 import React, { useMemo, useRef, useState } from 'react';
 import { Dimensions, Modal, Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
-import type { SubscriptionTierInfo } from '@/hooks/useSubscriptionTier';
 import { hasFeatureAccess, type SettingsRole } from './access';
 import { SETTINGS_TOOLTIPS, type TooltipTargetId } from './tooltips.config';
 
-interface HelpTooltipProps {
-  id: TooltipTargetId;
-  role: SettingsRole;
-  tier: SubscriptionTierInfo;
+export interface HelpTooltipProps {
+  id?: TooltipTargetId;
+  targetId?: TooltipTargetId;
+  role?: SettingsRole;
+  tier?: SubscriptionTierInfo;
+  size?: number;
   onLearnMore?: (anchor?: string) => void;
 }
 
@@ -20,16 +24,40 @@ export function isTooltipEnabled(id: TooltipTargetId, role: SettingsRole, tier: 
   return hasFeatureAccess(tier, entry.feature);
 }
 
-export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
+export function HelpTooltip({ id, targetId, role: propRole, tier: propTier, size = 14, onLearnMore }: HelpTooltipProps) {
   const { isDark } = useTheme();
+  const { user } = useAuth();
+  const subTier = useSubscriptionTier();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const tooltipId = (targetId || id) as TooltipTargetId;
+  const role = propRole || (user?.role as SettingsRole) || 'admin';
+  const tier = propTier || subTier;
+
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState({ x: 0, y: 0, w: 20, h: 20 });
   const [webVisible, setWebVisible] = useState(false);
   const hoverCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRef = useRef<View | null>(null);
 
-  const entry = SETTINGS_TOOLTIPS[id];
-  const enabled = useMemo(() => isTooltipEnabled(id, role, tier), [id, role, tier]);
+  const entry = tooltipId ? SETTINGS_TOOLTIPS[tooltipId] : undefined;
+  const enabled = useMemo(() => isTooltipEnabled(tooltipId, role, tier), [tooltipId, role, tier]);
+
+  const handleLearnMore = (anchorName?: string) => {
+    setOpen(false);
+    setWebVisible(false);
+    if (onLearnMore) {
+      onLearnMore(anchorName);
+    } else if (anchorName) {
+      const isTeacher = pathname?.includes('(teacher)') || (typeof window !== 'undefined' && window.location.pathname.includes('/teacher'));
+      const targetPath = isTeacher ? '/(teacher)/accessibility/settings' : '/(admin)/accessibility/settings';
+      router.push({
+        pathname: targetPath as any,
+        params: { manual: '1', anchor: anchorName },
+      });
+    }
+  };
 
   if (!enabled || !entry) return null;
 
@@ -96,7 +124,7 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       style={{ marginLeft: 6, padding: 4, borderRadius: 999 }}
     >
-      <HelpCircle size={14} color={muted} />
+      <HelpCircle size={size} color={muted} />
     </Pressable>
   );
 
@@ -149,9 +177,7 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
               {entry.learnMoreAnchor ? (
                 <TouchableOpacity
                   onPress={() => {
-                    setOpen(false);
-                    setWebVisible(false);
-                    onLearnMore?.(entry.learnMoreAnchor);
+                    handleLearnMore(entry.learnMoreAnchor);
                   }}
                   accessibilityRole="button"
                   accessibilityLabel="Learn more"
@@ -195,9 +221,7 @@ export function HelpTooltip({ id, role, tier, onLearnMore }: HelpTooltipProps) {
             {entry.learnMoreAnchor ? (
               <TouchableOpacity
                 onPress={() => {
-                  setOpen(false);
-                  setWebVisible(false);
-                  onLearnMore?.(entry.learnMoreAnchor);
+                  handleLearnMore(entry.learnMoreAnchor);
                 }}
                 accessibilityRole="button"
                 accessibilityLabel="Learn more"

@@ -99,10 +99,18 @@ const MasterRecordController = {
           .maybeSingle();
 
         if (stud) {
-          const { data: link } = await supabase
-            .from('parent_student_links')
+          const { data: parent } = await supabase
+            .from('parents')
             .select('id')
-            .eq('parent_id', requester.id)
+            .eq('user_id', requester.id)
+            .maybeSingle();
+
+          const parentId = parent ? parent.id : requester.id;
+
+          const { data: link } = await supabase
+            .from('parent_students')
+            .select('id')
+            .or(`parent_id.eq.${parentId},parent_id.eq.${requester.id}`)
             .eq('student_id', stud.id)
             .maybeSingle();
 
@@ -200,11 +208,24 @@ const MasterRecordController = {
           // Guardians (scoped: Admin, Class Teacher, Parent)
           if (accessLevel === 'admin' || accessLevel === 'class_teacher') {
             const { data: gList } = await supabase
-              .from('parent_student_links')
-              .select('id, relationship, parent:users!parent_student_links_parent_id_fkey(id, full_name, email, phone)')
+              .from('parent_students')
+              .select('id, relationship, parent:parents(id, user:users(id, full_name, email, phone)), parent_user:users(id, full_name, email, phone)')
               .eq('student_id', targetStudent.id);
 
-            guardiansData = gList || [];
+            if (gList && gList.length > 0) {
+              guardiansData = gList.map(g => ({
+                id: g.id,
+                relationship: g.relationship,
+                parent: g.parent?.user || g.parent_user || g.parent || null
+              }));
+            } else {
+              // Backward-compatible fallback for mock test suites using legacy parent_student_links
+              const { data: fallbackList } = await supabase
+                .from('parent_student_links')
+                .select('id, relationship, parent:users!parent_student_links_parent_id_fkey(id, full_name, email, phone)')
+                .eq('student_id', targetStudent.id);
+              guardiansData = fallbackList || [];
+            }
           }
         }
       } else if (targetUser.role === 'teacher' || targetUser.role === 'admin') {

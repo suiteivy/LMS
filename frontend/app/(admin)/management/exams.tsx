@@ -2,6 +2,7 @@ import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 import { DatePicker } from "@/components/common/DatePicker";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { AssignmentsTasksSkeleton } from "@/components/ui/skeletons";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -436,49 +437,53 @@ export default function AdminExamsManagement() {
                     showsVerticalScrollIndicator={false}
                 >
                     {/* Header Banner */}
-                    <View style={{
-                        backgroundColor: isDark ? '#161b22' : '#ffffff',
-                        borderRadius: 16,
-                        padding: 16,
-                        marginBottom: 16,
-                        borderWidth: 1,
-                        borderColor: isDark ? '#30363d' : '#e2e8f0',
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                    }}>
-                        <View style={{ flex: 1, marginRight: 12 }}>
-                            <Text style={{ fontSize: 16, fontWeight: 'bold', color: isDark ? '#f0f6fc' : '#0f172a' }}>
-                                Institutional Assessment Periods
-                            </Text>
-                            <Text style={{ fontSize: 13, color: isDark ? '#94a3b8' : '#64748b', marginTop: 4 }}>
-                                HODs can only schedule exam papers when an active exam period is configured here by Administration.
-                            </Text>
+                    <ActionTooltip targetId="admin.exams.periods" position="bottom" className="w-full">
+                        <View style={{
+                            backgroundColor: isDark ? '#161b22' : '#ffffff',
+                            borderRadius: 16,
+                            padding: 16,
+                            marginBottom: 16,
+                            borderWidth: 1,
+                            borderColor: isDark ? '#30363d' : '#e2e8f0',
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            width: '100%'
+                        }}>
+                            <View style={{ flex: 1, marginRight: 12 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: isDark ? '#f0f6fc' : '#0f172a' }}>
+                                        Institutional Assessment Periods
+                                    </Text>
+                                    <HelpTooltip targetId="admin.exams.periods" size={14} />
+                                </View>
+                                <Text style={{ fontSize: 13, color: isDark ? '#94a3b8' : '#64748b', marginTop: 4 }}>
+                                    HODs can only schedule exam papers when an active exam period is configured here by Administration.
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => handleOpenPeriodModal()}
+                                style={{
+                                    backgroundColor: '#FF6900',
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 10,
+                                    borderRadius: 10
+                                }}
+                            >
+                                <Plus size={16} color="#ffffff" />
+                                <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13 }}>
+                                    Open Period
+                                </Text>
+                            </TouchableOpacity>
                         </View>
-                        <TouchableOpacity
-                            onPress={() => handleOpenPeriodModal()}
-                            style={{
-                                backgroundColor: '#FF6900',
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                gap: 6,
-                                paddingHorizontal: 14,
-                                paddingVertical: 10,
-                                borderRadius: 10
-                            }}
-                        >
-                            <Plus size={16} color="#ffffff" />
-                            <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13 }}>
-                                Open Period
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
+                    </ActionTooltip>
 
                     {/* Periods List */}
                     {periodsLoading ? (
-                        <View style={{ padding: 40, alignItems: 'center' }}>
-                            <ActivityIndicator size="large" color="#FF6900" />
-                        </View>
+                        <AssignmentsTasksSkeleton />
                     ) : periods.length === 0 ? (
                         <View style={{
                             padding: 32,
@@ -715,9 +720,7 @@ export default function AdminExamsManagement() {
 
                     {/* Papers List */}
                     {papersLoading ? (
-                        <View style={{ padding: 40, alignItems: 'center' }}>
-                            <ActivityIndicator size="large" color="#FF6900" />
-                        </View>
+                        <AssignmentsTasksSkeleton />
                     ) : filteredPapers.length === 0 ? (
                         <View style={{
                             padding: 32,

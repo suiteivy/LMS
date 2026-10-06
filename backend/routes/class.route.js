@@ -35,9 +35,9 @@ router.post("/transfers", authorizeRoles(["admin", "teacher", "master_admin"]), 
 router.patch("/transfers/:id/approve", authorizeRoles(["admin", "master_admin"]), approveStudentTransfer);
 router.patch("/transfers/:id/reject", authorizeRoles(["admin", "master_admin"]), rejectStudentTransfer);
 
-// GET routes: allow admin, master_admin, teacher
-router.get("/", authorizeRoles(["admin", "teacher", "master_admin"]), getClasses);
-router.get("/options", authorizeRoles(["admin", "teacher", "master_admin"]), getClassOptions);
+// GET routes: allow admin, master_admin, teacher, parent, student
+router.get("/", authorizeRoles(["admin", "teacher", "master_admin", "parent", "student"]), getClasses);
+router.get("/options", authorizeRoles(["admin", "teacher", "master_admin", "parent", "student"]), getClassOptions);
 router.get("/domain/catalog", authorizeRoles(["admin", "teacher", "master_admin"]), getClassDomainCatalog);
 router.get("/:id/students", authorizeRoles(["admin", "teacher", "master_admin"]), getClassStudents);
 

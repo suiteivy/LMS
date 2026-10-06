@@ -1,3 +1,4 @@
+import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { DatePicker } from "@/components/common/DatePicker";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
@@ -47,6 +48,7 @@ const DiaryCard = ({ entry, onSign }: { entry: DiaryEntry; onSign: (id: string) 
     const statusStyle = assignment ? getStatusColor(assignment.status) : null;
 
     return (
+        <ActionTooltip targetId="parent.diary.entry_card">
         <View className="bg-[#FFFFFF] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4 shadow-sm">
             <View className="flex-row items-start mb-4">
                 <View className="bg-orange-100 dark:bg-orange-950/20 p-2.5 rounded-xl mr-4">
@@ -177,6 +179,7 @@ const DiaryCard = ({ entry, onSign }: { entry: DiaryEntry; onSign: (id: string) 
                 )}
             </View>
         </View>
+        </ActionTooltip>
     );
 };
 

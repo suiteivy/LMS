@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { AssignmentsTasksSkeleton } from "@/components/ui/skeletons";
 import { ParentChildSelector, LinkedChild } from "@/components/parent/ParentChildSelector";
 import { ParentService } from "@/services/ParentService";
 import { GradingAPI } from "@/services/GradingService";
@@ -218,36 +219,36 @@ export default function ParentExamsPage() {
       >
         <View className="p-4 md:p-6 max-w-4xl mx-auto w-full">
           {/* Top Performance Metric Summary */}
-          <View className="bg-[#161B22] p-6 rounded-[28px] shadow-xl mb-6 border border-gray-800">
+          <View className="bg-white dark:bg-[#161B22] p-6 rounded-[28px] shadow-sm mb-6 border border-gray-100 dark:border-gray-800">
             <View className="flex-row justify-between items-center mb-4">
               <View>
-                <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[2px] mb-1">
+                <Text className="text-gray-400 dark:text-white/40 text-[10px] font-bold uppercase tracking-[2px] mb-1">
                   Academic Assessment Hub
                 </Text>
-                <Text className="text-white text-3xl font-black tracking-tight">
+                <Text className="text-gray-900 dark:text-white text-3xl font-black tracking-tight">
                   {averageScore !== null ? `${averageScore}%` : "—"}
                 </Text>
                 <Text className="text-[#FF6900] text-xs font-semibold mt-1">
                   Cumulative Term Assessment Average
                 </Text>
               </View>
-              <View className="w-14 h-14 rounded-2xl bg-[#FF6900]/20 items-center justify-center border border-[#FF6900]/30">
+              <View className="w-14 h-14 rounded-2xl bg-[#FF6900]/10 dark:bg-[#FF6900]/20 items-center justify-center border border-[#FF6900]/20 dark:border-[#FF6900]/30">
                 <Award size={28} color="#FF6900" />
               </View>
             </View>
 
-            <View className="flex-row justify-between pt-4 border-t border-gray-800">
+            <View className="flex-row justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
               <View>
-                <Text className="text-white/40 text-[9px] font-bold uppercase tracking-widest">Completed Exams</Text>
-                <Text className="text-emerald-400 font-bold text-lg mt-0.5">{totalResults}</Text>
+                <Text className="text-gray-400 dark:text-white/40 text-[9px] font-bold uppercase tracking-widest">Completed Exams</Text>
+                <Text className="text-emerald-600 dark:text-emerald-400 font-bold text-lg mt-0.5">{totalResults}</Text>
               </View>
               <View>
-                <Text className="text-white/40 text-[9px] font-bold uppercase tracking-widest">Scheduled Exams</Text>
-                <Text className="text-sky-400 font-bold text-lg mt-0.5">{exams.length}</Text>
+                <Text className="text-gray-400 dark:text-white/40 text-[9px] font-bold uppercase tracking-widest">Scheduled Exams</Text>
+                <Text className="text-sky-600 dark:text-sky-400 font-bold text-lg mt-0.5">{exams.length}</Text>
               </View>
               <View>
-                <Text className="text-white/40 text-[9px] font-bold uppercase tracking-widest">Grading Status</Text>
-                <Text className="text-amber-400 font-bold text-lg mt-0.5">Active</Text>
+                <Text className="text-gray-400 dark:text-white/40 text-[9px] font-bold uppercase tracking-widest">Grading Status</Text>
+                <Text className="text-amber-600 dark:text-amber-400 font-bold text-lg mt-0.5">Active</Text>
               </View>
             </View>
           </View>
@@ -299,10 +300,7 @@ export default function ParentExamsPage() {
 
           {/* Content Views */}
           {loading ? (
-            <View className="py-16 items-center justify-center">
-              <ActivityIndicator size="large" color="#FF6900" />
-              <Text className="text-gray-400 text-xs font-semibold mt-3">Loading exam records...</Text>
-            </View>
+            <AssignmentsTasksSkeleton />
           ) : activeTab === "results" ? (
             results.length === 0 ? (
               <View className="bg-white dark:bg-[#161B22] p-10 rounded-[28px] border border-gray-100 dark:border-gray-800 items-center justify-center shadow-sm">

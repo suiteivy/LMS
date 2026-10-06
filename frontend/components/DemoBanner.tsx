@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { authService } from '@/libs/supabase';
 import { AppLoading } from '@/components/AppLoading';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -59,13 +60,14 @@ function getBannerStyle(timeLeft: number) {
 }
 
 function getBannerMessage(timeLeft: number) {
-    if (timeLeft <= 60) return 'Demo ending now — sign up to keep access to all features & your data.';
-    if (timeLeft <= 120) return 'Less than 2 minutes left — create an account before your session expires.';
-    return 'Demo mode — unlock full features, all dashboards & real institution data.';
+    if (timeLeft <= 60) return 'Demo ending now';
+    if (timeLeft <= 120) return 'Less than 2 minutes left';
+    return 'Demo mode';
 }
 
 export default function DemoBanner() {
     const { isDemo, logout, session, user, profile, exitDemoSession } = useAuth();
+    const { isDark } = useTheme();
     const [expiryTime, setExpiryTime] = useState<number | null>(null);
     const [timeLeft, setTimeLeft] = useState(TOTAL_SECONDS);
     const [showWarningModal, setShowWarningModal] = useState(false);
@@ -164,7 +166,7 @@ export default function DemoBanner() {
                     <AlertTriangle size={16} color={s.iconColor} strokeWidth={2.5} />
                     <Text style={{ color: s.text, fontSize: 12.5, fontWeight: '500', flex: 1, lineHeight: 18 }} numberOfLines={1}>
                         <Text style={{ fontWeight: '700' }}>{formatTime(timeLeft)} left</Text>
-                        {' '}on your demo —{' '}{msg.split('—')[1]?.trim()}
+                        {' '}on your demo{' '}{msg.split('—')[1]?.trim()}
                     </Text>
                 </View>
 
@@ -194,12 +196,13 @@ export default function DemoBanner() {
             <Modal visible={showWarningModal} transparent animationType="fade">
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
                     <View style={{
-                        backgroundColor: '#0f172a', borderRadius: 24, padding: 28, width: '100%',
-                        borderWidth: 1, borderColor: 'rgba(249,115,22,0.3)',
+                        backgroundColor: isDark ? '#161B22' : '#FFFFFF', borderRadius: 24, padding: 28, width: '100%',
+                        borderWidth: 1, borderColor: isDark ? 'rgba(249,115,22,0.3)' : 'rgba(249,115,22,0.4)',
+                        shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 10,
                     }}>
                         <TouchableOpacity onPress={() => setShowWarningModal(false)} style={{ alignSelf: 'flex-end', marginBottom: 12 }}>
-                            <View style={{ backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 20, padding: 6 }}>
-                                <X size={15} color="#94a3b8" />
+                            <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)', borderRadius: 20, padding: 6 }}>
+                                <X size={15} color={isDark ? "#94a3b8" : "#64748b"} />
                             </View>
                         </TouchableOpacity>
 
@@ -216,10 +219,10 @@ export default function DemoBanner() {
                             </Text>
                         </View>
 
-                        <Text style={{ color: '#f1f5f9', fontSize: 20, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
+                        <Text style={{ color: isDark ? '#f1f5f9' : '#0f172a', fontSize: 20, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
                             Almost Out of Time
                         </Text>
-                        <Text style={{ color: '#94a3b8', fontSize: 13.5, textAlign: 'center', lineHeight: 22, marginBottom: 26 }}>
+                        <Text style={{ color: isDark ? '#94a3b8' : '#64748b', fontSize: 13.5, textAlign: 'center', lineHeight: 22, marginBottom: 26 }}>
                             Your demo session ends in 2 minutes. Create an account to keep full access.
                         </Text>
 
@@ -232,7 +235,7 @@ export default function DemoBanner() {
                         </TouchableOpacity>
 
                         <TouchableOpacity style={{ paddingVertical: 12, alignItems: 'center' }} onPress={() => setShowWarningModal(false)}>
-                            <Text style={{ color: '#475569', fontWeight: '600', fontSize: 13 }}>Continue Demo</Text>
+                            <Text style={{ color: isDark ? '#94a3b8' : '#64748b', fontWeight: '600', fontSize: 13 }}>Continue Demo</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -242,8 +245,9 @@ export default function DemoBanner() {
             <Modal visible={showExpiredModal} transparent animationType="fade">
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
                     <View style={{
-                        backgroundColor: '#0f172a', borderRadius: 24, padding: 28, width: '100%',
-                        borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)',
+                        backgroundColor: isDark ? '#161B22' : '#FFFFFF', borderRadius: 24, padding: 28, width: '100%',
+                        borderWidth: 1, borderColor: isDark ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.4)',
+                        shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 10,
                     }}>
                         <View style={{ alignSelf: 'center', marginBottom: 18 }}>
                             <View style={{ width: 68, height: 68, borderRadius: 20, backgroundColor: 'rgba(239,68,68,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' }}>
@@ -251,10 +255,10 @@ export default function DemoBanner() {
                             </View>
                         </View>
 
-                        <Text style={{ color: '#f1f5f9', fontSize: 20, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
+                        <Text style={{ color: isDark ? '#f1f5f9' : '#0f172a', fontSize: 20, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
                             Demo Ended
                         </Text>
-                        <Text style={{ color: '#94a3b8', fontSize: 13.5, textAlign: 'center', lineHeight: 22, marginBottom: 26 }}>
+                        <Text style={{ color: isDark ? '#94a3b8' : '#64748b', fontSize: 13.5, textAlign: 'center', lineHeight: 22, marginBottom: 26 }}>
                             Your 15-minute trial is up. Sign up to unlock the full Cloudora experience.
                         </Text>
 
@@ -270,7 +274,7 @@ export default function DemoBanner() {
                             style={{ paddingVertical: 12, alignItems: 'center' }}
                             onPress={() => { setShowExpiredModal(false); handleEndDemo(); }}
                         >
-                            <Text style={{ color: '#475569', fontWeight: '600', fontSize: 13 }}>Back to Demo Page</Text>
+                            <Text style={{ color: isDark ? '#94a3b8' : '#64748b', fontWeight: '600', fontSize: 13 }}>Back to Demo Page</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -286,7 +290,7 @@ export default function DemoBanner() {
                         right: 0,
                         bottom: 0,
                         zIndex: 999999,
-                        backgroundColor: '#070514',
+                        backgroundColor: '#0D1117',
                     }}
                 >
                     <AppLoading message="Exiting Demo Session..." />

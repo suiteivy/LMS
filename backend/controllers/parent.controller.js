@@ -629,7 +629,7 @@ exports.getStudentAssignments = async (req, res) => {
                 is_published,
                 created_at,
                 subject:subjects(id, title),
-                submissions:submissions(id, student_id, status, grade, marks, feedback, submitted_at)
+                submissions:submissions(id, student_id, status, grade, feedback, submitted_at)
             `)
             .eq('is_published', true)
             .order('due_date', { ascending: false });
@@ -655,7 +655,7 @@ exports.getStudentAssignments = async (req, res) => {
             let status = 'pending';
 
             if (studentSub) {
-                if (studentSub.grade != null || studentSub.marks != null || studentSub.status === 'graded') {
+                if (studentSub.grade != null || studentSub.status === 'graded') {
                     status = 'graded';
                 } else {
                     status = 'submitted';
@@ -679,7 +679,7 @@ exports.getStudentAssignments = async (req, res) => {
                     id: studentSub.id,
                     status: studentSub.status,
                     grade: studentSub.grade,
-                    marks: studentSub.marks,
+                    marks: studentSub.grade != null && !isNaN(Number(studentSub.grade)) ? Number(studentSub.grade) : null,
                     feedback: studentSub.feedback,
                     submitted_at: studentSub.submitted_at
                 } : null,

@@ -2,6 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { authService } from "@/libs/supabase";
 import { Spinner } from "@/components/ui/Spinner";
+import { UserProfileSkeleton } from "@/components/ui/skeletons";
 import { ParentService } from "@/services/ParentService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
@@ -132,7 +133,7 @@ export default function ParentProfile() {
   if (!profile) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
-        <Spinner size="large" color="#FF6B00" label="Loading profile" />
+        <UserProfileSkeleton />
       </View>
     );
   }

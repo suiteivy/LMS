@@ -6,7 +6,6 @@ export interface TimetableEntry {
     class_id: string;
     subject_id: string;
     teacher_id?: string;
-    track_id?: string | null;
     day_of_week: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
     start_time: string;
     end_time: string;
@@ -51,7 +50,6 @@ export interface CreateTimetableDto {
     class_id: string;
     subject_id: string;
     teacher_id?: string;
-    track_id?: string | null;
     day_of_week: string;
     start_time: string;
     end_time: string;
@@ -97,6 +95,8 @@ export interface GenerateTimetableDto {
     save_as_draft?: boolean;
     target_class_ids?: string[] | null;
     replace_active?: boolean;
+    term_id?: string | null;
+    term_name?: string | null;
 }
 
 export interface GenerateTimetableResponse {
@@ -104,6 +104,12 @@ export interface GenerateTimetableResponse {
     message?: string;
     total_scheduled?: number;
     solver_engine?: string;
+    term?: {
+        id: string;
+        name: string;
+        start_date?: string;
+        end_date?: string;
+    } | null;
     entries?: TimetableEntry[];
     status?: string;
     diagnostics?: string[];
@@ -120,7 +126,6 @@ export interface ConflictCheckDto {
     class_id: string;
     subject_id?: string;
     teacher_id?: string;
-    track_id?: string | null;
     day_of_week: string;
     start_time: string;
     end_time: string;

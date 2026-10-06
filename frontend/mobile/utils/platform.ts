@@ -45,12 +45,12 @@ export const mobileColors = {
   flameGlow: 'rgba(255,107,0,0.35)',
   flameBg: 'rgba(255,107,0,0.12)',
   
-  // Dark theme (primary mobile theme)
-  bgDeep: '#070514',
-  bgPrimary: '#0F0B2E',
-  bgSurface: '#13103A',
-  bgCard: '#1A1650',
-  borderSubtle: 'rgba(255,255,255,0.1)',
+  // Dark theme (primary mobile theme matching web grey palette)
+  bgDeep: '#0D1117',
+  bgPrimary: '#0D1117',
+  bgSurface: '#161B22',
+  bgCard: '#161B22',
+  borderSubtle: '#21262D',
   
   // Light theme
   bgLight: '#ffffff',
@@ -68,7 +68,7 @@ export const mobileColors = {
   // Tab bar
   tabBarDark: '#161B22',
   tabBarLight: '#ffffff',
-  tabBarBorderDark: '#1f2937',
+  tabBarBorderDark: '#21262D',
   tabBarBorderLight: '#e5e7eb',
   tabBarActiveTint: '#FF6B00',
   tabBarInactiveDark: '#94a3b8',

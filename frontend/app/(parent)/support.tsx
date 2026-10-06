@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { SupportScreenSkeleton } from "@/components/ui/skeletons";
 import { SupportService, SupportTicket } from "@/services/SupportService";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
@@ -204,10 +205,7 @@ export default function ParentSupportPage() {
           </View>
 
           {loading ? (
-            <View className="py-16 items-center justify-center">
-              <ActivityIndicator size="large" color="#FF6900" />
-              <Text className="text-gray-400 text-xs font-semibold mt-3">Loading tickets...</Text>
-            </View>
+            <SupportScreenSkeleton />
           ) : tickets.length === 0 ? (
             <View className="bg-white dark:bg-[#161B22] p-10 rounded-[28px] border border-gray-100 dark:border-gray-800 items-center justify-center shadow-sm">
               <LifeBuoy size={40} color={isDark ? "#4B5563" : "#9CA3AF"} />

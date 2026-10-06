@@ -185,7 +185,7 @@ function MasterAdminTabs() {
                             shadowOpacity: 0.1,
                             shadowRadius: 6,
                         },
-                        sceneStyle: { backgroundColor: isDark ? '#0F0B2E' : "#f9fafb" },
+                        sceneStyle: { backgroundColor: isDark ? '#0D1117' : "#f9fafb" },
                     }}
                 >
                     {/* 1. Home Dashboard */}

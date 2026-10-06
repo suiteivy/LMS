@@ -71,7 +71,7 @@ export function NotificationTabButton({
                             alignItems: "center",
                             justifyContent: "center",
                             borderWidth: 2,
-                            borderColor: isDark ? "#0F0B2E" : "#ffffff",
+                            borderColor: isDark ? "#161B22" : "#ffffff",
                         }}
                     >
                         <Text style={{ color: "white", fontSize: 8, fontWeight: "bold" }}>

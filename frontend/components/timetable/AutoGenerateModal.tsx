@@ -25,6 +25,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 import { lightColors, darkColors } from '@/constants/appTheme';
+import { ActionTooltip } from '@/components/common/ActionTooltip';
+import { GradingAPI } from '@/services/GradingService';
 import {
     TimetableAPI,
     TimetableReadinessResponse,
@@ -57,6 +59,7 @@ export const AutoGenerateModal: React.FC<AutoGenerateModalProps> = ({
 
     const [readiness, setReadiness] = useState<TimetableReadinessResponse | null>(null);
     const [loadingReadiness, setLoadingReadiness] = useState<boolean>(false);
+    const [activeTerm, setActiveTerm] = useState<{ id: string; name: string; start_date?: string; end_date?: string } | null>(null);
 
     const [config, setConfig] = useState<TimetableConfig | null>(null);
     const [loadingConfig, setLoadingConfig] = useState<boolean>(false);
@@ -70,9 +73,21 @@ export const AutoGenerateModal: React.FC<AutoGenerateModalProps> = ({
         if (visible) {
             loadReadiness();
             loadConfig();
+            loadActiveTerm();
             setGenerationResult(null);
         }
     }, [visible]);
+
+    const loadActiveTerm = async () => {
+        try {
+            const data = await GradingAPI.getActiveTerm();
+            if (data?.active_term) {
+                setActiveTerm(data.active_term);
+            }
+        } catch (err) {
+            console.warn('Failed to load active term for timetable:', err);
+        }
+    };
 
     const loadReadiness = async () => {
         try {
@@ -131,7 +146,9 @@ export const AutoGenerateModal: React.FC<AutoGenerateModalProps> = ({
 
             const payload = {
                 save_as_draft: true,
-                target_class_ids: targetScope === 'selected' && selectedClassId ? [selectedClassId] : null
+                target_class_ids: targetScope === 'selected' && selectedClassId ? [selectedClassId] : null,
+                term_id: activeTerm?.id || null,
+                term_name: activeTerm?.name || null
             };
 
             const result = await TimetableAPI.generateTimetable(payload);
@@ -207,6 +224,24 @@ export const AutoGenerateModal: React.FC<AutoGenerateModalProps> = ({
                                     The solver verifies all administrative prerequisites before running constraint optimization.
                                 </Text>
 
+                                {/* Academic Term Scope Card */}
+                                <View style={[styles.termScopeCard, { backgroundColor: isDark ? 'rgba(234, 88, 12, 0.08)' : '#FFF7ED', borderColor: 'rgba(234, 88, 12, 0.3)' }]}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                        <Calendar size={18} color="#EA580C" />
+                                        <Text style={[styles.termScopeTitle, { color: colors.text }]}>
+                                            Academic Term Scope: {activeTerm?.name || 'Current Term'}
+                                        </Text>
+                                    </View>
+                                    <Text style={[styles.termScopeDates, { color: colors.textSub }]}>
+                                        {activeTerm?.start_date && activeTerm?.end_date
+                                            ? `${new Date(activeTerm.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} – ${new Date(activeTerm.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                                            : 'Full term recurring weekly pattern'}
+                                    </Text>
+                                    <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 4, lineHeight: 15 }}>
+                                        Generates the master weekly schedule applying across all weeks of the term. Canceled days in the school calendar are honored and suppressed automatically.
+                                    </Text>
+                                </View>
+
                                 {loadingReadiness ? (
                                     <View style={styles.loaderWrap}>
                                         <ActivityIndicator size="small" color="#EA580C" />
@@ -267,31 +302,43 @@ export const AutoGenerateModal: React.FC<AutoGenerateModalProps> = ({
                                         <View style={{ marginTop: 16 }}>
                                             <Text style={[styles.scopeLabel, { color: colors.text }]}>Generation Target Scope</Text>
                                             <View style={styles.scopeOptions}>
-                                                <TouchableOpacity
-                                                    style={[
-                                                        styles.scopeBtn,
-                                                        targetScope === 'all' && styles.scopeBtnActive,
-                                                        { borderColor: targetScope === 'all' ? '#EA580C' : colors.border }
-                                                    ]}
-                                                    onPress={() => setTargetScope('all')}
+                                                <ActionTooltip
+                                                    label="Institution-Wide Scope"
+                                                    description="Generate master weekly timetable across all registered classes for the active term."
+                                                    learnMoreAnchor="timetable-builder"
                                                 >
-                                                    <Text style={[styles.scopeBtnText, { color: targetScope === 'all' ? '#EA580C' : colors.text }]}>
-                                                        All Classes (Institution-wide)
-                                                    </Text>
-                                                </TouchableOpacity>
-                                                {selectedClassId ? (
                                                     <TouchableOpacity
                                                         style={[
                                                             styles.scopeBtn,
-                                                            targetScope === 'selected' && styles.scopeBtnActive,
-                                                            { borderColor: targetScope === 'selected' ? '#EA580C' : colors.border }
+                                                            targetScope === 'all' && styles.scopeBtnActive,
+                                                            { borderColor: targetScope === 'all' ? '#EA580C' : colors.border }
                                                         ]}
-                                                        onPress={() => setTargetScope('selected')}
+                                                        onPress={() => setTargetScope('all')}
                                                     >
-                                                        <Text style={[styles.scopeBtnText, { color: targetScope === 'selected' ? '#EA580C' : colors.text }]}>
-                                                            Only {selectedClassName || 'Selected Class'}
+                                                        <Text style={[styles.scopeBtnText, { color: targetScope === 'all' ? '#EA580C' : colors.text }]}>
+                                                            All Classes (Whole Institution)
                                                         </Text>
                                                     </TouchableOpacity>
+                                                </ActionTooltip>
+                                                {selectedClassId ? (
+                                                    <ActionTooltip
+                                                        label="Single Class Scope"
+                                                        description={`Generate timetable specifically for ${selectedClassName || 'selected class'}.`}
+                                                        learnMoreAnchor="timetable-builder"
+                                                    >
+                                                        <TouchableOpacity
+                                                            style={[
+                                                                styles.scopeBtn,
+                                                                targetScope === 'selected' && styles.scopeBtnActive,
+                                                                { borderColor: targetScope === 'selected' ? '#EA580C' : colors.border }
+                                                            ]}
+                                                            onPress={() => setTargetScope('selected')}
+                                                        >
+                                                            <Text style={[styles.scopeBtnText, { color: targetScope === 'selected' ? '#EA580C' : colors.text }]}>
+                                                                Only {selectedClassName || 'Selected Class'}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    </ActionTooltip>
                                                 ) : null}
                                             </View>
                                         </View>
@@ -312,7 +359,7 @@ export const AutoGenerateModal: React.FC<AutoGenerateModalProps> = ({
                                                 </Text>
                                                 {generationResult.success ? (
                                                     <Text style={{ color: colors.textSub, fontSize: 12, marginTop: 4 }}>
-                                                        Successfully scheduled {generationResult.total_scheduled} periods into Draft mode via {generationResult.solver_engine}.
+                                                        Successfully scheduled {generationResult.total_scheduled} periods for {generationResult.term?.name || activeTerm?.name || 'the term'} into Draft mode via {generationResult.solver_engine}.
                                                     </Text>
                                                 ) : (
                                                     <View style={{ marginTop: 6, gap: 4 }}>
@@ -394,19 +441,25 @@ export const AutoGenerateModal: React.FC<AutoGenerateModalProps> = ({
                                         </View>
 
                                         {/* Save Config Button */}
-                                        <TouchableOpacity
-                                            style={[styles.saveConfigBtn, savingConfig && { opacity: 0.6 }]}
-                                            onPress={handleSaveConfig}
-                                            disabled={savingConfig}
+                                        <ActionTooltip
+                                            label="Save Schedule Structure"
+                                            description="Persist active operational days, period timing, and lessons/breaks baseline to the institution timetable configuration."
+                                            learnMoreAnchor="timetable-builder"
                                         >
-                                            {savingConfig ? (
-                                                <ActivityIndicator size="small" color="#fff" />
-                                            ) : (
-                                                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
-                                                    Save Schedule Configuration
-                                                </Text>
-                                            )}
-                                        </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.saveConfigBtn, savingConfig && { opacity: 0.6 }]}
+                                                onPress={handleSaveConfig}
+                                                disabled={savingConfig}
+                                            >
+                                                {savingConfig ? (
+                                                    <ActivityIndicator size="small" color="#fff" />
+                                                ) : (
+                                                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                                                        Save Schedule Configuration
+                                                    </Text>
+                                                )}
+                                            </TouchableOpacity>
+                                        </ActionTooltip>
                                     </View>
                                 ) : null}
                             </View>
@@ -420,28 +473,34 @@ export const AutoGenerateModal: React.FC<AutoGenerateModalProps> = ({
                                 <Text style={{ color: colors.textSub, fontWeight: '600', fontSize: 14 }}>Close</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={[
-                                    styles.generateBtn,
-                                    (!readiness?.ready || generating) && { opacity: 0.5 }
-                                ]}
-                                onPress={handleGenerate}
-                                disabled={!readiness?.ready || generating}
+                            <ActionTooltip
+                                label="Run PuLP Optimization Engine"
+                                description="Executes mixed-integer linear programming (MILP) to automatically assemble conflict-free schedules across educators and classrooms for the entire academic term."
+                                learnMoreAnchor="timetable-builder"
                             >
-                                {generating ? (
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                        <ActivityIndicator size="small" color="#fff" />
-                                        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Solving MILP Constraints...</Text>
-                                    </View>
-                                ) : (
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                        <Zap size={16} color="#fff" />
-                                        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
-                                            Generate Timetable (PuLP)
-                                        </Text>
-                                    </View>
-                                )}
-                            </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.generateBtn,
+                                        (!readiness?.ready || generating) && { opacity: 0.5 }
+                                    ]}
+                                    onPress={handleGenerate}
+                                    disabled={!readiness?.ready || generating}
+                                >
+                                    {generating ? (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                            <ActivityIndicator size="small" color="#fff" />
+                                            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Solving MILP Constraints...</Text>
+                                        </View>
+                                    ) : (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                            <Zap size={16} color="#fff" />
+                                            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                                                Generate Timetable (PuLP)
+                                            </Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            </ActionTooltip>
                         </View>
                     )}
                 </View>
@@ -518,6 +577,22 @@ const styles = StyleSheet.create({
         fontSize: 12,
         marginTop: 4,
         marginBottom: 8
+    },
+    termScopeCard: {
+        padding: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        marginTop: 10,
+        marginBottom: 6
+    },
+    termScopeTitle: {
+        fontSize: 13,
+        fontWeight: '700'
+    },
+    termScopeDates: {
+        fontSize: 12,
+        fontWeight: '600',
+        marginTop: 4
     },
     loaderWrap: {
         paddingVertical: 32,

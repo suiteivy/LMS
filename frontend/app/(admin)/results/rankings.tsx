@@ -1,5 +1,6 @@
 import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { TableScreenSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { api } from "@/services/api";
@@ -678,12 +679,7 @@ export default function AdminStudentRankingsScreen() {
 
                 {/* ═══ Student List ═══ */}
                 {loading ? (
-                    <View style={{ padding: 40, alignItems: "center" }}>
-                        <ActivityIndicator size="large" color={orange} />
-                        <Text style={{ color: textSecondary, marginTop: 12, fontSize: 13 }}>
-                            Computing institutional rankings...
-                        </Text>
-                    </View>
+                    <TableScreenSkeleton rows={6} columns={4} />
                 ) : filteredRankings.length === 0 ? (
                     <View style={{
                         padding: 32,

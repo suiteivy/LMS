@@ -224,7 +224,7 @@ export const ProfileEdit = ({ visible, onClose, currentUser, onUpdate }: EditFor
                 <TouchableOpacity onPress={pickImage} activeOpacity={0.7} className="relative">
                   <View
                     className="w-20 h-20 rounded-full overflow-hidden items-center justify-center border border-[#D0D7DE] dark:border-[#21262D]"
-                    style={{ backgroundColor: isDark ? '#0F0B2E' : '#F6F8FA' }}
+                    style={{ backgroundColor: isDark ? '#161B22' : '#F6F8FA' }}
                   >
                     {avatarUrl ? (
                       <Image source={{ uri: avatarUrl }} className="w-full h-full" />

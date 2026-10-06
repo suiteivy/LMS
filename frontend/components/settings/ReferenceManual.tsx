@@ -22,7 +22,8 @@ type ManualSectionId =
   | 'school-calendar'
   | 'custom-roles'
   | 'academic-vault'
-  | 'timetable-builder';
+  | 'timetable-builder'
+  | 'diary-workflow';
 
 interface ManualSection {
   id: ManualSectionId;
@@ -483,6 +484,38 @@ const MODULES: ManualSection[] = [
         'Auto-generator requires that total weekly periods required do not exceed available timetable slots.',
         'Draft timetables are visible only to Admins until formally published.',
         'Teachers assigned to multiple schools or part-time schedules can have specific unavailable periods locked.',
+      ],
+    },
+  },
+  {
+    id: 'diary-workflow',
+    title: 'Virtual Diary & Daily Observation Logs',
+    feature: 'diary',
+    roles: ['admin', 'teacher', 'student', 'parent'],
+    shortBlurb: 'Instructional continuity logs, homework tracking, teacher remarks, and guardian acknowledgment signatures.',
+    whatItDoes:
+      'Provides a unified, paperless diary between classrooms and homes. Designated class teachers record daily observations, homework tasks, and behavioral notes. Students view assignments with submission links, and parents can review and electronically sign daily entries.',
+    whatChanges:
+      'Saving a diary entry immediately updates student and parent views for that class cohort. Parents electronically signing an entry timestamps the record for auditable school-home communication compliance.',
+    crossLinks: ['Teacher → Virtual Diary', 'Student → Academic Diary', 'Parent → Student Diary'],
+    deepDive: {
+      title: 'Virtual Diary lifecycle and acknowledgment',
+      steps: [
+        '1) Class Teacher selects their designated class homeroom and opens the Virtual Diary.',
+        '2) Teacher logs daily reflections, homework expectations, or behavioral observations.',
+        '3) Students view the chronological log and link directly to digital assignments or syllabus materials.',
+        '4) Parents review daily entries on their mobile or web portal and click "Sign Entry" to verify receipt.',
+        '5) School administrators and teachers can export or print official PDF daily logs for school inspections or parent conferences.',
+      ],
+      workedExample: [
+        'Teacher creates a daily diary entry for Grade 7A: "Completed Chapter 4 fractions; exercises 1-10 due tomorrow."',
+        'Parents of 7A students see the entry on their dashboard and tap "Sign".',
+        'The entry reflects as "Signed" with verified timestamp, establishing a verifiable parental engagement audit trail.',
+      ],
+      edgeCases: [
+        'Only designated Class Teachers for that specific homeroom can create or edit diary entries.',
+        'Parents with multiple enrolled children can filter diary logs by selected child.',
+        'Signed entries remain permanent in the student\'s cumulative academic record.',
       ],
     },
   },

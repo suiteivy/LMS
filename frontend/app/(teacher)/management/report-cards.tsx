@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { ListItemSkeleton } from "@/components/ui/skeletons";
+import { ActionTooltip } from "@/components/common/ActionTooltip";
+import { ListItemSkeleton, GradesReportSkeleton, AssignmentsTasksSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { api } from "@/services/api";
@@ -1224,72 +1225,80 @@ export default function ReportCardsPage() {
             />
 
             {/* Mode Switcher Tabs */}
-            <View
-                style={{
-                    flexDirection: "row",
-                    paddingHorizontal: 16,
-                    paddingTop: 12,
-                    paddingBottom: 4,
-                    backgroundColor: isDark ? "#161B22" : "#ffffff",
-                    borderBottomWidth: 1,
-                    borderBottomColor: isDark ? "rgba(255,255,255,0.08)" : "#E5E7EB",
-                    gap: 8,
-                }}
-            >
-                {designatedClasses.length > 0 && isClassTeacher && (
+            <ActionTooltip targetId="teacher.report_cards.modes" position="bottom" className="w-full">
+                <View
+                    style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        paddingHorizontal: 16,
+                        paddingTop: 12,
+                        paddingBottom: 4,
+                        backgroundColor: isDark ? "#161B22" : "#ffffff",
+                        borderBottomWidth: 1,
+                        borderBottomColor: isDark ? "rgba(255,255,255,0.08)" : "#E5E7EB",
+                        gap: 8,
+                        width: "100%",
+                    }}
+                >
+                    {designatedClasses.length > 0 && isClassTeacher && (
+                        <TouchableOpacity
+                            onPress={() => setActiveTab("class_cards")}
+                            style={{
+                                paddingVertical: 10,
+                                paddingHorizontal: 16,
+                                borderRadius: 14,
+                                backgroundColor: activeTab === "class_cards" ? accentColor : "transparent",
+                                borderWidth: activeTab === "class_cards" ? 0 : 1,
+                                borderColor: isDark ? "#30363D" : "#E5E7EB",
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 6,
+                            }}
+                        >
+                            <Award size={15} color={activeTab === "class_cards" ? "#FFFFFF" : isDark ? "#9CA3AF" : "#6B7280"} />
+                            <Text
+                                style={{
+                                    color: activeTab === "class_cards" ? "#FFFFFF" : isDark ? "#9CA3AF" : "#6B7280",
+                                    fontWeight: "700",
+                                    fontSize: 13,
+                                }}
+                            >
+                                Class Report Cards
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+
                     <TouchableOpacity
-                        onPress={() => setActiveTab("class_cards")}
+                        onPress={() => setActiveTab("assessment_selection")}
                         style={{
                             paddingVertical: 10,
                             paddingHorizontal: 16,
                             borderRadius: 14,
-                            backgroundColor: activeTab === "class_cards" ? accentColor : "transparent",
-                            borderWidth: activeTab === "class_cards" ? 0 : 1,
+                            backgroundColor: activeTab === "assessment_selection" ? accentColor : "transparent",
+                            borderWidth: activeTab === "assessment_selection" ? 0 : 1,
                             borderColor: isDark ? "#30363D" : "#E5E7EB",
                             flexDirection: "row",
                             alignItems: "center",
                             gap: 6,
                         }}
                     >
-                        <Award size={15} color={activeTab === "class_cards" ? "#FFFFFF" : isDark ? "#9CA3AF" : "#6B7280"} />
+                        <Layers size={15} color={activeTab === "assessment_selection" ? "#FFFFFF" : isDark ? "#9CA3AF" : "#6B7280"} />
                         <Text
                             style={{
-                                color: activeTab === "class_cards" ? "#FFFFFF" : isDark ? "#9CA3AF" : "#6B7280",
+                                color: activeTab === "assessment_selection" ? "#FFFFFF" : isDark ? "#9CA3AF" : "#6B7280",
                                 fontWeight: "700",
                                 fontSize: 13,
                             }}
                         >
-                            Class Report Cards
+                            Subject Assessment Contribution
                         </Text>
                     </TouchableOpacity>
-                )}
 
-                <TouchableOpacity
-                    onPress={() => setActiveTab("assessment_selection")}
-                    style={{
-                        paddingVertical: 10,
-                        paddingHorizontal: 16,
-                        borderRadius: 14,
-                        backgroundColor: activeTab === "assessment_selection" ? accentColor : "transparent",
-                        borderWidth: activeTab === "assessment_selection" ? 0 : 1,
-                        borderColor: isDark ? "#30363D" : "#E5E7EB",
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 6,
-                    }}
-                >
-                    <Layers size={15} color={activeTab === "assessment_selection" ? "#FFFFFF" : isDark ? "#9CA3AF" : "#6B7280"} />
-                    <Text
-                        style={{
-                            color: activeTab === "assessment_selection" ? "#FFFFFF" : isDark ? "#9CA3AF" : "#6B7280",
-                            fontWeight: "700",
-                            fontSize: 13,
-                        }}
-                    >
-                        Subject Assessment Contribution
-                    </Text>
-                </TouchableOpacity>
-            </View>
+                    <View style={{ marginLeft: "auto", paddingRight: 4 }}>
+                        <HelpTooltip targetId="teacher.report_cards.modes" size={13} />
+                    </View>
+                </View>
+            </ActionTooltip>
 
             <ScrollView
                 style={{ flex: 1 }}
@@ -1298,89 +1307,90 @@ export default function ReportCardsPage() {
             >
                 <View style={{ padding: 16 }}>
                     {classesLoading ? (
-                        <View style={{ paddingVertical: 50, alignItems: "center", justifyContent: "center" }}>
-                            <ActivityIndicator size="large" color={accentColor} />
-                            <Text style={{ fontSize: 13, color: isDark ? "#9CA3AF" : "#6B7280", marginTop: 12 }}>
-                                Resolving institutional scopes...
-                            </Text>
-                        </View>
+                        <GradesReportSkeleton />
                     ) : activeTab === "assessment_selection" ? (
                         /* ========================================================================= */
                         /* PART D: Subject Teacher Assessment Selection View                          */
                         /* ========================================================================= */
                         <View>
                             {/* Selection Controls */}
-                            <View
-                                style={{
-                                    backgroundColor: isDark ? "#161B22" : "#ffffff",
-                                    borderRadius: 24,
-                                    borderWidth: 1,
-                                    borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
-                                    padding: 16,
-                                    marginBottom: 16,
-                                }}
-                            >
-                                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
-                                    <View
-                                        style={{
-                                            backgroundColor: isDark ? "rgba(255,107,0,0.12)" : "#FFF7ED",
-                                            padding: 8,
-                                            borderRadius: 12,
-                                            marginRight: 10,
-                                        }}
-                                    >
-                                        <Filter size={16} color={accentColor} />
-                                    </View>
-                                    <View>
-                                        <Text style={{ color: isDark ? "#F1F1F1" : "#111827", fontWeight: "700", fontSize: 15 }}>
-                                            Subject Teacher Compilation Scope
-                                        </Text>
-                                        <Text style={{ color: isDark ? "#9CA3AF" : "#6B7280", fontSize: 12 }}>
-                                            Select which coursework assessments compile into report cards for your subject.
-                                        </Text>
-                                    </View>
-                                </View>
-
-                                <Dropdown
-                                    label="Subject"
-                                    items={uniqueSubjects.map((s) => ({ id: s.id, label: s.title }))}
-                                    selectedId={selectedSubjSubjectId}
-                                    selectedLabel={uniqueSubjects.find((s) => s.id === selectedSubjSubjectId)?.title || "Select Subject"}
-                                    onSelect={(id) => {
-                                        setSelectedSubjSubjectId(id);
-                                        const classes = subjectClasses.filter((sc) => sc.subject_id === id);
-                                        if (classes.length > 0) setSelectedSubjClassId(classes[0].class_id);
+                            <ActionTooltip targetId="teacher.report_cards.scope" position="bottom" className="w-full">
+                                <View
+                                    style={{
+                                        backgroundColor: isDark ? "#161B22" : "#ffffff",
+                                        borderRadius: 24,
+                                        borderWidth: 1,
+                                        borderColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",
+                                        padding: 16,
+                                        marginBottom: 16,
+                                        width: "100%",
                                     }}
-                                    isDark={isDark}
-                                    accentColor={accentColor}
-                                    emptyMessage="No subjects assigned"
-                                    disabled={uniqueSubjects.length === 0}
-                                />
+                                >
+                                    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
+                                        <View
+                                            style={{
+                                                backgroundColor: isDark ? "rgba(255,107,0,0.12)" : "#FFF7ED",
+                                                padding: 8,
+                                                borderRadius: 12,
+                                                marginRight: 10,
+                                            }}
+                                        >
+                                            <Filter size={16} color={accentColor} />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                                <Text style={{ color: isDark ? "#F1F1F1" : "#111827", fontWeight: "700", fontSize: 15 }}>
+                                                    Subject Teacher Compilation Scope
+                                                </Text>
+                                                <HelpTooltip targetId="teacher.report_cards.scope" size={13} />
+                                            </View>
+                                            <Text style={{ color: isDark ? "#9CA3AF" : "#6B7280", fontSize: 12 }}>
+                                                Select which coursework assessments compile into report cards for your subject.
+                                            </Text>
+                                        </View>
+                                    </View>
 
-                                <Dropdown
-                                    label="Class"
-                                    items={classesForSelectedSubject}
-                                    selectedId={selectedSubjClassId}
-                                    selectedLabel={classesForSelectedSubject.find((c) => c.id === selectedSubjClassId)?.label || "Select Class"}
-                                    onSelect={setSelectedSubjClassId}
-                                    isDark={isDark}
-                                    accentColor={accentColor}
-                                    emptyMessage="No classes assigned for this subject"
-                                    disabled={classesForSelectedSubject.length === 0}
-                                />
+                                    <Dropdown
+                                        label="Subject"
+                                        items={uniqueSubjects.map((s) => ({ id: s.id, label: s.title }))}
+                                        selectedId={selectedSubjSubjectId}
+                                        selectedLabel={uniqueSubjects.find((s) => s.id === selectedSubjSubjectId)?.title || "Select Subject"}
+                                        onSelect={(id) => {
+                                            setSelectedSubjSubjectId(id);
+                                            const classes = subjectClasses.filter((sc) => sc.subject_id === id);
+                                            if (classes.length > 0) setSelectedSubjClassId(classes[0].class_id);
+                                        }}
+                                        isDark={isDark}
+                                        accentColor={accentColor}
+                                        emptyMessage="No subjects assigned"
+                                        disabled={uniqueSubjects.length === 0}
+                                    />
 
-                                <Dropdown
-                                    label="Term"
-                                    items={terms.map((t) => ({ id: t.id, label: t.name + (t.is_current ? " (Current)" : "") }))}
-                                    selectedId={selectedSubjTermId}
-                                    selectedLabel={terms.find((t) => t.id === selectedSubjTermId)?.name || "Select Term"}
-                                    onSelect={setSelectedSubjTermId}
-                                    isDark={isDark}
-                                    accentColor={accentColor}
-                                    emptyMessage="No terms configured in system"
-                                    disabled={terms.length === 0}
-                                />
-                            </View>
+                                    <Dropdown
+                                        label="Class"
+                                        items={classesForSelectedSubject}
+                                        selectedId={selectedSubjClassId}
+                                        selectedLabel={classesForSelectedSubject.find((c) => c.id === selectedSubjClassId)?.label || "Select Class"}
+                                        onSelect={setSelectedSubjClassId}
+                                        isDark={isDark}
+                                        accentColor={accentColor}
+                                        emptyMessage="No classes assigned for this subject"
+                                        disabled={classesForSelectedSubject.length === 0}
+                                    />
+
+                                    <Dropdown
+                                        label="Term"
+                                        items={terms.map((t) => ({ id: t.id, label: t.name + (t.is_current ? " (Current)" : "") }))}
+                                        selectedId={selectedSubjTermId}
+                                        selectedLabel={terms.find((t) => t.id === selectedSubjTermId)?.name || "Select Term"}
+                                        onSelect={setSelectedSubjTermId}
+                                        isDark={isDark}
+                                        accentColor={accentColor}
+                                        emptyMessage="No terms configured in system"
+                                        disabled={terms.length === 0}
+                                    />
+                                </View>
+                            </ActionTooltip>
 
                             {/* Weighting Ratio Info Banner */}
                             {subjectAssessments?.weights && (
@@ -1410,12 +1420,7 @@ export default function ReportCardsPage() {
                             )}
 
                             {loadingAssessments ? (
-                                <View style={{ paddingVertical: 40, alignItems: "center" }}>
-                                    <ActivityIndicator size="large" color={accentColor} />
-                                    <Text style={{ color: isDark ? "#9CA3AF" : "#6B7280", fontSize: 13, marginTop: 8 }}>
-                                        Loading subject assessments and exams...
-                                    </Text>
-                                </View>
+                                <AssignmentsTasksSkeleton />
                             ) : (
                                 <View>
                                     {/* Mandatory Exams Section */}
@@ -1683,7 +1688,7 @@ export default function ReportCardsPage() {
                                                     key={sf.key}
                                                     onPress={() => setSelectedStatus(sf.key)}
                                                     style={{
-                                                        backgroundColor: selectedStatus === sf.key ? accentColor : isDark ? "#1A1650" : "#F9FAFB",
+                                                        backgroundColor: selectedStatus === sf.key ? accentColor : isDark ? "#21262D" : "#F9FAFB",
                                                         borderRadius: 20,
                                                         borderWidth: 1,
                                                         borderColor: selectedStatus === sf.key ? accentColor : isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6",

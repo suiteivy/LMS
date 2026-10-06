@@ -3,7 +3,7 @@ import { ConfirmationModal } from '@/components/common/ConfirmationModal';
 import { EmptyState } from '@/components/common/EmptyState';
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { UserCard } from '@/components/common/UserCard';
-import { ListItemSkeleton } from '@/components/ui/skeletons';
+import { TableScreenSkeleton } from '@/components/ui/skeletons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
@@ -463,7 +463,7 @@ export default function UsersManagementScreen() {
                 <CredentialRequestsSection />
             ) : loading ? (
                 <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
-                    <ListItemSkeleton loading={loading} count={6} label="Loading users..." />
+                    <TableScreenSkeleton rows={6} columns={4} />
                 </View>
             ) : (
                 <FlatList

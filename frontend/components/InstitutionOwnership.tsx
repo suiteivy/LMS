@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/services/api';
+import { UserProfileSkeleton } from '@/components/ui/skeletons';
 
 export default function InstitutionOwnership() {
  const { profile, isMain, refreshProfile } = useAuth();
@@ -13,7 +14,7 @@ export default function InstitutionOwnership() {
  const [transferring, setTransferring] = useState(false);
  const [delegatingUserId, setDelegatingUserId] = useState<string | null>(null);
 
- const surface = isDark ? '#13103A' : '#ffffff';
+ const surface = isDark ? '#161B22' : '#ffffff';
  const border = isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6';
  const textPrimary = isDark ? '#f1f1f1' : '#111827';
  const textSecondary = isDark ? '#6b7280' : '#9ca3af';
@@ -131,15 +132,15 @@ export default function InstitutionOwnership() {
 
  if (loading) {
  return (
- <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
- <ActivityIndicator size="large" color="#FF6900" />
+ <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#0D1117' : '#ffffff' }}>
+ <UserProfileSkeleton />
  </View>
  );
  }
 
  if (!isMain) {
  return (
- <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }}>
+ <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: isDark ? '#0D1117' : '#ffffff' }}>
  <View style={{ backgroundColor: isDark ? '#1f2937' : '#fef2f2', padding: 24, borderRadius: 24, alignItems: 'center', borderWidth: 1, borderColor: isDark ? '#374151' : '#fecaca' }}>
  <Ionicons name="lock-closed" size={48} color="#ef4444" />
  <Text style={{ marginTop: 16, fontSize: 18, fontWeight: 'bold', color: textPrimary, textAlign: 'center' }}>Access Denied</Text>
@@ -150,7 +151,7 @@ export default function InstitutionOwnership() {
  }
 
  return (
- <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#0F0B2E' : '#ffffff' }} contentContainerStyle={{ padding: 24 }}>
+ <ScrollView style={{ flex: 1, backgroundColor: isDark ? '#0D1117' : '#ffffff' }} contentContainerStyle={{ padding: 24 }}>
  <View style={{ backgroundColor: isDark ? 'rgba(251, 191, 36, 0.1)' : '#FFFBEB', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: isDark ? 'rgba(251, 191, 36, 0.2)' : '#FDE68A', marginBottom: 24 }}>
  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
  <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: '#FDE68A', alignItems: 'center', justifyContent: 'center' }}>

@@ -1,6 +1,7 @@
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Spinner } from '@/components/ui/Spinner';
+import { FinanceScreenSkeleton } from '@/components/ui/skeletons';
 import { supabase } from '@/libs/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
@@ -37,7 +38,7 @@ export function FeeStructureCard() {
     };
 
     if (loading) {
-        return <Spinner size="large" color={isDark ? "#FF6900" : "#000"} className="mt-10" label="Loading fee structures" />;
+        return <FinanceScreenSkeleton />;
     }
 
     return (

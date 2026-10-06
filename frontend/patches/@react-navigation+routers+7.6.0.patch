@@ -1,0 +1,59 @@
+diff --git a/node_modules/@react-navigation/routers/lib/module/CommonActions.js b/node_modules/@react-navigation/routers/lib/module/CommonActions.js
+index 305ac51..d6c4e08 100644
+--- a/node_modules/@react-navigation/routers/lib/module/CommonActions.js
++++ b/node_modules/@react-navigation/routers/lib/module/CommonActions.js
+@@ -30,7 +30,6 @@ export function navigate(...args) {
+     if (!('name' in payload)) {
+       throw new Error('You need to specify a name when calling navigate with an object as the argument. See https://reactnavigation.org/docs/navigation-actions#navigate for usage.');
+     }
+-    console.warn(`Passing an object as the argument to 'navigate' is deprecated. Use 'navigate(name, params, options)' instead.`);
+     return {
+       type: 'NAVIGATE',
+       payload
+diff --git a/node_modules/@react-navigation/routers/lib/module/TabRouter.js b/node_modules/@react-navigation/routers/lib/module/TabRouter.js
+index f3b26a9..b828f7f 100644
+--- a/node_modules/@react-navigation/routers/lib/module/TabRouter.js
++++ b/node_modules/@react-navigation/routers/lib/module/TabRouter.js
+@@ -158,8 +158,8 @@ export function TabRouter({
+         key: `${name}-${nanoid()}`,
+         params: routeParamList[name]
+       });
+-      const index = Math.max(0, routeNames.indexOf(state.routes[state.index].name));
+-      let history = state.history.filter(
++      const index = Math.max(0, routeNames.indexOf(state.routes[state.index]?.name));
++      let history = (state.history ?? []).filter(
+       // Type will always be 'route' for tabs, but could be different in a router extending this (e.g. drawer)
+       it => it.type !== 'route' || routes.find(r => r.key === it.key));
+       if (!history.length) {
+diff --git a/node_modules/@react-navigation/routers/src/CommonActions.tsx b/node_modules/@react-navigation/routers/src/CommonActions.tsx
+index 9dc34d6..53b8038 100644
+--- a/node_modules/@react-navigation/routers/src/CommonActions.tsx
++++ b/node_modules/@react-navigation/routers/src/CommonActions.tsx
+@@ -129,10 +129,6 @@ export function navigate(...args: any): Action {
+       );
+     }
+ 
+-    console.warn(
+-      `Passing an object as the argument to 'navigate' is deprecated. Use 'navigate(name, params, options)' instead.`
+-    );
+-
+     return { type: 'NAVIGATE', payload };
+   }
+ }
+diff --git a/node_modules/@react-navigation/routers/src/TabRouter.tsx b/node_modules/@react-navigation/routers/src/TabRouter.tsx
+index aba825c..ac897a2 100644
+--- a/node_modules/@react-navigation/routers/src/TabRouter.tsx
++++ b/node_modules/@react-navigation/routers/src/TabRouter.tsx
+@@ -313,10 +313,10 @@ export function TabRouter({
+ 
+       const index = Math.max(
+         0,
+-        routeNames.indexOf(state.routes[state.index].name)
++        routeNames.indexOf(state.routes[state.index]?.name)
+       );
+ 
+-      let history = state.history.filter(
++      let history = (state.history ?? []).filter(
+         // Type will always be 'route' for tabs, but could be different in a router extending this (e.g. drawer)
+         (it) => it.type !== 'route' || routes.find((r) => r.key === it.key)
+       );

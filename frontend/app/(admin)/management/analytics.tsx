@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { AnalyticsScreenSkeleton } from "@/components/ui/skeletons";
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -44,8 +45,8 @@ export default function AnalyticsScreen() {
 
     if (loading && !refreshing) {
         return (
-            <View className="flex-1 items-center justify-center bg-[#FFFFFF] dark:bg-[#161B22]">
-                <ActivityIndicator size="large" color="#FF6900" />
+            <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
+                <AnalyticsScreenSkeleton />
             </View>
         );
     }
@@ -180,7 +181,10 @@ export default function AnalyticsScreen() {
                             {showFinancials && hasRevenueStat && (
                                 <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mb-4">
                                     <View className="flex-row justify-between items-center mb-4">
-                                        <Text className="text-gray-900 dark:text-white font-bold text-base">Revenue (Last 7 Days)</Text>
+                                        <View className="flex-row items-center">
+                                            <Text className="text-gray-900 dark:text-white font-bold text-base">Revenue (Last 7 Days)</Text>
+                                            <HelpTooltip id="admin.finance.revenue" role="admin" tier={tier} onLearnMore={openManual} />
+                                        </View>
                                         <View className="bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 px-2 py-1 rounded-md">
                                             <Text className="text-[#FF6900] text-[10px] font-bold uppercase tracking-widest">Live</Text>
                                         </View>

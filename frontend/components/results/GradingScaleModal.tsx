@@ -11,6 +11,7 @@ import { X, Award, HelpCircle } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { GradingAPI } from '@/services/GradingService';
 import { GradingScaleRow, getPerformanceLabel } from '@/utils/getPerformanceLabel';
+import { TableScreenSkeleton } from '@/components/ui/skeletons';
 
 interface GradingScaleModalProps {
     visible: boolean;
@@ -81,7 +82,7 @@ export function GradingScaleModal({ visible, onClose, scales: propScales }: Grad
                     style={{ maxHeight: '88%' }}
                 >
                     {/* Header */}
-                    <View className={`px-6 py-5 border-b flex-row items-center justify-between ${isDark ? 'border-gray-800 bg-[#0F0B2E]/40' : 'border-gray-100 bg-gray-50'}`}>
+                    <View className={`px-6 py-5 border-b flex-row items-center justify-between ${isDark ? 'border-gray-800 bg-[#21262D]/60' : 'border-gray-100 bg-gray-50'}`}>
                         <View className="flex-row items-center gap-3">
                             <View className="w-10 h-10 rounded-2xl bg-[#FF6900]/20 items-center justify-center">
                                 <Award size={20} color="#FF6900" />
@@ -128,7 +129,7 @@ export function GradingScaleModal({ visible, onClose, scales: propScales }: Grad
 
                         {loading ? (
                             <View className="py-12 items-center justify-center">
-                                <ActivityIndicator size="large" color="#FF6900" />
+                                <TableScreenSkeleton rows={4} columns={3} />
                                 <Text className="mt-3 text-xs text-gray-400 font-medium">Loading grading scale...</Text>
                             </View>
                         ) : sortedScales.length === 0 ? (

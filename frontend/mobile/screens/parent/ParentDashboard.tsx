@@ -415,7 +415,7 @@ export function ParentDashboardMobile() {
         <MobileCard
           style={[
             styles.childHeroCard,
-            { backgroundColor: isDark ? '#1a1a2e' : '#111827' }
+            { backgroundColor: isDark ? '#161B22' : '#111827' }
           ]}
         >
           <Text style={styles.childHeroOverline}>STUDENT PROFILE</Text>

@@ -70,7 +70,7 @@ const NativeThemeTransitionOverlay: React.FC<{
 
   if (!overlay || !overlay.active) return null;
 
-  const overlayBg = overlay.prevIsDark ? '#0F0B2E' : '#F6F8FA';
+  const overlayBg = overlay.prevIsDark ? '#0D1117' : '#F6F8FA';
 
   return (
     <Animated.View

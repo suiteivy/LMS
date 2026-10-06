@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { Platform } from "react-native";
-import { getApiBaseUrl, getFallbackApiBaseUrl, getApiDiagnostics } from "@/utils/backendUrl";
+import { getApiBaseUrl, getFallbackApiBaseUrl, getApiDiagnostics, findWorkingBackendHost } from "@/utils/backendUrl";
 import { assertNoDoubleApiSegment } from "@/utils/validateApiUrl";
 
 import { showError, showWarning, showInfo } from "../utils/toast";
@@ -258,7 +258,7 @@ api.interceptors.request.use(
 
     // Ensure environment-aware base URL resolution on native platforms
     if (!config.baseURL || (Platform.OS !== 'web' && config.baseURL.includes('localhost'))) {
-      config.baseURL = getApiBaseUrl();
+      config.baseURL = api.defaults.baseURL || getApiBaseUrl();
     }
 
     // Validate no /api/api/ duplication in constructed URL
@@ -469,31 +469,47 @@ api.interceptors.response.use(
           break;
       }
     } else if (error.request) {
-      // Check for automatic host failover on native platforms (e.g. 127.0.0.1 <-> 192.168.100.83)
+      // Dynamic multi-host failover for development on native platforms
       const originalConfig = error.config as (InternalAxiosRequestConfig & { _hostFailoverAttempted?: boolean }) | undefined;
-      const fallbackUrl = getFallbackApiBaseUrl();
-      const currentBaseUrl = api.defaults.baseURL || getApiBaseUrl();
+      const currentBaseUrl = originalConfig?.baseURL || api.defaults.baseURL || getApiBaseUrl();
 
       if (
         Platform.OS !== 'web' &&
         __DEV__ &&
         originalConfig &&
-        !originalConfig._hostFailoverAttempted &&
-        fallbackUrl !== currentBaseUrl
+        !originalConfig._hostFailoverAttempted
       ) {
         originalConfig._hostFailoverAttempted = true;
-        originalConfig.baseURL = fallbackUrl;
-        console.warn(`[API] Network error on ${currentBaseUrl}. Retrying request with failover host: ${fallbackUrl}`);
+        console.warn(`[API] Network error on ${currentBaseUrl}. Scanning for reachable backend hosts...`);
 
         try {
-          const res = await api.request(originalConfig);
-          // If failover succeeded, switch default baseURL to the working host
-          api.defaults.baseURL = fallbackUrl;
-          console.log(`[API] Host failover succeeded! Default baseURL permanently updated to: ${fallbackUrl}`);
-          _setOffline(false);
-          return res;
+          const workingHost = await findWorkingBackendHost(currentBaseUrl, 1800);
+          if (workingHost) {
+            const newBaseUrl = `http://${workingHost}:4001/api`;
+            api.defaults.baseURL = newBaseUrl;
+            originalConfig.baseURL = newBaseUrl;
+            console.log(`[API] Live host discovered: ${workingHost}! Updated baseURL to ${newBaseUrl} and retrying request...`);
+            _setOffline(false);
+            return await api.request(originalConfig);
+          }
         } catch (failoverError) {
-          console.warn(`[API] Failover host ${fallbackUrl} also unreachable.`);
+          console.warn(`[API] Failover probing encountered an error:`, failoverError);
+        }
+
+        // Secondary fallback: Try getFallbackApiBaseUrl() if distinct from current
+        const fallbackUrl = getFallbackApiBaseUrl();
+        if (fallbackUrl && fallbackUrl !== currentBaseUrl) {
+          try {
+            originalConfig.baseURL = fallbackUrl;
+            console.warn(`[API] Retrying with secondary fallback host: ${fallbackUrl}`);
+            const res = await api.request(originalConfig);
+            api.defaults.baseURL = fallbackUrl;
+            console.log(`[API] Secondary host failover succeeded! Default baseURL permanently updated to: ${fallbackUrl}`);
+            _setOffline(false);
+            return res;
+          } catch (secondaryErr) {
+            console.warn(`[API] Secondary fallback host ${fallbackUrl} also unreachable.`);
+          }
         }
       }
 

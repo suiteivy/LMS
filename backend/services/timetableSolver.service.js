@@ -105,7 +105,7 @@ function runJsFallbackSolver(data) {
     }
   }
 
-  // 2. Senior Secondary elective clusters
+  // 2. Track/cohort clusters (if any)
   for (const cluster of (data.senior_secondary_tracks || [])) {
     const count = cluster.periods_per_week || 0;
     for (let i = 0; i < count; i++) {
@@ -207,8 +207,6 @@ function runJsFallbackSolver(data) {
               teacher_id: teacherId,
               day_of_week: day,
               period_number: pNum,
-              is_elective: false,
-              track_id: null,
               subject_name: item.subject_name
             });
 
@@ -247,8 +245,6 @@ function runJsFallbackSolver(data) {
               teacher_id: opt.teacher_id,
               day_of_week: day,
               period_number: pNum,
-              is_elective: true,
-              track_id: opt.track_id || null,
               subject_name: opt.subject_name
             });
           }
@@ -300,8 +296,6 @@ function runJsFallbackSolver(data) {
       start_time: pInfo.start_time || '08:00',
       end_time: pInfo.end_time || '08:45',
       room_number: className,
-      is_elective: assign.is_elective,
-      track_id: assign.track_id,
       subject_name: assign.subject_name || 'Subject',
       teacher_name: tInfo.name || 'Assigned Teacher'
     };

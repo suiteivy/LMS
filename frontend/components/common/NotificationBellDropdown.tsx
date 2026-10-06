@@ -99,7 +99,7 @@ export function NotificationBellDropdown({
 
     const tokens = {
         surface: isDark ? "#0D1117" : "#F6F8FA",
-        surfaceAlt: isDark ? "#0F0B2E" : "#f9fafb",
+        surfaceAlt: isDark ? "#161B22" : "#f9fafb",
         border: isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb",
         textPrimary: isDark ? "#ffffff" : "#111827",
         textSecondary: isDark ? "#9ca3af" : "#6b7280",

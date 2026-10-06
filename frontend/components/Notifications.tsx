@@ -11,6 +11,7 @@ interface NotificationProps {
 
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { formatNotificationDisplay } from '@/utils/notificationLabel';
 import { formatDistanceToNow } from 'date-fns';
 
 const Notifications = ({ visible, onClose }: NotificationProps) => {
@@ -158,7 +159,9 @@ const Notifications = ({ visible, onClose }: NotificationProps) => {
                 </Text>
               </View>
             ) : (
-              notifications.map((item) => (
+              notifications.map((item) => {
+                const display = formatNotificationDisplay(item);
+                return (
                 <TouchableOpacity
                   key={item.id}
                   activeOpacity={0.7}
@@ -194,12 +197,14 @@ const Notifications = ({ visible, onClose }: NotificationProps) => {
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <Text style={{ fontWeight: '700', fontSize: 14, color: tokens.textPrimary }}>{item.title}</Text>
+                      <Text style={{ fontWeight: '700', fontSize: 14, color: tokens.textPrimary }}>{display.title}</Text>
                       <Text style={{ fontSize: 9, color: tokens.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                         {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
                       </Text>
                     </View>
-                    <Text style={{ color: tokens.textSecondary, fontSize: 13, lineHeight: 20 }}>{item.message}</Text>
+                    {!!display.message && (
+                      <Text style={{ color: tokens.textSecondary, fontSize: 13, lineHeight: 20 }}>{display.message}</Text>
+                    )}
                     {!!item.expires_at && (
                       <Text style={{ color: '#D97706', fontSize: 10, marginTop: 6, fontWeight: '700' }}>
                         {formatExpiryCountdown(item.expires_at)}
@@ -213,7 +218,8 @@ const Notifications = ({ visible, onClose }: NotificationProps) => {
                     <Trash2 size={16} color={tokens.textMuted} />
                   </TouchableOpacity>
                 </TouchableOpacity>
-              ))
+              );
+              })
             )}
 
             {notifications.length > 0 && !loading && (

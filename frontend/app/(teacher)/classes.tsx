@@ -1,5 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
-import { ListItemSkeleton } from "@/components/ui/skeletons";
+import { TableScreenSkeleton, CardGridScreenSkeleton, ListItemSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
 import { AttendanceService } from "@/services/AttendanceService";
@@ -461,7 +461,7 @@ const DailyTab = ({ classId, className: cName }: { classId: string; className: s
 
                     {/* Student roll-call */}
                     {loading ? (
-                        <ActivityIndicator size="large" color="#FF6900" className="mt-8" />
+                        <TableScreenSkeleton rows={5} columns={3} />
                     ) : rows.length === 0 ? (
                         <View className="items-center py-12">
                             <Users size={40} color="#D1D5DB" />
@@ -890,7 +890,7 @@ export default function TeacherClasses() {
                     </View>
 
                     {loading ? (
-                        <ListItemSkeleton loading={loading} count={4} label="Loading classes..." />
+                        <CardGridScreenSkeleton count={4} />
                     ) : (
                         <View>
                             {classes.length === 0 ? (

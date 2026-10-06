@@ -72,14 +72,49 @@ export async function safeSignOut(
     // non-critical – continue with local sign-out
   }
 
-  // 3. Call Supabase signOut FIRST (wrapped so failure doesn't abort storage clearance)
+const isJwtExpired = (token?: string | null): boolean => {
+  if (!token) return true;
   try {
-    const { error: signOutError } = await supabase.auth.signOut({ scope } as any);
-    if (signOutError) {
-      if (isBenignSupabaseSignOutError(signOutError)) {
-        console.warn('[safeSignOut] Benign supabase.auth.signOut error ignored:', signOutError?.message || signOutError);
-      } else {
-        console.warn('[safeSignOut] supabase.auth.signOut error (non-fatal):', signOutError?.message || signOutError);
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonStr = typeof atob !== 'undefined'
+      ? atob(base64)
+      : Buffer.from(base64, 'base64').toString('utf-8');
+    const payload = JSON.parse(jsonStr);
+    if (!payload.exp) return false;
+    return (payload.exp * 1000) <= Date.now();
+  } catch {
+    return false;
+  }
+};
+
+  // 3. Call Supabase signOut (locally or remotely)
+  try {
+    // If this is a demo user, or the token is already expired/invalid/unauthorized,
+    // sending a remote GoTrue logout request with an invalid/deleted user token causes Supabase
+    // to return 403 Forbidden, which the browser network layer logs in red to the console.
+    // GoTrueClient itself handles 403 by simply calling _removeSession() and returning { error: null }.
+    // We can directly invoke _removeSession() locally to clear Supabase client memory & storage and notify subscribers,
+    // avoiding the redundant 403 network round-trip.
+    const isTokenStale = !accessToken || isJwtExpired(accessToken);
+    const shouldSkipRemoteSignOut =
+      isDemoUser ||
+      isTokenStale ||
+      reason === LogoutReason.AUTH_ERROR_403 ||
+      reason === LogoutReason.REVOKED_BY_OTHER_DEVICE;
+
+    if (shouldSkipRemoteSignOut && typeof (supabase.auth as any)._removeSession === 'function') {
+      await (supabase.auth as any)._removeSession();
+    } else {
+      const { error: signOutError } = await supabase.auth.signOut({ scope } as any);
+      if (signOutError) {
+        if (isBenignSupabaseSignOutError(signOutError)) {
+          console.warn('[safeSignOut] Benign supabase.auth.signOut error ignored:', signOutError?.message || signOutError);
+        } else {
+          console.warn('[safeSignOut] supabase.auth.signOut error (non-fatal):', signOutError?.message || signOutError);
+        }
       }
     }
   } catch (e: any) {

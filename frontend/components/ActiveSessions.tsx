@@ -4,6 +4,7 @@ import { Laptop, Smartphone, Tablet, Globe, ShieldAlert, Trash2, LogOut, MapPin,
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { api } from "@/services/api";
+import { ListSkeleton } from "@/components/ui/skeletons";
 
 interface SessionEntry {
   id: string;
@@ -162,7 +163,7 @@ export default function ActiveSessions() {
   if (loading) {
     return (
       <View className="py-12 justify-center items-center">
-        <ActivityIndicator size="large" color="#FF6B00" />
+        <ListSkeleton count={4} />
         <Text className="text-gray-400 dark:text-gray-500 mt-2 font-medium">Retrieving active sessions...</Text>
       </View>
     );

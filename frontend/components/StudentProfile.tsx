@@ -2,6 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { authService, supabase } from "@/libs/supabase";
 import { Spinner } from "@/components/ui/Spinner";
+import { UserProfileSkeleton } from "@/components/ui/skeletons";
 import {
   Calendar,
   Camera,
@@ -125,7 +126,7 @@ export default function StudentProfile() {
   if (!profile) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-navy">
-        <Spinner size="large" color="#FF6B00" label="Loading profile" />
+        <UserProfileSkeleton />
       </View>
     );
   }

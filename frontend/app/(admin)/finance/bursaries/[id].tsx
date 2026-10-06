@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { NotFoundView } from "@/components/common/NotFoundView";
+import { FinanceScreenSkeleton } from "@/components/ui/skeletons";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { BursaryService } from '@/services/BursaryService';
@@ -62,11 +63,7 @@ export default function BursaryDetailsScreen() {
     }
 
     if (loading) {
-        return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#161B22' : '#f9fafb' }}>
-                <ActivityIndicator size="large" color="#FF6B00" />
-            </View>
-        );
+        return <FinanceScreenSkeleton />;
     }
 
     if (!bursary) {

@@ -1,5 +1,6 @@
 import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { CardGridScreenSkeleton } from "@/components/ui/skeletons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Subject } from '@/types/types';
@@ -198,8 +199,8 @@ export default function SubjectsIndex() {
 
     if (loading) {
         return (
-            <View className="flex-1 justify-center items-center bg-[#FFFFFF] dark:bg-[#161B22]">
-                <ActivityIndicator size="large" color="#FF6B00" />
+            <View className="flex-1 bg-[#FFFFFF] dark:bg-[#161B22]">
+                <CardGridScreenSkeleton count={6} />
             </View>
         );
     }

@@ -2,6 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { authService } from "@/libs/supabase";
 import { Spinner } from "@/components/ui/Spinner";
+import { UserProfileSkeleton } from "@/components/ui/skeletons";
 import { Edit3, Mail, Save, ShieldCheck, UserCircle, X } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -66,7 +67,7 @@ export default function AdminProfile() {
     if (!profile) {
         return (
             <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: tokens.bg }}>
-                <ActivityIndicator size="large" color="#FF6900" />
+                <UserProfileSkeleton />
             </View>
         );
     }

@@ -3,6 +3,7 @@ import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useParentStudentContext } from "@/hooks/useParentStudentContext";
 import { ParentService } from "@/services/ParentService";
@@ -95,6 +96,7 @@ export default function ParentFinancePage() {
   const [previewPayload, setPreviewPayload] = useState<any | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const { formatAmount } = useCurrency();
+  const { isDark } = useTheme();
   const tier = useSubscriptionTier();
 
   const formatCurrency = (amount: number) => formatAmount(Number(amount || 0));
@@ -313,9 +315,9 @@ export default function ParentFinancePage() {
                   </View>
                 </View>
 
-                <View className="bg-gray-900 p-8 rounded-[40px] mb-6">
+                <View className="bg-white dark:bg-[#161B22] p-8 rounded-[40px] mb-6 border border-gray-100 dark:border-gray-800 shadow-sm">
                   <View className="flex-row items-center justify-between mb-4">
-                    <Text className="text-white font-bold text-lg tracking-tight">Finance Overview</Text>
+                    <Text className="text-gray-900 dark:text-white font-bold text-lg tracking-tight">Finance Overview</Text>
                     <HelpTooltip
                       id="parent.finance.overview"
                       role="parent"
@@ -325,37 +327,37 @@ export default function ParentFinancePage() {
                   </View>
                   <View className="flex-row justify-between items-center mb-6">
                     <View>
-                      <Text className="text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Outstanding Balance</Text>
-                      <Text className="text-white text-5xl font-black tracking-tighter">
+                      <Text className="text-gray-400 dark:text-white/40 text-[10px] font-bold uppercase tracking-[3px] mb-2">Outstanding Balance</Text>
+                      <Text className="text-gray-900 dark:text-white text-5xl font-black tracking-tighter">
                         {formatCurrency(finance?.balance || 0)}
                       </Text>
                     </View>
-                    <View className="w-14 h-14 rounded-full bg-white/10 items-center justify-center border border-white/20">
-                      <Wallet size={26} color="white" />
+                    <View className="w-14 h-14 rounded-full bg-gray-100 dark:bg-white/10 items-center justify-center border border-gray-200 dark:border-white/20">
+                      <Wallet size={26} color={isDark ? "white" : "#FF6900"} />
                     </View>
                   </View>
 
-                  <View className="flex-row pt-6 border-t border-white/10">
+                  <View className="flex-row pt-6 border-t border-gray-100 dark:border-white/10">
                     <View className="flex-1">
-                      <Text className="text-white/40 text-[8px] font-bold uppercase tracking-widest mb-1">Total Fees</Text>
-                      <Text className="text-white font-bold text-base">{formatCurrency(finance?.total_fees || 0)}</Text>
+                      <Text className="text-gray-400 dark:text-white/40 text-[8px] font-bold uppercase tracking-widest mb-1">Total Fees</Text>
+                      <Text className="text-gray-900 dark:text-white font-bold text-base">{formatCurrency(finance?.total_fees || 0)}</Text>
                     </View>
-                    <View className="flex-1 border-l border-white/10 pl-4">
-                      <Text className="text-white/40 text-[8px] font-bold uppercase tracking-widest mb-1">Paid</Text>
-                      <Text className="text-emerald-400 font-bold text-base">{formatCurrency(finance?.paid_amount || 0)}</Text>
+                    <View className="flex-1 border-l border-gray-100 dark:border-white/10 pl-4">
+                      <Text className="text-gray-400 dark:text-white/40 text-[8px] font-bold uppercase tracking-widest mb-1">Paid</Text>
+                      <Text className="text-emerald-600 dark:text-emerald-400 font-bold text-base">{formatCurrency(finance?.paid_amount || 0)}</Text>
                     </View>
-                    <View className="flex-1 border-l border-white/10 pl-4">
-                      <Text className="text-white/40 text-[8px] font-bold uppercase tracking-widest mb-1">Pending</Text>
-                      <Text className="text-amber-400 font-bold text-base">{formatCurrency(pendingAmount)}</Text>
+                    <View className="flex-1 border-l border-gray-100 dark:border-white/10 pl-4">
+                      <Text className="text-gray-400 dark:text-white/40 text-[8px] font-bold uppercase tracking-widest mb-1">Pending</Text>
+                      <Text className="text-amber-600 dark:text-amber-400 font-bold text-base">{formatCurrency(pendingAmount)}</Text>
                     </View>
                   </View>
 
-                  <View className="mt-6 pt-5 border-t border-white/10">
+                  <View className="mt-6 pt-5 border-t border-gray-100 dark:border-white/10">
                     <View className="flex-row justify-between items-center mb-2">
-                      <Text className="text-white/60 text-[10px] font-bold uppercase tracking-widest">Payment Progress</Text>
-                      <Text className="text-white font-black text-xs">{paidPercentage}%</Text>
+                      <Text className="text-gray-500 dark:text-white/60 text-[10px] font-bold uppercase tracking-widest">Payment Progress</Text>
+                      <Text className="text-gray-900 dark:text-white font-black text-xs">{paidPercentage}%</Text>
                     </View>
-                    <View className="h-2.5 rounded-full bg-white/10 overflow-hidden">
+                    <View className="h-2.5 rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden">
                       <View
                         className="h-full bg-[#FF6900]"
                         style={{ width: `${paidPercentage}%` }}

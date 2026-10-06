@@ -113,10 +113,15 @@ export const authService = {
         }
       }
 
-      const { error } = await supabase.auth.signOut();
-      const signOutError = isBenignSupabaseSignOutError(error) ? null : error;
-      if (error && !signOutError) {
-        console.warn('[authService.signOut] Benign Supabase sign-out error ignored:', error?.message || error);
+      let signOutError: any = null;
+      if (isDemo && typeof (supabase.auth as any)._removeSession === 'function') {
+        await (supabase.auth as any)._removeSession();
+      } else {
+        const { error } = await supabase.auth.signOut();
+        signOutError = isBenignSupabaseSignOutError(error) ? null : error;
+        if (error && !signOutError) {
+          console.warn('[authService.signOut] Benign Supabase sign-out error ignored:', error?.message || error);
+        }
       }
 
       if (isDemo && userId) {

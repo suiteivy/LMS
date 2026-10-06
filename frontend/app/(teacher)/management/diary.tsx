@@ -15,10 +15,12 @@ import * as Sharing from 'expo-sharing';
 import { Printer } from 'lucide-react-native';
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
 import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { ActionTooltip } from "@/components/common/ActionTooltip";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 
 const DiaryCard = ({ entry, onDelete, onEdit }: { entry: DiaryEntry; onDelete: (id: string) => void; onEdit: (entry: DiaryEntry) => void }) => {
     return (
+        <ActionTooltip targetId="teacher.diary.entry_card">
         <View className="bg-[#F6F8FA] dark:bg-[#161B22] p-5 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-4">
             <View className="flex-row items-start mb-4">
                 <View className="bg-orange-100 dark:bg-orange-950/20 p-2.5 rounded-lg mr-4">
@@ -60,6 +62,7 @@ const DiaryCard = ({ entry, onDelete, onEdit }: { entry: DiaryEntry; onDelete: (
                 </View>
             </View>
         </View>
+        </ActionTooltip>
     );
 };
 
@@ -358,6 +361,7 @@ export default function TeacherDiaryPage() {
                     ) : (
                         <>
                             <View className="mb-6 relative z-10">
+                                <ActionTooltip targetId="teacher.diary.class_selector">
                                 <TouchableOpacity
                                     className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl px-6 py-4 border border-[#D0D7DE] dark:border-[#21262D] flex-row items-center justify-between"
                                     onPress={() => {
@@ -373,6 +377,7 @@ export default function TeacherDiaryPage() {
                                     </View>
                                     <ChevronDown size={18} color="#6B7280" />
                                 </TouchableOpacity>
+                                </ActionTooltip>
 
                                 {showClassDropdown && (
                                     <View className="absolute top-16 left-0 right-0 bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl z-20 overflow-hidden">

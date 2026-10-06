@@ -1,5 +1,6 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { Spinner } from "@/components/ui/Spinner";
+import { ListItemSkeleton } from "@/components/ui/skeletons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { ClassService } from "@/services/ClassService";
@@ -547,8 +548,8 @@ export default function CreateClassScreen() {
                         </View>
 
                         {loadingTeachers ? (
-                            <View style={{ marginTop: 20 }}>
-                                <Spinner size="large" color="#FF6B00" centered label="Loading teachers" />
+                            <View style={{ marginTop: 12, paddingHorizontal: 8 }}>
+                                <ListItemSkeleton loading={true} count={4} label="Loading teachers..." />
                             </View>
                         ) : (
                             <FlatList

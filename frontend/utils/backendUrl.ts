@@ -112,7 +112,10 @@ export const getExpoDevHost = (): string | null => {
 let _developerManualLanIp: string | null = null;
 const DEV_LAN_OVERRIDE_KEY = 'developer_manual_lan_ip_override';
 
-// Load persisted manual LAN IP on module init in development
+let _activeWorkingHost: string | null = null;
+const LAST_WORKING_HOST_KEY = '@lms_last_working_api_host';
+
+// Load persisted manual LAN IP and last working host on module init in development
 if (__DEV__) {
   AsyncStorage.getItem(DEV_LAN_OVERRIDE_KEY)
     .then((stored) => {
@@ -121,7 +124,34 @@ if (__DEV__) {
       }
     })
     .catch(() => {});
+
+  AsyncStorage.getItem(LAST_WORKING_HOST_KEY)
+    .then((stored) => {
+      if (stored && stored.trim().length > 0) {
+        _activeWorkingHost = stored.trim();
+      }
+    })
+    .catch(() => {});
 }
+
+/**
+ * Sets the active confirmed working host and persists it to AsyncStorage
+ * so subsequent requests and app launches remember the reachable address.
+ */
+export const setActiveWorkingHost = async (host: string | null) => {
+  _activeWorkingHost = host ? host.trim() : null;
+  if (__DEV__) {
+    if (host && host.trim().length > 0) {
+      await AsyncStorage.setItem(LAST_WORKING_HOST_KEY, host.trim()).catch(() => {});
+    } else {
+      await AsyncStorage.removeItem(LAST_WORKING_HOST_KEY).catch(() => {});
+    }
+  }
+};
+
+export const getActiveWorkingHost = (): string | null => {
+  return _activeWorkingHost;
+};
 
 /**
  * Allows developers to explicitly set or override the workstation LAN IP in development builds.
@@ -165,6 +195,141 @@ export const getFallbackLanIp = (): string => {
 };
 
 /**
+ * Returns an ordered, deduplicated list of candidate host addresses
+ * that could potentially host the backend API during development.
+ */
+export const getCandidateDevHosts = (): string[] => {
+  const candidates: string[] = [];
+
+  const add = (h?: string | null) => {
+    if (!h) return;
+    const clean = h.trim();
+    if (
+      clean.length > 0 &&
+      !clean.startsWith('169.254.') &&
+      !candidates.includes(clean)
+    ) {
+      candidates.push(clean);
+    }
+  };
+
+  const isPhysical = isPhysicalDevice();
+  const expoHost = getExpoDevHost();
+  const fallbackLan = getFallbackLanIp();
+
+  // 1. Dynamic host detected directly from Metro bundler script URL
+  if (expoHost && !expoHost.startsWith('10.0.2.')) {
+    add(expoHost);
+  }
+
+  // 2. Active working host confirmed from prior requests
+  add(_activeWorkingHost);
+
+  // 3. Explicit developer manual override if configured
+  add(_developerManualLanIp);
+
+  // 4. Synchronized/fallback LAN IP from environment
+  add(fallbackLan);
+
+  // 5. Platform-specific fallbacks
+  if (Platform.OS === 'android') {
+    if (!isPhysical) {
+      add('10.0.2.2');
+    }
+    // 127.0.0.1 is valid if USB tethering / adb reverse is active
+    add('127.0.0.1');
+  } else if (Platform.OS === 'ios') {
+    add('localhost');
+    add('127.0.0.1');
+  } else {
+    add('localhost');
+  }
+
+  return candidates;
+};
+
+/**
+ * Fast, lightweight check to test if a given host or URL can reach the LMS backend.
+ * Uses /api/health or /api/settings/maintenance with a tight timeout.
+ */
+export const probeBackendHealth = async (hostOrBaseUrl: string, timeoutMs = 1500): Promise<boolean> => {
+  try {
+    let clean = hostOrBaseUrl.trim();
+    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+      clean = `http://${clean}:4001`;
+    }
+    clean = clean.replace(/\/+$/, '').replace(/\/api$/i, '');
+    const targetUrl = `${clean}/api/health`;
+
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
+    const res = await fetch(targetUrl, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      ...(controller ? { signal: controller.signal } : {}),
+    });
+
+    if (timer) clearTimeout(timer);
+    return res.status === 200;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Concurrently probes all candidate dev hosts and returns the first one
+ * that successfully responds to a health check.
+ * Automatically updates active working host state on success.
+ */
+export const findWorkingBackendHost = async (
+  currentFailedUrl?: string,
+  timeoutMs = 1800
+): Promise<string | null> => {
+  if (Platform.OS === 'web' || !__DEV__) return null;
+
+  const candidates = getCandidateDevHosts();
+  let failedHost: string | null = null;
+  if (currentFailedUrl) {
+    try {
+      const match = currentFailedUrl.match(/:\/\/([^/:]+)/);
+      if (match && match[1]) failedHost = match[1].trim();
+    } catch {}
+  }
+
+  // Filter out the failed host so we don't waste time on what just timed out
+  const toTest = candidates.filter((c) => c !== failedHost);
+  if (toTest.length === 0) return null;
+
+  return new Promise((resolve) => {
+    let resolved = false;
+    let failedCount = 0;
+
+    toTest.forEach((host) => {
+      probeBackendHealth(host, timeoutMs)
+        .then((isHealthy) => {
+          if (isHealthy && !resolved) {
+            resolved = true;
+            setActiveWorkingHost(host);
+            resolve(host);
+          } else {
+            failedCount++;
+            if (failedCount === toTest.length && !resolved) {
+              resolve(null);
+            }
+          }
+        })
+        .catch(() => {
+          failedCount++;
+          if (failedCount === toTest.length && !resolved) {
+            resolve(null);
+          }
+        });
+    });
+  });
+};
+
+/**
  * Resolves the appropriate development host for the current runtime target:
  * - Production builds: always return production domain; NEVER resolve local IPs.
  * - Web: 'localhost'
@@ -172,6 +337,7 @@ export const getFallbackLanIp = (): string => {
  * - Android Emulator fallback: '10.0.2.2' (host loopback alias)
  * - Android Physical / Device / Network:
  *     - If Metro bundler is served via USB reverse ('localhost' or '127.0.0.1'): '127.0.0.1' (routes via adb reverse)
+ *     - If an active confirmed working host exists: active working host
  *     - If Metro bundler is served via Wi-Fi: bundler LAN IP (e.g. 192.168.x.x)
  *     - Fallback: workstation LAN IP (192.168.1.103 or user configured)
  *     - NEVER returns '10.0.2.2' on physical hardware!
@@ -199,6 +365,11 @@ export const resolveDevHost = (): string => {
         return '127.0.0.1';
       }
       return expoHost;
+    }
+
+    // If we have an active confirmed host from earlier successful requests, use it
+    if (_activeWorkingHost && _activeWorkingHost !== 'localhost' && _activeWorkingHost !== '127.0.0.1') {
+      return _activeWorkingHost;
     }
 
     const hasExplicitLan = Boolean(
@@ -234,27 +405,25 @@ export const resolveDevHost = (): string => {
     return 'localhost';
   }
 
-  return expoHost || fallbackLanIp;
+  return expoHost || _activeWorkingHost || fallbackLanIp;
 };
 
 /**
  * Returns an alternative fallback dev host for automatic failover.
- * - If primary is localhost/127.0.0.1 -> fallback is workstation LAN IP.
- * - If primary is workstation LAN IP -> fallback is 127.0.0.1.
+ * Finds the next best candidate from getCandidateDevHosts that isn't the current host.
  */
 export const getFallbackDevHost = (): string | null => {
   if (Platform.OS === 'web') return null;
 
   const currentHost = resolveDevHost();
-  const fallbackLanIp = getFallbackLanIp();
+  const candidates = getCandidateDevHosts();
+  const alternative = candidates.find((c) => c !== currentHost);
 
+  if (alternative) return alternative;
   if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-    return fallbackLanIp;
+    return getFallbackLanIp();
   }
-  if (currentHost === fallbackLanIp) {
-    return '127.0.0.1';
-  }
-  return fallbackLanIp;
+  return '127.0.0.1';
 };
 
 /**
@@ -357,7 +526,9 @@ export const getApiDiagnostics = () => {
     deviceModel: constants.Model || null,
     scriptURL: (NativeModules as any)?.SourceCode?.scriptURL || null,
     expoDevHost: getExpoDevHost(),
+    activeWorkingHost: _activeWorkingHost,
     developerManualLanIp: _developerManualLanIp,
+    candidateDevHosts: getCandidateDevHosts(),
     physicalAutoDetectSuccess: isPhysicalDevice() ? Boolean(getExpoDevHost()) : null,
     resolvedDevHost: resolveDevHost(),
     fallbackDevHost: getFallbackDevHost(),

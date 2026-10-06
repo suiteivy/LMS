@@ -15,6 +15,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTeacherRoleMode } from "@/hooks/useTeacherRoleMode";
 import { api } from "@/services/api";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { ActionTooltip } from "@/components/common/ActionTooltip";
+import { HelpTooltip } from "@/components/settings/HelpTooltip";
+import { TableScreenSkeleton } from "@/components/ui/skeletons";
 import { resolveAvatarUri } from "@/utils/avatar";
 import {
   Trophy,
@@ -151,90 +154,101 @@ export default function StudentRankingsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={orange} />}
       >
         {/* Scope Indicator Banner */}
-        <View
-          style={{
-            backgroundColor: card,
-            borderWidth: 1,
-            borderColor: border,
-            borderRadius: 16,
-            padding: 14,
-            marginBottom: 16,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <View
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
-                backgroundColor: isDark ? "rgba(255, 105, 0, 0.15)" : "#FFF7ED",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Trophy size={20} color={orange} />
-            </View>
-            <View>
-              <Text style={{ color: textPrimary, fontSize: 14, fontWeight: "800" }}>
-                {mode === "class" ? "Designated Class Ranking" : "Teaching Subjects Ranking"}
-              </Text>
-              <Text style={{ color: textSecondary, fontSize: 11, marginTop: 2 }}>
-                {mode === "class"
-                  ? "Overall student rankings across all subjects in your designated class"
-                  : "Rankings strictly scoped to students in your taught subjects"}
-              </Text>
-            </View>
-          </View>
+        <ActionTooltip targetId="teacher.rankings.scope" position="bottom" className="w-full">
           <View
             style={{
-              paddingHorizontal: 8,
-              paddingVertical: 4,
-              borderRadius: 6,
-              backgroundColor: isDark ? "#21262D" : "#F3F4F6",
+              backgroundColor: card,
+              borderWidth: 1,
+              borderColor: border,
+              borderRadius: 16,
+              padding: 14,
+              marginBottom: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              width: "100%",
             }}
           >
-            <Text style={{ color: textSecondary, fontSize: 11, fontWeight: "700" }}>
-              {data?.total_students || 0} Learners
-            </Text>
-          </View>
-        </View>
-
-        {/* Performance & Competency Distribution Cards */}
-        <Text style={{ color: textSecondary, fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, marginLeft: 2 }}>
-          Performance & Competency Distribution
-        </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 18, minWidth: "100%" }}>
-          {distributionItems.map((item) => {
-            const isSelected = selectedBand === item.band;
-            return (
-              <TouchableOpacity
-                key={item.band}
-                onPress={() => setSelectedBand(isSelected ? null : item.band)}
-                activeOpacity={0.7}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, marginRight: 8 }}>
+              <View
                 style={{
-                  flex: 1,
-                  minWidth: 72,
-                  backgroundColor: isSelected ? (isDark ? "#21262D" : "#FFF7ED") : card,
-                  borderWidth: 1,
-                  borderColor: isSelected ? orange : border,
-                  borderRadius: 12,
-                  paddingVertical: 10,
-                  paddingHorizontal: 8,
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  backgroundColor: isDark ? "rgba(255, 105, 0, 0.15)" : "#FFF7ED",
                   alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                <Text style={{ color: item.color, fontSize: 18, fontWeight: "900" }}>{item.count}</Text>
-                <Text style={{ color: textPrimary, fontSize: 11, fontWeight: "700", marginTop: 2 }}>{item.band}</Text>
-                <Text style={{ color: textSecondary, fontSize: 9, fontWeight: "600", marginTop: 1 }} numberOfLines={1}>
-                  {item.label}
+                <Trophy size={20} color={orange} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Text style={{ color: textPrimary, fontSize: 14, fontWeight: "800" }}>
+                    {mode === "class" ? "Designated Class Ranking" : "Teaching Subjects Ranking"}
+                  </Text>
+                  <HelpTooltip targetId="teacher.rankings.scope" size={13} />
+                </View>
+                <Text style={{ color: textSecondary, fontSize: 11, marginTop: 2 }}>
+                  {mode === "class"
+                    ? "Overall student rankings across all subjects in your designated class"
+                    : "Rankings strictly scoped to students in your taught subjects"}
                 </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+              </View>
+            </View>
+            <View
+              style={{
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 6,
+                backgroundColor: isDark ? "#21262D" : "#F3F4F6",
+              }}
+            >
+              <Text style={{ color: textSecondary, fontSize: 11, fontWeight: "700" }}>
+                {data?.total_students || 0} Learners
+              </Text>
+            </View>
+          </View>
+        </ActionTooltip>
+
+        {/* Performance & Competency Distribution Cards */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8, marginLeft: 2 }}>
+          <Text style={{ color: textSecondary, fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 1 }}>
+            Performance & Competency Distribution
+          </Text>
+          <HelpTooltip targetId="teacher.rankings.distribution" size={12} />
+        </View>
+        <ActionTooltip targetId="teacher.rankings.distribution" position="bottom" className="w-full">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 18, minWidth: "100%" }}>
+            {distributionItems.map((item) => {
+              const isSelected = selectedBand === item.band;
+              return (
+                <TouchableOpacity
+                  key={item.band}
+                  onPress={() => setSelectedBand(isSelected ? null : item.band)}
+                  activeOpacity={0.7}
+                  style={{
+                    flex: 1,
+                    minWidth: 72,
+                    backgroundColor: isSelected ? (isDark ? "#21262D" : "#FFF7ED") : card,
+                    borderWidth: 1,
+                    borderColor: isSelected ? orange : border,
+                    borderRadius: 12,
+                    paddingVertical: 10,
+                    paddingHorizontal: 8,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: item.color, fontSize: 18, fontWeight: "900" }}>{item.count}</Text>
+                  <Text style={{ color: textPrimary, fontSize: 11, fontWeight: "700", marginTop: 2 }}>{item.band}</Text>
+                  <Text style={{ color: textSecondary, fontSize: 9, fontWeight: "600", marginTop: 1 }} numberOfLines={1}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </ActionTooltip>
 
         {/* Leaderboard Table / Cards */}
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10, marginLeft: 2 }}>
@@ -249,10 +263,7 @@ export default function StudentRankingsScreen() {
         </View>
 
         {loading ? (
-          <View style={{ padding: 40, alignItems: "center" }}>
-            <ActivityIndicator size="large" color={orange} />
-            <Text style={{ color: textSecondary, marginTop: 12, fontSize: 12 }}>Computing Rankings...</Text>
-          </View>
+          <TableScreenSkeleton rows={6} columns={4} />
         ) : filteredRankings.length === 0 ? (
           <View style={{ backgroundColor: card, borderWidth: 1, borderColor: border, borderRadius: 16, padding: 32, alignItems: "center" }}>
             <Users size={32} color={textSecondary} />

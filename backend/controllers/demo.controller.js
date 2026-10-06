@@ -23,6 +23,7 @@ exports.startDemo = async (req, res) => {
 
     const isReadOnly = role === 'readonly_admin' || (role === 'admin' && req.body.access_level === 'read_only');
     const dbRole = role === 'readonly_admin' ? 'admin' : role;
+    let userId = null;
 
     try {
         const sessionId = crypto.randomBytes(4).toString('hex');
@@ -46,9 +47,9 @@ exports.startDemo = async (req, res) => {
             }
         });
         if (authErr) throw authErr;
-        const userId = authData.user.id;
+        userId = authData.user.id;
 
-        // 2. Create public.users row
+        // 2. Create public.users row (note: access_level belongs to role tables like admins, not users)
         const { error: userErr } = await supabase.from('users').insert({
             id: userId,
             email,
@@ -56,7 +57,6 @@ exports.startDemo = async (req, res) => {
             first_name: firstName,
             last_name: lastName,
             role: dbRole,
-            access_level: isReadOnly ? 'read_only' : 'read_write',
             institution_id: TEMPLATE_INSTITUTION_ID,
             status: 'approved',
             is_demo: true
@@ -78,8 +78,8 @@ exports.startDemo = async (req, res) => {
 
             // Link demo teacher as subject teacher so their portal has active subjects and class access
             await supabase.from('subject_teachers').insert([
-                { subject_id: 'a9aca035-bf32-4876-85ec-ea0b7bc972fb', teacher_id: teacherId, institution_id: TEMPLATE_INSTITUTION_ID },
-                { subject_id: 'b1000000-0000-4000-8000-000000000001', teacher_id: teacherId, institution_id: TEMPLATE_INSTITUTION_ID }
+                { subject_id: 'a9aca035-bf32-4876-85ec-ea0b7bc972fb', teacher_id: teacherId, institution_id: TEMPLATE_INSTITUTION_ID, class_id: '417561a5-48c5-4c45-b736-97d49e74bd35' },
+                { subject_id: 'db224c36-093b-4d92-9bed-61b720a991c8', teacher_id: teacherId, institution_id: TEMPLATE_INSTITUTION_ID, class_id: '417561a5-48c5-4c45-b736-97d49e74bd35' }
             ]);
 
         } else if (role === 'student') {
@@ -88,23 +88,32 @@ exports.startDemo = async (req, res) => {
                 institution_id: TEMPLATE_INSTITUTION_ID,
                 class_id: '417561a5-48c5-4c45-b736-97d49e74bd35',
                 form_level: 3,
-                academic_year: '2026'
+                academic_year: '2026',
+                admission_number: `STU-DEMO-${sessionId}`
             }).select('id').single();
             if (e) throw new Error(`Student insert failed: ${e.message}`);
 
-            const f3Subjects = [
-                'a9aca035-bf32-4876-85ec-ea0b7bc972fb', // Mathematics
-                'b1000000-0000-4000-8000-000000000001', // English Language
-                'b1000000-0000-4000-8000-000000000002', // Kiswahili
-                'b1000000-0000-4000-8000-000000000003', // Biology
-                'b1000000-0000-4000-8000-000000000004', // Chemistry
-                'b1000000-0000-4000-8000-000000000005', // Physics
-                'b1000000-0000-4000-8000-000000000006', // History
-                'b1000000-0000-4000-8000-000000000007', // Geography
-                'b1000000-0000-4000-8000-000000000008', // Agriculture
-                'b1000000-0000-4000-8000-000000000009', // Business Studies
-            ];
-            const enrollments = f3Subjects.map(subId => ({
+            const { data: dbSubjects } = await supabase
+                .from('subjects')
+                .select('id')
+                .eq('institution_id', TEMPLATE_INSTITUTION_ID);
+
+            const activeSubjects = (dbSubjects && dbSubjects.length > 0)
+                ? dbSubjects.map(s => s.id)
+                : [
+                    'a9aca035-bf32-4876-85ec-ea0b7bc972fb',
+                    'db224c36-093b-4d92-9bed-61b720a991c8',
+                    '51000000-0000-4000-8000-000000000001',
+                    '51000000-0000-4000-8000-000000000002',
+                    '51000000-0000-4000-8000-000000000003',
+                    '51000000-0000-4000-8000-000000000004',
+                    '51000000-0000-4000-8000-000000000005',
+                    '51000000-0000-4000-8000-000000000006',
+                    '51000000-0000-4000-8000-000000000007',
+                    '51000000-0000-4000-8000-000000000008'
+                ];
+
+            const enrollments = activeSubjects.map(subId => ({
                 student_id: stu.id,
                 subject_id: subId,
                 class_id: '417561a5-48c5-4c45-b736-97d49e74bd35',
@@ -141,19 +150,27 @@ exports.startDemo = async (req, res) => {
             });
             if (e) throw new Error(`Parent insert failed: ${e.message}`);
 
-            const { error: linkErr } = await supabase.from('parent_students').upsert({
-                parent_id: parentId,
-                student_id: 'c6306d7b-ad5e-4f5b-8118-47fcd462bd25',
-                institution_id: TEMPLATE_INSTITUTION_ID,
-                relationship: 'guardian'
-            }, { onConflict: 'parent_id,student_id' });
+            const { error: linkErr } = await supabase.from('parent_students').upsert([
+                {
+                    parent_id: parentId,
+                    student_id: 'c6306d7b-ad5e-4f5b-8118-47fcd462bd25',
+                    institution_id: TEMPLATE_INSTITUTION_ID,
+                    relationship: 'Father'
+                },
+                {
+                    parent_id: parentId,
+                    student_id: 'c6300000-0000-4000-8000-000000000012',
+                    institution_id: TEMPLATE_INSTITUTION_ID,
+                    relationship: 'Father'
+                }
+            ], { onConflict: 'parent_id,student_id' });
             if (linkErr) throw new Error(`Parent-student link failed: ${linkErr.message}`);
         }
 
         // 4. Record trial session
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
         const { error: trialErr } = await supabase.from('trial_sessions').insert({
-            role,
+            role: dbRole,
             demo_user_id: userId,
             institution_id: TEMPLATE_INSTITUTION_ID,
             ip_address: req.ip || req.connection?.remoteAddress,
@@ -163,10 +180,9 @@ exports.startDemo = async (req, res) => {
 
         // 5. Sign in to get token
         const { createClient } = require('@supabase/supabase-js');
-        const authClient = createClient(
-            process.env.EXPO_PUBLIC_SUPABASE_URL,
-            process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
-        );
+        const supabaseUrl = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL;
+        const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+        const authClient = createClient(supabaseUrl, supabaseAnonKey);
         const { data: signInData, error: signInErr } = await authClient.auth.signInWithPassword({
             email,
             password
@@ -192,6 +208,13 @@ exports.startDemo = async (req, res) => {
 
     } catch (err) {
         console.error('Critical Error starting demo session:', err);
+        if (userId) {
+            try {
+                await supabase.auth.admin.deleteUser(userId);
+            } catch (cleanupErr) {
+                console.warn('Failed to delete auth user during demo rollback:', cleanupErr.message);
+            }
+        }
         res.status(500).json({
             error: 'Failed to start demo session. Please try again.',
             details: err.message || undefined
@@ -211,10 +234,11 @@ exports.endDemo = async (req, res) => {
             .from('users')
             .select('role')
             .eq('id', user_id)
-            .single();
+            .maybeSingle();
 
         if (!user) {
-            return res.status(404).json({ error: 'Demo user not found' });
+            // Already cleaned up or deleted
+            return res.status(200).json({ message: 'Demo session ended' });
         }
 
         // Delete role-specific profile
@@ -223,7 +247,7 @@ exports.endDemo = async (req, res) => {
                 .from('teachers')
                 .select('id')
                 .eq('user_id', user_id)
-                .single();
+                .maybeSingle();
             if (teacher) {
                 await supabase.from('subject_teachers').delete().eq('teacher_id', teacher.id);
                 await supabase.from('teachers').delete().eq('id', teacher.id);
@@ -234,7 +258,7 @@ exports.endDemo = async (req, res) => {
                 .from('students')
                 .select('id')
                 .eq('user_id', user_id)
-                .single();
+                .maybeSingle();
 
             if (stu) {
                 await supabase.from('enrollments').delete()
@@ -254,7 +278,7 @@ exports.endDemo = async (req, res) => {
                 .from('parents')
                 .select('id')
                 .eq('user_id', user_id)
-                .single();
+                .maybeSingle();
 
             if (parent) {
                 await supabase.from('parent_students').delete()

@@ -27,40 +27,26 @@ const localDateKey = (date: Date): string => {
 interface QuickActionProps {
     icon: any;
     label: string;
-    color: string;
+    color?: string;
     onPress?: () => void;
     badge?: React.ReactNode;
 }
 
 const QuickAction = ({ icon: Icon, label, color, onPress, badge }: QuickActionProps) => {
-    const { isDark } = useTheme();
+    const iconColor = color || "#FF6900";
     return (
         <TouchableOpacity
+            className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-4 mb-3 flex-row items-center active:bg-gray-100 dark:active:bg-gray-800"
+            style={{ width: '100%' }}
             onPress={onPress}
-            style={{
-                minHeight: 100, 
-                justifyContent: 'center', 
-                alignItems: 'center',
-                boxShadow: [{
-                    offsetX: 0,
-                    offsetY: 1,
-                    blurRadius: 1.5,
-                    color: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.08)',
-                }],
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: isDark ? 0.3 : 0.08,
-                shadowRadius: 1.5,
-                elevation: 1,
-            }}
-            className="bg-white dark:bg-[#161B22] p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 items-center mb-3 active:bg-gray-50 dark:active:bg-gray-900"
+            activeOpacity={0.7}
         >
-            <View style={{ backgroundColor: `${color}15` }} className="p-2.5 rounded-xl mb-1.5">
-                <Icon size={20} color={color} />
+            <View style={{ backgroundColor: `${iconColor}15` }} className="p-2 rounded-lg mr-3">
+                <Icon size={18} color={iconColor} />
             </View>
-            <Text numberOfLines={1} className="text-gray-800 dark:text-gray-200 font-bold text-xs text-center">{label}</Text>
+            <Text className="text-gray-900 dark:text-white font-bold text-sm flex-1" numberOfLines={1}>{label}</Text>
             {badge && (
-                <View className="mt-1 h-4 items-center justify-center">
+                <View className="ml-2">
                     {badge}
                 </View>
             )}
@@ -1138,13 +1124,13 @@ export default function TeacherHome() {
                     )}
 
                     {/* --- 5. Quick Actions Grid --- */}
-                    <View className="mt-2">
-                        <Text className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                    <View className="mt-2 mb-4">
+                        <Text className="text-lg font-bold text-gray-900 dark:text-white mb-3">
                             Quick Actions
                         </Text>
                         <View className="flex-row flex-wrap justify-between">
                             {quickActions.map((action) => (
-                                <View key={action.key} className="w-[48%]">
+                                <View key={action.key} style={{ width: '48.5%' }}>
                                     {action.gated ? (
                                         <SubscriptionGate>
                                             <QuickAction

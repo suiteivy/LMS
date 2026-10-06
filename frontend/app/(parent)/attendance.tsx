@@ -165,11 +165,11 @@ export default function StudentAttendancePage() {
               <View className="flex-row justify-end mb-2">
                 <HelpTooltip id="parent.attendance.summary" role="parent" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(parent)/accessibility/settings', params: { manual: '1', anchor: a || 'parent-workflow' } } as any)} />
               </View>
-              <View className="bg-gray-900 dark:bg-[#161B22] p-5 rounded-2xl shadow-lg mb-6 border border-transparent dark:border-gray-800">
+              <View className="bg-white dark:bg-[#161B22] p-5 rounded-2xl shadow-sm mb-6 border border-gray-100 dark:border-gray-800">
                 <View className="flex-row justify-between items-center mb-6">
                   <View>
-                    <Text className="text-white/40 dark:text-gray-500 text-[9px] font-bold uppercase tracking-[2px] mb-1.5">Academic Presence</Text>
-                    <Text className="text-white text-4xl font-black tracking-tighter">{stats.pct}</Text>
+                    <Text className="text-gray-400 dark:text-gray-500 text-[9px] font-bold uppercase tracking-[2px] mb-1.5">Academic Presence</Text>
+                    <Text className="text-gray-900 dark:text-white text-4xl font-black tracking-tighter">{stats.pct}</Text>
                     <Text className="text-[#FF6900] text-xs font-bold mt-1.5 uppercase tracking-wider">
                       {stats.total} Sessions Tracked
                     </Text>
@@ -180,18 +180,18 @@ export default function StudentAttendancePage() {
                 </View>
 
                 {/* Stats Grid */}
-                <View className="flex-row justify-between pt-5 border-t border-white/10 dark:border-gray-800">
+                <View className="flex-row justify-between pt-5 border-t border-gray-100 dark:border-gray-800">
                   <View className="flex-1 items-center">
-                    <Text className="text-white/30 dark:text-gray-500 text-[8px] font-bold uppercase tracking-wider">Present</Text>
-                    <Text className="text-emerald-400 font-bold text-lg mt-1">{stats.present}</Text>
+                    <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-wider">Present</Text>
+                    <Text className="text-emerald-600 dark:text-emerald-400 font-bold text-lg mt-1">{stats.present}</Text>
                   </View>
-                  <View className="flex-1 items-center border-x border-white/10 dark:border-gray-800 px-2">
-                    <Text className="text-white/30 dark:text-gray-500 text-[8px] font-bold uppercase tracking-wider">Absent</Text>
-                    <Text className="text-rose-400 font-bold text-lg mt-1">{stats.absent}</Text>
+                  <View className="flex-1 items-center border-x border-gray-100 dark:border-gray-800 px-2">
+                    <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-wider">Absent</Text>
+                    <Text className="text-rose-600 dark:text-rose-400 font-bold text-lg mt-1">{stats.absent}</Text>
                   </View>
                   <View className="flex-1 items-center">
-                    <Text className="text-white/30 dark:text-gray-500 text-[8px] font-bold uppercase tracking-wider">Late</Text>
-                    <Text className="text-amber-400 font-bold text-lg mt-1">{stats.late}</Text>
+                    <Text className="text-gray-400 dark:text-gray-500 text-[8px] font-bold uppercase tracking-wider">Late</Text>
+                    <Text className="text-amber-600 dark:text-amber-400 font-bold text-lg mt-1">{stats.late}</Text>
                   </View>
                 </View>
               </View>

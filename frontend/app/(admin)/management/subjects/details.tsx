@@ -1,4 +1,5 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { DetailSkeleton } from "@/components/ui/skeletons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/libs/supabase";
@@ -290,12 +291,10 @@ function SubjectDetailsScreen() {
       <View
         style={{
           flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
           backgroundColor: isDark ? "#161B22" : "#FFFFFF"
         }}
       >
-        <ActivityIndicator size="large" color="#FF6B00" />
+        <DetailSkeleton />
       </View>
     );
   }

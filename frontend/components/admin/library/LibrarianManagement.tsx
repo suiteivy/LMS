@@ -1,4 +1,5 @@
 import { useTheme } from "@/contexts/ThemeContext";
+import { TableScreenSkeleton } from "@/components/ui/skeletons";
 import { LibraryAPI } from "@/services/LibraryService";
 import { LibrarianAuditLogItem, LibrarianStaffItem } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
@@ -200,7 +201,7 @@ export const LibrarianManagement: React.FC = () => {
 
             {loading ? (
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                    <ActivityIndicator size="large" color="#FF6900" />
+                    <TableScreenSkeleton rows={5} columns={3} />
                     <Text style={{ marginTop: 12, color: textMuted, fontSize: 13 }}>
                         Loading librarian designations...
                     </Text>

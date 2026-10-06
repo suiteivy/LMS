@@ -1,3 +1,4 @@
+import { ActionTooltip } from '@/components/common/ActionTooltip';
 import { Spinner } from '@/components/ui/Spinner';
 import { TableRowSkeleton } from '@/components/ui/skeletons';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -100,20 +101,22 @@ export const RevenueSection: React.FC<RevenueSectionProps> = ({ onRefresh }) => 
 
   return (
     <View className="flex-1">
-      <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl p-5 border border-[#D0D7DE] dark:border-[#21262D] mb-4">
-        <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest mb-2">Net Revenue</Text>
-        <Text className="text-3xl font-black text-gray-900 dark:text-white">{formatAmount(overview.net_revenue || 0)}</Text>
-        <Text className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-          Gross {formatAmount(overview.gross_revenue || 0)} - Deductions {formatAmount(overview.total_deductions || 0)}
-        </Text>
+      <ActionTooltip targetId="admin.finance.revenue">
+        <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-xl p-5 border border-[#D0D7DE] dark:border-[#21262D] mb-4">
+          <Text className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest mb-2">Net Revenue</Text>
+          <Text className="text-3xl font-black text-gray-900 dark:text-white">{formatAmount(overview.net_revenue || 0)}</Text>
+          <Text className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            Gross {formatAmount(overview.gross_revenue || 0)} - Deductions {formatAmount(overview.total_deductions || 0)}
+          </Text>
 
-        <TouchableOpacity
-          onPress={() => setShowModal(true)}
-          className="mt-4 self-start bg-[#FF6900] px-4 py-2.5 rounded-xl"
-        >
-          <Text className="text-white font-bold text-xs uppercase tracking-widest">Record Usage</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            onPress={() => setShowModal(true)}
+            className="mt-4 self-start bg-[#FF6900] px-4 py-2.5 rounded-xl"
+          >
+            <Text className="text-white font-bold text-xs uppercase tracking-widest">Record Usage</Text>
+          </TouchableOpacity>
+        </View>
+      </ActionTooltip>
 
       <View className="flex-row items-center bg-[#EAEEF2] dark:bg-[#0F141C] rounded-xl px-4 py-3 mb-4 border border-[#D0D7DE] dark:border-[#21262D]">
         <TextInput

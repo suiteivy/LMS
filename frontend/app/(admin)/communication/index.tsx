@@ -1,6 +1,7 @@
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { DirectChatView } from "@/components/chat/DirectChatView";
 import { Spinner } from "@/components/ui/Spinner";
+import { CommunicationScreenSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/libs/supabase";
@@ -410,9 +411,7 @@ export default function CommunicationPage() {
             ) : null}
 
             {loading && !refreshing ? (
-                <View className="flex-1 justify-center items-center">
-                    <Spinner size="large" color="#FF6B00" label="Loading communication" />
-                </View>
+                <CommunicationScreenSkeleton />
             ) : mainTab === "messages" ? (
                 renderDirectMessagesTab()
             ) : (

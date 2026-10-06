@@ -2,6 +2,7 @@ import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { useTheme } from "@/contexts/ThemeContext";
 import { AttendanceService } from "@/services/AttendanceService";
 import { DatePicker } from "@/components/common/DatePicker";
+import { TableScreenSkeleton, ListSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
@@ -292,7 +293,7 @@ export default function AdminStudentAttendance() {
                 </View>
 
                 {loading ? (
-                    <ActivityIndicator size="large" color="#FF6900" style={{ marginTop: 40 }} />
+                    <TableScreenSkeleton rows={4} columns={3} />
                 ) : (
                     <>
                         {/* Summary Cards */}
@@ -479,11 +480,8 @@ export default function AdminStudentAttendance() {
 
                     {/* Students Roster */}
                     {loadingStudents ? (
-                        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-                            <ActivityIndicator size="large" color="#FF6900" />
-                            <Text style={{ color: textSecondary, marginTop: 12, fontSize: 13 }}>
-                                Loading class students...
-                            </Text>
+                        <View style={{ flex: 1, padding: 16 }}>
+                            <ListSkeleton count={6} />
                         </View>
                     ) : (
                         <ScrollView style={{ flex: 1, padding: 16 }}>

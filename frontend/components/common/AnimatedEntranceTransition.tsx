@@ -28,7 +28,7 @@ export interface AnimatedEntranceTransitionProps {
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Color Palette — SuiteIvy / Cloudora Liquid Glass
-const BG_COLOR = '#060412';
+const BG_COLOR = '#0D1117';
 const FLAME_PRIMARY = '#FF6B00';
 const FLAME_CORE = '#FFA040';
 const FLAME_HIGHLIGHT = '#FFE0B2';
@@ -132,9 +132,9 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
   // Spatial translation for the single persistent cloud element handoff
   const sceneTranslateY = useRef(new Animated.Value(0)).current;
 
-  // Destination header lift and scale targets for persistent handoff
-  const targetLiftY = -Math.round((SCREEN_HEIGHT * 0.5) - Math.max(SCREEN_HEIGHT * 0.08, 68));
-  const targetScale = 0.32;
+  // Destination header lift and scale targets for persistent handoff (aligns with 64x46 header logo)
+  const targetLiftY = -Math.round((SCREEN_HEIGHT * 0.5) - Math.max(SCREEN_HEIGHT * 0.12, 102));
+  const targetScale = 0.464;
 
   // Phase 1: Molten Liquid Beads (4 organic converging droplets)
   const bead1X = useRef(new Animated.Value(-SCREEN_WIDTH * 0.32)).current;
@@ -405,57 +405,58 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
             ]),
           ]),
 
-          // ── PHASE 5: Equilibrium Rest in Pristine Clarity (2.9s – 3.3s) ──
-          Animated.delay(400),
+          // ── PHASE 5: Equilibrium Rest in Pristine Clarity (2.9s – 3.1s) ──
+          // Trimmed from 400ms to 200ms to allow a full 520ms smooth closing stage without lengthening sequence
+          Animated.delay(200),
 
-          // ── PHASE 6: Persistent Handoff & Scrim Dissolve (3.3s – 3.8s) ──
+          // ── PHASE 6: Persistent Handoff & Scrim Dissolve (3.1s – 3.62s) ──
           // Single-element persistent handoff: the vector cloud glides smoothly into the destination
           // header position while the backdrop dissolves to resolve the destination screen content.
           Animated.parallel([
-            // 1. Spatial Ascent to Destination Header (500ms, smooth deceleration settle)
+            // 1. Spatial Ascent to Destination Header (520ms, smooth deceleration settle)
             Animated.timing(sceneTranslateY, {
               toValue: targetLiftY,
-              duration: 500,
+              duration: 520,
               easing: Easing.bezier(0.22, 1, 0.36, 1),
               useNativeDriver: true,
             }),
-            // 2. Scale down smoothly from hero presence to header size
+            // 2. Scale down smoothly from hero presence to header size (520ms)
             Animated.timing(cloudScale, {
               toValue: targetScale,
-              duration: 500,
+              duration: 520,
               easing: Easing.bezier(0.22, 1, 0.36, 1),
               useNativeDriver: true,
             }),
-            // 3. Dissolve backdrop scrim so destination screen content gradually resolves in
+            // 3. Dissolve backdrop scrim so destination screen content gradually resolves in (500ms)
             Animated.timing(backdropOpacity, {
               toValue: 0,
-              duration: 480,
+              duration: 500,
               easing: Easing.bezier(0.4, 0, 0.2, 1),
               useNativeDriver: true,
             }),
-            // 4. Accompanying brand wordmark dissolves and settles gently in place
+            // 4. Accompanying brand wordmark dissolves and settles gently in place (240ms)
             Animated.timing(textOpacity, {
               toValue: 0,
-              duration: 260,
+              duration: 240,
               easing: Easing.out(Easing.quad),
               useNativeDriver: true,
             }),
             Animated.timing(textTranslateY, {
               toValue: 14,
-              duration: 260,
+              duration: 240,
               easing: Easing.out(Easing.quad),
               useNativeDriver: true,
             }),
-            // 5. Embellishments cleanly distill away during departure
+            // 5. Embellishments cleanly distill away during departure (240ms)
             Animated.timing(crystalGlowOpacity, {
               toValue: 0,
-              duration: 250,
+              duration: 240,
               easing: Easing.out(Easing.quad),
               useNativeDriver: true,
             }),
             Animated.timing(beveledRimOpacity, {
               toValue: 0,
-              duration: 250,
+              duration: 240,
               easing: Easing.out(Easing.quad),
               useNativeDriver: true,
             }),
@@ -465,13 +466,13 @@ export const AnimatedEntranceTransition: React.FC<AnimatedEntranceTransitionProp
               easing: Easing.out(Easing.quad),
               useNativeDriver: true,
             }),
-            // 6. Seamless final cross-fade into destination header logo at arrival
+            // 6. Seamless final cross-fade into destination header logo at arrival (smooth 220ms blend)
             Animated.sequence([
-              Animated.delay(440),
+              Animated.delay(300),
               Animated.timing(cloudOpacity, {
                 toValue: 0,
-                duration: 60,
-                easing: Easing.linear,
+                duration: 220,
+                easing: Easing.inOut(Easing.quad),
                 useNativeDriver: true,
               }),
             ]),

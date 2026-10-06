@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
+import { ClearanceScreenSkeleton } from '@/components/ui/skeletons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ClearanceProcess, ClearanceService } from '@/services/ClearanceService';
@@ -408,7 +409,7 @@ export default function AdminClearanceManagement() {
 
         {/* Clearances List */}
         {loading ? (
-          <ActivityIndicator size="large" color="#FF6900" style={{ marginVertical: 40 }} />
+          <ClearanceScreenSkeleton />
         ) : clearances.length === 0 ? (
           <View style={{ backgroundColor: card, padding: 36, borderRadius: 20, borderWidth: 1, borderColor: border, alignItems: 'center' }}>
             <Ionicons name="document-text-outline" size={48} color={textSecondary} />
@@ -721,7 +722,7 @@ export default function AdminClearanceManagement() {
               {initiateStep === 2 && (
                 <View style={{ gap: 16 }}>
                   {checkingCategories ? (
-                    <ActivityIndicator size="large" color="#FF6900" style={{ marginVertical: 30 }} />
+                    <ClearanceScreenSkeleton />
                   ) : (
                     selectedUsers.map((u) => {
                       const chk = categoryChecks[u.id];

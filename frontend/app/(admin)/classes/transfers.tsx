@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
+import { TableScreenSkeleton } from '@/components/ui/skeletons';
 import { HelpTooltip } from '@/components/settings/HelpTooltip';
 import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -193,11 +194,8 @@ export default function AdminClassTransfersScreen() {
             </View>
 
             {loading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color="#FF6900" />
-                    <Text style={{ color: textSecondary, marginTop: 12, fontSize: 13 }}>
-                        Loading transfers...
-                    </Text>
+                <View style={{ flex: 1, padding: 16 }}>
+                    <TableScreenSkeleton rows={5} columns={3} />
                 </View>
             ) : (
                 <ScrollView

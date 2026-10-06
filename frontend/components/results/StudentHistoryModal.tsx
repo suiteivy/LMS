@@ -12,6 +12,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { GradingAPI } from '@/services/GradingService';
 import { showError } from '@/utils/toast';
 import { colorFromLetter } from '@/utils/getPerformanceLabel';
+import { GradesReportSkeleton } from '@/components/ui/skeletons';
 
 interface HistoricalCard {
     id: string;
@@ -165,7 +166,7 @@ export function StudentHistoryModal({
                     >
                         {loading ? (
                             <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                                <ActivityIndicator size="large" color="#FF6900" />
+                                <GradesReportSkeleton />
                                 <Text style={{ color: textSecondary, marginTop: 12, fontSize: 13 }}>
                                     Fetching historical report cards...
                                 </Text>

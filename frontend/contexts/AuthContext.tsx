@@ -37,6 +37,8 @@ interface AuthContextType {
   availableRoles: string[]
   activeRole: string | null
   switchActiveRole: (role: string) => Promise<void>
+  isRoleSwitching: boolean
+  switchingToRole: string | null
   loading: boolean
   setLoading: (loading: boolean) => void
   isInitializing: boolean
@@ -97,6 +99,8 @@ const fallbackAuthContext: AuthContextType = {
   availableRoles: [],
   activeRole: null,
   switchActiveRole: async () => {},
+  isRoleSwitching: false,
+  switchingToRole: null,
   loading: false,
   setLoading: () => {},
   isInitializing: true,
@@ -168,6 +172,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const [activeRole, setActiveRole] = useState<string | null>(null)
   const [availableRoles, setAvailableRoles] = useState<string[]>([])
+  const [isRoleSwitching, setIsRoleSwitching] = useState(false)
+  const [switchingToRole, setSwitchingToRole] = useState<string | null>(null)
 
   const [roleInfo, setRoleInfo] = useState({
     studentId: null as string | null,
@@ -714,7 +720,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     );
   };
 
-  const applyProfileData = (userData: any, userId: string, isLibrarianParam?: boolean, isFinanceAdminParam?: boolean): UserProfile => {
+  const applyProfileData = async (userData: any, userId: string, isLibrarianParam?: boolean, isFinanceAdminParam?: boolean): Promise<UserProfile> => {
     if (userData?.institutions) {
       const categoryIdsFromLinks = Array.isArray(userData.institutions.institution_categories)
         ? userData.institutions.institution_categories
@@ -803,27 +809,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     let newRoleInfo = { studentId, teacherId, adminId, parentId, displayId: initialDisplayId };
 
-    // Resolve active role asynchronously
-    AsyncStorage.getItem(`lms_active_role_${userId}`).then((stored) => {
+    // Resolve active role synchronously with await before setting profile
+    try {
+      const stored = await AsyncStorage.getItem(`lms_active_role_${userId}`);
       const validStored = stored && newAvailableRoles.includes(stored.toLowerCase()) ? stored.toLowerCase() : null;
       const targetRole = validStored || (newAvailableRoles.includes(String(userData.role).toLowerCase()) ? String(userData.role).toLowerCase() : (newAvailableRoles[0] || userData.role));
       setActiveRole(targetRole);
       api.defaults.headers.common['x-active-role'] = targetRole;
 
       if (targetRole === 'teacher' && teacherId) {
-        setRoleInfo(prev => ({ ...prev, displayId: teacherId }));
+        newRoleInfo.displayId = teacherId;
       } else if (targetRole === 'admin' && adminId) {
-        setRoleInfo(prev => ({ ...prev, displayId: adminId }));
+        newRoleInfo.displayId = adminId;
       } else if (targetRole === 'student' && studentId) {
-        setRoleInfo(prev => ({ ...prev, displayId: studentId }));
+        newRoleInfo.displayId = studentId;
       } else if (targetRole === 'parent' && parentId) {
-        setRoleInfo(prev => ({ ...prev, displayId: parentId }));
+        newRoleInfo.displayId = parentId;
       }
-    }).catch(() => {
+    } catch {
       const fallback = String(userData.role || '').toLowerCase();
       setActiveRole(fallback);
       api.defaults.headers.common['x-active-role'] = fallback;
-    });
+    }
 
     if (subscriptionStatus !== newSubscriptionStatus) setSubscriptionStatus(newSubscriptionStatus);
     if (subscriptionPlan !== newSubscriptionPlan) setSubscriptionPlan(newSubscriptionPlan);
@@ -866,7 +873,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const cachedData = JSON.parse(cachedRaw);
             if (cachedData && cachedData.id === userId) {
               console.info('[AuthContext] Restored user profile from cache on timeout for', userId);
-              applyProfileData(cachedData, userId, cachedData.is_librarian, cachedData.is_finance_admin);
+              await applyProfileData(cachedData, userId, cachedData.is_librarian, cachedData.is_finance_admin);
             }
           }
         } catch {}
@@ -893,7 +900,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               const cachedData = JSON.parse(cachedRaw);
               if (cachedData && cachedData.id === userId) {
                 console.info('[AuthContext] Restored user profile from cache for', userId);
-                return applyProfileData(cachedData, userId);
+                return await applyProfileData(cachedData, userId);
               }
             }
           } catch {}
@@ -965,7 +972,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await AsyncStorage.setItem(`lms_cached_profile_${userId}`, JSON.stringify(userData));
       } catch {}
 
-      return applyProfileData(userData, userId, isLibrarianFlag, isFinanceAdminFlag);
+      return await applyProfileData(userData, userId, isLibrarianFlag, isFinanceAdminFlag);
     } catch (err: any) {
       if (isNetworkLikeError(err)) {
         console.warn('[AuthContext] Network exception in loadUserProfile, attempting cache recovery:', err?.message || err);
@@ -974,7 +981,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (cachedRaw) {
             const cachedData = JSON.parse(cachedRaw);
             if (cachedData && cachedData.id === userId) {
-              return applyProfileData(cachedData, userId, cachedData.is_librarian, cachedData.is_finance_admin);
+              return await applyProfileData(cachedData, userId, cachedData.is_librarian, cachedData.is_finance_admin);
             }
           }
         } catch {}
@@ -1017,51 +1024,61 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     }
   }, [activeRole]);
-
   const switchActiveRole = useCallback(async (newRole: string) => {
     if (!newRole) return;
     const normalized = newRole.toLowerCase();
-    if (!availableRoles.includes(normalized)) {
-      if (normalized === 'teacher' && user?.id) {
-        const { data: teacherRec } = await supabase
-          .from('teachers')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        if (teacherRec?.id) {
-          setAvailableRoles(prev => Array.from(new Set([...prev, 'teacher'])));
-          setRoleInfo(prev => ({ ...prev, teacherId: teacherRec.id, displayId: prev.displayId || teacherRec.id }));
+    setIsRoleSwitching(true);
+    setSwitchingToRole(normalized);
+    try {
+      if (!availableRoles.includes(normalized)) {
+        if (normalized === 'teacher' && user?.id) {
+          const { data: teacherRec } = await supabase
+            .from('teachers')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          if (teacherRec?.id) {
+            setAvailableRoles(prev => Array.from(new Set([...prev, 'teacher'])));
+            setRoleInfo(prev => ({ ...prev, teacherId: teacherRec.id, displayId: prev.displayId || teacherRec.id }));
+          } else {
+            console.warn(`[AuthContext] Cannot switch to role "${newRole}" because it is not in availableRoles:`, availableRoles);
+            return;
+          }
         } else {
           console.warn(`[AuthContext] Cannot switch to role "${newRole}" because it is not in availableRoles:`, availableRoles);
           return;
         }
-      } else {
-        console.warn(`[AuthContext] Cannot switch to role "${newRole}" because it is not in availableRoles:`, availableRoles);
-        return;
       }
-    }
 
-    setActiveRole(normalized);
-    if (user?.id) {
-      await AsyncStorage.setItem(`lms_active_role_${user.id}`, normalized).catch(() => {});
-    }
-    api.defaults.headers.common['x-active-role'] = normalized;
+      setActiveRole(normalized);
+      if (user?.id) {
+        await AsyncStorage.setItem(`lms_active_role_${user.id}`, normalized).catch(() => {});
+      }
+      api.defaults.headers.common['x-active-role'] = normalized;
 
-    // Update displayId according to switched role
-    if (normalized === 'teacher' && roleInfo.teacherId) {
-      setRoleInfo(prev => ({ ...prev, displayId: roleInfo.teacherId }));
-    } else if (normalized === 'admin' && roleInfo.adminId) {
-      setRoleInfo(prev => ({ ...prev, displayId: roleInfo.adminId }));
-    } else if (normalized === 'student' && roleInfo.studentId) {
-      setRoleInfo(prev => ({ ...prev, displayId: roleInfo.studentId }));
-    } else if (normalized === 'parent' && roleInfo.parentId) {
-      setRoleInfo(prev => ({ ...prev, displayId: roleInfo.parentId }));
-    }
+      // Update displayId according to switched role
+      if (normalized === 'teacher' && roleInfo.teacherId) {
+        setRoleInfo(prev => ({ ...prev, displayId: roleInfo.teacherId }));
+      } else if (normalized === 'admin' && roleInfo.adminId) {
+        setRoleInfo(prev => ({ ...prev, displayId: roleInfo.adminId }));
+      } else if (normalized === 'student' && roleInfo.studentId) {
+        setRoleInfo(prev => ({ ...prev, displayId: roleInfo.studentId }));
+      } else if (normalized === 'parent' && roleInfo.parentId) {
+        setRoleInfo(prev => ({ ...prev, displayId: roleInfo.parentId }));
+      }
 
-    // Navigate to role portal
-    const targetPath = getRoleRedirect(profile, isPlatformAdmin, normalized);
-    if (targetPath) {
-      router.replace(targetPath as any);
+      // Navigate to role portal
+      const targetPath = getRoleRedirect(profile, isPlatformAdmin, normalized);
+      if (targetPath) {
+        router.replace(targetPath as any);
+      }
+      // Brief pause to allow the portal view transition to render smoothly
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (switchErr) {
+      console.error('[AuthContext] switchActiveRole error:', switchErr);
+    } finally {
+      setIsRoleSwitching(false);
+      setSwitchingToRole(null);
     }
   }, [availableRoles, user?.id, profile, isPlatformAdmin, roleInfo, getRoleRedirect]);
 
@@ -1405,10 +1422,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     availableRoles,
     activeRole,
     switchActiveRole,
+    isRoleSwitching,
+    switchingToRole,
     maintenanceModeEnabled,
     maintenanceModeMessage,
     refreshMaintenanceStatus,
-  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, institutionLogo, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, isDemoExiting, exitDemoSession, wasDemo, clearWasDemo, isMain, accessLevel, isReadOnlyAdmin, isPlatformAdmin, isLibrarian, isFinanceAdmin, canonicalRole, addonFlags, customStudentLimit, getRoleRedirect, availableRoles, activeRole, switchActiveRole, maintenanceModeEnabled, maintenanceModeMessage, refreshMaintenanceStatus]);
+  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, institutionLogo, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, isDemoExiting, exitDemoSession, wasDemo, clearWasDemo, isMain, accessLevel, isReadOnlyAdmin, isPlatformAdmin, isLibrarian, isFinanceAdmin, canonicalRole, addonFlags, customStudentLimit, getRoleRedirect, availableRoles, activeRole, switchActiveRole, isRoleSwitching, switchingToRole, maintenanceModeEnabled, maintenanceModeMessage, refreshMaintenanceStatus]);
 
   return (
     <AuthContext.Provider value={value}>

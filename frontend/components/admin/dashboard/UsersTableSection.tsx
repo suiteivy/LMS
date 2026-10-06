@@ -1,5 +1,6 @@
 import { useTheme } from '@/contexts/ThemeContext';
 import { Spinner } from '@/components/ui/Spinner';
+import { TableScreenSkeleton } from '@/components/ui/skeletons';
 import { User } from '@/types/types';
 import React from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
@@ -21,7 +22,7 @@ const UsersTableSection: React.FC<UsersTableSectionProps> = ({
     if (loading) {
         return (
             <View className="py-4">
-                <ActivityIndicator size="large" color={isDark ? "#FF6900" : "#000"} />
+                <TableScreenSkeleton rows={4} columns={3} />
             </View>
         );
     }

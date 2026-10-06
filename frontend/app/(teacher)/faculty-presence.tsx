@@ -22,6 +22,7 @@ import {
     Sparkles,
 } from "lucide-react-native";
 import { router } from "expo-router";
+import { TableScreenSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { TeacherAttendanceAPI, StaffPresenceItem } from "@/services/TeacherAttendanceService";
@@ -301,10 +302,7 @@ export default function FacultyPresencePage() {
                 }
             >
                 {loading ? (
-                    <View className="py-20 items-center justify-center">
-                        <ActivityIndicator size="large" color="#FF6900" />
-                        <Text className="text-xs text-gray-400 mt-2">Loading presence records...</Text>
-                    </View>
+                    <TableScreenSkeleton rows={6} columns={3} />
                 ) : filteredList.length === 0 ? (
                     <View className="py-16 items-center justify-center bg-white dark:bg-[#1C2128] rounded-3xl border border-dashed border-gray-200 dark:border-gray-800 p-8">
                         <View className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mb-3">

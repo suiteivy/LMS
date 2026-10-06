@@ -1,3 +1,4 @@
+import { ActionTooltip } from '@/components/common/ActionTooltip';
 import { Spinner } from '@/components/ui/Spinner';
 import { DatePicker } from '@/components/common/DatePicker';
 import { FormFieldSkeleton, ListItemSkeleton } from '@/components/ui/skeletons';
@@ -485,8 +486,8 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     };
 
     return (
+      <ActionTooltip key={(item as any).id} targetId="admin.finance.structure_card">
       <View
-        key={(item as any).id}
         className="bg-white dark:bg-navy rounded-3xl p-6 mb-6 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-gray-800"
       >
         <View className="flex-row justify-between items-start mb-5">
@@ -643,6 +644,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
           ) : null}
         </View>
       </View>
+      </ActionTooltip>
     );
   };
 

@@ -1,7 +1,7 @@
 import { ActionTooltip } from '@/components/common/ActionTooltip';
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
 import { Spinner } from '@/components/ui/Spinner';
-import { CardGridSkeleton, TableRowSkeleton } from '@/components/ui/skeletons';
+import { CardGridSkeleton, TableRowSkeleton, CardGridScreenSkeleton } from '@/components/ui/skeletons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/libs/supabase';
@@ -594,8 +594,8 @@ export default function AdminClassManagement() {
     // ─── Render ────────────────────────────────────────────
     if (loading) {
         return (
-            <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: bg, padding: 16 }}>
-                <CardGridSkeleton loading={loading} count={5} label="Loading classes..." />
+            <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: bg }}>
+                <CardGridScreenSkeleton />
             </SafeAreaView>
         );
     }

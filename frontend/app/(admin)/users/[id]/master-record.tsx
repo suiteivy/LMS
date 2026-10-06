@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
+import { UserProfileSkeleton } from '@/components/ui/skeletons';
 import { api } from '@/services/api';
 import { supabase } from '@/libs/supabase';
 import { resolveDisplayId } from '@/utils/displayId';
@@ -110,11 +111,8 @@ export default function MasterRecordScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={orange} />
-        <Text style={{ color: textSecondary, marginTop: 12, fontSize: 13, fontWeight: '600' }}>
-          Compiling master institutional record...
-        </Text>
+      <View style={{ flex: 1, backgroundColor: bg }}>
+        <UserProfileSkeleton />
       </View>
     );
   }

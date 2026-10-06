@@ -46,60 +46,34 @@ const localDateKey = (date: Date): string => {
 interface QuickActionProps {
   icon: any;
   label: string;
-  color: string;
+  color?: string;
   onPress: () => void;
-  cols: number;
+  cols?: number;
 }
 
-const QuickAction = ({ icon: Icon, label, color, onPress, cols }: QuickActionProps) => {
-  const { isDark } = useTheme();
-  const pad = cols >= 3 ? 12 : 14;
+const QuickAction = ({ icon: Icon, label, color, onPress }: QuickActionProps) => {
+  const iconColor = color || "#FF6900";
 
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.75}
-      style={{
-        width: cols >= 3 ? '31.5%' : '48.5%',
-        marginBottom: 10,
-        padding: pad,
-        borderRadius: 16,
-        backgroundColor: isDark ? '#161B22' : '#ffffff',
-        borderWidth: 1,
-        borderColor: isDark ? '#1f2937' : '#f1f5f9',
-        alignItems: 'center',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: isDark ? 0.35 : 0.06,
-        shadowRadius: 4,
-        elevation: 2,
-        boxShadow: [{
-          offsetX: 0,
-          offsetY: 1,
-          blurRadius: 4,
-          color: isDark ? 'rgba(0, 0, 0, 0.35)' : 'rgba(0, 0, 0, 0.06)',
-        }],
-      }}
+      activeOpacity={0.7}
+      style={{ width: '48.5%' }}
+      className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-4 mb-3 flex-row items-center active:bg-gray-100 dark:active:bg-gray-800"
     >
       <View
         style={{
-          backgroundColor: `${color}15`,
-          padding: cols >= 3 ? 9 : 11,
-          borderRadius: 12,
-          marginBottom: 6,
+          backgroundColor: `${iconColor}15`,
+          padding: 8,
+          borderRadius: 8,
+          marginRight: 12,
         }}
       >
-        <Icon size={cols >= 3 ? 18 : 20} color={color} strokeWidth={2} />
+        <Icon size={18} color={iconColor} strokeWidth={2} />
       </View>
       <Text
         numberOfLines={1}
-        style={{
-          color: isDark ? '#e2e8f0' : '#111827',
-          fontWeight: '700',
-          fontSize: cols >= 3 ? 10.5 : 12,
-          letterSpacing: 0.1,
-          textAlign: 'center',
-        }}
+        className="text-gray-900 dark:text-white font-bold text-sm flex-1"
       >
         {label}
       </Text>
@@ -119,8 +93,8 @@ interface MetricCardProps {
 
 const MetricCard = ({ icon: Icon, value, label, dark = false, isDark }: MetricCardProps) => {
   const bg = dark
-    ? (isDark ? '#1a1a2e' : '#111827')
-    : (isDark ? '#1a1a2e' : '#ffffff');
+    ? (isDark ? '#161B22' : '#111827')
+    : (isDark ? '#161B22' : '#ffffff');
 
   const valuColor = dark ? '#ffffff' : (isDark ? '#ffffff' : '#111827');
   const labelColor = dark ? 'rgba(255,255,255,0.4)' : (isDark ? '#64748b' : '#94a3b8');
@@ -634,10 +608,10 @@ export default function Index() {
             )}
           </View>
 
-          {/* ── Academic Tools ────────────────────────────────────────── */}
-          <View style={{ marginBottom: 8 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <SectionHeader title="Academic Tools" isDark={isDark} />
+          {/* ── Quick Actions ────────────────────────────────────────── */}
+          <View style={{ marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text className="text-lg font-bold text-gray-900 dark:text-white">Quick Actions</Text>
               <HelpTooltip id="student.dashboard.tools" role="student" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(student)/accessibility/settings', params: { manual: '1', anchor: a || 'student-workflow' } } as any)} />
             </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
@@ -648,7 +622,6 @@ export default function Index() {
                   label={action.label}
                   color={action.color}
                   onPress={() => router.push({ pathname: action.route as any, params: { backTo: "/(student)" } } as any)}
-                  cols={quickActionCols}
                 />
               ))}
             </View>

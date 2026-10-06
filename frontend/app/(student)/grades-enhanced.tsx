@@ -1,7 +1,7 @@
 import { GradeDetailModal } from "@/components/common/GradeDetailModal";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
 import { SubscriptionGate } from "@/components/shared/SubscriptionComponents";
-import { ListItemSkeleton } from "@/components/ui/skeletons";
+import { GradesReportSkeleton, DetailSkeleton } from "@/components/ui/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -847,8 +847,8 @@ export default function GradesEnhanced() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22] p-4 md:p-8">
-        <ListItemSkeleton loading={loading} count={4} label="Loading enhanced grades..." />
+      <View className="flex-1 bg-[#F6F8FA] dark:bg-[#161B22]">
+        <GradesReportSkeleton />
       </View>
     );
   }
@@ -1003,8 +1003,8 @@ export default function GradesEnhanced() {
       />
 
       {fetchingDetails && (
-        <View className="absolute inset-0 bg-black/20 justify-center items-center">
-          <ActivityIndicator size="large" color="#FF6900" />
+        <View className="absolute inset-0 bg-white/90 dark:bg-[#161B22]/90 p-4 justify-center">
+          <DetailSkeleton />
         </View>
       )}
     </View>

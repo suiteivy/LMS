@@ -342,7 +342,7 @@ export const MobileSignIn: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#070514',
+    backgroundColor: '#0D1117',
   },
   scrollContent: {
     flexGrow: 1,
