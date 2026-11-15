@@ -8,6 +8,7 @@ const { assignStudentToSingleClass, resolveAutoAssignClass } = require('../utils
 const { clearUserCache } = require("../middleware/auth.middleware.js");
 const { logRecordChange } = require("../utils/auditLogger.js");
 const logger = require("../utils/logger.js");
+const SITE_CONFIG = require("../config/siteConfig.js");
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const ADMIN_DELEGATED_USER_EDIT_PERMISSIONS = new Set([
@@ -1339,7 +1340,7 @@ exports.enrollUser = async (req, res) => {
                     <p style="font-size: 14px; color: #666;">For security reasons, please change your password after your first login.</p>
                     
                     <div style="margin-top: 32px; text-align: center;">
-                      <a href="https://cloudoralms.live" style="background-color: #FF6B00; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Go to Dashboard</a>
+                      <a href="${process.env.FRONTEND_URL || SITE_CONFIG.webUrl}" style="background-color: #FF6B00; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Go to Dashboard</a>
                     </div>
                   </div>
                   <div style="background-color: #f0f0f0; padding: 16px; text-align: center; font-size: 12px; color: #777;">
@@ -1648,7 +1649,7 @@ exports.adminUpdateUser = async (req, res) => {
           .single();
         if (institutionError) throw institutionError;
 
-        const effectiveDomain = institution?.email_domain || (institution?.slug ? `${institution.slug}.suiteivy.com` : null);
+        const effectiveDomain = institution?.email_domain || (institution?.slug ? `${institution.slug}.${SITE_CONFIG.domain}` : null);
 
         if (effectiveDomain) {
           const nextEmail = await generateUniqueInstitutionEmail({
@@ -1967,7 +1968,7 @@ exports.adminUpdateUser = async (req, res) => {
           email: updatedUserForAuth?.email || userUpdates.email,
           password: temporaryPassword,
           temporary_password: temporaryPassword,
-          login_url: process.env.FRONTEND_URL || 'https://lms.suiteivy.com',
+          login_url: process.env.FRONTEND_URL || SITE_CONFIG.webUrl,
           message: 'Institutional email and temporary password generated following name update.',
           copy_text: `Cloudora LMS Account Credentials\nName: ${updatedUserForAuth?.full_name || userUpdates.full_name || targetUser.full_name || 'User'}\nEmail: ${updatedUserForAuth?.email || userUpdates.email}\nTemporary Password: ${temporaryPassword}\n\nNote: Please log in and update your password immediately.`,
         };

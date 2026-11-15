@@ -10,6 +10,7 @@ import { SettingsService, UserPreferences } from "@/services/SettingsService";
 import { router } from "expo-router";
 import { ThemeSegmentedControl } from "./settings/ThemeSegmentedControl";
 import { FormFieldSkeleton, TableRowSkeleton } from "@/components/ui/skeletons";
+import { SITE_CONFIG } from "@/constants/siteConfig";
 
 interface SettingRowProps {
     icon: any;
@@ -303,7 +304,7 @@ export default function MasterAdminSettings() {
                         <Text style={{ color: tokens.textPrimary, fontWeight: '600', marginBottom: 8 }}>Email Address</Text>
                         <TextInput
                             style={{ backgroundColor: tokens.inputBg, color: tokens.textPrimary, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: tokens.inputBorder }}
-                            placeholder="admin@cloudora.com"
+                            placeholder={SITE_CONFIG.adminEmail}
                             placeholderTextColor={tokens.textSecondary}
                             keyboardType="email-address"
                             autoCapitalize="none"

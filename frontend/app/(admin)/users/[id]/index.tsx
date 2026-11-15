@@ -26,6 +26,7 @@ import { formatCredentialExpiry } from '@/utils/formatExpiry';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { showSuccess, showError } from '@/utils/toast';
+import { SITE_CONFIG } from '@/constants/siteConfig';
 
 type UserRow = Database['public']['Tables']['users']['Row'];
 
@@ -792,7 +793,7 @@ export default function UserDetailsScreen() {
                         url: data.temp_credential.login_url,
                         expiresAt: null
                     } : undefined,
-                    credential_document: `School Portal Login Credentials\nUser: ${firstName} ${lastName}\nRole: ${user?.role?.toUpperCase() || 'USER'}\nNew Email: ${data.temp_credential.email}\nTemporary Password: ${data.temp_credential.password}\nLogin URL: ${data.temp_credential.login_url || 'https://lms.suiteivy.com'}\n\nPlease note: The institutional email and password were regenerated following your name update. Log in with your new credentials and change your password.`,
+                    credential_document: `School Portal Login Credentials\nUser: ${firstName} ${lastName}\nRole: ${user?.role?.toUpperCase() || 'USER'}\nNew Email: ${data.temp_credential.email}\nTemporary Password: ${data.temp_credential.password}\nLogin URL: ${data.temp_credential.login_url || SITE_CONFIG.webUrl}\n\nPlease note: The institutional email and password were regenerated following your name update. Log in with your new credentials and change your password.`,
                 });
                 setShowResultModal(true);
             } else {
