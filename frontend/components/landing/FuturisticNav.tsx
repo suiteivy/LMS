@@ -135,8 +135,7 @@ export const FuturisticNav: React.FC<FuturisticNavProps> = ({
                     style={[
                       styles.navLinkText,
                       {
-                        color: isLit ? '#FFFFFF' : 'rgba(255,255,255,0.6)',
-                        fontWeight: isActive ? '700' : '500',
+                        color: isLit ? '#FFFFFF' : 'rgba(255,255,255,0.7)',
                         textShadowColor: isLit
                           ? 'rgba(255,140,64,0.6)'
                           : 'transparent',
@@ -145,7 +144,7 @@ export const FuturisticNav: React.FC<FuturisticNavProps> = ({
                       },
                       isWeb
                         ? ({
-                            letterSpacing: isLit ? 1 : 0.2,
+                            letterSpacing: isLit ? 0.6 : 0.2,
                             transform: isLit
                               ? [{ translateY: -2 }]
                               : [{ translateY: 0 }],
@@ -294,6 +293,8 @@ const styles = StyleSheet.create({
   },
   navLinkText: {
     fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   navDot: {
     width: 4,
@@ -337,7 +338,8 @@ const styles = StyleSheet.create({
   },
   mobileItemText: {
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });
 
