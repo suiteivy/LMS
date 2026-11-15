@@ -13,6 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppLoading } from '@/components/AppLoading';
 import { api } from '@/services/api';
@@ -25,6 +26,7 @@ import { FuturisticPricing } from '@/components/landing/FuturisticPricing';
 import { FuturisticContact } from '@/components/landing/FuturisticContact';
 import { FloatingScrollTop } from '@/components/landing/FloatingScrollTop';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Reveal } from '@/components/ui/Reveal';
 import {
   Building,
   Plus,
@@ -137,6 +139,11 @@ function WebLandingIndex() {
   };
 
   const openRegistrationModal = (planName: string) => {
+    if (planName.toLowerCase().includes('demo') || planName.toLowerCase().includes('trial')) {
+      router.push('/demo');
+      return;
+    }
+
     setSelectedPlan(planName);
     setForm({ name: '', email: '', message: '' });
     setSelectedAddons([]);
@@ -144,9 +151,7 @@ function WebLandingIndex() {
     setSelectedCoreModules([]);
     setSubmitted(false);
 
-    if (planName.toLowerCase().includes('free trial')) {
-      setModalVisible(true);
-    } else if (planName.toLowerCase().includes('custom')) {
+    if (planName.toLowerCase().includes('custom')) {
       setCustomModalVisible(true);
     } else {
       setAddonModalVisible(true);
@@ -231,23 +236,29 @@ function WebLandingIndex() {
           <View onLayout={(e) => handleLayout('hero', e.nativeEvent.layout.y)}>
             <HeroConsole
               onExplorePricing={() => scrollToSection('pricing')}
-              onOpenTrial={() => openRegistrationModal('Free Trial')}
+              onOpenTrial={() => router.push('/demo')}
             />
           </View>
 
           {/* 2. ASYMMETRIC BENTO FEATURES MATRIX */}
           <View onLayout={(e) => handleLayout('features', e.nativeEvent.layout.y)}>
-            <BentoFeatures />
+            <Reveal variant="cards">
+              <BentoFeatures />
+            </Reveal>
           </View>
 
           {/* 3. ENTERPRISE INFRASTRUCTURE TELEMETRY */}
           <View onLayout={(e) => handleLayout('architecture', e.nativeEvent.layout.y)}>
-            <TelemetryStrip />
+            <Reveal variant="wrapper">
+              <TelemetryStrip />
+            </Reveal>
           </View>
 
           {/* 4. FUTURISTIC GLASS ARMOR PRICING & ADD-ONS */}
           <View onLayout={(e) => handleLayout('pricing', e.nativeEvent.layout.y)}>
-            <FuturisticPricing onSelectPlan={openRegistrationModal} />
+            <Reveal variant="wrapper">
+              <FuturisticPricing onSelectPlan={openRegistrationModal} />
+            </Reveal>
           </View>
 
           {/* 5. HYPER-CONNECT COMMUNICATION PORTAL & FOOTER */}

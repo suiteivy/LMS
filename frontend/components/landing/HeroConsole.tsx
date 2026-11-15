@@ -20,10 +20,11 @@ import {
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { DemoPulseButton } from '@/components/ui/DemoPulseButton';
 
 interface HeroConsoleProps {
   onExplorePricing: () => void;
-  onOpenTrial: () => void;
+  onOpenTrial?: () => void;
 }
 
 type RoleType = 'admin' | 'teacher' | 'finance' | 'student' | 'parent';
@@ -329,79 +330,13 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
               marginBottom: 40,
             }}
           >
-            {/* Primary Action: Interactive Demo */}
-            <TouchableOpacity
+            {/* Primary Action: Interactive Demo with Attention Pulse */}
+            <DemoPulseButton
+              id="hero-demo-pulse"
+              size="lg"
+              label="Try Interactive Demo"
               onPress={() => router.push('/demo' as any)}
-              activeOpacity={0.85}
-              //@ts-ignore
-              onPointerEnter={() => setDemoHovered(true)}
-              onPointerLeave={() => setDemoHovered(false)}
-              style={[
-                {
-                  position: 'relative',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 10,
-                  backgroundColor: '#FF6B00',
-                  paddingVertical: 18,
-                  paddingHorizontal: 28,
-                  borderRadius: 18,
-                  borderWidth: 1,
-                  borderColor: 'rgba(255, 255, 255, 0.35)',
-                  overflow: 'hidden',
-                  shadowColor: '#FF6B00',
-                  boxShadow: [{
-                    offsetX: 0,
-                    offsetY: 10,
-                    blurRadius: 28,
-                    color: demoHovered ? 'rgba(255, 107, 0, 0.7)' : 'rgba(255, 107, 0, 0.45)',
-                  }],
-                },
-                isWeb
-                  ? ({
-                      background: demoHovered
-                        ? 'linear-gradient(135deg, #FF8C40 0%, #FF6B00 50%, #E65100 100%)'
-                        : 'linear-gradient(135deg, #FF7A1A 0%, #FF6B00 60%, #EA580C 100%)',
-                      backdropFilter: 'blur(20px) saturate(180%)',
-                      WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                      transitionProperty: 'transform, box-shadow, background',
-                      transitionDuration: '0.2s, 0.25s, 0.25s',
-                      transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1), ease, ease',
-                      transform: demoHovered ? [{ translateY: -3 }, { scale: 1.02 }] : [{ translateY: 0 }],
-                      cursor: 'pointer',
-                    } as any)
-                  : {},
-              ]}
-            >
-              {/* Top refraction sheen */}
-              <View
-                pointerEvents="none"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: '45%',
-                  opacity: 0.8,
-                  ...(isWeb ? ({
-                    background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 100%)',
-                  } as any) : {}),
-                }}
-              />
-              <Sparkles size={18} color="#FFFFFF" />
-              <Text
-                style={{
-                  color: '#FFFFFF',
-                  fontWeight: '800',
-                  fontSize: 15,
-                  letterSpacing: 0.3,
-                }}
-              >
-                Try Interactive Demo
-              </Text>
-              <MoveRight size={18} color="#FFFFFF" />
-            </TouchableOpacity>
+            />
 
             {/* Secondary Action: Explore Architecture & Pricing */}
             <TouchableOpacity

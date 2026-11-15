@@ -259,7 +259,7 @@ export default function DemoBanner() {
                             Demo Ended
                         </Text>
                         <Text style={{ color: isDark ? '#94a3b8' : '#64748b', fontSize: 13.5, textAlign: 'center', lineHeight: 22, marginBottom: 26 }}>
-                            Your 15-minute trial is up. Sign up to unlock the full Cloudora experience.
+                            Your 15-minute demo session has ended. Contact us to set up Cloudora for your institution.
                         </Text>
 
                         <TouchableOpacity
