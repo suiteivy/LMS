@@ -14,7 +14,7 @@ import {
   useWindowDimensions,
   AccessibilityInfo,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -33,6 +33,8 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { LivingBackground } from "@/components/landing/LivingBackground";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { DemoFeedbackTopNotice } from "@/components/landing/DemoFeedbackTopNotice";
+import { DemoFeedbackSection } from "@/components/landing/DemoFeedbackSection";
 
 // ─── Design Tokens ──────────────────────────────────────────────────────────
 const FLAME = "#FF6B00";
@@ -760,6 +762,28 @@ export default function Demo() {
   const [reducedMotion, setReducedMotion] = useState(false);
   const { startDemo, getRoleRedirect, isPlatformAdmin } = useAuth();
   const { width: screenWidth } = useWindowDimensions();
+  const searchParams = useLocalSearchParams<{ redirect?: string }>();
+  const mainScrollRef = useRef<ScrollView>(null);
+
+  const scrollToFeedback = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const el = document.getElementById('feedback-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+    }
+    mainScrollRef.current?.scrollToEnd({ animated: true });
+  };
+
+  useEffect(() => {
+    if (searchParams?.redirect === 'feedback') {
+      const t = setTimeout(() => {
+        scrollToFeedback();
+      }, 400);
+      return () => clearTimeout(t);
+    }
+  }, [searchParams?.redirect]);
 
   // Responsive Breakpoints
   const isDesktop = screenWidth >= 960;
@@ -994,6 +1018,7 @@ export default function Demo() {
 
         {/* ── MAIN SCROLL CONTAINER ── */}
         <ScrollView
+          ref={mainScrollRef}
           contentContainerStyle={{
             paddingBottom: 80,
             flexGrow: 1,
@@ -1023,7 +1048,7 @@ export default function Demo() {
                   flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  marginBottom: 28,
+                  marginBottom: 20,
                   paddingVertical: 10,
                 }}
               >
@@ -1097,6 +1122,9 @@ export default function Demo() {
                   </Text>
                 </View>
               </View>
+
+              {/* Top-of-page Feedback Notice */}
+              <DemoFeedbackTopNotice onJumpToFeedback={scrollToFeedback} />
 
               {/* Main Headline & Subtitle */}
               <View style={{ alignItems: "center", paddingHorizontal: 16 }}>
@@ -1212,6 +1240,14 @@ export default function Demo() {
                 Real features, no signup required{" \u2022 "}Data resets periodically
               </Text>
             </GlassCard>
+
+            {/* ── OPTIONAL DEMO FEEDBACK SECTION ── */}
+            <DemoFeedbackSection
+              onSubmitted={() => {}}
+              onSkip={() => {
+                mainScrollRef.current?.scrollTo({ y: 0, animated: true });
+              }}
+            />
           </View>
         </ScrollView>
 

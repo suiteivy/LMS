@@ -11,6 +11,13 @@ import { safeSignOut } from '@/utils/safeSignOut'
 import { LogoutReason, LOGOUT_MESSAGES } from '@/types/logout'
 import { getApiBaseUrl } from '@/utils/backendUrl'
 import { resetTeacherRoleModeState } from '@/services/teacherRoleModeState'
+import {
+  recordDemoModuleOpen,
+  recordDemoModuleExit,
+  isUserDemoEngaged,
+  isFeedbackSubmitted,
+  isNoticeDismissed,
+} from '@/utils/demoEngagement'
 
 type UserProfile = Database['public']['Tables']['users']['Row']
 
@@ -423,7 +430,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await handleLogout(true, LogoutReason.USER_INITIATED, true /* skipDemoExitCheck */, true /* skipDemoCleanup */);
 
       // 4. Navigate directly to demo page
-      router.replace('/(auth)/demo');
+      // Record module exit and check engagement status
+      recordDemoModuleExit();
+      const engaged = isUserDemoEngaged();
+      const feedbackDone = isFeedbackSubmitted();
+      const noticeDismissed = isNoticeDismissed();
+
+      // 4. Navigate directly to demo page (scrolled to feedback if engaged and feedback not yet given/dismissed)
+      if (engaged && !feedbackDone && !noticeDismissed) {
+        router.replace('/(auth)/demo?redirect=feedback' as any);
+      } else {
+        router.replace('/(auth)/demo');
+      }
       return { error: null };
     } catch (err: any) {
       console.error('[AuthContext] exitDemoSession error:', err);
@@ -564,6 +582,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
     const expiry = Date.now() + 15 * 60 * 1000;
     await AsyncStorage.setItem('demo_expiry', expiry.toString());
+    recordDemoModuleOpen(role);
     const result = await authService.startDemoSession(role);
     if (result.error) {
       console.warn('[AuthContext] Backend demo start failed, activating offline demo mode:', result.error);

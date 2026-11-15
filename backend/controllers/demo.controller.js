@@ -2,6 +2,7 @@ const process = require("node:process");
 const supabase = require('../utils/supabaseClient.js');
 const crypto = require('crypto');
 const { clearUserCache } = require("../middleware/auth.middleware.js");
+const SITE_CONFIG = require("../config/siteConfig.js");
 
 const TEMPLATE_INSTITUTION_ID = process.env.TEMPLATE_INSTITUTION_ID || 'b5bd788c-8297-4a96-b8b3-157814504fba';
 const TEMPLATE_TEACHER_ID = process.env.TEMPLATE_TEACHER_ID || 'TCH-DEMO-001';
@@ -357,5 +358,217 @@ exports.endDemo = async (req, res) => {
     } catch (err) {
         console.error('Demo cleanup error:', err);
         res.status(500).json({ error: 'Cleanup error' });
+    }
+};
+
+/**
+ * Submit Demo Feedback (Public / Anonymous)
+ * Complies with Section 2 of LMS Landing Page Changes
+ */
+exports.submitFeedback = async (req, res) => {
+    try {
+        const {
+            rating,
+            module_ratings,
+            liked,
+            improve,
+            role,
+            contact_requested,
+            contact_name,
+            contact_email,
+            contact_phone,
+            consent,
+            engaged_modules,
+            session_ref,
+            // Bot honeypot fields
+            website,
+            fax_number
+        } = req.body;
+
+        // 1. Invisible Honeypot Spam Protection
+        if (website || fax_number) {
+            console.warn('[DemoFeedback] Spam bot detected via honeypot.');
+            return res.status(200).json({
+                success: true,
+                message: "Thank you, your feedback has been received."
+            });
+        }
+
+        // 2. Validate Rating (optional, but if provided must be 1-5)
+        const parsedRating = rating ? parseInt(rating, 10) : null;
+        if (parsedRating !== null && (isNaN(parsedRating) || parsedRating < 1 || parsedRating > 5)) {
+            return res.status(400).json({ error: "Rating must be between 1 and 5 stars" });
+        }
+
+        // 3. Length validations
+        const cleanLiked = liked ? String(liked).trim().substring(0, 1000) : null;
+        const cleanImprove = improve ? String(improve).trim().substring(0, 1000) : null;
+        const cleanRole = role ? String(role).trim().substring(0, 100) : null;
+
+        // 4. Contact Request Validation
+        const isContactRequested = Boolean(contact_requested);
+        let validEmail = null;
+        let validName = null;
+        let validPhone = null;
+
+        if (isContactRequested) {
+            if (!contact_email || !String(contact_email).includes('@')) {
+                return res.status(400).json({ error: "A valid email address is required when requesting contact." });
+            }
+            if (!consent) {
+                return res.status(400).json({ error: "Consent is required to store contact information." });
+            }
+            validEmail = String(contact_email).trim().toLowerCase().substring(0, 255);
+            validName = contact_name ? String(contact_name).trim().substring(0, 150) : null;
+            validPhone = contact_phone ? String(contact_phone).trim().substring(0, 50) : null;
+        }
+
+        const userAgent = req.headers['user-agent'] ? String(req.headers['user-agent']).substring(0, 300) : null;
+
+        // 5. Insert feedback into database
+        const { data, error } = await supabase
+            .from('demo_feedback')
+            .insert({
+                rating: parsedRating,
+                module_ratings: module_ratings && typeof module_ratings === 'object' ? module_ratings : {},
+                liked: cleanLiked,
+                improve: cleanImprove,
+                role: cleanRole,
+                contact_requested: isContactRequested,
+                contact_name: validName,
+                contact_email: validEmail,
+                contact_phone: validPhone,
+                consent: Boolean(consent),
+                engaged_modules: Array.isArray(engaged_modules) ? engaged_modules : [],
+                session_ref: session_ref ? String(session_ref).substring(0, 100) : null,
+                user_agent: userAgent,
+                status: 'unread'
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('[DemoFeedback] Database insertion error:', error);
+            return res.status(500).json({ error: "Failed to record feedback. Please try again." });
+        }
+
+        console.log(`[DemoFeedback] New feedback recorded (Rating: ${parsedRating || 'N/A'}, Contact: ${isContactRequested ? 'YES' : 'NO'}, Role: ${cleanRole || 'N/A'})`);
+
+        if (isContactRequested) {
+            console.log(`[DemoFeedback] Contact requested by ${validName || 'User'} (${validEmail}). Notification targeted to: ${SITE_CONFIG.supportEmail}`);
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Thank you, your feedback has been received.",
+            feedback_id: data.id
+        });
+    } catch (err) {
+        console.error('[DemoFeedback] Unexpected error:', err);
+        return res.status(500).json({ error: "An unexpected error occurred while saving feedback." });
+    }
+};
+
+/**
+ * Get Feedback for Master / Platform Admin
+ */
+exports.getFeedback = async (req, res) => {
+    try {
+        const { status, rating, contact_requested, search, page = 1, limit = 20 } = req.query;
+
+        let query = supabase
+            .from('demo_feedback')
+            .select('*', { count: 'exact' });
+
+        if (status && status !== 'all') {
+            query = query.eq('status', status);
+        }
+        if (rating && rating !== 'all') {
+            query = query.eq('rating', parseInt(rating, 10));
+        }
+        if (contact_requested === 'true') {
+            query = query.eq('contact_requested', true);
+        }
+        if (search) {
+            query = query.or(`liked.ilike.%${search}%,improve.ilike.%${search}%,contact_name.ilike.%${search}%,contact_email.ilike.%${search}%,role.ilike.%${search}%`);
+        }
+
+        const offset = (Math.max(1, parseInt(page, 10)) - 1) * parseInt(limit, 10);
+        query = query.order('created_at', { ascending: false }).range(offset, offset + parseInt(limit, 10) - 1);
+
+        const { data, count, error } = await query;
+        if (error) throw error;
+
+        // Fetch stats summary
+        const { data: allStats, error: statsErr } = await supabase
+            .from('demo_feedback')
+            .select('rating, contact_requested, status');
+
+        let avgRating = 0;
+        let totalRatingsCount = 0;
+        let unreadCount = 0;
+        let contactRequestsCount = 0;
+
+        if (!statsErr && Array.isArray(allStats)) {
+            let ratingSum = 0;
+            allStats.forEach((item) => {
+                if (item.rating) {
+                    ratingSum += item.rating;
+                    totalRatingsCount += 1;
+                }
+                if (item.status === 'unread') unreadCount += 1;
+                if (item.contact_requested) contactRequestsCount += 1;
+            });
+            if (totalRatingsCount > 0) {
+                avgRating = Math.round((ratingSum / totalRatingsCount) * 10) / 10;
+            }
+        }
+
+        return res.status(200).json({
+            feedback: data || [],
+            total: count || 0,
+            page: parseInt(page, 10),
+            totalPages: Math.ceil((count || 0) / parseInt(limit, 10)),
+            stats: {
+                totalCount: allStats?.length || count || 0,
+                avgRating,
+                unreadCount,
+                contactRequestsCount,
+            }
+        });
+    } catch (err) {
+        console.error('[DemoFeedback] getFeedback error:', err);
+        return res.status(500).json({ error: "Failed to retrieve feedback list." });
+    }
+};
+
+/**
+ * Update Feedback Status (Master / Platform Admin)
+ */
+exports.updateFeedbackStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!status || !['unread', 'read', 'handled', 'archived'].includes(status)) {
+            return res.status(400).json({ error: "Invalid status value" });
+        }
+
+        const { data, error } = await supabase
+            .from('demo_feedback')
+            .update({ status })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        return res.status(200).json({
+            success: true,
+            feedback: data
+        });
+    } catch (err) {
+        console.error('[DemoFeedback] updateFeedbackStatus error:', err);
+        return res.status(500).json({ error: "Failed to update feedback status." });
     }
 };

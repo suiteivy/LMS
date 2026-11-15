@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Redirect, Slot, Tabs, useSegments } from "expo-router";
-import { Bell, Building2, CreditCard, Headphones, LayoutDashboard, Settings, ShieldAlert, Users, FileText } from 'lucide-react-native';
+import { Bell, Building2, CreditCard, Headphones, LayoutDashboard, Settings, ShieldAlert, Users, FileText, MessageSquare } from 'lucide-react-native';
 import React from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Platform, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
@@ -19,6 +19,7 @@ const NAV_ITEMS: NavItem[] = [
     { name: "system-logs", title: "System Logs", icon: FileText, route: "/(master-admin)/system-logs" },
     { name: "password-audit", title: "Password Audit", icon: ShieldAlert, route: "/(master-admin)/password-audit" },
     { name: "support", title: "Support", icon: Headphones, route: "/(master-admin)/support" },
+    { name: "feedback", title: "Demo Feedback", icon: MessageSquare, route: "/(master-admin)/feedback" },
     { name: "accessibility/settings", title: "Accessibility", icon: Settings, route: "/(master-admin)/accessibility/settings" },
 ];
 
@@ -48,6 +49,7 @@ const ALL_MASTER_ADMIN_ROUTES = [
     "payments",
     "settings",
     "support",
+    "feedback",
     "system-logs",
     "users",
 ];
