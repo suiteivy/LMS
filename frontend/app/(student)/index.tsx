@@ -379,9 +379,9 @@ export default function Index() {
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    if (studentId) fetchDashboardData();
+    if (studentId || isDemo) fetchDashboardData();
     else setRefreshing(false);
-  }, [studentId]);
+  }, [studentId, isDemo, fetchDashboardData]);
 
   const handleDownloadTimetablePdf = async () => {
     try {

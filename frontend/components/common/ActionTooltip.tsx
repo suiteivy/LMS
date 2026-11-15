@@ -73,9 +73,13 @@ export const ActionTooltip: React.FC<ActionTooltipProps> = ({
         const isTopPreferred = position === 'top';
         const useTop = isTopPreferred ? spaceAbove >= 48 : spaceAbove < 48;
 
+        const estimatedWidth = resolvedAnchor ? 280 : Math.min(260, Math.max(80, (resolvedText?.length || 10) * 8 + 24));
+        const center = rect.left + rect.width / 2;
+        const clampedCenter = Math.max(estimatedWidth / 2 + 12, Math.min(window.innerWidth - estimatedWidth / 2 - 12, center));
+
         setCoords({
             top: useTop ? rect.top - 8 : rect.bottom + 8,
-            left: Math.max(16, Math.min(window.innerWidth - 16, rect.left + rect.width / 2)),
+            left: clampedCenter,
             isTop: useTop,
         });
     };
@@ -146,28 +150,28 @@ export const ActionTooltip: React.FC<ActionTooltipProps> = ({
                     },
                 ]}
             >
-                <View style={{ flexDirection: 'column', maxWidth: 260, minWidth: 60 }}>
+                <View style={{ flexDirection: 'column', maxWidth: 280, minWidth: 60, gap: 4 }}>
                     {resolvedLabel ? (
                         <Text style={[styles.tooltipText, { fontWeight: '700', fontSize: 12, marginBottom: resolvedText ? 2 : 0 }]}>
                             {resolvedLabel}
                         </Text>
                     ) : null}
                     {resolvedText ? (
-                        <Text style={[styles.tooltipText, { fontSize: resolvedLabel ? 11 : 12, opacity: resolvedLabel ? 0.9 : 1 }]}>
+                        <Text style={[styles.tooltipText, { fontSize: resolvedLabel ? 11 : 12, opacity: resolvedLabel ? 0.9 : 1, lineHeight: 16 }]}>
                             {resolvedText}
                         </Text>
                     ) : null}
+                    {resolvedAnchor ? (
+                        <TouchableOpacity
+                            onPress={handleLearnMorePress}
+                            style={styles.learnMoreBtn}
+                            accessibilityRole="button"
+                            accessibilityLabel="Learn more"
+                        >
+                            <Text style={styles.learnMoreText}>Learn more →</Text>
+                        </TouchableOpacity>
+                    ) : null}
                 </View>
-                {resolvedAnchor ? (
-                    <TouchableOpacity
-                        onPress={handleLearnMorePress}
-                        style={styles.learnMoreBtn}
-                        accessibilityRole="button"
-                        accessibilityLabel="Learn more"
-                    >
-                        <Text style={styles.learnMoreText}>Learn more →</Text>
-                    </TouchableOpacity>
-                ) : null}
             </View>
         );
 
@@ -200,20 +204,19 @@ const styles: any = StyleSheet.create({
     },
     tooltipBubblePortal: {
         position: 'fixed' as any,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
         borderRadius: 8,
         borderWidth: 1,
         zIndex: 9999999,
         // @ts-ignore - web-specific
         boxShadow: '0 4px 14px rgba(0, 0, 0, 0.35)',
         elevation: 100,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
+        flexDirection: 'column',
+        alignItems: 'flex-start',
         // @ts-ignore - web-specific width and transform
         width: 'max-content',
-        maxWidth: 280,
+        maxWidth: 290,
         transform: [{ translateX: '-50%' }],
     },
     tooltipText: {
@@ -223,8 +226,8 @@ const styles: any = StyleSheet.create({
         letterSpacing: 0.2,
     },
     learnMoreBtn: {
-        paddingVertical: 1,
-        paddingHorizontal: 3,
+        paddingTop: 4,
+        alignSelf: 'flex-start',
     },
     learnMoreText: {
         color: '#FF8A3D',

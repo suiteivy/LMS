@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTeacherRoleMode, type TeacherRoleMode } from '@/hooks/useTeacherRoleMode';
 import { TimetableAPI, type TimetableEntry } from '@/services/TimetableService';
 import { StudentService } from '@/services/StudentService';
 import { ParentService } from '@/services/ParentService';
@@ -27,7 +26,6 @@ export interface DayScheduleState {
 
 export function useDaySchedule(userRole?: string): DayScheduleState {
   const { profile, user, isDemo, activeRole: authActiveRole } = useAuth();
-  const { mode: teacherMode } = useTeacherRoleMode();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

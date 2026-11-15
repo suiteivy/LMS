@@ -339,7 +339,7 @@ const ViolationsController = {
       // Fetch student details
       const { data: student, error: studentError } = await supabase
         .from('students')
-        .select('*, users(full_name, email), classes(name)')
+        .select('*, users(full_name, email), classes(display_name)')
         .eq('id', targetStudentId)
         .eq('institution_id', institutionId)
         .single();

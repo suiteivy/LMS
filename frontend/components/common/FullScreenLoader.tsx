@@ -37,7 +37,7 @@ export const FullScreenLoader: React.FC<FullScreenLoaderProps> = ({
         <View style={{ alignItems: 'center' }}>
           <QuantumReactorLoader size={140} showProgress={true} />
 
-          {message && (
+          {!!message && (
             <View style={{ marginTop: 20, alignItems: 'center' }}>
               <Text
                 style={{

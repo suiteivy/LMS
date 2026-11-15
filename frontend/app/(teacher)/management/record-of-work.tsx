@@ -174,10 +174,16 @@ export default function RecordOfWorkPage() {
 
     const fetchFilters = useCallback(async () => {
         try {
-            const [subjList, allClsList] = await Promise.all([
+            let [subjList, allClsList] = await Promise.all([
                 SubjectAPI.getFilteredSubjects().catch(() => []),
                 ClassAPI.getClasses().catch(() => [])
             ]);
+
+            if (isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                if (!subjList || subjList.length === 0) subjList = dummy.teacher.subjects as any;
+                if (!allClsList || allClsList.length === 0) allClsList = dummy.teacher.classes as any;
+            }
 
             setSubjects(subjList || []);
 
@@ -248,6 +254,16 @@ export default function RecordOfWorkPage() {
                 } else {
                     setCalculatedWeeks([]);
                 }
+            } else {
+                setAcademicYear("2026");
+                const demoTerms = [
+                    { id: 'term-1', name: 'Term 1', term_number: 1, start_date: '2026-01-05', end_date: '2026-04-10', is_current: true },
+                    { id: 'term-2', name: 'Term 2', term_number: 2, start_date: '2026-05-04', end_date: '2026-08-07', is_current: false },
+                    { id: 'term-3', name: 'Term 3', term_number: 3, start_date: '2026-09-01', end_date: '2026-11-20', is_current: false },
+                ];
+                setTermsObjects(demoTerms);
+                const weeks = calculateWeeksForYear(demoTerms, []);
+                setCalculatedWeeks(weeks);
             }
         } catch (err) {
             console.error("fetchFilters error:", err);

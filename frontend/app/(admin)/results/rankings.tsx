@@ -481,7 +481,7 @@ export default function AdminStudentRankingsScreen() {
                                 fontWeight: "700",
                                 color: selectedBand === null ? "#FFFFFF" : textPrimary,
                             }}>
-                                All Bands ({data?.total_students || 0})
+                                All Performance Levels ({data?.total_students || 0})
                             </Text>
                         </TouchableOpacity>
 

@@ -38,9 +38,49 @@ export default function StudentAnalyticsPage() {
         GradingAPI.getGradingScales().catch(() => []),
         GradingAPI.getReportCards({ student_id: targetId }).catch(() => []),
       ]);
-      setTrends(trendData);
+      let finalTrends = trendData;
+      let finalCards = Array.isArray(cards) ? cards : [];
+      if (isDemo && finalCards.length === 0) {
+        finalCards = [
+          {
+            id: 'rc-1',
+            term_id: 'term-1',
+            total_gpa: 3.65,
+            created_at: '2026-03-30T10:00:00Z',
+            terms: { name: 'Term 1' },
+            report_card_items: [
+              { subject_name: 'Mathematics', average_percentage: 88, letter_grade: 'A' },
+              { subject_name: 'Physics', average_percentage: 78, letter_grade: 'B' },
+              { subject_name: 'English', average_percentage: 85, letter_grade: 'A' },
+              { subject_name: 'Chemistry', average_percentage: 74, letter_grade: 'B' },
+            ]
+          },
+          {
+            id: 'rc-2',
+            term_id: 'term-2',
+            total_gpa: 3.75,
+            created_at: '2026-07-20T10:00:00Z',
+            terms: { name: 'Term 2' },
+            report_card_items: [
+              { subject_name: 'Mathematics', average_percentage: 92, letter_grade: 'A' },
+              { subject_name: 'Physics', average_percentage: 82, letter_grade: 'A-' },
+              { subject_name: 'English', average_percentage: 88, letter_grade: 'A' },
+              { subject_name: 'Chemistry', average_percentage: 80, letter_grade: 'B+' },
+            ]
+          }
+        ];
+        finalTrends = {
+          terms: ['Term 1', 'Term 2'],
+          subjects: [
+            { name: 'Mathematics', scores: [88, 92] },
+            { name: 'Physics', scores: [78, 82] },
+            { name: 'English', scores: [85, 88] },
+          ]
+        };
+      }
+      setTrends(finalTrends);
       setGradingScales(Array.isArray(scales) ? scales : []);
-      setReportCards(Array.isArray(cards) ? cards : []);
+      setReportCards(finalCards);
     } catch (error) {
       console.error("Error fetching analytics:", error);
       showFetchError("analytics data", error);

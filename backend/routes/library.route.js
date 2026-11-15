@@ -17,7 +17,9 @@ const {
   getLibrariansList,
   toggleLibrarianDesignation,
   getLibrarianAuditLogs,
-  getMyDesignation
+  getMyDesignation,
+  getLibraryConfig,
+  updateLibraryConfig
 } = require("../controllers/library.controller.js");
 const { authMiddleware } = require("../middleware/auth.middleware.js");
 const { authorizeRoles, authorizeLibrarian, authorizeMainAdmin } = require("../middleware/authRole.js");
@@ -141,6 +143,21 @@ router.get(
   "/me/designation",
   authMiddleware,
   getMyDesignation
+);
+
+
+// Library configuration
+router.get(
+  "/config",
+  authMiddleware,
+  getLibraryConfig
+);
+
+router.put(
+  "/config",
+  authMiddleware,
+  authorizeLibrarian(),
+  updateLibraryConfig
 );
 
 module.exports = router;

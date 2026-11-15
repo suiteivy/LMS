@@ -45,9 +45,32 @@ export default function TeacherNotifications() {
             return;
         }
         try {
-            const data = await NotificationAPI.getUserNotifications();
+            let data = await NotificationAPI.getUserNotifications();
+            if ((!data || data.length === 0) && isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                data = dummy.teacher.announcements.map(a => ({
+                    id: a.id,
+                    title: a.title,
+                    message: a.message || '',
+                    created_at: a.created_at || new Date().toISOString(),
+                    is_read: false,
+                    type: 'announcement'
+                })) as any;
+            }
             setNotifications(data);
         } catch (error: any) {
+            if (isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                setNotifications(dummy.teacher.announcements.map(a => ({
+                    id: a.id,
+                    title: a.title,
+                    message: a.message || '',
+                    created_at: a.created_at || new Date().toISOString(),
+                    is_read: false,
+                    type: 'announcement'
+                })) as any);
+                return;
+            }
             if (
                 error?.isAuthError ||
                 error?.response?.status === 401 ||

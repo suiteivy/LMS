@@ -39,6 +39,11 @@ async function cleanupExpiredDemoSessions() {
 
                 // Delete role-specific profile
                 if (role === 'teacher') {
+                    const { data: t } = await supabase.from('teachers').select('id').eq('user_id', userId).maybeSingle();
+                    if (t) {
+                        await supabase.from('assignments').delete().eq('teacher_id', t.id);
+                        await supabase.from('subject_teachers').delete().eq('teacher_id', t.id);
+                    }
                     await supabase.from('teachers').delete().eq('user_id', userId);
 
                 } else if (role === 'student') {
@@ -49,6 +54,10 @@ async function cleanupExpiredDemoSessions() {
                         .single();
 
                     if (stu) {
+                        await supabase.from('exam_results').delete().eq('student_id', stu.id);
+                        await supabase.from('submissions').delete().eq('student_id', stu.id);
+                        await supabase.from('attendance').delete().eq('student_id', stu.id);
+                        await supabase.from('class_enrollments').delete().eq('student_id', stu.id).eq('institution_id', TEMPLATE_INSTITUTION_ID);
                         await supabase.from('enrollments').delete()
                             .eq('student_id', stu.id)
                             .eq('institution_id', TEMPLATE_INSTITUTION_ID);

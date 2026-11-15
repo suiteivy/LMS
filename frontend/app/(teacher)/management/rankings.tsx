@@ -58,7 +58,7 @@ interface RankingsResponse {
 
 export default function StudentRankingsScreen() {
   const { isDark } = useTheme();
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
   const { mode, isClassTeacher, isSubjectTeacher } = useTeacherRoleMode();
 
   const [loading, setLoading] = useState(true);
@@ -76,9 +76,36 @@ export default function StudentRankingsScreen() {
   const fetchRankings = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/teacher/rankings");
-      if (res.data) {
-        setData(res.data);
+      let resData = null;
+      try {
+        const res = await api.get("/teacher/rankings");
+        resData = res.data;
+      } catch (err: any) {
+        if (!isDemo) console.error("Failed to load rankings:", err);
+      }
+      if ((!resData || !resData.rankings?.length) && isDemo) {
+        const dummy = (await import('@/demoDummyData')).default;
+        resData = {
+          mode: mode || 'subject',
+          rankings: dummy.teacher.studentList.map((s: any, idx: number) => ({
+            student_id: s.id,
+            name: s.full_name || s.name,
+            admission_number: s.id,
+            average_score: Math.max(50, 96 - idx * 3.5),
+            rank: idx + 1,
+            grade: idx === 0 ? 'A' : (idx < 3 ? 'A-' : (idx < 6 ? 'B+' : 'B')),
+            tasks_graded: 8,
+          })),
+          grade_distribution: { 'A': 4, 'B': 6, 'C': 2, 'D': 0 },
+          grading_scale: [
+            { grade: 'A', min_score: 80, max_score: 100, label: 'Excellent', color: '#10B981' },
+            { grade: 'B', min_score: 65, max_score: 79, label: 'Good', color: '#3B82F6' },
+            { grade: 'C', min_score: 50, max_score: 64, label: 'Satisfactory', color: '#F59E0B' },
+          ]
+        } as any;
+      }
+      if (resData) {
+        setData(resData);
       }
     } catch (err: any) {
       console.error("Failed to load rankings:", err);
@@ -362,7 +389,7 @@ export default function StudentRankingsScreen() {
                     </View>
                   </View>
 
-                  {/* Score & CBC Band */}
+                  {/* Score & Performance Level */}
                   <View style={{ alignItems: "flex-end", gap: 3 }}>
                     <Text style={{ color: textPrimary, fontWeight: "900", fontSize: 15 }}>
                       {student.average_score}%

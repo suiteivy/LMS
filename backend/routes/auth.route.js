@@ -26,6 +26,8 @@ const {
   getActiveSessions,
   revokeSession,
   revokeAllOtherSessions,
+  deleteSession,
+  clearInactiveSessions,
   pingSession,
   getEnrollmentSlotCapacity,
   requestPasswordResetEscalation,
@@ -127,6 +129,9 @@ router.post("/security-questions/setup", authMiddleware, setupSecurityQuestions)
 router.get("/sessions", authMiddleware, getActiveSessions);
 router.post("/sessions/revoke", authMiddleware, revokeSession);
 router.post("/sessions/revoke-others", authMiddleware, revokeAllOtherSessions);
+router.delete("/sessions/inactive", authMiddleware, clearInactiveSessions);
+router.delete("/sessions/:id", authMiddleware, deleteSession);
+
 router.post("/ping", authMiddleware, pingSession);
 
 // Main Admin Management

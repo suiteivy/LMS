@@ -68,7 +68,7 @@ export default function ExamsPage() {
     const [creating, setCreating] = useState(false);
 
     const isHOD = hodSubjectIds.has(selectedSubjectId);
-    const canSchedule = (isAdmin || isHOD) && examPeriods.length > 0;
+    const canSchedule = isDemo || ((isAdmin || isHOD) && examPeriods.length > 0);
 
     useEffect(() => {
         fetchExams();
@@ -84,18 +84,31 @@ export default function ExamsPage() {
                 ExamService.getExamPeriods({ status: 'active' }).catch(() => [])
             ]);
 
-            setSubjects(data || []);
-            if (data && data.length > 0) {
-                setSelectedSubjectId(data[0].id);
+            let subjectList = data || [];
+            if (subjectList.length === 0 && isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                subjectList = dummy.teacher.subjects as any;
+            }
+            setSubjects(subjectList);
+            if (subjectList && subjectList.length > 0) {
+                setSelectedSubjectId(subjectList[0].id);
             }
 
             const activePeriods = Array.isArray(periodsData) ? periodsData : [];
-            setExamPeriods(activePeriods);
-            if (activePeriods.length > 0) {
-                setSelectedPeriodId(activePeriods[0].id);
-                if (activePeriods[0].term) setTerm(activePeriods[0].term);
-                if (activePeriods[0].default_submission_deadline) {
-                    setSubmissionDeadline(activePeriods[0].default_submission_deadline.split('T')[0]);
+            if (activePeriods.length === 0 && isDemo) {
+                const demoPeriods = [{ id: 'demo-period-1', name: 'Term 1 Examinations', term: 'Term 1', start_date: '2026-03-20', end_date: '2026-04-05', is_active: true, default_submission_deadline: '2026-04-10' }];
+                setExamPeriods(demoPeriods as any);
+                setSelectedPeriodId('demo-period-1');
+                setTerm('Term 1');
+                setSubmissionDeadline('2026-04-10');
+            } else {
+                setExamPeriods(activePeriods);
+                if (activePeriods.length > 0) {
+                    setSelectedPeriodId(activePeriods[0].id);
+                    if (activePeriods[0].term) setTerm(activePeriods[0].term);
+                    if (activePeriods[0].default_submission_deadline) {
+                        setSubmissionDeadline(activePeriods[0].default_submission_deadline.split('T')[0]);
+                    }
                 }
             }
 
@@ -115,7 +128,11 @@ export default function ExamsPage() {
     const fetchExams = async () => {
         try {
             setLoading(true);
-            const data = await ExamService.getExams();
+            let data = await ExamService.getExams();
+            if ((!data || data.length === 0) && isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                data = dummy.teacher.exams as any;
+            }
             setExams(data || []);
         } catch (error) {
             console.error(error);

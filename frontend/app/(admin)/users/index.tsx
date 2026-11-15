@@ -305,9 +305,25 @@ export default function UsersManagementScreen() {
             if (activeFilter !== 'all') query = query.eq('role', activeFilter);
 
             const { data, error } = await query;
-            if (error) throw error;
+            if (error) {
+                if (isDemo) {
+                    const dummy = (await import('@/demoDummyData')).default;
+                    const demoUsers = dummy.admin.recentUsers.map((u: any) => ({
+                        id: u.id,
+                        name: u.full_name || u.name,
+                        email: u.email,
+                        role: u.role,
+                        status: u.status || 'approved',
+                        joinDate: u.created_at || new Date().toISOString()
+                    }));
+                    setUsers(demoUsers as any);
+                    setLoading(false);
+                    return;
+                }
+                throw error;
+            }
             if (data) {
-                const formattedUsers = data.map((u: any) => {
+                let formattedUsers = data.map((u: any) => {
                     try {
                         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
                         let displayId = null;
@@ -353,10 +369,34 @@ export default function UsersManagementScreen() {
                         } as User;
                     } catch { return null; }
                 }).filter((u): u is User => u !== null);
+                if (formattedUsers.length === 0 && isDemo) {
+                    const dummy = (await import('@/demoDummyData')).default;
+                    formattedUsers = dummy.admin.recentUsers.map((u: any) => ({
+                        id: u.id,
+                        name: u.full_name || u.name,
+                        email: u.email,
+                        role: u.role,
+                        status: u.status || 'approved',
+                        joinDate: u.created_at || new Date().toISOString()
+                    })) as any;
+                }
                 setUsers(formattedUsers);
             }
         } catch (error: any) {
-            Alert.alert('Error', error.message);
+            if (isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                const demoUsers = dummy.admin.recentUsers.map((u: any) => ({
+                    id: u.id,
+                    name: u.full_name || u.name,
+                    email: u.email,
+                    role: u.role,
+                    status: u.status || 'approved',
+                    joinDate: u.created_at || new Date().toISOString()
+                }));
+                setUsers(demoUsers as any);
+            } else {
+                Alert.alert('Error', error.message);
+            }
         } finally {
             setLoading(false);
         }

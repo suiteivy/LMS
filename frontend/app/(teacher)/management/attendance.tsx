@@ -134,7 +134,11 @@ export default function AttendancePage() {
     const fetchTeacherSubjects = async () => {
         try {
             setLoading(true);
-            const data = await SubjectAPI.getFilteredSubjects();
+            let data = await SubjectAPI.getFilteredSubjects();
+            if ((!data || data.length === 0) && isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                data = dummy.teacher.subjects as any;
+            }
             if (data && Array.isArray(data) && data.length > 0) {
                 setSubjects(data);
                 setSelectedSubjectId(data[0].id);
@@ -151,7 +155,17 @@ export default function AttendancePage() {
         if (!selectedSubjectId) return;
         setLoading(true);
         try {
-            const data = await TeacherAttendanceAPI.getStudentAttendance(selectedDateStr, selectedSubjectId);
+            let data = await TeacherAttendanceAPI.getStudentAttendance(selectedDateStr, selectedSubjectId);
+            if ((!data || data.length === 0) && isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                data = dummy.teacher.studentList.map((s: any) => ({
+                    student_id: s.id,
+                    name: s.full_name || s.name || 'Student',
+                    admission_number: s.id || 'STU-001',
+                    status: 'present',
+                    remarks: ''
+                })) as any;
+            }
             setStudents(data || []);
             if (data && data.length > 0) {
                 if (data[0].actual_start_time) setActualStartTime(data[0].actual_start_time);

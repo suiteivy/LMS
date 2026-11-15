@@ -86,7 +86,11 @@ export default function ContentCoveragePage() {
 
     const fetchSubjectsAndHOD = useCallback(async () => {
         try {
-            const list = await SubjectAPI.getFilteredSubjects();
+            let list = await SubjectAPI.getFilteredSubjects();
+            if ((!list || list.length === 0) && isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                list = dummy.teacher.subjects as any;
+            }
             setSubjects(list || []);
             if (list && list.length > 0 && !selectedSubjectId) {
                 setSelectedSubjectId(list[0].id);
@@ -154,11 +158,18 @@ export default function ContentCoveragePage() {
                     setIsHOD(hodIds.has(selectedSubjectId));
                 }
             } else {
-                setTermsObjects([]);
-                setAvailableTerms([]);
-                setSelectedTerm("");
-                setAcademicYear("");
+                const demoTerms = [
+                    { id: 'term-1', name: 'Term 1', term_number: 1, start_date: '2026-01-05', end_date: '2026-04-10', is_current: true },
+                    { id: 'term-2', name: 'Term 2', term_number: 2, start_date: '2026-05-04', end_date: '2026-08-07', is_current: false },
+                    { id: 'term-3', name: 'Term 3', term_number: 3, start_date: '2026-09-01', end_date: '2026-11-20', is_current: false },
+                ];
+                setTermsObjects(demoTerms);
+                setAvailableTerms(['Term 1', 'Term 2', 'Term 3']);
+                setSelectedTerm(prev => prev || 'Term 1');
+                setAcademicYear(prev => prev || '2026');
                 setIsHOD(true);
+                const weeks = calculateWeeksForTerm(demoTerms[0], []);
+                setCalculatedWeeks(weeks);
             }
         } catch (err) {
             console.error("fetchSubjectsAndHOD error:", err);

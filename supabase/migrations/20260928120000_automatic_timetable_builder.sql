@@ -40,10 +40,25 @@ BEGIN
       ADD COLUMN track_id UUID REFERENCES public.institution_tracks(id) ON DELETE SET NULL;
   END IF;
 
-  -- 4. Create indexes for high performance querying
+  -- 4. Timetables: Add period_number
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'timetables' AND column_name = 'period_number'
+  ) THEN
+    ALTER TABLE public.timetables 
+      ADD COLUMN period_number INTEGER;
+  END IF;
+
+  -- 5. Timetables: Update unique constraint to allow simultaneous active and draft records
+  ALTER TABLE public.timetables DROP CONSTRAINT IF EXISTS timetables_class_id_day_of_week_start_time_key;
+  ALTER TABLE public.timetables DROP CONSTRAINT IF EXISTS timetables_class_id_day_of_week_start_time_is_draft_key;
+  ALTER TABLE public.timetables ADD CONSTRAINT timetables_class_id_day_of_week_start_time_is_draft_key UNIQUE (class_id, day_of_week, start_time, is_draft);
+
+  -- 6. Create indexes for high performance querying
   CREATE INDEX IF NOT EXISTS idx_timetables_teacher_id ON public.timetables(teacher_id);
   CREATE INDEX IF NOT EXISTS idx_timetables_is_draft ON public.timetables(is_draft);
   CREATE INDEX IF NOT EXISTS idx_timetables_track_id ON public.timetables(track_id);
+  CREATE INDEX IF NOT EXISTS idx_timetables_period_number ON public.timetables(period_number);
 
   -- 5. Timetable Configurations Table (Institution-scoped)
   CREATE TABLE IF NOT EXISTS public.timetable_configs (
@@ -63,6 +78,11 @@ BEGIN
       "morning_only_subjects": [],
       "no_back_to_back_subjects": []
     }'::jsonb,
+    days JSONB DEFAULT '["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]'::jsonb,
+    periods JSONB,
+    max_teacher_periods_per_day INTEGER DEFAULT 6,
+    max_teacher_periods_per_week INTEGER DEFAULT 28,
+    settings JSONB DEFAULT '{"allow_double_periods": true, "default_lesson_duration_minutes": 45}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT uq_timetable_configs_institution UNIQUE (institution_id)

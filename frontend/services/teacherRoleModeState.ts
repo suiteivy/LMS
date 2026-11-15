@@ -35,6 +35,13 @@ export function setTeacherRoleModeInitialized(val: boolean): void {
   notifyListeners();
 }
 
+export function resetTeacherRoleModeState(): void {
+  currentMode = 'subject';
+  currentRoles = [];
+  isInitialized = false;
+  notifyListeners();
+}
+
 export function subscribeTeacherRoleMode(listener: () => void): () => void {
   listeners.add(listener);
   return () => {

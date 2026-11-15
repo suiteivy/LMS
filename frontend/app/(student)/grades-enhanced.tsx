@@ -686,7 +686,23 @@ export default function GradesEnhanced() {
         ),
       ]);
 
-      setGradeEntries(entries || []);
+      let finalEntries = entries || [];
+      if (isDemo && finalEntries.length === 0) {
+        const dummy = (await import('@/demoDummyData')).default;
+        finalEntries = dummy.student.grades.map((g: any, idx: number) => ({
+          id: `demo-entry-${idx}`,
+          student_id: targetId,
+          subject_id: `demo-sub-${idx}`,
+          subject: { id: `demo-sub-${idx}`, title: g.SubjectName, credits: g.credits || 3 },
+          score: g.score,
+          letter_grade: g.grade,
+          gpa_points: g.grade.startsWith('A') ? 4.0 : (g.grade.startsWith('B') ? 3.0 : 2.0),
+          assessment_type: 'Exam',
+          weight: 40,
+          created_at: new Date().toISOString(),
+        })) as any[];
+      }
+      setGradeEntries(finalEntries);
 
       // Report cards
       const rcParams: any = { student_id: targetId };
@@ -707,9 +723,19 @@ export default function GradesEnhanced() {
           rank: summary.rank ?? "N/A",
           totalStudents: summary.total_students ?? 0,
         });
+      } else if (isDemo && (!entries || entries.length === 0)) {
+        const dummy = (await import('@/demoDummyData')).default;
+        setStats({
+          gpa: Number(dummy.student.gradeStats.gpa) || 3.62,
+          letterGrade: "A-",
+          credits: dummy.student.gradeStats.credits || 18,
+          avgMark: Number(dummy.student.gradeStats.avgMark) || 84.5,
+          rank: dummy.student.gradeStats.rank || "4th",
+          totalStudents: dummy.student.gradeStats.totalStudents || 42,
+        });
       } else {
         // Fallback: derive from entries
-        processStatsFromEntries(entries || [], studentScale || []);
+        processStatsFromEntries(finalEntries, studentScale || []);
       }
     } catch (error) {
       console.error("Grades load error:", error);

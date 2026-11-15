@@ -121,15 +121,20 @@ export default function ResourcesPage() {
     const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
-        if (teacherId) {
+        if (teacherId || isDemo) {
             fetchResources();
             fetchSubjectsAndClasses();
         }
-    }, [teacherId]);
+    }, [teacherId, isDemo]);
 
     const fetchSubjectsAndClasses = async () => {
         try {
-            const data = await SubjectAPI.getFilteredSubjects();
+            let data = await SubjectAPI.getFilteredSubjects();
+            if ((!data || data.length === 0) && isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                data = dummy.teacher.subjects as any;
+                setClasses(dummy.teacher.classes.map((c: any) => ({ id: c.id, name: c.name || c.display_name })));
+            }
             if (data) {
                 setSubjects(data);
                 const { data: classRows } = await supabase.from('classes').select('id, display_name').order('display_name');
@@ -145,7 +150,14 @@ export default function ResourcesPage() {
     const fetchResources = async () => {
         setLoading(true);
         try {
-            const data = await ResourceAPI.getResources();
+            let data = await ResourceAPI.getResources();
+            if ((!data || data.length === 0) && isDemo) {
+                data = [
+                    { id: 'res-1', title: 'Calculus Lecture Notes - Chapter 1 to 4', type: 'pdf', url: 'https://example.com/notes.pdf', target_audience: 'everyone', file_name: 'Calculus_Notes.pdf', file_size: 2048576, created_at: new Date().toISOString() },
+                    { id: 'res-2', title: 'Interactive Physics Simulation Lab Guide', type: 'doc', url: 'https://example.com/physics_lab.docx', target_audience: 'everyone', file_name: 'Physics_Lab.docx', file_size: 1048576, created_at: new Date().toISOString() },
+                    { id: 'res-3', title: 'Staff Marking Scheme & Moderation Guidelines', type: 'pdf', url: 'https://example.com/scheme.pdf', target_audience: 'staff_only', file_name: 'Moderation_Scheme.pdf', file_size: 512000, created_at: new Date().toISOString() }
+                ] as any;
+            }
             setResources(data);
         } catch (error) {
             console.error(error);

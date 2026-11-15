@@ -82,6 +82,22 @@ exports.startDemo = async (req, res) => {
                 { subject_id: 'db224c36-093b-4d92-9bed-61b720a991c8', teacher_id: teacherId, institution_id: TEMPLATE_INSTITUTION_ID, class_id: '417561a5-48c5-4c45-b736-97d49e74bd35' }
             ]);
 
+            // Clone sample assignments for the demo teacher
+            const templateTeacherId = 'TCH-MOMENTUM-001';
+            try {
+                const { data: tplAssignments } = await supabase
+                    .from('assignments')
+                    .select('title, description, subject_id, class_id, due_date, max_score, status, release_grades')
+                    .eq('teacher_id', templateTeacherId);
+                if (tplAssignments && tplAssignments.length > 0) {
+                    await supabase.from('assignments').insert(
+                        tplAssignments.map(a => ({ ...a, teacher_id: teacherId, institution_id: TEMPLATE_INSTITUTION_ID }))
+                    );
+                }
+            } catch (aErr) {
+                console.warn('Could not copy template assignments for demo teacher:', aErr.message);
+            }
+
         } else if (role === 'student') {
             const { data: stu, error: e } = await supabase.from('students').insert({
                 user_id: userId,
@@ -130,6 +146,42 @@ exports.startDemo = async (req, res) => {
                 institution_id: TEMPLATE_INSTITUTION_ID,
                 enrolled_at: new Date().toISOString()
             });
+
+            // Seed student submissions, exam results, and attendance records so student portal is full
+            const templateStudentId = 'c6306d7b-ad5e-4f5b-8118-47fcd462bd25';
+            try {
+                const { data: tplResults } = await supabase
+                    .from('exam_results')
+                    .select('exam_id, subject_id, marks_obtained, grade, remarks')
+                    .eq('student_id', templateStudentId);
+                if (tplResults && tplResults.length > 0) {
+                    await supabase.from('exam_results').insert(
+                        tplResults.map(r => ({ ...r, student_id: stu.id, institution_id: TEMPLATE_INSTITUTION_ID }))
+                    );
+                }
+
+                const { data: tplSubs } = await supabase
+                    .from('submissions')
+                    .select('assignment_id, content, grade, feedback, status, submitted_at')
+                    .eq('student_id', templateStudentId);
+                if (tplSubs && tplSubs.length > 0) {
+                    await supabase.from('submissions').insert(
+                        tplSubs.map(s => ({ ...s, student_id: stu.id, institution_id: TEMPLATE_INSTITUTION_ID }))
+                    );
+                }
+
+                const { data: tplAtt } = await supabase
+                    .from('attendance')
+                    .select('class_id, date, status, remarks')
+                    .eq('student_id', templateStudentId);
+                if (tplAtt && tplAtt.length > 0) {
+                    await supabase.from('attendance').insert(
+                        tplAtt.map(a => ({ ...a, student_id: stu.id, institution_id: TEMPLATE_INSTITUTION_ID }))
+                    );
+                }
+            } catch (copyErr) {
+                console.warn('Could not copy template records to demo student:', copyErr.message);
+            }
 
         } else if (dbRole === 'admin') {
             const { error: e } = await supabase.from('admins').insert({
@@ -249,6 +301,7 @@ exports.endDemo = async (req, res) => {
                 .eq('user_id', user_id)
                 .maybeSingle();
             if (teacher) {
+                await supabase.from('assignments').delete().eq('teacher_id', teacher.id);
                 await supabase.from('subject_teachers').delete().eq('teacher_id', teacher.id);
                 await supabase.from('teachers').delete().eq('id', teacher.id);
             }
@@ -261,6 +314,9 @@ exports.endDemo = async (req, res) => {
                 .maybeSingle();
 
             if (stu) {
+                await supabase.from('exam_results').delete().eq('student_id', stu.id);
+                await supabase.from('submissions').delete().eq('student_id', stu.id);
+                await supabase.from('attendance').delete().eq('student_id', stu.id);
                 await supabase.from('enrollments').delete()
                     .eq('student_id', stu.id)
                     .eq('institution_id', TEMPLATE_INSTITUTION_ID);

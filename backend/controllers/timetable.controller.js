@@ -19,7 +19,7 @@ async function resolveClassRoomLabel(class_id, institution_id) {
   if (!class_id) return null;
   const { data: cls } = await supabase
     .from("classes")
-    .select("id, name, display_name, grade_level, form_level, stream, class_type")
+    .select("id, display_name, grade_level, form_level, stream, class_type")
     .eq("id", class_id)
     .eq("institution_id", institution_id)
     .maybeSingle();
@@ -31,7 +31,7 @@ async function resolveClassRoomLabel(class_id, institution_id) {
 async function validateClassAndSubject({ class_id, subject_id, institution_id }) {
   const { data: cls, error: classError } = await supabase
     .from("classes")
-    .select("id, name, display_name, grade_level, form_level, stream, class_type")
+    .select("id, display_name, grade_level, form_level, stream, class_type")
     .eq("id", class_id)
     .eq("institution_id", institution_id)
     .single();
@@ -409,7 +409,29 @@ async function getTimetableConfig(req, res) {
     }
 
     if (config) {
-      return res.json(config);
+      const mergedConfig = {
+        ...config,
+        days: config.days || config.active_days || ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        periods: (Array.isArray(config.periods) && config.periods.length > 0) ? config.periods : [
+          { period_number: 1, start_time: "08:00", end_time: "08:45", is_break: false, label: "Lesson 1" },
+          { period_number: 2, start_time: "08:45", end_time: "09:30", is_break: false, label: "Lesson 2" },
+          { period_number: 3, start_time: "09:30", end_time: "10:15", is_break: false, label: "Lesson 3" },
+          { period_number: 4, start_time: "10:15", end_time: "10:45", is_break: true, label: "Short Break" },
+          { period_number: 5, start_time: "10:45", end_time: "11:30", is_break: false, label: "Lesson 4" },
+          { period_number: 6, start_time: "11:30", end_time: "12:15", is_break: false, label: "Lesson 5" },
+          { period_number: 7, start_time: "12:15", end_time: "13:00", is_break: false, label: "Lesson 6" },
+          { period_number: 8, start_time: "13:00", end_time: "14:00", is_break: true, label: "Lunch Break" },
+          { period_number: 9, start_time: "14:00", end_time: "14:45", is_break: false, label: "Lesson 7" },
+          { period_number: 10, start_time: "14:45", end_time: "15:30", is_break: false, label: "Lesson 8" }
+        ],
+        max_teacher_periods_per_day: config.max_teacher_periods_per_day || 6,
+        max_teacher_periods_per_week: config.max_teacher_periods_per_week || 28,
+        settings: config.settings || {
+          allow_double_periods: true,
+          default_lesson_duration_minutes: 45
+        }
+      };
+      return res.json(mergedConfig);
     }
 
     const defaultConfig = {
@@ -471,6 +493,7 @@ async function saveTimetableConfig(req, res) {
     const payload = {
       institution_id,
       days,
+      active_days: days,
       periods,
       max_teacher_periods_per_day: Number(max_teacher_periods_per_day) || 6,
       max_teacher_periods_per_week: Number(max_teacher_periods_per_week) || 28,
@@ -507,10 +530,18 @@ async function getTimetableReadiness(req, res) {
     const unmet = [];
 
     // 1. Active classes
-    const { data: classes, error: classErr } = await supabase
+    let classQuery = supabase
       .from("classes")
-      .select("id, name, display_name, grade_level, form_level, stream, class_type")
+      .select("id, display_name, grade_level, form_level, stream, class_type")
       .eq("institution_id", institution_id);
+
+    if (typeof classQuery.is === "function") {
+      classQuery = classQuery.is("deleted_at", null);
+    }
+
+    const { data: rawClasses, error: classErr } = await classQuery;
+    if (classErr) throw classErr;
+    const classes = (rawClasses || []).filter(c => !c.deleted_at);
 
     if (classErr) throw classErr;
     const classCount = (classes || []).length;
@@ -620,26 +651,32 @@ async function getTimetableReadiness(req, res) {
       .eq("institution_id", institution_id)
       .maybeSingle();
 
-    const days = config?.days || ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-    const teachingPeriods = (config?.periods || []).filter(p => !p.is_break);
-    const totalWeeklySlots = days.length * (teachingPeriods.length || 8);
+    const days = config?.days || config?.active_days || ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+    const configuredPeriods = Array.isArray(config?.periods) && config.periods.length > 0 ? config.periods : null;
+    const defaultPeriods = [
+      { period_number: 1, start_time: "08:00", end_time: "08:45", is_break: false, label: "Lesson 1" },
+      { period_number: 2, start_time: "08:45", end_time: "09:30", is_break: false, label: "Lesson 2" },
+      { period_number: 3, start_time: "09:30", end_time: "10:15", is_break: false, label: "Lesson 3" },
+      { period_number: 4, start_time: "10:15", end_time: "10:45", is_break: true, label: "Short Break" },
+      { period_number: 5, start_time: "10:45", end_time: "11:30", is_break: false, label: "Lesson 4" },
+      { period_number: 6, start_time: "11:30", end_time: "12:15", is_break: false, label: "Lesson 5" },
+      { period_number: 7, start_time: "12:15", end_time: "13:00", is_break: false, label: "Lesson 6" },
+      { period_number: 8, start_time: "13:00", end_time: "14:00", is_break: true, label: "Lunch Break" },
+      { period_number: 9, start_time: "14:00", end_time: "14:45", is_break: false, label: "Lesson 7" },
+      { period_number: 10, start_time: "14:45", end_time: "15:30", is_break: false, label: "Lesson 8" }
+    ];
+    const periodsToUse = configuredPeriods || defaultPeriods;
+    const teachingPeriods = periodsToUse.filter(p => !p.is_break);
+    const totalWeeklySlots = days.length * teachingPeriods.length;
 
-    if (!config || teachingPeriods.length === 0) {
-      checks.push({
-        key: "period_budget",
-        title: "Period Budget & Schedule Config",
-        passed: false,
-        details: "No timetable schedule or periods configured. Save a timetable configuration first."
-      });
-      unmet.push("Schedule periods have not been configured.");
-    } else {
-      checks.push({
-        key: "period_budget",
-        title: "Period Budget & Schedule Config",
-        passed: true,
-        details: `${days.length} days with ${teachingPeriods.length} teaching periods (${totalWeeklySlots} total slots/week).`
-      });
-    }
+    checks.push({
+      key: "period_budget",
+      title: "Period Budget & Schedule Config",
+      passed: true,
+      details: configuredPeriods
+        ? `${days.length} days with ${teachingPeriods.length} teaching periods (${totalWeeklySlots} total slots/week).`
+        : `Standard schedule ready: ${days.length} days with ${teachingPeriods.length} teaching periods (${totalWeeklySlots} slots/week).`
+    });
 
     // 5. Subject Categorization
     const categorizedSubjects = (subjects || []).filter(s => !!s.category);
@@ -710,8 +747,8 @@ async function generateTimetable(req, res) {
       .eq("institution_id", institution_id)
       .maybeSingle();
 
-    const days = config?.days || ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-    const rawPeriods = config?.periods || [
+    const days = config?.days || config?.active_days || ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+    const rawPeriods = (Array.isArray(config?.periods) && config.periods.length > 0) ? config.periods : [
       { period_number: 1, start_time: "08:00", end_time: "08:45", is_break: false },
       { period_number: 2, start_time: "08:45", end_time: "09:30", is_break: false },
       { period_number: 3, start_time: "09:30", end_time: "10:15", is_break: false },
@@ -731,14 +768,20 @@ async function generateTimetable(req, res) {
 
     let classQuery = supabase
       .from("classes")
-      .select("id, name, display_name, grade_level, form_level, stream, class_type")
+      .select("id, display_name, grade_level, form_level, stream, class_type")
       .eq("institution_id", institution_id);
+
+    if (typeof classQuery.is === "function") {
+      classQuery = classQuery.is("deleted_at", null);
+    }
 
     if (Array.isArray(target_class_ids) && target_class_ids.length > 0) {
       classQuery = classQuery.in("id", target_class_ids);
     }
 
-    const { data: classesData, error: classErr } = await classQuery;
+    const { data: rawClassesData, error: classErr } = await classQuery;
+    if (classErr) throw classErr;
+    const classesData = (rawClassesData || []).filter(c => !c.deleted_at);
     if (classErr) throw classErr;
     if (!classesData || classesData.length === 0) {
       return res.status(400).json({ error: "No classes available for generation." });
@@ -799,7 +842,9 @@ async function generateTimetable(req, res) {
 
       const totalSlotsForClass = days.length * teachingPeriods.length;
       const numSubjects = mappedSubjectIds.size;
-      const defaultPeriodsPerSubj = numSubjects > 0 ? Math.max(2, Math.floor((totalSlotsForClass - 2) / numSubjects)) : 4;
+      const defaultPeriodsPerSubj = numSubjects > 0
+        ? Math.min(3, Math.max(2, Math.floor((totalSlotsForClass - 4) / Math.max(numSubjects, 10))))
+        : 3;
 
       for (const subjId of mappedSubjectIds) {
         const subj = (subjectsData || []).find(s => s.id === subjId);
@@ -959,19 +1004,22 @@ async function publishTimetable(req, res) {
     const { error: updateErr } = await updateQuery;
     if (updateErr) throw updateErr;
 
-    for (const day of affectedDays) {
-      try {
-        await recomputeForTimetableDayMutation({ institution_id, day_name: day });
-      } catch (hErr) {
-        console.warn(`[Timetable] daily hours recompute warning for ${day}:`, hErr.message);
-      }
-    }
-
     res.json({
       message: "Timetable published successfully.",
       published_count: drafts.length,
       affected_classes: affectedClassIds.length
     });
+
+    // Run hours recomputation asynchronously in the background so publish response is immediate
+    (async () => {
+      for (const day of affectedDays) {
+        try {
+          await recomputeForTimetableDayMutation({ institution_id, day_name: day });
+        } catch (hErr) {
+          console.warn(`[Timetable] daily hours recompute warning for ${day}:`, hErr.message);
+        }
+      }
+    })().catch(err => console.error('[Timetable] Background hours recompute failed:', err));
   } catch (err) {
     console.error("Publish timetable error:", err);
     res.status(500).json({ error: err.message });
@@ -1098,7 +1146,7 @@ async function getClassTimetable(req, res) {
       .select(
         `
         id, class_id, subject_id, teacher_id, institution_id, day_of_week, start_time, end_time, room_number,
-        is_draft,
+        period_number, is_draft,
         subjects ( id, title, category, teacher_id ),
         teachers ( id, user_id, users(full_name) )
       `,
@@ -1121,7 +1169,7 @@ async function getClassTimetable(req, res) {
         .select(
           `
           id, class_id, subject_id, teacher_id, institution_id, day_of_week, start_time, end_time, room_number,
-          is_draft,
+          period_number, is_draft,
           subjects ( id, title, category, teacher_id )
         `,
         )
@@ -1139,7 +1187,7 @@ async function getClassTimetable(req, res) {
 
     const { data: cls } = await supabase
       .from("classes")
-      .select("id, name, display_name, grade_level, form_level, stream, class_type")
+      .select("id, display_name, grade_level, form_level, stream, class_type")
       .eq("id", class_id)
       .maybeSingle();
 
@@ -1266,8 +1314,8 @@ async function getTeacherTimetable(req, res) {
       .from("timetables")
       .select(
         `
-        id, day_of_week, start_time, end_time, room_number, class_id, subject_id, teacher_id, is_draft,
-        classes ( id, name, display_name, grade_level, form_level, stream, class_type ),
+        id, day_of_week, start_time, end_time, room_number, class_id, subject_id, teacher_id, period_number, is_draft,
+        classes ( id, display_name, grade_level, form_level, stream, class_type ),
         subjects ( id, title, category )
         `,
       )

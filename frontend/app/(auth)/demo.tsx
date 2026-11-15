@@ -758,7 +758,7 @@ export default function Demo() {
   const [selectedRoleData, setSelectedRoleData] = useState<RoleData | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
-  const { startDemo } = useAuth();
+  const { startDemo, getRoleRedirect, isPlatformAdmin } = useAuth();
   const { width: screenWidth } = useWindowDimensions();
 
   // Responsive Breakpoints
@@ -880,10 +880,10 @@ export default function Demo() {
     setModalVisible(false);
 
     try {
-      const { error } = await startDemo(selectedRoleData.id);
+      const res = await startDemo(selectedRoleData.id);
 
-      if (error) {
-        const errorMsg = typeof error === 'string' ? error : (error?.message || '');
+      if (res?.error) {
+        const errorMsg = typeof res.error === 'string' ? res.error : (res.error?.message || '');
         const isNetworkErr =
           errorMsg.includes('fetch') ||
           errorMsg.includes('network') ||
@@ -899,6 +899,13 @@ export default function Demo() {
         );
         setIsLoading(false);
         return;
+      }
+
+      const roleKey = selectedRoleData.id as string;
+      const normalizedRole = roleKey === 'readonly_admin' ? 'admin' : roleKey;
+      const targetPath = getRoleRedirect ? getRoleRedirect(res?.data?.profile || { role: normalizedRole } as any, isPlatformAdmin, normalizedRole) : `/(${normalizedRole})`;
+      if (targetPath) {
+        router.replace(targetPath as any);
       }
     } catch (error: any) {
       console.error(error?.message || error);

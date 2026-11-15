@@ -28,7 +28,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
  <Icon size={48} color={color} strokeWidth={1.5} />
  </View>
  <Text className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">{title}</Text>
- {message && <Text className="text-sm text-gray-600 dark:text-gray-300 text-center leading-5">{message}</Text>}
+ {!!message && <Text className="text-sm text-gray-600 dark:text-gray-300 text-center leading-5">{message}</Text>}
  {actionLabel && onAction && (
  <TouchableOpacity
  onPress={onAction}

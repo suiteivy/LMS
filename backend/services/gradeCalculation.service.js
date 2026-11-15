@@ -124,6 +124,7 @@ async function calculateSubjectGrade(studentId, subjectId, classId, termId, inst
   const weights = await resolveAssessmentWeights(institutionId, subjectId);
   const examWeightRatio = weights.exam_weight;
   const caWeightRatio = weights.continuous_assessment_weight;
+  const isExamOnly = examWeightRatio === 100 || caWeightRatio === 0;
 
   // 2. Fetch Term info to scope by dates/names if needed
   let termInfo = null;
@@ -214,113 +215,116 @@ async function calculateSubjectGrade(studentId, subjectId, classId, termId, inst
 
   // -------------------------------------------------------------------------
   // B. CONTINUOUS ASSESSMENTS (Teacher Selected)
+  // When exam-only grading is active, continuous assessments are completely omitted.
   // -------------------------------------------------------------------------
   let caTotalPercentage = 0;
   let caItemsCount = 0;
   let hasCA = false;
 
-  try {
-    // 1. Check if teacher has explicitly chosen assessments for this class/subject/term
-    const { data: selectionRows } = await supabase
-      .from('subject_report_card_assessments')
-      .select('assessment_id, is_included')
-      .eq('institution_id', institutionId)
-      .eq('subject_id', subjectId)
-      .eq('class_id', classId)
-      .eq('term_id', termId);
+  if (!isExamOnly) {
+    try {
+      // 1. Check if teacher has explicitly chosen assessments for this class/subject/term
+      const { data: selectionRows } = await supabase
+        .from('subject_report_card_assessments')
+        .select('assessment_id, is_included')
+        .eq('institution_id', institutionId)
+        .eq('subject_id', subjectId)
+        .eq('class_id', classId)
+        .eq('term_id', termId);
 
-    const hasExplicitSelection = Array.isArray(selectionRows) && selectionRows.length > 0;
-    const includedAssessmentIds = new Set(
-      (selectionRows || []).filter((r) => r.is_included).map((r) => r.assessment_id)
-    );
+      const hasExplicitSelection = Array.isArray(selectionRows) && selectionRows.length > 0;
+      const includedAssessmentIds = new Set(
+        (selectionRows || []).filter((r) => r.is_included).map((r) => r.assessment_id)
+      );
 
-    // 2. Fetch Assignments for this subject/class
-    let assignmentQuery = supabase
-      .from('assignments')
-      .select('id, title, total_points, weight, term_id, term')
-      .eq('subject_id', subjectId)
-      .eq('institution_id', institutionId);
+      // 2. Fetch Assignments for this subject/class
+      let assignmentQuery = supabase
+        .from('assignments')
+        .select('id, title, total_points, weight, term_id, term')
+        .eq('subject_id', subjectId)
+        .eq('institution_id', institutionId);
 
-    if (classId) assignmentQuery = assignmentQuery.eq('class_id', classId);
-    const { data: allAssignments } = await assignmentQuery;
+      if (classId) assignmentQuery = assignmentQuery.eq('class_id', classId);
+      const { data: allAssignments } = await assignmentQuery;
 
-    const termAssignments = (allAssignments || []).filter((a) => {
-      if (termId && a.term_id === termId) return true;
-      if (termInfo?.name && a.term && a.term.toLowerCase() === termInfo.name.toLowerCase()) return true;
-      return true; // include if no explicit term tag to not lose data
-    });
+      const termAssignments = (allAssignments || []).filter((a) => {
+        if (termId && a.term_id === termId) return true;
+        if (termInfo?.name && a.term && a.term.toLowerCase() === termInfo.name.toLowerCase()) return true;
+        return true; // include if no explicit term tag to not lose data
+      });
 
-    // Determine which assignments to include:
-    // If teacher made explicit selections, use only included. If not yet customized, include all.
-    const eligibleAssignments = termAssignments.filter((a) => {
-      if (hasExplicitSelection) {
-        return includedAssessmentIds.has(a.id);
-      }
-      return true;
-    });
+      // Determine which assignments to include:
+      // If teacher made explicit selections, use only included. If not yet customized, include all.
+      const eligibleAssignments = termAssignments.filter((a) => {
+        if (hasExplicitSelection) {
+          return includedAssessmentIds.has(a.id);
+        }
+        return true;
+      });
 
-    if (eligibleAssignments.length > 0) {
-      const eligibleIds = eligibleAssignments.map((a) => a.id);
-      const { data: submissions } = await supabase
-        .from('submissions')
-        .select('assignment_id, grade')
-        .in('assignment_id', eligibleIds)
-        .eq('student_id', studentId)
-        .not('grade', 'is', null);
+      if (eligibleAssignments.length > 0) {
+        const eligibleIds = eligibleAssignments.map((a) => a.id);
+        const { data: submissions } = await supabase
+          .from('submissions')
+          .select('assignment_id, grade')
+          .in('assignment_id', eligibleIds)
+          .eq('student_id', studentId)
+          .not('grade', 'is', null);
 
-      for (const sub of (submissions || [])) {
-        const assign = eligibleAssignments.find((a) => a.id === sub.assignment_id);
-        const maxPts = Number(assign?.total_points) || 100;
-        const score = Number(sub.grade);
-        if (!isNaN(score)) {
-          const pct = maxPts > 0 ? (score / maxPts) * 100 : 0;
-          caTotalPercentage += pct;
-          caItemsCount++;
-          hasCA = true;
+        for (const sub of (submissions || [])) {
+          const assign = eligibleAssignments.find((a) => a.id === sub.assignment_id);
+          const maxPts = Number(assign?.total_points) || 100;
+          const score = Number(sub.grade);
+          if (!isNaN(score)) {
+            const pct = maxPts > 0 ? (score / maxPts) * 100 : 0;
+            caTotalPercentage += pct;
+            caItemsCount++;
+            hasCA = true;
 
-          breakdown.push({
-            assessment_type: 'assignment',
-            title: assign?.title || 'Continuous Assessment',
-            score,
-            max_score: maxPts,
-            percentage: Math.round(pct * 100) / 100,
-            is_mandatory: false,
-            weight: assign?.weight || null,
-          });
+            breakdown.push({
+              assessment_type: 'assignment',
+              title: assign?.title || 'Continuous Assessment',
+              score,
+              max_score: maxPts,
+              percentage: Math.round(pct * 100) / 100,
+              is_mandatory: false,
+              weight: assign?.weight || null,
+            });
+          }
         }
       }
-    }
 
-    // 3. Also check legacy grade_entries if any exist
-    const { data: gradeEntries } = await supabase
-      .from('grade_entries')
-      .select('id, score, max_score, percentage, assessment_types(name)')
-      .eq('student_id', studentId)
-      .eq('subject_id', subjectId)
-      .eq('class_id', classId)
-      .eq('term_id', termId)
-      .eq('institution_id', institutionId);
+      // 3. Also check legacy grade_entries if any exist
+      const { data: gradeEntries } = await supabase
+        .from('grade_entries')
+        .select('id, score, max_score, percentage, assessment_types(name)')
+        .eq('student_id', studentId)
+        .eq('subject_id', subjectId)
+        .eq('class_id', classId)
+        .eq('term_id', termId)
+        .eq('institution_id', institutionId);
 
-    for (const ge of (gradeEntries || [])) {
-      if (hasExplicitSelection && !includedAssessmentIds.has(ge.id)) {
-        continue; // Teacher explicitly unselected
+      for (const ge of (gradeEntries || [])) {
+        if (hasExplicitSelection && !includedAssessmentIds.has(ge.id)) {
+          continue; // Teacher explicitly unselected
+        }
+        const pct = Number(ge.percentage) || (ge.max_score > 0 ? (Number(ge.score) / Number(ge.max_score)) * 100 : 0);
+        caTotalPercentage += pct;
+        caItemsCount++;
+        hasCA = true;
+
+        breakdown.push({
+          assessment_type: 'grade_entry',
+          title: ge.assessment_types?.name || 'Grade Assessment',
+          score: Number(ge.score),
+          max_score: Number(ge.max_score) || 100,
+          percentage: Math.round(pct * 100) / 100,
+          is_mandatory: false,
+        });
       }
-      const pct = Number(ge.percentage) || (ge.max_score > 0 ? (Number(ge.score) / Number(ge.max_score)) * 100 : 0);
-      caTotalPercentage += pct;
-      caItemsCount++;
-      hasCA = true;
-
-      breakdown.push({
-        assessment_type: 'grade_entry',
-        title: ge.assessment_types?.name || 'Grade Assessment',
-        score: Number(ge.score),
-        max_score: Number(ge.max_score) || 100,
-        percentage: Math.round(pct * 100) / 100,
-        is_mandatory: false,
-      });
+    } catch (err) {
+      console.warn('Error fetching CA in calculateSubjectGrade:', err.message);
     }
-  } catch (err) {
-    console.warn('Error fetching CA in calculateSubjectGrade:', err.message);
   }
 
   // -------------------------------------------------------------------------
@@ -329,7 +333,10 @@ async function calculateSubjectGrade(studentId, subjectId, classId, termId, inst
   let finalPercentage = 0;
   const caAveragePct = caItemsCount > 0 ? caTotalPercentage / caItemsCount : null;
 
-  if (hasExam && hasCA && caAveragePct !== null) {
+  if (isExamOnly) {
+    // Exam-only grading mode: strictly exam determines the final grade
+    finalPercentage = hasExam ? examPercentage : 0;
+  } else if (hasExam && hasCA && caAveragePct !== null) {
     // Both exam and CA present: apply configured split
     finalPercentage = (examPercentage * (examWeightRatio / 100)) + (caAveragePct * (caWeightRatio / 100));
   } else if (hasExam && (!hasCA || caAveragePct === null)) {
@@ -351,7 +358,7 @@ async function calculateSubjectGrade(studentId, subjectId, classId, termId, inst
   let letterGrade = 'N/A';
   let gpaPoints = 0;
 
-  if (hasExam || hasCA) {
+  if (hasExam || (!isExamOnly && hasCA)) {
     try {
       const { data: scales } = await supabase
         .from('grading_scales')

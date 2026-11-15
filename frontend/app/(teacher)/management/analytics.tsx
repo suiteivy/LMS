@@ -107,6 +107,15 @@ export default function AnalyticsPage() {
                     { name: "Michael C.", initials: "MC", score: 95 },
                     { name: "Grace W.", initials: "GW", score: 94 },
                 ]);
+                setTrends({
+                    terms: ['Term 1', 'Term 2', 'Term 3'],
+                    subjects: [
+                        { name: 'Advanced Mathematics', scores: [82, 85, 88] },
+                        { name: 'Theoretical Physics', scores: [74, 76, 78] },
+                        { name: 'Software Engineering', scores: [86, 89, 92] }
+                    ]
+                });
+                setLoading(false);
                 return;
             }
 

@@ -418,4 +418,5 @@ export const ParentDashboardSkeleton = ({ loading = true, label = "Loading paren
 };
 
 // Re-export mobile screen-shaped skeletons for universal accessibility across the app
+export const ListSkeleton = ListItemSkeleton;
 export * from '@/mobile/components/skeletons/MobileSkeleton';

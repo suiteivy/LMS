@@ -10,6 +10,7 @@ import { api, isTokenExpired } from '@/services/api'
 import { safeSignOut } from '@/utils/safeSignOut'
 import { LogoutReason, LOGOUT_MESSAGES } from '@/types/logout'
 import { getApiBaseUrl } from '@/utils/backendUrl'
+import { resetTeacherRoleModeState } from '@/services/teacherRoleModeState'
 
 type UserProfile = Database['public']['Tables']['users']['Row']
 
@@ -67,6 +68,7 @@ interface AuthContextType {
   addonAttendance: boolean
   addonDiary: boolean
   customStudentLimit: number | null
+  customAdminLimit: number | null
   getRoleRedirect: (userProfile: UserProfile | null, platformAdmin: boolean, targetRole?: string | null) => string | null
   maintenanceModeEnabled: boolean
   maintenanceModeMessage: string
@@ -129,6 +131,7 @@ const fallbackAuthContext: AuthContextType = {
   addonAttendance: true,
   addonDiary: false,
   customStudentLimit: null,
+  customAdminLimit: null,
   getRoleRedirect: () => "/(auth)/signIn",
   maintenanceModeEnabled: false,
   maintenanceModeMessage: 'System maintenance is in progress. Please try again later.',
@@ -212,6 +215,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     diary: false
   })
   const [customStudentLimit, setCustomStudentLimit] = useState<number | null>(null)
+  const [customAdminLimit, setCustomAdminLimit] = useState<number | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
   const [isNavReady, setIsNavReady] = useState(false)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
@@ -474,6 +478,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       userRef.current = null;
       profileRef.current = null;
       setRoleInfo({ studentId: null, teacherId: null, adminId: null, parentId: null, displayId: null });
+      resetTeacherRoleModeState();
       setActiveRole(null);
       setAvailableRoles([]);
       delete api.defaults.headers.common['x-active-role'];
@@ -487,6 +492,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLibrarian(false);
       setAddonFlags({ messaging: false, library: false, finance: true, analytics: true, bursary: false, attendance: true, diary: false });
       setCustomStudentLimit(null);
+        setCustomAdminLimit(null);
       setLoading(false);
       setIsInitializing(false);
       clearTimer();
@@ -560,7 +566,73 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await AsyncStorage.setItem('demo_expiry', expiry.toString());
     const result = await authService.startDemoSession(role);
     if (result.error) {
-      await AsyncStorage.removeItem('demo_expiry').catch(() => { });
+      console.warn('[AuthContext] Backend demo start failed, activating offline demo mode:', result.error);
+      try {
+        const dummyData = (await import('@/demoDummyData')).default;
+        const normalizedRole = role === 'readonly_admin' ? 'readonly_admin' : role.toLowerCase();
+        const demoUser = (dummyData.users as any)[normalizedRole] || dummyData.users.student;
+        const demoRoleRecord = (dummyData.roleRecords as any)[normalizedRole === 'readonly_admin' ? 'admin' : normalizedRole] || {};
+        const isReadOnly = normalizedRole === 'readonly_admin';
+
+        const simulatedUser: any = {
+          id: demoUser.id,
+          email: demoUser.email,
+          user_metadata: {
+            is_demo: true,
+            full_name: demoUser.full_name,
+            role: demoUser.role,
+          },
+          app_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        };
+
+        const simulatedProfile: any = {
+          id: demoUser.id,
+          full_name: demoUser.full_name,
+          first_name: demoUser.first_name,
+          last_name: demoUser.last_name,
+          email: demoUser.email,
+          role: demoUser.role,
+          institution_id: dummyData.institution.id,
+          status: 'approved',
+          is_demo: true,
+          students: demoUser.role === 'student' ? [{ id: demoRoleRecord.id || 'DEMO-STU-001' }] : undefined,
+          teachers: demoUser.role === 'teacher' ? [{ id: demoRoleRecord.id || 'DEMO-TCH-001' }] : undefined,
+          admins: demoUser.role === 'admin' ? [{ id: demoRoleRecord.id || 'DEMO-ADM-001', is_main: !isReadOnly, access_level: isReadOnly ? 'read_only' : 'read_write' }] : undefined,
+          parents: demoUser.role === 'parent' ? [{ id: demoRoleRecord.id || 'DEMO-PAR-001' }] : undefined,
+          institutions: dummyData.institution,
+        };
+
+        const simulatedSession: any = {
+          access_token: 'offline-demo-token',
+          refresh_token: 'offline-demo-refresh-token',
+          expires_at: Math.floor(Date.now() / 1000) + 900,
+          user: simulatedUser,
+        };
+
+        await AsyncStorage.setItem('demo_expiry', expiry.toString());
+        await AsyncStorage.setItem('is_demo_mode', 'true');
+        await AsyncStorage.setItem(`lms_cached_profile_${demoUser.id}`, JSON.stringify(simulatedProfile));
+        await AsyncStorage.setItem('session_start_time', Date.now().toString());
+
+        userRef.current = simulatedUser;
+        currentSessionRef.current = simulatedSession;
+        setUser(simulatedUser);
+        setSession(simulatedSession);
+        await applyProfileData(simulatedProfile, demoUser.id);
+        setIsDemo(true);
+        isDemoRef.current = true;
+        setLoading(false);
+        setIsProfileLoading(false);
+        await startTimeoutTimer(true);
+
+        return { data: { user: simulatedUser, profile: simulatedProfile }, error: null };
+      } catch (offlineErr: any) {
+        console.error('[AuthContext] Failed to start offline demo fallback:', offlineErr);
+        await AsyncStorage.removeItem('demo_expiry').catch(() => {});
+        return { data: null, error: offlineErr?.message || result.error };
+      }
     }
     return result;
   }
@@ -768,6 +840,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         diary: isBetaPlan ? true : !!userData.institutions.addon_diary,
       });
       setCustomStudentLimit(userData.institutions.custom_student_limit || null);
+      setCustomAdminLimit(userData.institutions.custom_admin_limit || null);
     }
 
     const getRoleId = (roleData: any) => {
@@ -887,7 +960,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsProfileLoading(true);
       const { data, error } = await supabase
         .from('users')
-        .select('*, students(id), teachers(id), admins(id, is_main, access_level), parents(id), institutions(name, logo_url, country, category_id, subscription_status, subscription_plan, subscription_tracking_start_date, addon_messaging, addon_library, addon_diary, addon_bursary, custom_student_limit, currency_id, institution_categories(category_id), currency:currency_id(code, symbol, decimal_places)), platform_admins(id)')
+        .select('*, students(id), teachers(id), admins(id, is_main, access_level), parents(id), institutions(name, logo_url, country, category_id, subscription_status, subscription_plan, subscription_tracking_start_date, addon_messaging, addon_library, addon_diary, addon_bursary, custom_student_limit, custom_admin_limit, currency_id, institution_categories(category_id), currency:currency_id(code, symbol, decimal_places)), platform_admins(id)')
         .eq('id', userId)
         .maybeSingle();
 
@@ -1418,6 +1491,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     addonAttendance: addonFlags.attendance,
     addonDiary: addonFlags.diary,
     customStudentLimit,
+    customAdminLimit,
     getRoleRedirect,
     availableRoles,
     activeRole,
@@ -1427,7 +1501,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     maintenanceModeEnabled,
     maintenanceModeMessage,
     refreshMaintenanceStatus,
-  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, institutionLogo, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, isDemoExiting, exitDemoSession, wasDemo, clearWasDemo, isMain, accessLevel, isReadOnlyAdmin, isPlatformAdmin, isLibrarian, isFinanceAdmin, canonicalRole, addonFlags, customStudentLimit, getRoleRedirect, availableRoles, activeRole, switchActiveRole, isRoleSwitching, switchingToRole, maintenanceModeEnabled, maintenanceModeMessage, refreshMaintenanceStatus]);
+  }), [session, user, profile, roleInfo, subscriptionStatus, subscriptionPlan, trialEndDate, institutionName, institutionLogo, loading, isInitializing, isNavReady, isProfileLoading, isSessionExpiring, sessionWarningDismissed, isDemo, isDemoExiting, exitDemoSession, wasDemo, clearWasDemo, isMain, accessLevel, isReadOnlyAdmin, isPlatformAdmin, isLibrarian, isFinanceAdmin, canonicalRole, addonFlags, customStudentLimit, customAdminLimit, getRoleRedirect, availableRoles, activeRole, switchActiveRole, isRoleSwitching, switchingToRole, maintenanceModeEnabled, maintenanceModeMessage, refreshMaintenanceStatus]);
 
   return (
     <AuthContext.Provider value={value}>

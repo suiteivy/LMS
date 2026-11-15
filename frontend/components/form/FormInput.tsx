@@ -40,7 +40,7 @@ export const FormInput: React.FC<FormInputProps> = ({
         }}
         {...props}
       />
-      {error && (
+      {!!error && (
         <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>{error}</Text>
       )}
     </View>
