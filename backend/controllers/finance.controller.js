@@ -4,6 +4,8 @@ const { parsePagination, paginatedResponse } = require("../utils/pagination.js")
 const { resolveActiveTerm } = require('../utils/resolveActiveTerm');
 const { buildReceiptHtml } = require('../utils/receiptTemplate.js');
 const { logRecordChange } = require('../utils/auditLogger.js');
+const LedgerService = require('../services/ledger.service.js');
+const ReceiptService = require('../services/receipt.service.js');
 const {
     computeStudentFinancialAssessment,
     resolveApplicableFeeStructure,
@@ -3076,3 +3078,1251 @@ exports.sendOverdueFeeReminders = async (req, res) => {
         return res.status(500).json({ error: err.message });
     }
 };
+
+/**
+ * =========================================================================
+ * RECONSTRUCTED FINANCE CONTROLLER METHODS (Section 1-15 Architecture)
+ * =========================================================================
+ */
+
+const getSignedProofUrl = async (storagePath) => {
+    if (!storagePath) return null;
+    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+        return storagePath;
+    }
+    const cleanPath = storagePath.replace(/^payment_proofs\//, '');
+    const { data } = await supabase.storage
+        .from('payment_proofs')
+        .createSignedUrl(cleanPath, 3600);
+    return data?.signedUrl || storagePath;
+};
+
+const getParentLinkedStudents = async (userId, institutionId) => {
+    const { data: parent } = await supabase
+        .from('parents')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('institution_id', institutionId)
+        .maybeSingle();
+
+    if (!parent?.id) return [];
+
+    const { data: links } = await supabase
+        .from('parent_students')
+        .select('student_id, students(id, class_id, admission_number, grade_level, users(first_name, last_name, full_name))')
+        .eq('parent_id', parent.id)
+        .eq('institution_id', institutionId);
+
+    return (links || []).map(l => ({
+        id: l.student_id,
+        class_id: l.students?.class_id,
+        admission_number: l.students?.admission_number,
+        grade_level: l.students?.grade_level,
+        users: l.students?.users,
+    }));
+};
+
+// 1. Fee Categories
+exports.getFeeCategories = async (req, res) => {
+    try {
+        const { institution_id } = req;
+        const { data, error } = await supabase
+            .from('fee_categories')
+            .select('*')
+            .eq('institution_id', institution_id)
+            .eq('is_active', true)
+            .order('display_order', { ascending: true })
+            .order('name', { ascending: true });
+
+        if (error) throw error;
+        res.json(data || []);
+    } catch (err) {
+        console.error('getFeeCategories error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.createFeeCategory = async (req, res) => {
+    try {
+        const { institution_id } = req;
+        const { name, description, display_order } = req.body;
+        if (!name?.trim()) return res.status(400).json({ error: 'Category name is required' });
+
+        const { data, error } = await supabase
+            .from('fee_categories')
+            .insert([{
+                institution_id,
+                name: name.trim(),
+                description: description?.trim() || null,
+                display_order: Number(display_order) || 0
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.status(201).json(data);
+    } catch (err) {
+        console.error('createFeeCategory error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// 2. Fee Types & Applicability
+exports.getFeeTypes = async (req, res) => {
+    try {
+        const { institution_id } = req;
+        const { category_id, status = 'active', term_id } = req.query;
+
+        let query = supabase
+            .from('fee_types')
+            .select('*, fee_categories(id, name), fee_type_applicability(*)')
+            .eq('institution_id', institution_id);
+
+        if (status && status !== 'all') {
+            query = query.eq('status', status);
+        }
+        if (category_id) {
+            query = query.eq('category_id', category_id);
+        }
+        if (term_id) {
+            query = query.eq('term_id', term_id);
+        }
+
+        query = query.order('display_order', { ascending: true }).order('created_at', { ascending: false });
+
+        const { data, error } = await query;
+        if (error) throw error;
+        res.json(data || []);
+    } catch (err) {
+        console.error('getFeeTypes error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.createFeeType = async (req, res) => {
+    try {
+        const { institution_id, userId } = req;
+        const {
+            name,
+            description,
+            category_id,
+            amount,
+            billing_frequency = 'term',
+            academic_year_id,
+            term_id,
+            due_date,
+            is_mandatory = true,
+            partial_payment_allowed = true,
+            min_installment_amount = 0,
+            display_order = 0,
+            parent_notes,
+            applicability = [] // Array of { scope_type: 'school'|'level'|'class'|'student', scope_id, amount_override }
+        } = req.body;
+
+        if (!name?.trim()) return res.status(400).json({ error: 'Fee name is required' });
+        const numAmount = Number(amount);
+        if (!Number.isFinite(numAmount) || numAmount < 0) {
+            return res.status(400).json({ error: 'Valid fee amount is required' });
+        }
+
+        // 1. Insert fee type
+        const { data: feeType, error: feeError } = await supabase
+            .from('fee_types')
+            .insert([{
+                institution_id,
+                category_id: category_id || null,
+                name: name.trim(),
+                description: description?.trim() || null,
+                amount: numAmount,
+                billing_frequency,
+                academic_year_id: academic_year_id || null,
+                term_id: term_id || null,
+                due_date: due_date || null,
+                is_mandatory: !!is_mandatory,
+                partial_payment_allowed: !!partial_payment_allowed,
+                min_installment_amount: Number(min_installment_amount) || 0,
+                display_order: Number(display_order) || 0,
+                status: 'active',
+                parent_notes: parent_notes?.trim() || null
+            }])
+            .select()
+            .single();
+
+        if (feeError) throw feeError;
+
+        // 2. Insert applicability rules
+        const rules = (applicability.length > 0 ? applicability : [{ scope_type: 'school' }]).map(rule => ({
+            institution_id,
+            fee_type_id: feeType.id,
+            scope_type: rule.scope_type || 'school',
+            scope_id: rule.scope_id || null,
+            amount_override: rule.amount_override !== undefined && rule.amount_override !== null ? Number(rule.amount_override) : null
+        }));
+
+        const { error: appError } = await supabase
+            .from('fee_type_applicability')
+            .insert(rules);
+
+        if (appError) console.error('Applicability insert warning:', appError);
+
+        res.status(201).json(feeType);
+    } catch (err) {
+        console.error('createFeeType error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.updateFeeType = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { institution_id } = req;
+        const {
+            name,
+            description,
+            category_id,
+            amount,
+            billing_frequency,
+            due_date,
+            is_mandatory,
+            partial_payment_allowed,
+            min_installment_amount,
+            status,
+            parent_notes,
+            applicability
+        } = req.body;
+
+        const updatePayload = {
+            updated_at: new Date().toISOString()
+        };
+        if (name !== undefined) updatePayload.name = name.trim();
+        if (description !== undefined) updatePayload.description = description?.trim() || null;
+        if (category_id !== undefined) updatePayload.category_id = category_id || null;
+        if (amount !== undefined) updatePayload.amount = Number(amount);
+        if (billing_frequency !== undefined) updatePayload.billing_frequency = billing_frequency;
+        if (due_date !== undefined) updatePayload.due_date = due_date || null;
+        if (is_mandatory !== undefined) updatePayload.is_mandatory = !!is_mandatory;
+        if (partial_payment_allowed !== undefined) updatePayload.partial_payment_allowed = !!partial_payment_allowed;
+        if (min_installment_amount !== undefined) updatePayload.min_installment_amount = Number(min_installment_amount);
+        if (status !== undefined) updatePayload.status = status;
+        if (parent_notes !== undefined) updatePayload.parent_notes = parent_notes?.trim() || null;
+
+        const { data: updated, error } = await supabase
+            .from('fee_types')
+            .update(updatePayload)
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        if (Array.isArray(applicability)) {
+            await supabase.from('fee_type_applicability').delete().eq('fee_type_id', id);
+            const newRules = applicability.map(rule => ({
+                institution_id,
+                fee_type_id: id,
+                scope_type: rule.scope_type || 'school',
+                scope_id: rule.scope_id || null,
+                amount_override: rule.amount_override ? Number(rule.amount_override) : null
+            }));
+            await supabase.from('fee_type_applicability').insert(newRules);
+        }
+
+        res.json(updated);
+    } catch (err) {
+        console.error('updateFeeType error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// 3. Payments Inbox (Admin Verification Workflow)
+exports.getPaymentsInbox = async (req, res) => {
+    try {
+        const { institution_id } = req;
+        const { tab = 'needs_review', search, method, page = 1, limit = 20 } = req.query;
+
+        let query = supabase
+            .from('payments')
+            .select(`
+                *,
+                submitted_user:submitted_by(id, full_name, email, phone),
+                student:student_id(id, admission_number, grade_level, users(first_name, last_name, full_name)),
+                payment_allocations(*, fee_types(id, name)),
+                payment_proofs(*),
+                payment_flags(*, flag_reasons(reason_code, label))
+            `, { count: 'exact' })
+            .eq('institution_id', institution_id);
+
+        if (tab === 'needs_review') {
+            query = query.in('status', ['submitted', 'under_review', 'pending']);
+        } else if (tab === 'confirmed') {
+            query = query.in('status', ['confirmed', 'completed']);
+        } else if (tab === 'flagged') {
+            query = query.in('status', ['flagged', 'failed']);
+        }
+
+        if (method && method !== 'all') {
+            query = query.eq('payment_method', method);
+        }
+
+        query = query.order('created_at', { ascending: false });
+
+        const from = (Number(page) - 1) * Number(limit);
+        const to = from + Number(limit) - 1;
+        query = query.range(from, to);
+
+        const { data, count, error } = await query;
+        if (error) throw error;
+
+        // Sign proof URLs for private bucket
+        const enriched = await Promise.all((data || []).map(async (p) => {
+            let signedProof = null;
+            if (p.proof_url) {
+                signedProof = await getSignedProofUrl(p.proof_url);
+            }
+            const proofs = await Promise.all((p.payment_proofs || []).map(async (pr) => ({
+                ...pr,
+                signed_url: await getSignedProofUrl(pr.storage_path)
+            })));
+
+            return {
+                ...p,
+                signed_proof_url: signedProof,
+                signed_proofs: proofs,
+                waiting_ms: Date.now() - new Date(p.created_at).getTime()
+            };
+        }));
+
+        res.json({
+            data: enriched,
+            total: count || 0,
+            page: Number(page),
+            limit: Number(limit)
+        });
+    } catch (err) {
+        console.error('getPaymentsInbox error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Confirm payment (Single row or detail modal with amount/allocation adjustments)
+exports.confirmPayment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { institution_id, userId } = req;
+        const { confirmed_amount, admin_notes, allocation_adjustments } = req.body;
+
+        const { data: payment, error: pErr } = await supabase
+            .from('payments')
+            .select('*, payment_allocations(*)')
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .single();
+
+        if (pErr || !payment) {
+            return res.status(404).json({ error: 'Payment not found' });
+        }
+
+        if (payment.status === 'confirmed' || payment.status === 'completed') {
+            return res.status(400).json({ error: 'Payment is already confirmed' });
+        }
+
+        const finalAmount = confirmed_amount !== undefined ? Number(confirmed_amount) : Number(payment.total_amount || payment.amount || 0);
+
+        // 1. Issue official sequential receipt
+        const receipt = await ReceiptService.issueOfficialReceipt({
+            institutionId: institution_id,
+            paymentId: payment.id,
+            studentId: payment.student_id,
+            amount: finalAmount,
+            issuedBy: userId,
+            allocations: payment.payment_allocations || []
+        });
+
+        // 2. Update payment status to confirmed
+        const { data: updatedPayment, error: uErr } = await supabase
+            .from('payments')
+            .update({
+                status: 'confirmed',
+                confirmed_amount: finalAmount,
+                confirmed_at: new Date().toISOString(),
+                reviewed_by: userId,
+                reviewed_at: new Date().toISOString(),
+                admin_notes: admin_notes || payment.admin_notes || null,
+                is_evidence_confirmed: true,
+                status_updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (uErr) throw uErr;
+
+        // 3. Record in ledger for each allocation
+        const allocations = payment.payment_allocations || [];
+        if (allocations.length > 0) {
+            for (const alloc of allocations) {
+                await LedgerService.recordPaymentAllocation({
+                    institutionId: institution_id,
+                    studentId: alloc.student_id,
+                    paymentId: payment.id,
+                    allocationId: alloc.id,
+                    receiptId: receipt.id,
+                    amount: alloc.amount,
+                    referenceNumber: payment.reference_number,
+                    description: `Payment confirmed (${payment.payment_method || 'Official'}) - Ref: ${payment.reference_number || receipt.receipt_number}`,
+                    recordedBy: userId
+                });
+            }
+        } else if (payment.student_id) {
+            await LedgerService.recordPaymentAllocation({
+                institutionId: institution_id,
+                studentId: payment.student_id,
+                paymentId: payment.id,
+                allocationId: null,
+                receiptId: receipt.id,
+                amount: finalAmount,
+                referenceNumber: payment.reference_number,
+                description: `Payment confirmed (${payment.payment_method || 'Official'}) - Ref: ${payment.reference_number || receipt.receipt_number}`,
+                recordedBy: userId
+            });
+        }
+
+        res.json({
+            success: true,
+            payment: updatedPayment,
+            receipt
+        });
+    } catch (err) {
+        console.error('confirmPayment error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Flag payment
+exports.flagPayment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { institution_id, userId } = req;
+        const { reason_code, reason_id, admin_notes } = req.body;
+
+        if (!reason_code && !reason_id) {
+            return res.status(400).json({ error: 'A valid flag reason is required' });
+        }
+
+        const { data: payment, error: pErr } = await supabase
+            .from('payments')
+            .select('id, status')
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .single();
+
+        if (pErr || !payment) {
+            return res.status(404).json({ error: 'Payment not found' });
+        }
+
+        // 1. Insert flag log
+        await supabase
+            .from('payment_flags')
+            .insert([{
+                institution_id,
+                payment_id: id,
+                reason_id: reason_id || null,
+                reason_code: reason_code || null,
+                admin_notes: admin_notes?.trim() || null,
+                flagged_by: userId,
+                flagged_at: new Date().toISOString()
+            }]);
+
+        // 2. Update payment status to flagged
+        const { data: updated, error: uErr } = await supabase
+            .from('payments')
+            .update({
+                status: 'flagged',
+                flag_reason_id: reason_id || null,
+                admin_notes: admin_notes?.trim() || null,
+                reviewed_by: userId,
+                reviewed_at: new Date().toISOString(),
+                status_updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (uErr) throw uErr;
+
+        res.json({
+            success: true,
+            payment: updated
+        });
+    } catch (err) {
+        console.error('flagPayment error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Bulk confirm payments
+exports.bulkConfirmPayments = async (req, res) => {
+    try {
+        const { institution_id, userId } = req;
+        const { payment_ids } = req.body;
+
+        if (!Array.isArray(payment_ids) || payment_ids.length === 0) {
+            return res.status(400).json({ error: 'Array of payment_ids is required' });
+        }
+
+        const confirmedResults = [];
+        for (const paymentId of payment_ids) {
+            try {
+                const { data: payment } = await supabase
+                    .from('payments')
+                    .select('*, payment_allocations(*)')
+                    .eq('id', paymentId)
+                    .eq('institution_id', institution_id)
+                    .single();
+
+                if (!payment || payment.status === 'confirmed' || payment.status === 'completed') {
+                    continue;
+                }
+
+                const finalAmount = Number(payment.total_amount || payment.amount || 0);
+                const receipt = await ReceiptService.issueOfficialReceipt({
+                    institutionId: institution_id,
+                    paymentId: payment.id,
+                    studentId: payment.student_id,
+                    amount: finalAmount,
+                    issuedBy: userId,
+                    allocations: payment.payment_allocations || []
+                });
+
+                await supabase
+                    .from('payments')
+                    .update({
+                        status: 'confirmed',
+                        confirmed_amount: finalAmount,
+                        confirmed_at: new Date().toISOString(),
+                        reviewed_by: userId,
+                        reviewed_at: new Date().toISOString(),
+                        is_evidence_confirmed: true,
+                        status_updated_at: new Date().toISOString()
+                    })
+                    .eq('id', paymentId);
+
+                const allocations = payment.payment_allocations || [];
+                if (allocations.length > 0) {
+                    for (const alloc of allocations) {
+                        await LedgerService.recordPaymentAllocation({
+                            institutionId: institution_id,
+                            studentId: alloc.student_id,
+                            paymentId: payment.id,
+                            allocationId: alloc.id,
+                            receiptId: receipt.id,
+                            amount: alloc.amount,
+                            referenceNumber: payment.reference_number,
+                            description: `Bulk confirmed payment - Ref: ${payment.reference_number || receipt.receipt_number}`,
+                            recordedBy: userId
+                        });
+                    }
+                }
+
+                confirmedResults.push({ paymentId, receipt_number: receipt.receipt_number });
+            } catch (pErr) {
+                console.error(`Bulk confirm error on payment ${paymentId}:`, pErr);
+            }
+        }
+
+        res.json({
+            success: true,
+            confirmed_count: confirmedResults.length,
+            details: confirmedResults
+        });
+    } catch (err) {
+        console.error('bulkConfirmPayments error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Reverse payment
+exports.reversePayment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { institution_id, userId } = req;
+        const { reason } = req.body;
+
+        if (!reason?.trim()) {
+            return res.status(400).json({ error: 'A cancellation/reversal reason is required' });
+        }
+
+        const { data: payment, error: pErr } = await supabase
+            .from('payments')
+            .select('*, receipts(*)')
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .single();
+
+        if (pErr || !payment) {
+            return res.status(404).json({ error: 'Payment not found' });
+        }
+
+        const receipt = (payment.receipts || [])[0];
+        const reverseAmount = Number(payment.confirmed_amount || payment.total_amount || payment.amount || 0);
+
+        // 1. Void receipt if exists
+        if (receipt?.id) {
+            await supabase
+                .from('receipts')
+                .update({
+                    status: 'voided',
+                    voided_at: new Date().toISOString(),
+                    voided_by: userId,
+                    void_reason: reason.trim()
+                })
+                .eq('id', receipt.id);
+        }
+
+        // 2. Record reversal in ledger
+        await LedgerService.recordReversal({
+            institutionId: institution_id,
+            studentId: payment.student_id,
+            paymentId: payment.id,
+            receiptId: receipt?.id || null,
+            amount: reverseAmount,
+            reason: reason.trim(),
+            authorizedBy: userId
+        });
+
+        // 3. Log into reversals table
+        await supabase
+            .from('reversals')
+            .insert([{
+                institution_id,
+                payment_id: payment.id,
+                receipt_id: receipt?.id || null,
+                amount: reverseAmount,
+                reason: reason.trim(),
+                authorized_by: userId
+            }]);
+
+        // 4. Update payment status to reversed
+        const { data: updated, error: uErr } = await supabase
+            .from('payments')
+            .update({
+                status: 'reversed',
+                admin_notes: `REVERSED: ${reason.trim()}`,
+                status_updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (uErr) throw uErr;
+
+        res.json({
+            success: true,
+            payment: updated
+        });
+    } catch (err) {
+        console.error('reversePayment error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// 4. Finance Settings & Config
+exports.getFinanceSettings = async (req, res) => {
+    try {
+        const { institution_id } = req;
+        const { data: settings } = await supabase
+            .from('finance_settings')
+            .select('*')
+            .eq('institution_id', institution_id)
+            .maybeSingle();
+
+        const { data: methods } = await supabase
+            .from('payment_methods')
+            .select('*')
+            .eq('institution_id', institution_id)
+            .order('display_order', { ascending: true });
+
+        const { data: flagReasons } = await supabase
+            .from('flag_reasons')
+            .select('*')
+            .eq('institution_id', institution_id)
+            .order('display_order', { ascending: true });
+
+        res.json({
+            settings: settings || { currency_code: 'KES', receipt_prefix: 'REC-', receipt_padding: 5 },
+            payment_methods: methods || [],
+            flag_reasons: flagReasons || []
+        });
+    } catch (err) {
+        console.error('getFinanceSettings error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.updateFinanceSettings = async (req, res) => {
+    try {
+        const { institution_id } = req;
+        const {
+            currency_code,
+            receipt_prefix,
+            receipt_padding,
+            receipt_footer_text,
+            allow_overpayment_credit,
+            allow_partial_payments,
+            grace_period_days,
+            late_penalty_percent,
+            max_upload_size_mb
+        } = req.body;
+
+        const updatePayload = {
+            updated_at: new Date().toISOString()
+        };
+        if (currency_code !== undefined) updatePayload.currency_code = currency_code;
+        if (receipt_prefix !== undefined) updatePayload.receipt_prefix = receipt_prefix;
+        if (receipt_padding !== undefined) updatePayload.receipt_padding = Number(receipt_padding);
+        if (receipt_footer_text !== undefined) updatePayload.receipt_footer_text = receipt_footer_text;
+        if (allow_overpayment_credit !== undefined) updatePayload.allow_overpayment_credit = !!allow_overpayment_credit;
+        if (allow_partial_payments !== undefined) updatePayload.allow_partial_payments = !!allow_partial_payments;
+        if (grace_period_days !== undefined) updatePayload.grace_period_days = Number(grace_period_days);
+        if (late_penalty_percent !== undefined) updatePayload.late_penalty_percent = Number(late_penalty_percent);
+        if (max_upload_size_mb !== undefined) updatePayload.max_upload_size_mb = Number(max_upload_size_mb);
+
+        const { data, error } = await supabase
+            .from('finance_settings')
+            .upsert({ institution_id, ...updatePayload })
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error('updateFinanceSettings error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.createPaymentMethod = async (req, res) => {
+    try {
+        const { institution_id } = req;
+        const { name, code, description, requires_reference, requires_proof, instructions, is_active, display_order } = req.body;
+        if (!name || !code) {
+            return res.status(400).json({ error: 'Name and code are required' });
+        }
+        const { data, error } = await supabase
+            .from('payment_methods')
+            .insert({
+                institution_id,
+                name,
+                code: code.toLowerCase().trim().replace(/\s+/g, '_'),
+                description: description || null,
+                requires_reference: requires_reference !== false,
+                requires_proof: !!requires_proof,
+                instructions: instructions || null,
+                is_active: is_active !== false,
+                display_order: Number(display_order || 0)
+            })
+            .select()
+            .single();
+        if (error) throw error;
+        res.status(201).json(data);
+    } catch (err) {
+        console.error('createPaymentMethod error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.updatePaymentMethod = async (req, res) => {
+    try {
+        const { institution_id } = req;
+        const { id } = req.params;
+        const { name, description, requires_reference, requires_proof, instructions, is_active, display_order } = req.body;
+        const updates = {};
+        if (name !== undefined) updates.name = name;
+        if (description !== undefined) updates.description = description;
+        if (requires_reference !== undefined) updates.requires_reference = !!requires_reference;
+        if (requires_proof !== undefined) updates.requires_proof = !!requires_proof;
+        if (instructions !== undefined) updates.instructions = instructions;
+        if (is_active !== undefined) updates.is_active = !!is_active;
+        if (display_order !== undefined) updates.display_order = Number(display_order);
+
+        const { data, error } = await supabase
+            .from('payment_methods')
+            .update(updates)
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .select()
+            .single();
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error('updatePaymentMethod error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.createFlagReason = async (req, res) => {
+    try {
+        const { institution_id } = req;
+        const { code, label, description, requires_note, is_active, display_order } = req.body;
+        if (!label || !code) {
+            return res.status(400).json({ error: 'Label and code are required' });
+        }
+        const { data, error } = await supabase
+            .from('flag_reasons')
+            .insert({
+                institution_id,
+                code: code.toLowerCase().trim().replace(/\s+/g, '_'),
+                label,
+                description: description || null,
+                requires_note: !!requires_note,
+                is_active: is_active !== false,
+                display_order: Number(display_order || 0)
+            })
+            .select()
+            .single();
+        if (error) throw error;
+        res.status(201).json(data);
+    } catch (err) {
+        console.error('createFlagReason error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.updateFlagReason = async (req, res) => {
+    try {
+        const { institution_id } = req;
+        const { id } = req.params;
+        const { label, description, requires_note, is_active, display_order } = req.body;
+        const updates = {};
+        if (label !== undefined) updates.label = label;
+        if (description !== undefined) updates.description = description;
+        if (requires_note !== undefined) updates.requires_note = !!requires_note;
+        if (is_active !== undefined) updates.is_active = !!is_active;
+        if (display_order !== undefined) updates.display_order = Number(display_order);
+
+        const { data, error } = await supabase
+            .from('flag_reasons')
+            .update(updates)
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .select()
+            .single();
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error('updateFlagReason error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// 5. Parent Experience & Payment Recording
+exports.getParentFinanceOverview = async (req, res) => {
+    try {
+        const { institution_id, userId } = req;
+        const linkedStudents = await getParentLinkedStudents(userId, institution_id);
+
+        if (!linkedStudents.length) {
+            return res.json({
+                total_balance: 0,
+                total_billed: 0,
+                total_paid: 0,
+                total_pending: 0,
+                total_credit: 0,
+                children: []
+            });
+        }
+
+        const studentIds = linkedStudents.map(s => s.id);
+        const familySummary = await LedgerService.getFamilySummary(studentIds, institution_id);
+
+        const childrenWithSummary = linkedStudents.map(student => {
+            const summary = familySummary.children.find(c => c.student_id === student.id) || {};
+            return {
+                student_id: student.id,
+                student_name: student.users?.full_name || `${student.users?.first_name || ''} ${student.users?.last_name || ''}`.trim() || 'Student',
+                admission_number: student.admission_number,
+                grade_level: student.grade_level,
+                ...summary
+            };
+        });
+
+        res.json({
+            total_balance: familySummary.total_balance,
+            total_billed: familySummary.total_billed,
+            total_paid: familySummary.total_paid,
+            total_pending: familySummary.total_pending,
+            total_credit: familySummary.total_credit,
+            children: childrenWithSummary
+        });
+    } catch (err) {
+        console.error('getParentFinanceOverview error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getChildPayableItems = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        const { institution_id, userId } = req;
+
+        // Verify student belongs to parent
+        const linkedStudents = await getParentLinkedStudents(userId, institution_id);
+        const isLinked = linkedStudents.some(s => s.id === studentId);
+        if (!isLinked && !hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) {
+            return res.status(403).json({ error: 'You are not authorized to view this student' });
+        }
+
+        // Fetch active fee types for institution
+        const { data: feeTypes, error: ftErr } = await supabase
+            .from('fee_types')
+            .select('*, fee_categories(id, name), fee_type_applicability(*)')
+            .eq('institution_id', institution_id)
+            .eq('status', 'active');
+
+        if (ftErr) throw ftErr;
+
+        // Fetch existing ledger entries for student to calculate outstanding amount per fee item
+        const { data: ledgerEntries } = await supabase
+            .from('ledger_entries')
+            .select('fee_type_id, entry_type, amount')
+            .eq('student_id', studentId)
+            .eq('institution_id', institution_id);
+
+        const paidByFeeType = new Map();
+        (ledgerEntries || []).forEach(e => {
+            if (e.fee_type_id && (e.entry_type === 'payment' || Number(e.amount) < 0)) {
+                const current = paidByFeeType.get(e.fee_type_id) || 0;
+                paidByFeeType.set(e.fee_type_id, current + Math.abs(Number(e.amount)));
+            }
+        });
+
+        const student = linkedStudents.find(s => s.id === studentId);
+        const classId = student?.class_id;
+
+        const payableItems = (feeTypes || []).filter(ft => {
+            const rules = ft.fee_type_applicability || [];
+            if (!rules.length) return true; // Whole school default
+            return rules.some(r => {
+                if (r.scope_type === 'school') return true;
+                if (r.scope_type === 'class' && r.scope_id === classId) return true;
+                if (r.scope_type === 'student' && r.scope_id === studentId) return true;
+                return false;
+            });
+        }).map(ft => {
+            const fullAmount = Number(ft.amount) || 0;
+            const alreadyPaid = paidByFeeType.get(ft.id) || 0;
+            const outstanding = Math.max(0, fullAmount - alreadyPaid);
+
+            return {
+                id: ft.id,
+                name: ft.name,
+                category: ft.fee_categories?.name || 'General Fees',
+                total_amount: fullAmount,
+                already_paid: alreadyPaid,
+                outstanding_balance: outstanding,
+                is_mandatory: ft.is_mandatory,
+                partial_payment_allowed: ft.partial_payment_allowed,
+                min_installment: ft.min_installment_amount || 0,
+                due_date: ft.due_date,
+                notes: ft.parent_notes
+            };
+        });
+
+        res.json(payableItems);
+    } catch (err) {
+        console.error('getChildPayableItems error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.recordParentPayment = async (req, res) => {
+    try {
+        const { institution_id, userId } = req;
+        const {
+            student_id,
+            total_amount,
+            payment_method,
+            payment_method_id,
+            reference_number,
+            payer_name,
+            payer_phone,
+            paid_date,
+            proof_urls = [],
+            allocations = [],
+            idempotency_key
+        } = req.body;
+
+        const numTotal = Number(total_amount);
+        if (!Number.isFinite(numTotal) || numTotal <= 0) {
+            return res.status(400).json({ error: 'Please enter a valid payment amount greater than zero' });
+        }
+
+        if (!reference_number?.trim()) {
+            return res.status(400).json({ error: 'Transaction reference code is required' });
+        }
+
+        const trimmedRef = reference_number.trim().toUpperCase();
+
+        // Check duplicate reference in this institution
+        const { data: existingRef } = await supabase
+            .from('payments')
+            .select('id, reference_number, status, created_at')
+            .eq('institution_id', institution_id)
+            .ilike('reference_number', trimmedRef)
+            .maybeSingle();
+
+        if (existingRef) {
+            return res.status(409).json({
+                error: 'This transaction reference code has already been submitted to the school.',
+                existing_payment_id: existingRef.id,
+                existing_status: existingRef.status
+            });
+        }
+
+        // Idempotency check
+        if (idempotency_key) {
+            const { data: existingKey } = await supabase
+                .from('payments')
+                .select('id, status, total_amount')
+                .eq('institution_id', institution_id)
+                .eq('idempotency_key', idempotency_key)
+                .maybeSingle();
+
+            if (existingKey) {
+                return res.status(200).json(existingKey);
+            }
+        }
+
+        // Validate allocations
+        let finalAllocations = allocations;
+        if (!finalAllocations.length && student_id) {
+            finalAllocations = [{
+                student_id,
+                amount: numTotal,
+                notes: 'Standard fee payment'
+            }];
+        }
+
+        const allocatedSum = finalAllocations.reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+        if (Math.abs(allocatedSum - numTotal) > 0.01) {
+            return res.status(400).json({
+                error: `Total payment (${numTotal}) does not match the sum of child allocations (${allocatedSum}). Please adjust before submitting.`
+            });
+        }
+
+        // 1. Insert Payment root record
+        const { data: payment, error: pErr } = await supabase
+            .from('payments')
+            .insert([{
+                institution_id,
+                submitted_by: userId,
+                student_id: student_id || (finalAllocations[0]?.student_id),
+                total_amount: numTotal,
+                amount: numTotal,
+                payment_method: payment_method || 'mpesa',
+                payment_method_id: payment_method_id || null,
+                reference_number: trimmedRef,
+                payer_name: payer_name?.trim() || null,
+                payer_phone: payer_phone?.trim() || null,
+                payment_date: paid_date ? new Date(paid_date).toISOString() : new Date().toISOString(),
+                status: 'submitted',
+                is_evidence_confirmed: false,
+                is_split: finalAllocations.length > 1,
+                idempotency_key: idempotency_key || null,
+                proof_url: proof_urls[0] || null,
+                status_updated_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+
+        if (pErr) throw pErr;
+
+        // 2. Insert Payment Allocations
+        const allocRecords = finalAllocations.map(a => ({
+            institution_id,
+            payment_id: payment.id,
+            student_id: a.student_id,
+            fee_type_id: a.fee_type_id || null,
+            bill_item_id: a.bill_item_id || null,
+            amount: Number(a.amount),
+            notes: a.notes || null
+        }));
+
+        await supabase.from('payment_allocations').insert(allocRecords);
+
+        // 3. Insert Payment Proofs
+        if (proof_urls.length > 0) {
+            const proofRecords = proof_urls.map(path => ({
+                institution_id,
+                payment_id: payment.id,
+                storage_path: path,
+                file_name: path.split('/').pop() || 'proof',
+                uploaded_by: userId
+            }));
+            await supabase.from('payment_proofs').insert(proofRecords);
+        }
+
+        res.status(201).json({
+            success: true,
+            payment_id: payment.id,
+            reference_number: payment.reference_number,
+            status: payment.status,
+            message: 'Your payment submission has been received. Our accounts team will review and confirm your receipt shortly.'
+        });
+    } catch (err) {
+        console.error('recordParentPayment error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getParentPaymentHistory = async (req, res) => {
+    try {
+        const { institution_id, userId } = req;
+        const { studentId } = req.query;
+
+        let query = supabase
+            .from('payments')
+            .select(`
+                *,
+                payment_allocations(*, fee_types(id, name), students(id, users(full_name, first_name, last_name))),
+                payment_proofs(*),
+                receipts(*),
+                payment_flags(*, flag_reasons(label))
+            `)
+            .eq('institution_id', institution_id)
+            .eq('submitted_by', userId)
+            .order('created_at', { ascending: false });
+
+        if (studentId) {
+            query = query.eq('student_id', studentId);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const enriched = await Promise.all((data || []).map(async (p) => {
+            const signedProof = p.proof_url ? await getSignedProofUrl(p.proof_url) : null;
+            return {
+                ...p,
+                signed_proof_url: signedProof,
+                receipt: (p.receipts || [])[0] || null
+            };
+        }));
+
+        res.json(enriched);
+    } catch (err) {
+        console.error('getParentPaymentHistory error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// 6. Official Branded PDF Receipt
+exports.getOfficialReceiptPdf = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { institution_id } = req;
+
+        const { data: receipt, error: rErr } = await supabase
+            .from('receipts')
+            .select(`
+                *,
+                payments(*),
+                students(id, admission_number, grade_level, users(first_name, last_name, full_name)),
+                institutions:institution_id(name, email, phone)
+            `)
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .single();
+
+        if (rErr || !receipt) {
+            return res.status(404).json({ error: 'Receipt not found' });
+        }
+
+        // Fetch allocations
+        const { data: allocations } = await supabase
+            .from('payment_allocations')
+            .select('*, fee_types(name)')
+            .eq('payment_id', receipt.payment_id);
+
+        const { data: settings } = await supabase
+            .from('finance_settings')
+            .select('*')
+            .eq('institution_id', institution_id)
+            .maybeSingle();
+
+        const html = ReceiptService.renderReceiptHtml({
+            receipt,
+            payment: receipt.payments,
+            student: receipt.students,
+            institution: receipt.institutions,
+            allocations: allocations || [],
+            settings: settings || {}
+        });
+
+        const pdfBuffer = await compilePdfBuffer(html);
+        const filename = `Receipt-${receipt.receipt_number}.pdf`;
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        return res.send(pdfBuffer);
+    } catch (err) {
+        console.error('getOfficialReceiptPdf error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getOfficialReceiptBase64 = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { institution_id } = req;
+
+        const { data: receipt, error: rErr } = await supabase
+            .from('receipts')
+            .select(`
+                *,
+                payments(*),
+                students(id, admission_number, grade_level, users(first_name, last_name, full_name)),
+                institutions:institution_id(name, email, phone)
+            `)
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .single();
+
+        if (rErr || !receipt) {
+            return res.status(404).json({ error: 'Receipt not found' });
+        }
+
+        const { data: allocations } = await supabase
+            .from('payment_allocations')
+            .select('*, fee_types(name)')
+            .eq('payment_id', receipt.payment_id);
+
+        const { data: settings } = await supabase
+            .from('finance_settings')
+            .select('*')
+            .eq('institution_id', institution_id)
+            .maybeSingle();
+
+        const html = ReceiptService.renderReceiptHtml({
+            receipt,
+            payment: receipt.payments,
+            student: receipt.students,
+            institution: receipt.institutions,
+            allocations: allocations || [],
+            settings: settings || {}
+        });
+
+        const pdfBuffer = await compilePdfBuffer(html);
+        const filename = `Receipt-${receipt.receipt_number}.pdf`;
+
+        res.json({
+            base64: pdfBuffer.toString('base64'),
+            filename
+        });
+    } catch (err) {
+        console.error('getOfficialReceiptBase64 error:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+

@@ -245,4 +245,69 @@ function authorizeFinanceAdmin() {
   };
 }
 
-module.exports = { authorizeRoles, authorizePermissions, authorizeLibrarian, authorizeMainAdmin, authorizeFinanceAdmin };
+/**
+ * Middleware to check granular Finance area permissions:
+ * Action can be: 'view', 'create', 'edit', 'delete', 'approve', 'generate_report', 'download_report', 'export_data'
+ */
+function authorizeFinanceAction(action = 'view') {
+  return async (req, res, next) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      // Master Admin has unrestricted privilege
+      if (user.role === 'master_admin' || user.is_platform_admin) {
+        return next();
+      }
+
+      // Main Admin has full privilege
+      if (user.role === 'admin' && user.is_main) {
+        return next();
+      }
+
+      const institutionId = req.institution_id || user.institution_id;
+      if (!institutionId) {
+        return res.status(403).json({ error: "Missing institution context" });
+      }
+
+      // Check granular database permission
+      const supabase = require('../utils/supabaseClient.js');
+      const { data: hasPerm, error } = await supabase.rpc('has_permission', {
+        p_user_id: user.id,
+        p_institution_id: institutionId,
+        p_domain: 'finance',
+        p_action: action,
+      });
+
+      if (!error && hasPerm === true) {
+        return next();
+      }
+
+      // Fallback: Check if user has active finance administrator designation or legacy finance role
+      const availableRoles = new Set((user.available_roles || []).concat(user.role ? [user.role] : []).map(r => String(r).toLowerCase()));
+      const isFinanceStaff = user.is_finance_admin || req.isFinanceAdmin || 
+        availableRoles.has('finance_administrator') || 
+        availableRoles.has('finance_admin') || 
+        availableRoles.has('bursary') || 
+        availableRoles.has('bursar') ||
+        (user.role === 'admin');
+
+      if (isFinanceStaff) {
+        return next();
+      }
+
+      return res.status(403).json({
+        error: "Access denied: You do not have permission to perform this finance action.",
+        code: "FINANCE_PERMISSION_DENIED",
+        action,
+      });
+    } catch (err) {
+      console.error(`authorizeFinanceAction(${action}) error:`, err);
+      res.status(500).json({ error: "Authorization error" });
+    }
+  };
+}
+
+module.exports = { authorizeRoles, authorizePermissions, authorizeLibrarian, authorizeMainAdmin, authorizeFinanceAdmin, authorizeFinanceAction };

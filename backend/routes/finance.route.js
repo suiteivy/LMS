@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { authMiddleware } = require("../middleware/auth.middleware.js");
-const { authorizeRoles } = require("../middleware/authRole.js");
+const { authorizeRoles, authorizeFinanceAction } = require("../middleware/authRole.js");
 const {
     createFund,
     getFunds,
@@ -45,10 +45,73 @@ const {
     compilePaymentReceiptPdf,
     compilePaymentReceiptBase64,
     sendOverdueFeeReminders,
+    // Reconstructed Finance Methods
+    getFeeCategories,
+    createFeeCategory,
+    getFeeTypes,
+    createFeeType,
+    updateFeeType,
+    getPaymentsInbox,
+    confirmPayment,
+    flagPayment,
+    bulkConfirmPayments,
+    reversePayment,
+    getFinanceSettings,
+    updateFinanceSettings,
+    createPaymentMethod,
+    updatePaymentMethod,
+    createFlagReason,
+    updateFlagReason,
+    getParentFinanceOverview,
+    getChildPayableItems,
+    recordParentPayment,
+    getParentPaymentHistory,
+    getOfficialReceiptPdf,
+    getOfficialReceiptBase64
 } = require("../controllers/finance.controller.js");
 
 const FINANCE_DASHBOARD_ROLES = ['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin', 'finance_administrator', 'finance_admin'];
 const FINANCE_OPERATIONAL_ROLES = ['admin', 'bursary', 'master_admin', 'finance_administrator', 'finance_admin'];
+
+// ==========================================
+// RECONSTRUCTED FINANCE ROUTES
+// ==========================================
+
+// 1. Fee Categories & Types
+router.get("/categories", authMiddleware, authorizeFinanceAction('view'), getFeeCategories);
+router.post("/categories", authMiddleware, authorizeFinanceAction('edit'), createFeeCategory);
+router.get("/fee-types", authMiddleware, authorizeFinanceAction('view'), getFeeTypes);
+router.post("/fee-types", authMiddleware, authorizeFinanceAction('edit'), createFeeType);
+router.put("/fee-types/:id", authMiddleware, authorizeFinanceAction('edit'), updateFeeType);
+
+// 2. Payments Inbox & Verification (Confirm, Flag, Bulk, Reverse)
+router.get("/inbox", authMiddleware, authorizeFinanceAction('view'), getPaymentsInbox);
+router.post("/payments/:id/confirm", authMiddleware, authorizeFinanceAction('approve'), confirmPayment);
+router.post("/payments/:id/flag", authMiddleware, authorizeFinanceAction('approve'), flagPayment);
+router.post("/payments/bulk-confirm", authMiddleware, authorizeFinanceAction('approve'), bulkConfirmPayments);
+router.post("/payments/:id/reverse", authMiddleware, authorizeFinanceAction('approve'), reversePayment);
+
+// 3. Settings & Configuration
+router.get("/settings", authMiddleware, authorizeFinanceAction('view'), getFinanceSettings);
+router.put("/settings", authMiddleware, authorizeFinanceAction('edit'), updateFinanceSettings);
+router.post("/payment-methods", authMiddleware, authorizeFinanceAction('edit'), createPaymentMethod);
+router.put("/payment-methods/:id", authMiddleware, authorizeFinanceAction('edit'), updatePaymentMethod);
+router.post("/flag-reasons", authMiddleware, authorizeFinanceAction('edit'), createFlagReason);
+router.put("/flag-reasons/:id", authMiddleware, authorizeFinanceAction('edit'), updateFlagReason);
+
+// 4. Parent Experience & Payment Recording Flow
+router.get("/parent/overview", authMiddleware, getParentFinanceOverview);
+router.get("/parent/child/:studentId/payable-items", authMiddleware, getChildPayableItems);
+router.post("/parent/payments/record", authMiddleware, recordParentPayment);
+router.get("/parent/history", authMiddleware, getParentPaymentHistory);
+
+// 5. Official Receipts
+router.get("/receipts/:id/pdf", authMiddleware, getOfficialReceiptPdf);
+router.post("/receipts/:id/compile-base64", authMiddleware, getOfficialReceiptBase64);
+
+// ==========================================
+// LEGACY & COMPATIBILITY ROUTES
+// ==========================================
 
 // Finance Administrator Designation Management (Main Admin / Master Admin only)
 router.get("/administrators", authMiddleware, authorizeRoles(['admin', 'master_admin', 'platform_admin']), getFinanceAdminsList);
