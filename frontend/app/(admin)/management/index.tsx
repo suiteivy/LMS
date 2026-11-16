@@ -4,6 +4,7 @@ import { HelpTooltip } from "@/components/settings/HelpTooltip";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { usePermissions } from "@/hooks/usePermissions";
 import { router } from "expo-router";
 import {
     BarChart3,
@@ -81,6 +82,7 @@ export default function AdminManagement() {
     const { stats, loading } = useDashboardStats();
     const { isDark } = useTheme();
     const tier = useSubscriptionTier();
+    const { can, isUnrestricted } = usePermissions();
 
     const getStatValue = (label: string) => stats.find(s => s.label === label)?.value || "0";
 
@@ -227,6 +229,40 @@ export default function AdminManagement() {
         }
     ];
 
+    const isFeatureVisible = (feat: any) => {
+        if (isUnrestricted) return true;
+        switch (feat.route) {
+            case "/(admin)/management/analytics":
+                return can('reports', 'view');
+            case "/(admin)/management/library":
+                return can('library', 'view');
+            case "/(admin)/management/subjects":
+            case "/(admin)/management/coverage":
+            case "/(admin)/management/exams":
+            case "/(admin)/academic-setup":
+                return can('academic', 'view');
+            case "/(admin)/results/rankings":
+            case "/(admin)/results":
+                return can('academic', 'view') || can('reports', 'view');
+            case "/(admin)/management/roles":
+                return can('roles_access', 'view');
+            case "/(admin)/attendance/teachers":
+                return can('attendance', 'view');
+            case "/(admin)/classes":
+                return can('academic', 'view') || can('students', 'view');
+            case "/(admin)/classes/transfers":
+                return can('students', 'view');
+            case "/(admin)/timetable":
+                return can('timetable', 'view');
+            case "/(admin)/management/resources":
+                return can('library', 'view') || can('academic', 'view');
+            default:
+                return true;
+        }
+    };
+
+    const visibleFeatures = features.filter(isFeatureVisible);
+
     return (
         <View style={{ flex: 1, backgroundColor: isDark ? '#161B22' : '#f9fafb' }}>
             <UnifiedHeader
@@ -291,7 +327,7 @@ export default function AdminManagement() {
                         </Text>
                         <HelpTooltip id="admin.manage.system_tools" role="admin" tier={tier} onLearnMore={(a) => router.push({ pathname: '/(admin)/accessibility/settings', params: { manual: '1', anchor: a || 'reports-ops' } } as any)} />
                     </View>
-                    {features.map((feature, index) => (
+                    {visibleFeatures.map((feature, index) => (
                         <FeatureCard key={index} {...feature} isDark={isDark} tier={tier} />
                     ))}
                 </View>

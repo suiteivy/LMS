@@ -47,6 +47,38 @@ async function logRecordChange({
     }
 }
 
+async function logAuditEvent({
+    institution_id,
+    actor_id,
+    action,
+    domain = null,
+    target_type = null,
+    target_id = null,
+    before_state = null,
+    after_state = null,
+    ip_address = null,
+    user_agent = null,
+}) {
+    if (!institution_id || !action) return;
+    try {
+        await supabase.from('audit_logs').insert([{
+            institution_id,
+            actor_id: actor_id || null,
+            action,
+            domain: domain || null,
+            target_type: target_type || null,
+            target_id: target_id ? String(target_id) : null,
+            before_state: before_state || null,
+            after_state: after_state || null,
+            ip_address: ip_address || null,
+            user_agent: user_agent || null,
+        }]);
+    } catch (err) {
+        console.error('[AuditLogger] Failed to write audit_log:', err);
+    }
+}
+
 module.exports = {
     logRecordChange,
+    logAuditEvent,
 };

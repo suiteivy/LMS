@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/libs/supabase';
 import { api } from '@/services/api';
 import { Database } from '@/types/database';
-import { User } from '@/types/types';
+import { User, UserRole } from '@/types/types';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -196,7 +196,7 @@ export default function UserDetailsScreen() {
         last_name: user.last_name || '',
         name: user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : 'Unknown User', 
         email: user.email || '',
-        role: user.role, 
+        role: user.role as UserRole, 
         joinDate: user.created_at || new Date().toISOString(),
         displayId: (() => {
             const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

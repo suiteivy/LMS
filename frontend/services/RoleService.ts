@@ -1,13 +1,30 @@
 import { api } from "./api";
 
-export interface Permission {
+export interface FeatureItem {
   id: string;
+  domain: string;
+  action: string;
   name: string;
   description?: string;
   category?: string;
 }
 
-export type DataScope = 'all' | 'levels' | 'classes';
+export type DataScope = 'all' | 'levels' | 'classes' | 'streams' | 'terms' | 'record_types' | 'own_records';
+
+export interface RoleScope {
+  id?: string;
+  domain: string;
+  scope_type: DataScope;
+  scope_values: string[];
+  hidden_fields: string[];
+}
+
+export interface RolePermissionItem {
+  domain: string;
+  action: string;
+  legacyName?: string | null;
+  description?: string | null;
+}
 
 export interface CustomRole {
   id: string;
@@ -17,91 +34,67 @@ export interface CustomRole {
   metadata?: {
     level_ids?: string[];
     class_ids?: string[];
+    stream_ids?: string[];
+    term_ids?: string[];
     actions?: Record<string, boolean>;
     template?: string;
     [key: string]: any;
   };
   isDefault: boolean;
-  permissions: string[];
+  permissions: RolePermissionItem[] | string[];
+  scopes?: RoleScope[];
 }
 
 export interface RoleTemplate {
   id: string;
-  title: string;
+  institution_id?: string | null;
+  name: string;
   description: string;
-  permissions: string[];
+  best_for?: string;
+  permissions: Array<{ domain: string; action: string }> | string[];
   data_scope: DataScope;
+  scope_config?: Record<string, any>;
+  is_system?: boolean;
 }
 
-export const ROLE_TEMPLATES: RoleTemplate[] = [
-  {
-    id: 'blank',
-    title: 'Clean Slate',
-    description: 'Start with no pre-selected permissions and configure from scratch.',
-    permissions: [],
-    data_scope: 'all'
-  },
-  {
-    id: 'academic_coordinator',
-    title: 'Academic Coordinator',
-    description: 'Full academic management, timetables, and report card publishing.',
-    permissions: [
-      'academic:read',
-      'academic:write',
-      'academic:publish_reports',
-      'timetables:read',
-      'timetables:write',
-      'timetables:publish',
-      'classes:read',
-      'attendance:read'
-    ],
-    data_scope: 'all'
-  },
-  {
-    id: 'grade_head',
-    title: 'Head of Year / Level Lead',
-    description: 'Academic and attendance management scoped to assigned levels.',
-    permissions: [
-      'academic:read',
-      'academic:write',
-      'attendance:read',
-      'attendance:write',
-      'classes:read',
-      'messages:read',
-      'messages:write'
-    ],
-    data_scope: 'levels'
-  },
-  {
-    id: 'assistant_bursar',
-    title: 'Assistant Bursar',
-    description: 'Finance and bursaries read/write access without core institution settings.',
-    permissions: [
-      'finance:read',
-      'finance:write',
-      'bursary:read',
-      'bursary:write',
-      'classes:read'
-    ],
-    data_scope: 'all'
-  },
-  {
-    id: 'communications_officer',
-    title: 'Communications Officer',
-    description: 'Institution announcements, messaging hub, and directory viewing.',
-    permissions: [
-      'messages:read',
-      'messages:write',
-      'announcements:write',
-      'users:read',
-      'classes:read'
-    ],
-    data_scope: 'all'
-  }
-];
+export interface PermissionOverride {
+  id: string;
+  domain: string;
+  action: string;
+  effect: 'allow' | 'deny';
+  reason?: string;
+  granted_by?: string;
+}
+
+export interface AuditLogRecord {
+  id: string;
+  action: string;
+  domain?: string;
+  target_type?: string;
+  target_id?: string;
+  before_state?: any;
+  after_state?: any;
+  ip_address?: string;
+  created_at: string;
+  actor?: {
+    id: string;
+    full_name: string;
+    email: string;
+    role: string;
+  };
+}
+
+export interface HelpContentItem {
+  id?: string;
+  key: string;
+  language: string;
+  title: string;
+  body: string;
+  example?: string;
+}
 
 export const RoleAPI = {
-  // Get all roles with their permissions
+  // Get all roles with their permissions & scopes
   getRoles: async (): Promise<CustomRole[]> => {
     try {
       const response = await api.get("/roles");
@@ -112,33 +105,74 @@ export const RoleAPI = {
     }
   },
 
-  // Get all system permissions
-  getPermissions: async (): Promise<Permission[]> => {
+  // Get ready-made role templates
+  getTemplates: async (): Promise<RoleTemplate[]> => {
     try {
-      const response = await api.get("/roles/permissions");
+      const response = await api.get("/roles/templates");
       return response.data;
     } catch (error) {
-      console.error("Get permissions error:", error);
+      console.error("Get templates error:", error);
       throw error;
     }
   },
 
-  // Create a new custom role
-  createRole: async (
-    name: string,
-    description: string,
-    permissionNames: string[],
-    dataScope: 'all' | 'levels' | 'classes' = 'all',
-    metadata: Record<string, any> = {}
-  ): Promise<any> => {
+  // Get feature registry (domains & actions)
+  getFeatures: async (): Promise<FeatureItem[]> => {
     try {
-      const response = await api.post("/roles", {
-        name,
-        description,
-        permission_names: permissionNames,
-        data_scope: dataScope,
-        metadata
-      });
+      const response = await api.get("/roles/features");
+      return response.data;
+    } catch (error) {
+      console.error("Get features error:", error);
+      throw error;
+    }
+  },
+
+  // Get plain-language help & guidance content
+  getHelpContent: async (language: string = 'en'): Promise<HelpContentItem[]> => {
+    try {
+      const response = await api.get(`/roles/help?language=${language}`);
+      return response.data;
+    } catch (error) {
+      console.error("Get help content error:", error);
+      throw error;
+    }
+  },
+
+  // Get system activity history audit logs
+  getAuditLogs: async (limit: number = 50, offset: number = 0): Promise<{ logs: AuditLogRecord[]; total: number }> => {
+    try {
+      const response = await api.get(`/roles/audit?limit=${limit}&offset=${offset}`);
+      return response.data;
+    } catch (error) {
+      console.error("Get audit logs error:", error);
+      throw error;
+    }
+  },
+
+  // Get effective merged permissions & scopes for any user
+  getEffectivePermissions: async (userId: string): Promise<{ permissions: any; scopes: any }> => {
+    try {
+      const response = await api.get(`/roles/effective/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Get effective permissions error:", error);
+      throw error;
+    }
+  },
+
+  // Create a new custom role with granular permissions and scopes
+  createRole: async (data: {
+    name: string;
+    description?: string;
+    permissions?: Array<{ domain: string; action: string }> | string[];
+    permission_names?: string[];
+    scopes?: RoleScope[];
+    data_scope?: DataScope;
+    metadata?: Record<string, any>;
+    created_from_template_id?: string;
+  }): Promise<any> => {
+    try {
+      const response = await api.post("/roles", data);
       return response.data;
     } catch (error) {
       console.error("Create role error:", error);
@@ -146,23 +180,21 @@ export const RoleAPI = {
     }
   },
 
-  // Update a custom role & its permissions
+  // Update a custom role & its permissions/scopes
   updateRole: async (
     id: string,
-    name: string,
-    description: string,
-    permissionNames: string[],
-    dataScope: 'all' | 'levels' | 'classes' = 'all',
-    metadata: Record<string, any> = {}
+    data: {
+      name?: string;
+      description?: string;
+      permissions?: Array<{ domain: string; action: string }> | string[];
+      permission_names?: string[];
+      scopes?: RoleScope[];
+      data_scope?: DataScope;
+      metadata?: Record<string, any>;
+    }
   ): Promise<any> => {
     try {
-      const response = await api.put(`/roles/${id}`, {
-        name,
-        description,
-        permission_names: permissionNames,
-        data_scope: dataScope,
-        metadata
-      });
+      const response = await api.put(`/roles/${id}`, data);
       return response.data;
     } catch (error) {
       console.error("Update role error:", error);
@@ -181,12 +213,33 @@ export const RoleAPI = {
     }
   },
 
-  // Assign custom roles to a user
-  assignUserRoles: async (userId: string, roleIds: string[]): Promise<any> => {
+  // Assign multi-roles to user (with optional time-bound dates)
+  assignUserRoles: async (
+    userIdOrData: string | { userId: string; roleIds: string[]; starts_at?: string; expires_at?: string },
+    roleIdsArg?: string[],
+    options?: { starts_at?: string; expires_at?: string }
+  ): Promise<any> => {
     try {
+      let uid = '';
+      let rids: string[] = [];
+      let sAt = options?.starts_at;
+      let eAt = options?.expires_at;
+
+      if (typeof userIdOrData === 'object' && userIdOrData !== null) {
+        uid = userIdOrData.userId;
+        rids = userIdOrData.roleIds;
+        sAt = userIdOrData.starts_at;
+        eAt = userIdOrData.expires_at;
+      } else {
+        uid = userIdOrData;
+        rids = roleIdsArg || [];
+      }
+
       const response = await api.post("/roles/assign", {
-        userId,
-        role_ids: roleIds
+        userId: uid,
+        role_ids: rids,
+        starts_at: sAt,
+        expires_at: eAt,
       });
       return response.data;
     } catch (error) {
@@ -195,7 +248,7 @@ export const RoleAPI = {
     }
   },
 
-  // Get custom roles assigned to a user
+  // Get roles assigned to a user
   getUserRoles: async (userId: string): Promise<CustomRole[]> => {
     try {
       const response = await api.get(`/roles/user/${userId}`);
@@ -204,5 +257,39 @@ export const RoleAPI = {
       console.error("Get user roles error:", error);
       throw error;
     }
-  }
+  },
+
+  // Set account-level explicit override (Allow or Deny)
+  setPermissionOverride: async (
+    userId: string,
+    domain: string,
+    action: string,
+    effect: 'allow' | 'deny',
+    reason?: string
+  ): Promise<any> => {
+    try {
+      const response = await api.post("/roles/override", {
+        userId,
+        domain,
+        action,
+        effect,
+        reason,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Set permission override error:", error);
+      throw error;
+    }
+  },
+
+  // Delete an explicit permission override
+  deletePermissionOverride: async (overrideId: string): Promise<any> => {
+    try {
+      const response = await api.delete(`/roles/override/${overrideId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Delete permission override error:", error);
+      throw error;
+    }
+  },
 };

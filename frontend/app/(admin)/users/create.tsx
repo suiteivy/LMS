@@ -10,6 +10,7 @@ import { EDUCATION_LEVELS, parseLevelValue } from '@/constants/educationLevels';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import { AdminEnrollmentWizard } from '@/components/admin/roles/AdminEnrollmentWizard';
 import {
     ActivityIndicator, Alert, Platform,
     ScrollView,
@@ -160,6 +161,7 @@ export default function CreateUserScreen() {
     const [form, setForm] = useState<FormData>({ ...initialFormData });
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<any>(null);
+    const [adminWizardVisible, setAdminWizardVisible] = useState(false);
 
     const [classes, setClasses] = useState<any[]>([]);
     const [subjects, setSubjects] = useState<any[]>([]);
@@ -765,6 +767,10 @@ export default function CreateUserScreen() {
                             'Limit Reached',
                             `${roleCard.label} slots are currently full. Please upgrade your plan to add more ${roleCard.label.toLowerCase()} accounts.`
                         );
+                        return;
+                    }
+                    if (roleCard.role === 'admin') {
+                        setAdminWizardVisible(true);
                         return;
                     }
                     updateForm('role', roleCard.role);
@@ -1635,6 +1641,16 @@ export default function CreateUserScreen() {
                     </TouchableOpacity>
                 </View>
             )}
+
+            <AdminEnrollmentWizard
+                visible={adminWizardVisible}
+                onClose={() => setAdminWizardVisible(false)}
+                onSuccess={() => {
+                    setAdminWizardVisible(false);
+                    router.push('/(admin)/users');
+                }}
+                institutionId={profile?.institution_id || undefined}
+            />
         </SafeAreaView>
     );
 }

@@ -6,7 +6,7 @@ const { sendBulkInAppNotificationsWithHistory } = require('../services/notificat
 const { canonicalRoleFrom, withRoleAliases } = require("../utils/roleAlias.js");
 const { assignStudentToSingleClass, resolveAutoAssignClass } = require('../utils/studentClassEnrollment');
 const { clearUserCache } = require("../middleware/auth.middleware.js");
-const { logRecordChange } = require("../utils/auditLogger.js");
+const { logRecordChange, logAuditEvent } = require("../utils/auditLogger.js");
 const logger = require("../utils/logger.js");
 const SITE_CONFIG = require("../config/siteConfig.js");
 
@@ -1422,6 +1422,42 @@ exports.enrollUser = async (req, res) => {
           .from('admins')
           .update({ access_level: targetAccessLevel })
           .eq('user_id', uid);
+      }
+
+      // Assign Job Roles if provided (Section 4 Admin Enrollment Wizard)
+      if (Array.isArray(req.body.role_ids) && req.body.role_ids.length > 0) {
+        const userRoleRows = req.body.role_ids.map(rid => ({
+          user_id: uid,
+          role_id: rid
+        }));
+        await supabase.from('user_roles').insert(userRoleRows);
+      }
+
+      // Assign Permission Overrides if provided
+      if (Array.isArray(req.body.overrides) && req.body.overrides.length > 0) {
+        const overrideRows = req.body.overrides.map(o => ({
+          user_id: uid,
+          domain: o.domain,
+          action: o.action,
+          effect: o.effect,
+          reason: o.reason || null,
+          granted_by: req.userId || null,
+          institution_id: targetInstitutionId
+        }));
+        await supabase.from('user_permission_overrides').insert(overrideRows);
+      }
+
+      if (logAuditEvent) {
+        await logAuditEvent({
+          institutionId: targetInstitutionId,
+          actorId: req.userId,
+          action: 'enroll_admin',
+          domain: 'roles_access',
+          targetType: 'user',
+          targetId: uid,
+          afterState: { role_ids: req.body.role_ids, email: finalEmail, full_name: finalFullName },
+          ipAddress: req.ip
+        });
       }
 
       customId = adminData?.id;

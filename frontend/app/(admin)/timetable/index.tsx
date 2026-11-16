@@ -14,6 +14,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRealtimeQuery } from "@/hooks/useRealtimeQuery";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { Can } from "@/components/common/Can";
 import { downloadTimetablePdf } from "@/utils/timetablePdfGenerator";
 import { CalendarAPI, CancelledDateInfo } from "@/services/CalendarService";
 import {
@@ -782,26 +783,28 @@ export default function TimetableBuilder() {
                         )}
 
                         {selectedClassId && (
-                            <ActionTooltip
-                                label="Export PDF"
-                                description="Generate and download printable classroom timetable schedule."
-                                learnMoreAnchor="timetable-builder"
-                            >
-                                <TouchableOpacity
-                                    onPress={handleDownloadPdf}
-                                    disabled={downloadingPdf}
-                                    style={styles.headerIconBtn}
-                                    accessibilityRole="button"
-                                    accessibilityLabel="Download Timetable PDF"
+                            <Can domain="timetable" action="download_report">
+                                <ActionTooltip
+                                    label="Export PDF"
+                                    description="Generate and download printable classroom timetable schedule."
+                                    learnMoreAnchor="timetable-builder"
                                 >
-                                    <Download size={16} color={colors.accent} />
-                                    {!isMobile && (
-                                        <Text style={styles.headerBtnText}>
-                                            {downloadingPdf ? 'Exporting...' : 'PDF'}
-                                        </Text>
-                                    )}
-                                </TouchableOpacity>
-                            </ActionTooltip>
+                                    <TouchableOpacity
+                                        onPress={handleDownloadPdf}
+                                        disabled={downloadingPdf}
+                                        style={styles.headerIconBtn}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Download Timetable PDF"
+                                    >
+                                        <Download size={16} color={colors.accent} />
+                                        {!isMobile && (
+                                            <Text style={styles.headerBtnText}>
+                                                {downloadingPdf ? 'Exporting...' : 'PDF'}
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </ActionTooltip>
+                            </Can>
                         )}
 
                         <ActionTooltip
@@ -953,25 +956,27 @@ export default function TimetableBuilder() {
                         </ActionTooltip>
 
                         {selectedClassId && (
-                            <ActionTooltip
-                                label="Export Term Schedule"
-                                description="Compile and download a printable A4 landscape grid of this cohort's timetable."
-                                learnMoreAnchor="timetable-builder"
-                            >
-                                <TouchableOpacity
-                                    onPress={handleDownloadPdf}
-                                    disabled={downloadingPdf}
-                                    style={styles.exportPdfBtn}
-                                    activeOpacity={0.8}
-                                    accessibilityRole="button"
-                                    accessibilityLabel="Export Classroom PDF"
+                            <Can domain="timetable" action="download_report">
+                                <ActionTooltip
+                                    label="Export Term Schedule"
+                                    description="Compile and download a printable A4 landscape grid of this cohort's timetable."
+                                    learnMoreAnchor="timetable-builder"
                                 >
-                                    <Download size={15} color={colors.accent} />
-                                    <Text style={styles.exportPdfBtnText}>
-                                        {downloadingPdf ? 'Exporting...' : 'PDF'}
-                                    </Text>
-                                </TouchableOpacity>
-                            </ActionTooltip>
+                                    <TouchableOpacity
+                                        onPress={handleDownloadPdf}
+                                        disabled={downloadingPdf}
+                                        style={styles.exportPdfBtn}
+                                        activeOpacity={0.8}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Export Classroom PDF"
+                                    >
+                                        <Download size={15} color={colors.accent} />
+                                        <Text style={styles.exportPdfBtnText}>
+                                            {downloadingPdf ? 'Exporting...' : 'PDF'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </ActionTooltip>
+                            </Can>
                         )}
 
                         {selectedClassId && draftCount > 0 && (

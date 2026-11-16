@@ -6,6 +6,7 @@ import { supabase } from "@/libs/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { UnifiedHeader } from "@/components/common/UnifiedHeader";
+import { Can } from "@/components/common/Can";
 import { AnalyticsScreenSkeleton } from "@/components/ui/skeletons";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -119,12 +120,14 @@ export default function ReportsPage() {
             <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }} contentContainerStyle={{ paddingBottom: 100 }}>
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 24 }}>
-                    <TouchableOpacity
-                        onPress={handleExport}
-                        style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: '#FF6900' }}
-                    >
-                        <Download size={20} color="white" />
-                    </TouchableOpacity>
+                    <Can domain="finance" action="download_report">
+                        <TouchableOpacity
+                            onPress={handleExport}
+                            style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: '#FF6900' }}
+                        >
+                            <Download size={20} color="white" />
+                        </TouchableOpacity>
+                    </Can>
                 </View>
 
                 {/* Stats Grid */}

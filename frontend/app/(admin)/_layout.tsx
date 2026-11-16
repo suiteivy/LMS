@@ -5,6 +5,7 @@ import { SchoolProvider } from "@/contexts/SchoolContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Slot, Tabs } from "expo-router";
 import { House, LayoutGrid, Settings, Users, Wallet, MessageSquare, Bell, Calendar } from "lucide-react-native";
 import { Platform, useWindowDimensions, View, Text } from "react-native";
@@ -108,9 +109,14 @@ const HIDDEN_ADMIN_ROUTES = ALL_ADMIN_ROUTES.filter(
 function AdminTabs() {
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
-    const { showFinancials, hasMessaging } = useSubscriptionTier();
+    const { showFinancials } = useSubscriptionTier();
+    const { can, isUnrestricted } = usePermissions();
 
     const tabBarHeight = 60 + Math.max(insets.bottom, 8);
+
+    const hasManagementAccess = isUnrestricted || can('academic', 'view') || can('library', 'view') || can('attendance', 'view') || can('timetable', 'view') || can('roles_access', 'view') || can('reports', 'view');
+    const hasUsersAccess = isUnrestricted || can('students', 'view') || can('teachers_staff', 'view') || can('parents', 'view') || can('roles_access', 'view');
+    const hasFinanceAccess = showFinancials && (isUnrestricted || can('finance', 'view'));
 
     return (
         <View style={{ flex: 1 }}>
@@ -170,6 +176,7 @@ function AdminTabs() {
                     name="management/index"
                     options={{
                         title: "Manage",
+                        href: hasManagementAccess ? "/(admin)/management" : null,
                         tabBarIcon: ({ color, focused }) => {
                             const Icon = LayoutGrid as any;
                             return (
@@ -190,6 +197,7 @@ function AdminTabs() {
                     name="users/index"
                     options={{
                         title: "Users",
+                        href: hasUsersAccess ? "/(admin)/users" : null,
                         tabBarIcon: ({ color, focused }) => {
                             const Icon = Users as any;
                             return (
@@ -205,12 +213,12 @@ function AdminTabs() {
                     }}
                 />
 
-                {/* 4. Finance (Visible if paid tier or replaced with hidden when restricted) */}
+                {/* 4. Finance (Visible if paid tier and user has finance permission) */}
                 <Tabs.Screen
                     name="finance/index"
                     options={{
                         title: "Finance",
-                        href: showFinancials ? "/(admin)/finance" : null,
+                        href: hasFinanceAccess ? "/(admin)/finance" : null,
                         tabBarIcon: ({ color, focused }) => {
                             const Icon = Wallet as any;
                             return (
@@ -246,7 +254,7 @@ function AdminTabs() {
                     }}
                 />
 
-                {/* Comprehensive Hidden Screens (No auto-discovered rogue tabs or tofu glyphs) */}
+                {/* Comprehensive Hidden Screens */}
                 {HIDDEN_ADMIN_ROUTES.map((name) => (
                     <Tabs.Screen
                         key={name}
@@ -264,24 +272,36 @@ function AdminTabs() {
 
 function AdminSidebar() {
     const { showFinancials, hasMessaging } = useSubscriptionTier();
-    const { activeRole, profile, isFinanceAdmin } = useAuth();
-
-    const currentRole = String(activeRole || profile?.role || '').toLowerCase();
-    const isPureFinanceAdmin =
-        currentRole === 'finance_administrator' ||
-        currentRole === 'finance_admin' ||
-        (isFinanceAdmin && profile?.role !== 'admin');
+    const { can, isUnrestricted } = usePermissions();
 
     const baseItems = (showFinancials ? ALL_NAV_ITEMS : BETA_NAV_ITEMS)
         .filter((item) => (item.name === 'communication/index' ? hasMessaging : true));
 
-    // If user's active role is strictly finance admin, limit sidebar navigation
-    const items = isPureFinanceAdmin
-        ? baseItems.filter((item) => ['finance/index', 'accessibility/settings', 'notifications'].includes(item.name))
-        : baseItems;
+    // Dynamic visibility filtering based on effective permissions (Rule 3)
+    const items = baseItems.filter((item) => {
+        if (isUnrestricted) return true;
+        switch (item.name) {
+            case 'index':
+            case 'notifications':
+            case 'accessibility/settings':
+                return true;
+            case 'management/index':
+                return can('academic', 'view') || can('library', 'view') || can('attendance', 'view') || can('timetable', 'view') || can('roles_access', 'view') || can('reports', 'view');
+            case 'calendar/index':
+                return can('timetable', 'view') || can('academic', 'view');
+            case 'users/index':
+                return can('students', 'view') || can('teachers_staff', 'view') || can('parents', 'view') || can('roles_access', 'view');
+            case 'finance/index':
+                return showFinancials && can('finance', 'view');
+            case 'communication/index':
+                return hasMessaging && can('communication', 'view');
+            default:
+                return true;
+        }
+    });
 
     return (
-        <WebSidebar items={items} basePath="(admin)" role={isPureFinanceAdmin ? "Finance" : "Admin"}>
+        <WebSidebar items={items} basePath="(admin)" role="Admin">
             <Slot />
         </WebSidebar>
     );

@@ -3,12 +3,15 @@ import React, { useEffect } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { usePermissions } from '../hooks/usePermissions';
 
 interface AuthGuardProps {
     children: React.ReactNode;
     fallback?: React.ReactNode;
     requireAuth?: boolean;
     allowedRoles?: string[];
+    requiredDomain?: string;
+    requiredAction?: string;
 }
 
 const normalizeRole = (r: string) => {
@@ -49,6 +52,8 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
     fallback = null,
     requireAuth = true,
     allowedRoles,
+    requiredDomain,
+    requiredAction = 'view',
 }) => {
     const {
         user,
@@ -60,6 +65,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
         availableRoles,
     } = useAuth();
     const { isDark } = useTheme();
+    const { can, isLoading: isPermsLoading, isUnrestricted } = usePermissions();
     const hasBeenInitialized = React.useRef(false);
 
     // Guard against redirect loops
@@ -67,41 +73,52 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
     const lastRedirectTarget = React.useRef<string | null>(null);
 
     useEffect(() => {
-        if (!isInitializing) {
+        if (!isInitializing && !isPermsLoading) {
             hasBeenInitialized.current = true;
         }
-    }, [isInitializing]);
+    }, [isInitializing, isPermsLoading]);
 
     useEffect(() => {
         if (!isInitializing && requireAuth) {
             if (!user) {
                 // Not authenticated — handled by router or parent guard
-            } else if (allowedRoles && profile) {
-                const normalizedAllowedRoles = new Set<string>();
-                allowedRoles.forEach((role) => {
-                    expandRoles(role).forEach((r) => normalizedAllowedRoles.add(r));
-                });
+            } else if (profile) {
+                let isAllowed = true;
 
-                const currentRole = activeRole || profile.role || '';
-                const currentRoleExpanded = expandRoles(currentRole);
+                if (allowedRoles) {
+                    const normalizedAllowedRoles = new Set<string>();
+                    allowedRoles.forEach((role) => {
+                        expandRoles(role).forEach((r) => normalizedAllowedRoles.add(r));
+                    });
 
-                // Check if current active role satisfies requirements
-                let isAllowed = Array.from(currentRoleExpanded).some((r) => normalizedAllowedRoles.has(r));
+                    const currentRole = activeRole || profile.role || '';
+                    const currentRoleExpanded = expandRoles(currentRole);
 
-                // If current active role does not satisfy requirements, check availableRoles
-                if (!isAllowed && availableRoles && availableRoles.length > 0) {
-                    const availableExpanded = availableRoles.flatMap((r) => Array.from(expandRoles(r)));
-                    isAllowed = availableExpanded.some((r) => normalizedAllowedRoles.has(r));
-                }
+                    // Check if current active role satisfies requirements
+                    isAllowed = Array.from(currentRoleExpanded).some((r) => normalizedAllowedRoles.has(r));
 
-                // Master admins / platform admins inherit admin permissions
-                if (!isAllowed && (isPlatformAdmin || profile.role === 'master_admin')) {
-                    if (normalizedAllowedRoles.has('admin')) {
-                        isAllowed = true;
+                    // If current active role does not satisfy requirements, check availableRoles
+                    if (!isAllowed && availableRoles && availableRoles.length > 0) {
+                        const availableExpanded = availableRoles.flatMap((r) => Array.from(expandRoles(r)));
+                        isAllowed = availableExpanded.some((r) => normalizedAllowedRoles.has(r));
+                    }
+
+                    // Master admins / platform admins inherit admin permissions
+                    if (!isAllowed && (isPlatformAdmin || profile.role === 'master_admin')) {
+                        if (normalizedAllowedRoles.has('admin')) {
+                            isAllowed = true;
+                        }
                     }
                 }
 
-                if (!isAllowed) {
+                // Check domain-level permissions if requested
+                if (isAllowed && requiredDomain && !isPermsLoading) {
+                    if (!isUnrestricted && !can(requiredDomain, requiredAction)) {
+                        isAllowed = false;
+                    }
+                }
+
+                if (!isAllowed && (!requiredDomain || !isPermsLoading)) {
                     const redirectPath =
                         getRoleRedirect(profile, isPlatformAdmin, activeRole || undefined) || '/(auth)/signIn';
 
@@ -123,19 +140,24 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
         }
     }, [
         isInitializing,
+        isPermsLoading,
         user,
         profile,
         requireAuth,
         allowedRoles,
+        requiredDomain,
+        requiredAction,
         getRoleRedirect,
         isPlatformAdmin,
         activeRole,
         availableRoles,
+        isUnrestricted,
+        can,
     ]);
 
     const isLoggedOut = requireAuth && !user && !isInitializing;
 
-    if (isInitializing && !hasBeenInitialized.current) {
+    if ((isInitializing || (requiredDomain && isPermsLoading)) && !hasBeenInitialized.current) {
         return (
             <View
                 style={{
