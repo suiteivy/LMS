@@ -4,6 +4,7 @@ import { PaymentManagementSection } from '@/components/admin/finance/PaymentMana
 import RevenueSection from '@/components/admin/finance/RevenueSection';
 import { IndividualRecordsSection } from '@/components/admin/finance/IndividualRecordsSection';
 import { FinanceDesignationSection } from '@/components/admin/finance/FinanceDesignationSection';
+import { FinanceSettingsSection } from '@/components/admin/finance/FinanceSettingsSection';
 import { UnifiedHeader } from '@/components/common/UnifiedHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -26,6 +27,7 @@ const TABS = [
     { key: 'fees', label: 'Fee Structure' },
     { key: 'records', label: 'Individual Records' },
     { key: 'administrators', label: 'Finance Admins' },
+    { key: 'settings', label: 'Settings' },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
@@ -275,6 +277,7 @@ export default function FinanceDashboard() {
                     )}
                     {activeTab === 'records' && <IndividualRecordsSection />}
                     {activeTab === 'administrators' && <FinanceDesignationSection />}
+                    {activeTab === 'settings' && <FinanceSettingsSection />}
                 </ScrollView>
 
                 {/* FAB for Bursaries */}

@@ -5,1129 +5,1390 @@ import { TableRowSkeleton } from "@/components/ui/skeletons";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/libs/supabase";
+import { FinanceService } from "@/services/FinanceService";
 import { Payment } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
-import { Receipt } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Check,
+  CheckSquare,
+  Clock,
+  ExternalLink,
+  Eye,
+  FileText,
+  Filter,
+  Receipt,
+  RotateCcw,
+  Search,
+  Square,
+  X,
+} from "lucide-react-native";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Alert,
   FlatList,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
-  Platform,
+  Linking,
   Modal,
+  Platform,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
-  Linking,
 } from "react-native";
-import { FinanceService } from "@/services/FinanceService";
-import { Check, X, ExternalLink, Clock } from "lucide-react-native";
-import { BlurView } from "expo-blur";
-import Toast from 'react-native-toast-message';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import { File, Paths } from 'expo-file-system';
+import Toast from "react-native-toast-message";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
+import { File, Paths } from "expo-file-system";
 import { InvoiceReceiptService } from "@/services/InvoiceReceiptService";
 
-
 interface PaymentManagementSectionProps {
-  payments: Payment[];
-  loading: boolean;
-  onPaymentSubmit: (payment: Omit<Payment, "id">) => void | Promise<void>;
+  payments?: Payment[];
+  loading?: boolean;
+  onPaymentSubmit?: (payment: Omit<Payment, "id">) => void | Promise<void>;
   onRefresh?: () => void;
 }
 
-type StudentOption = { id: string; user_id: string; full_name: string };
+type TabType = "needs_review" | "confirmed" | "flagged" | "all";
 
-export const PaymentManagementSection: React.FC<
-  PaymentManagementSectionProps
-> = ({ payments, loading, onPaymentSubmit, onRefresh }) => {
+type StudentOption = { id: string; user_id: string; full_name: string; admission_number?: string };
+
+export const PaymentManagementSection: React.FC<PaymentManagementSectionProps> = ({
+  onPaymentSubmit,
+  onRefresh,
+}) => {
   const { isDark } = useTheme();
   const { formatAmount: formatMoney } = useCurrency();
+
+  // Tab State
+  const [activeTab, setActiveTab] = useState<TabType>("needs_review");
+  const [inboxPayments, setInboxPayments] = useState<any[]>([]);
+  const [loadingInbox, setLoadingInbox] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+  const [needsReviewCount, setNeedsReviewCount] = useState(0);
+
+  // Search & Filter
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedMethodFilter, setSelectedMethodFilter] = useState("all");
+
+  // Multi-select for Bulk Actions
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkConfirmModalVisible, setBulkConfirmModalVisible] = useState(false);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+
+  // Single Actions State
+  const [confirmModalPayment, setConfirmModalPayment] = useState<any | null>(null);
+  const [confirmedAmountInput, setConfirmedAmountInput] = useState("");
+  const [confirmAdminNotes, setConfirmAdminNotes] = useState("");
+  const [actionProcessing, setActionProcessing] = useState(false);
+
+  const [flagModalPayment, setFlagModalPayment] = useState<any | null>(null);
+  const [selectedFlagReasonId, setSelectedFlagReasonId] = useState("");
+  const [flagAdminNotes, setFlagAdminNotes] = useState("");
+
+  const [reverseModalPayment, setReverseModalPayment] = useState<any | null>(null);
+  const [reversalReason, setReversalReason] = useState("");
+
+  const [proofModalUrl, setProofModalUrl] = useState<string | null>(null);
+  const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
+
+  // Dynamic Finance Settings
+  const [dynamicMethods, setDynamicMethods] = useState<any[]>([]);
+  const [dynamicFlagReasons, setDynamicFlagReasons] = useState<any[]>([]);
+
+  // Manual Payment Recording Form
   const [showForm, setShowForm] = useState(false);
+  const [submittingPayment, setSubmittingPayment] = useState(false);
+  const [studentSearch, setStudentSearch] = useState("");
+  const [allStudents, setAllStudents] = useState<StudentOption[]>([]);
+  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
+  const [showPaymentPicker, setShowPaymentPicker] = useState(false);
   const [formData, setFormData] = useState({
     student_id: "",
     student_name: "",
     amount: "",
-    payment_method: "cash" as Payment["payment_method"],
+    payment_method: "",
     reference_number: "",
     notes: "",
   });
-  const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<'list' | 'review'>('list');
-  const [pendingPayments, setPendingPayments] = useState<any[]>([]);
-  const [loadingPending, setLoadingPending] = useState(false);
-  const [reviewingId, setReviewingId] = useState<string | null>(null);
-  const [adminNotes, setAdminNotes] = useState("");
-  const [submittingPayment, setSubmittingPayment] = useState(false);
 
-  // Payment method picker
-  const [showPaymentPicker, setShowPaymentPicker] = useState(false);
-  const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
-  const paymentMethods = [
-    { label: 'Cash', value: 'cash' },
-    { label: 'Bank', value: 'bank_transfer' },
-    { label: 'MPesa', value: 'mobile_money' },
-    { label: 'Card', value: 'card' },
-    { label: 'Scholarship', value: 'scholarship' }
-  ];
-
-
-  // [
-  //   {
-  //     "pg_get_constraintdef": "CHECK ((payment_method = ANY (ARRAY[
-  //       'cash'::text, 
-  //       'bank_transfer'::text, 
-  //       'mobile_money'::text, 
-  //       'card'::text, 
-  //       'scholarship'::text, 
-  //       'manual'::text
-  //     ])))"
-  //   }
-  // ]
-
-  // Student search in payment form
-  const [studentSearch, setStudentSearch] = useState("");
-  const [allStudents, setAllStudents] = useState<StudentOption[]>([]);
-  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
-
+  // Load Settings & Options
   useEffect(() => {
-    if (viewMode === 'review') {
-      fetchPendingPayments();
-    }
-  }, [viewMode]);
-
-  useEffect(() => {
+    loadSettings();
     fetchStudents();
   }, []);
+
+  // Fetch inbox whenever tab or method filter changes
+  useEffect(() => {
+    fetchInbox();
+    setSelectedIds([]);
+  }, [activeTab, selectedMethodFilter]);
+
+  const loadSettings = async () => {
+    try {
+      const res = await FinanceService.getFinanceSettings();
+      if (res) {
+        if (Array.isArray(res.payment_methods) && res.payment_methods.length > 0) {
+          setDynamicMethods(res.payment_methods.filter((m: any) => m.is_active !== false));
+          if (!formData.payment_method && res.payment_methods[0]) {
+            setFormData((prev) => ({ ...prev, payment_method: res.payment_methods[0].code }));
+          }
+        }
+        if (Array.isArray(res.flag_reasons) && res.flag_reasons.length > 0) {
+          setDynamicFlagReasons(res.flag_reasons.filter((r: any) => r.is_active !== false));
+          if (res.flag_reasons[0]) {
+            setSelectedFlagReasonId(res.flag_reasons[0].id);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load dynamic finance settings:", e);
+    }
+  };
 
   const fetchStudents = async () => {
     try {
       const { data, error } = await supabase
-        .from('students')
-        .select('id, user_id, users(full_name)')
-        .order('id');
-
+        .from("students")
+        .select("id, user_id, admission_number, users(full_name)")
+        .order("id");
       if (error) throw error;
-
       const mapped = (data || []).map((s: any) => ({
         id: s.id,
         user_id: s.user_id,
-        full_name: s.users?.full_name || 'Unknown'
+        admission_number: s.admission_number,
+        full_name: s.users?.full_name || "Unknown Student",
       }));
       setAllStudents(mapped);
     } catch (e) {
-      console.error('Error fetching students:', e);
+      console.error("Error fetching students:", e);
     }
   };
 
-  const fetchPendingPayments = async () => {
+  const fetchInbox = async () => {
     try {
-      setLoadingPending(true);
-      const data = await FinanceService.getPendingPayments();
-      setPendingPayments(data || []);
-    } catch (e) {
-      console.error(e);
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch pending payments' });
-    } finally {
-      setLoadingPending(false);
-    }
-  };
-
-  const handleReview = async (id: string, action: 'approve' | 'reject') => {
-    try {
-      setReviewingId(id);
-      await FinanceService.confirmPaymentEvidence(id, action, adminNotes);
-      Toast.show({
-        type: 'success',
-        text1: 'Action Completed',
-        text2: `Payment ${action}d successfully`
+      setLoadingInbox(true);
+      const res = await FinanceService.getPaymentsInbox({
+        tab: activeTab,
+        method: selectedMethodFilter !== "all" ? selectedMethodFilter : undefined,
       });
-      setAdminNotes("");
-      fetchPendingPayments();
+
+      setInboxPayments(res.data || []);
+      setTotalCount(res.total || 0);
+
+      // Also get review count for badge if not already on needs_review
+      if (activeTab === "needs_review") {
+        setNeedsReviewCount(res.total || (res.data || []).length);
+      } else {
+        const reviewCheck = await FinanceService.getPaymentsInbox({ tab: "needs_review", limit: 1 });
+        setNeedsReviewCount(reviewCheck.total || 0);
+      }
+    } catch (e: any) {
+      console.error("Fetch inbox error:", e);
+      Toast.show({ type: "error", text1: "Error", text2: e?.message || "Failed to load payments inbox" });
+    } finally {
+      setLoadingInbox(false);
+    }
+  };
+
+  // Filtered payments by search text
+  const filteredPayments = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return inboxPayments;
+    return inboxPayments.filter((p) => {
+      const studentName = p.student?.users?.full_name || p.student_name || "";
+      const admNo = p.student?.admission_number || p.student_id || "";
+      const ref = p.reference_number || "";
+      const payer = p.payer_name || p.submitted_user?.full_name || "";
+      const receiptNo = p.receipt_number || "";
+      return (
+        studentName.toLowerCase().includes(q) ||
+        admNo.toLowerCase().includes(q) ||
+        ref.toLowerCase().includes(q) ||
+        payer.toLowerCase().includes(q) ||
+        receiptNo.toLowerCase().includes(q)
+      );
+    });
+  }, [inboxPayments, searchQuery]);
+
+  // Bulk Actions
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredPayments.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredPayments.map((p) => p.id));
+    }
+  };
+
+  const toggleSelectPayment = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  };
+
+  const handleBulkConfirm = async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      setBulkProcessing(true);
+      const res = await FinanceService.bulkConfirmPayments(selectedIds);
+      Toast.show({
+        type: "success",
+        text1: "Bulk Confirmation Complete",
+        text2: `Successfully confirmed ${res.confirmed_count || selectedIds.length} payments.`,
+      });
+      setSelectedIds([]);
+      setBulkConfirmModalVisible(false);
+      fetchInbox();
       if (onRefresh) onRefresh();
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to process payment");
+      Alert.alert("Bulk Confirm Error", e?.message || "Unable to complete bulk confirmation");
     } finally {
-      setReviewingId(null);
+      setBulkProcessing(false);
     }
   };
 
-  const openPaymentReceipt = async (paymentId: string) => {
+  // Single Quick Confirm
+  const openConfirmModal = (payment: any) => {
+    setConfirmModalPayment(payment);
+    setConfirmedAmountInput(String(payment.total_amount || payment.amount || 0));
+    setConfirmAdminNotes("");
+  };
+
+  const submitSingleConfirm = async () => {
+    if (!confirmModalPayment) return;
+    try {
+      setActionProcessing(true);
+      const confirmedAmount = Number(confirmedAmountInput);
+      await FinanceService.confirmPayment(confirmModalPayment.id, {
+        confirmed_amount: !isNaN(confirmedAmount) && confirmedAmount > 0 ? confirmedAmount : undefined,
+        admin_notes: confirmAdminNotes.trim() || undefined,
+      });
+
+      Toast.show({
+        type: "success",
+        text1: "Payment Confirmed",
+        text2: `Payment of ${formatMoney(confirmedAmount || confirmModalPayment.amount)} marked as confirmed.`,
+      });
+      setConfirmModalPayment(null);
+      fetchInbox();
+      if (onRefresh) onRefresh();
+    } catch (e: any) {
+      Alert.alert("Confirm Error", e?.message || "Failed to confirm payment");
+    } finally {
+      setActionProcessing(false);
+    }
+  };
+
+  // Single Quick Flag
+  const openFlagModal = (payment: any) => {
+    setFlagModalPayment(payment);
+    setFlagAdminNotes("");
+    if (dynamicFlagReasons.length > 0 && !selectedFlagReasonId) {
+      setSelectedFlagReasonId(dynamicFlagReasons[0].id);
+    }
+  };
+
+  const submitSingleFlag = async () => {
+    if (!flagModalPayment) return;
+    try {
+      setActionProcessing(true);
+      const selectedReason = dynamicFlagReasons.find((r) => r.id === selectedFlagReasonId);
+      await FinanceService.flagPayment(flagModalPayment.id, {
+        reason_id: selectedFlagReasonId || undefined,
+        reason_code: selectedReason?.code || "verification_failed",
+        admin_notes: flagAdminNotes.trim() || undefined,
+      });
+
+      Toast.show({
+        type: "info",
+        text1: "Payment Flagged",
+        text2: "Marked as not received / under query.",
+      });
+      setFlagModalPayment(null);
+      fetchInbox();
+      if (onRefresh) onRefresh();
+    } catch (e: any) {
+      Alert.alert("Flag Error", e?.message || "Failed to flag payment");
+    } finally {
+      setActionProcessing(false);
+    }
+  };
+
+  // Single Reversal
+  const openReverseModal = (payment: any) => {
+    setReverseModalPayment(payment);
+    setReversalReason("");
+  };
+
+  const submitSingleReversal = async () => {
+    if (!reverseModalPayment) return;
+    if (!reversalReason.trim()) {
+      Alert.alert("Reason Required", "Please provide a valid reason for canceling this confirmed payment.");
+      return;
+    }
+    try {
+      setActionProcessing(true);
+      await FinanceService.reversePayment(reverseModalPayment.id, reversalReason.trim());
+      Toast.show({
+        type: "success",
+        text1: "Payment Reversed",
+        text2: "Ledger updated and official reversal recorded.",
+      });
+      setReverseModalPayment(null);
+      fetchInbox();
+      if (onRefresh) onRefresh();
+    } catch (e: any) {
+      Alert.alert("Reversal Error", e?.message || "Failed to reverse payment");
+    } finally {
+      setActionProcessing(false);
+    }
+  };
+
+  // Official Receipt Download
+  const handleDownloadReceipt = async (paymentId: string) => {
     try {
       setDownloadingReceiptId(paymentId);
-      // Attempt ReportLab vector PDF compilation first
       try {
         await InvoiceReceiptService.downloadPaymentReceiptPdf(paymentId);
         return;
       } catch (vectorErr) {
-        console.warn('ReportLab vector receipt download fallback to html:', vectorErr);
+        console.warn("ReportLab vector receipt fallback to html:", vectorErr);
       }
       const html = await FinanceService.getAnyReceiptHtml(paymentId);
       const { uri } = await Print.printToFileAsync({ html });
 
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
-      } else if (Platform.OS === 'web') {
-        window.open(uri, '_blank', 'noopener,noreferrer');
+        await Sharing.shareAsync(uri, { UTI: ".pdf", mimeType: "application/pdf" });
+      } else if (Platform.OS === "web") {
+        window.open(uri, "_blank", "noopener,noreferrer");
       } else {
-        Alert.alert('Receipt Ready', `Receipt saved to: ${uri}`);
+        Alert.alert("Receipt Ready", `Receipt saved to: ${uri}`);
       }
     } catch (e: any) {
       Toast.show({
-        type: 'error',
-        text1: 'Receipt',
-        text2: e?.message || 'Unable to open receipt',
+        type: "error",
+        text1: "Receipt Error",
+        text2: e?.message || "Unable to download receipt",
       });
     } finally {
       setDownloadingReceiptId(null);
     }
   };
 
-
-  const filteredStudents = allStudents.filter(
-    (s) =>
-      s.full_name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-      s.id.toLowerCase().includes(studentSearch.toLowerCase())
-  );
-
-  const selectStudent = (student: StudentOption) => {
-    setFormData({ ...formData, student_id: student.id, student_name: student.full_name });
-    setStudentSearch("");
-    setShowStudentDropdown(false);
-  };
-
-  const filteredPayments = payments.filter((p) =>
-    p.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.student_display_id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.reference_number?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  
-  const resetForm = () => {
-    setFormData({
-      student_id: "",
-      student_name: "",
-      amount: "",
-      payment_method: "cash" as Payment["payment_method"],
-      reference_number: "",
-      notes: "",
-    });
-    setStudentSearch("");
-    setShowStudentDropdown(false);
-  };
-
-  const handleSubmit = async () => {
-    const amountValue = Number(formData.amount);
-    if (!formData.student_id || !formData.student_name || !formData.amount) {
-      Alert.alert("Error", "Please fill in all required fields including Student");
+  // Manual Payment Submit
+  const handleManualSubmit = async () => {
+    const amountVal = Number(formData.amount);
+    if (!formData.student_id || !formData.amount || isNaN(amountVal) || amountVal <= 0) {
+      Alert.alert("Validation Error", "Please select a student and enter a valid positive amount.");
       return;
     }
 
-    if (!Number.isFinite(amountValue) || amountValue <= 0) {
-      Alert.alert("Error", "Please enter a valid amount greater than zero.");
-      return;
-    }
-    
-    const normalizedPaymentMethod = formData.payment_method?.toLowerCase().replace(/\s+/g, '_');
-    
-    const payment: Omit<Payment, "id"> = {
-      amount: amountValue,
-      payment_date: new Date().toISOString(),
-      status: "completed",
-      student_id: formData.student_id,
-      student_name: "",
-      payment_method: normalizedPaymentMethod as Payment["payment_method"],
-      reference_number: formData.reference_number,
-      notes: formData.notes.trim(),
-    };
-
-    setSubmittingPayment(true);
     try {
-      await Promise.resolve(onPaymentSubmit(payment));
-      resetForm();
+      setSubmittingPayment(true);
+      if (onPaymentSubmit) {
+        await Promise.resolve(
+          onPaymentSubmit({
+            student_id: formData.student_id,
+            student_name: formData.student_name,
+            amount: amountVal,
+            payment_date: new Date().toISOString(),
+            status: "completed",
+            payment_method: (formData.payment_method || "cash") as any,
+            reference_number: formData.reference_number.trim(),
+            notes: formData.notes.trim(),
+          })
+        );
+      } else {
+        // Direct API record
+        await FinanceService.recordParentPayment({
+          student_id: formData.student_id,
+          total_amount: amountVal,
+          payment_method: formData.payment_method || "cash",
+          reference_number: formData.reference_number.trim(),
+        });
+      }
+
+      Toast.show({
+        type: "success",
+        text1: "Payment Recorded",
+        text2: `Successfully recorded payment for ${formData.student_name}`,
+      });
       setShowForm(false);
-    } catch {
-      return;
+      setFormData({
+        student_id: "",
+        student_name: "",
+        amount: "",
+        payment_method: dynamicMethods[0]?.code || "cash",
+        reference_number: "",
+        notes: "",
+      });
+      fetchInbox();
+      if (onRefresh) onRefresh();
+    } catch (e: any) {
+      Alert.alert("Submission Error", e?.message || "Could not record payment.");
     } finally {
       setSubmittingPayment(false);
     }
   };
 
-  const formatAmount = (amount: number | null | undefined) => {
-    return formatMoney(Number(amount || 0));
-  };
-
-  const getStatusBg = (status: Payment['status']) => {
-    switch (status) {
-      case 'completed': return isDark ? '#052e16' : '#dcfce7';
-      case 'pending': return isDark ? '#172554' : '#dbeafe';
-      case 'failed': return isDark ? '#422006' : '#fef9c3';
-      default: return isDark ? '#1C2128' : '#EAEEF2';
-    }
-  };
-
-  const getStatusText = (status: Payment['status']) => {
-    switch (status) {
-      case 'completed': return isDark ? '#4ade80' : '#166534';
-      case 'pending': return isDark ? '#60a5fa' : '#1e40af';
-      case 'failed': return isDark ? '#ffffff' : '#854d0e';
-      default: return isDark ? '#e2e8f0' : '#1f2937';
-    }
-  };
-
-  const selectedPaymentLabel = paymentMethods.find(m => m.value === formData.payment_method)?.label ?? 'Select method…';
-
-  const formatDateTime = (value?: string | null) => {
-    if (!value) return 'N/A';
-    const date = new Date(value);
-    if (!Number.isFinite(date.getTime())) return 'N/A';
-    return date.toLocaleString();
-  };
-
-  const getRetentionBadge = (retentionUntil?: string | null) => {
-    if (!retentionUntil) {
-      return {
-        label: 'Not Set',
-        bg: isDark ? '#3f3f46' : '#e5e7eb',
-        color: isDark ? '#d4d4d8' : '#374151',
-      };
-    }
-
-    const retentionDate = new Date(retentionUntil);
-    const retentionMs = retentionDate.getTime();
-    if (!Number.isFinite(retentionMs)) {
-      return {
-        label: 'Invalid Date',
-        bg: isDark ? '#7f1d1d' : '#fee2e2',
-        color: isDark ? '#fecaca' : '#991b1b',
-      };
-    }
-
-    const daysLeft = Math.ceil((retentionMs - Date.now()) / (24 * 60 * 60 * 1000));
-    if (daysLeft < 0) {
-      return {
-        label: 'Floor met',
-        bg: isDark ? '#14532d' : '#dcfce7',
-        color: isDark ? '#86efac' : '#166534',
-      };
-    }
-
-    if (daysLeft < 30) {
-      return {
-        label: '<30 days',
-        bg: isDark ? '#78350f' : '#fef3c7',
-        color: isDark ? '#fcd34d' : '#92400e',
-      };
-    }
-
-    return {
-      label: '>=30 days',
-      bg: isDark ? '#1e3a8a' : '#dbeafe',
-      color: isDark ? '#93c5fd' : '#1d4ed8',
-    };
-  };
-
-  const escapeCsv = (value: unknown) => {
-    const text = String(value ?? '');
-    return `"${text.replace(/"/g, '""')}"`;
-  };
-
+  // CSV Export
   const exportPaymentsCsv = async () => {
     try {
       const headers = [
-        'Student',
-        'Student ID',
-        'Amount',
-        'Method',
-        'Status',
-        'Payment Date',
-        'Completed At',
-        'Retention Until',
-        'Reference',
+        "Payment ID",
+        "Student Name",
+        "Admission ID",
+        "Amount",
+        "Method",
+        "Reference",
+        "Status",
+        "Payer Name",
+        "Created At",
       ];
+      const rows = filteredPayments.map((p) => [
+        p.id,
+        p.student?.users?.full_name || p.student_name || "N/A",
+        p.student?.admission_number || p.student_id || "N/A",
+        p.total_amount || p.amount || 0,
+        p.payment_method || "N/A",
+        p.reference_number || "",
+        p.status || "N/A",
+        p.payer_name || p.submitted_user?.full_name || "",
+        p.created_at || "",
+      ]);
 
-      const rows = filteredPayments.map((payment) => ([
-        payment.student_name,
-        payment.student_display_id || payment.student_id,
-        Number(payment.amount || 0),
-        payment.payment_method,
-        payment.status,
-        formatDateTime(payment.payment_date),
-        formatDateTime(payment.confirmed_at),
-        formatDateTime(payment.retention_until),
-        payment.reference_number || '',
-      ]));
+      const csvContent = [headers, ...rows]
+        .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
 
-      const csv = [headers, ...rows]
-        .map((row) => row.map(escapeCsv).join(','))
-        .join('\n');
+      const filename = `payments_inbox_${new Date().toISOString().slice(0, 10)}.csv`;
 
-      const filename = `payments_export_${new Date().toISOString().slice(0, 10)}.csv`;
-
-      if (Platform.OS === 'web') {
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      if (Platform.OS === "web") {
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
+        const link = document.createElement("a");
         link.href = url;
-        link.setAttribute('download', filename);
+        link.setAttribute("download", filename);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
       } else {
         const csvFile = new File(Paths.cache, filename);
-        if (!csvFile.exists) {
-          csvFile.create({ overwrite: true });
-        }
-        csvFile.write(csv);
-        const fileUri = csvFile.uri;
-
+        if (!csvFile.exists) csvFile.create({ overwrite: true });
+        csvFile.write(csvContent);
         if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(fileUri, {
-            mimeType: 'text/csv',
-            UTI: 'public.comma-separated-values-text',
+          await Sharing.shareAsync(csvFile.uri, {
+            mimeType: "text/csv",
+            UTI: "public.comma-separated-values-text",
           });
         } else {
-          Alert.alert('Export Ready', `CSV saved to: ${fileUri}`);
+          Alert.alert("Export Ready", `CSV saved to: ${csvFile.uri}`);
         }
       }
-
-      Toast.show({ type: 'success', text1: 'Export complete', text2: 'Payments CSV generated successfully.' });
-    } catch (error: any) {
-      Toast.show({ type: 'error', text1: 'Export failed', text2: error?.message || 'Unable to export CSV.' });
+      Toast.show({ type: "success", text1: "Export complete", text2: "Inbox CSV generated." });
+    } catch (e: any) {
+      Toast.show({ type: "error", text1: "Export failed", text2: e?.message });
     }
   };
 
-  const renderPaymentItem = ({ item }: { item: Payment }) => (
-    <View className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-lg p-4 mb-3 border border-[#D0D7DE] dark:border-[#21262D]">
-      <View className="flex-row justify-between items-start mb-2">
-        <View>
-          <Text className="text-lg font-semibold text-black" style={{ color: isDark ? "#fff" : "#2C3E50" }}>
-            {item.student_name}
-          </Text>
-          {item.student_display_id && (
-            <Text className="text-xs text-[#FF6900] font-medium">
-              ID: {item.student_display_id}
-            </Text>
-          )}
-        </View>
-        <View
-          className={`px-2 py-1 rounded-full`}
-          style={{ backgroundColor: getStatusBg(item.status) }}
-        >
-          <Text
-            className="text-xs font-medium capitalize"
-            style={{ color: getStatusText(item.status) }}
-          >
-            {item.status}
-          </Text>
-        </View>
-      </View>
-
-      <View className="space-y-1">
-        <Text className="text-2xl font-bold mb-2" style={{ color: "#FF6900" }}>
-          {formatAmount(item.amount)}
-        </Text>
-
-        <View className="flex-row justify-between">
-          <Text className="text-sm text-gray-600 dark:text-gray-400">Method:</Text>
-          <Text className="text-sm font-medium text-gray-900 dark:text-white capitalize">
-            {item.payment_method ? item.payment_method.replace("_", "") : ""}
-          </Text>
-        </View>
-
-        <View className="flex-row justify-between">
-          <Text className="text-sm text-gray-600 dark:text-gray-400">Date:</Text>
-          <Text className="text-sm text-gray-900 dark:text-white">
-            {new Date(item.payment_date).toLocaleDateString()}
-          </Text>
-        </View>
-
-        {item.confirmed_at && (
-          <View className="flex-row justify-between">
-            <Text className="text-sm text-gray-600 dark:text-gray-400">Completed at:</Text>
-            <Text className="text-sm text-gray-900 dark:text-white">
-              {new Date(item.confirmed_at).toLocaleString()}
-            </Text>
-          </View>
-        )}
-
-        {item.retention_until && (
-          <View className="flex-row justify-between items-center">
-            <Text className="text-sm text-gray-600 dark:text-gray-400">Retention until:</Text>
-            <View className="flex-row items-center" style={{ gap: 8 }}>
-              <Text className="text-sm text-gray-900 dark:text-white">
-                {new Date(item.retention_until).toLocaleString()}
-              </Text>
-              <View
-                style={{
-                  backgroundColor: getRetentionBadge(item.retention_until).bg,
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  borderRadius: 999,
-                }}
-              >
-                <Text
-                  style={{
-                    color: getRetentionBadge(item.retention_until).color,
-                    fontSize: 10,
-                    fontWeight: '700',
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  {getRetentionBadge(item.retention_until).label}
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {item.reference_number && (
-          <View className="flex-row justify-between">
-            <Text className="text-sm text-gray-600 dark:text-gray-400">Reference:</Text>
-            <Text className="text-sm text-gray-900 dark:text-white">
-              {item.reference_number}
-            </Text>
-          </View>
-        )}
-
-        {(item.origin_label || item.origin_type) && (
-          <View className="flex-row justify-between">
-            <Text className="text-sm text-gray-600 dark:text-gray-400">Origin:</Text>
-            <Text className="text-sm text-gray-900 dark:text-white">
-              {item.origin_label || item.origin_type}
-            </Text>
-          </View>
-        )}
-
-        {(item.target_label || item.target_id) && (
-          <View className="flex-row justify-between">
-            <Text className="text-sm text-gray-600 dark:text-gray-400">Target:</Text>
-            <Text className="text-sm text-gray-900 dark:text-white">
-              {item.target_label || item.target_id}
-            </Text>
-          </View>
-        )}
-
-        {(item.recorded_by_label || item.recorded_by_user_id) && (
-          <View className="flex-row justify-between">
-            <Text className="text-sm text-gray-600 dark:text-gray-400">Recorded by:</Text>
-            <Text className="text-sm text-gray-900 dark:text-white">
-              {item.recorded_by_label || item.recorded_by_user_id}
-            </Text>
-          </View>
-        )}
-
-        <TouchableOpacity
-          onPress={() => openPaymentReceipt(String(item.id))}
-          disabled={downloadingReceiptId === String(item.id)}
-          className="mt-3 flex-row items-center justify-center bg-[#EAEEF2] dark:bg-[#0F141C] p-3 rounded-lg border border-[#D0D7DE] dark:border-[#21262D]"
-        >
-          {downloadingReceiptId === String(item.id) ? (
-            <Spinner color={isDark ? '#9CA3AF' : '#4B5563'} size="small" label="Preparing receipt" />
-          ) : (
-            <>
-              <Receipt size={15} color={isDark ? '#9CA3AF' : '#4B5563'} />
-              <Text className="ml-2 text-gray-700 dark:text-gray-300 font-bold text-xs uppercase tracking-widest">Receipt (PDF)</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        {item.notes && (
-          <View className="mt-2 p-2 bg-gray-50 dark:bg-[#0F141C] rounded border border-[#D0D7DE] dark:border-[#21262D]">
-            <Text className="text-sm text-gray-700 dark:text-gray-300">{item.notes}</Text>
-          </View>
-        )}
-      </View>
-    </View>
-  );
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "confirmed":
+      case "completed":
+        return { label: "Confirmed", bg: isDark ? "#064E3B" : "#D1FAE5", text: "#10B981" };
+      case "submitted":
+      case "under_review":
+      case "pending":
+        return { label: "Needs Review", bg: isDark ? "#78350F" : "#FEF3C7", text: "#F59E0B" };
+      case "flagged":
+      case "failed":
+        return { label: "Flagged", bg: isDark ? "#7F1D1D" : "#FEE2E2", text: "#EF4444" };
+      case "reversed":
+        return { label: "Reversed", bg: isDark ? "#374151" : "#E5E7EB", text: "#6B7280" };
+      default:
+        return { label: status, bg: isDark ? "#1F2937" : "#F3F4F6", text: "#9CA3AF" };
+    }
+  };
 
   return (
     <View className="flex-1 p-4 bg-[#FFFFFF] dark:bg-[#161B22]">
+      {/* Header Bar */}
       <View className="flex-row justify-between items-center mb-6">
         <View>
           <Text className="text-2xl font-bold text-gray-800 dark:text-white">Finance</Text>
-          <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Management Hub</Text>
+          <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">
+            Payments Inbox & Verification
+          </Text>
         </View>
         <View className="flex-row" style={{ gap: 8 }}>
           <TouchableOpacity
             onPress={exportPaymentsCsv}
-            className="bg-[#0F766E] px-4 py-2.5 rounded-xl"
+            className="bg-[#0F766E] px-4 py-2.5 rounded-xl flex-row items-center"
           >
-            <Text className="text-white font-bold text-[11px] uppercase tracking-widest">Export CSV</Text>
+            <FileText size={14} color="#FFF" />
+            <Text className="text-white font-bold text-[11px] uppercase tracking-widest ml-1.5">Export CSV</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setShowForm(true)}
-            className="bg-[#FF6900] px-4 py-2.5 rounded-xl"
+            className="bg-[#FF6900] px-4 py-2.5 rounded-xl flex-row items-center"
           >
-            <Text className="text-white font-bold text-sm uppercase tracking-widest">Record Payment</Text>
+            <Text className="text-white font-bold text-sm uppercase tracking-widest">+ Record Payment</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <ActionTooltip targetId="admin.finance.retention_legend">
-        <View
-          className="mb-4 p-3 rounded-xl border"
-          style={{
-            backgroundColor: isDark ? '#0F141C' : '#F6F8FA',
-            borderColor: isDark ? '#21262D' : '#D0D7DE',
-          }}
-        >
-          <Text className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: isDark ? '#9CA3AF' : '#6B7280' }}>
-            Retention Badge Legend
-          </Text>
-          <View className="flex-row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            {['<30 days', '>=30 days', 'Floor met'].map((label) => {
-              const sample =
-                label === '<30 days'
-                  ? { bg: isDark ? '#78350f' : '#fef3c7', color: isDark ? '#fcd34d' : '#92400e' }
-                  : label === '>=30 days'
-                    ? { bg: isDark ? '#1e3a8a' : '#dbeafe', color: isDark ? '#93c5fd' : '#1d4ed8' }
-                    : { bg: isDark ? '#14532d' : '#dcfce7', color: isDark ? '#86efac' : '#166534' };
+      {/* 4 Tabs: Needs Review, Confirmed, Flagged, All */}
+      <View className="flex-row bg-[#EAEEF2] dark:bg-[#0F141C] p-1 rounded-xl mb-4 border border-[#D0D7DE] dark:border-[#21262D]">
+        {[
+          { key: "needs_review" as const, label: "Needs review", badge: needsReviewCount },
+          { key: "confirmed" as const, label: "Confirmed", badge: 0 },
+          { key: "flagged" as const, label: "Flagged", badge: 0 },
+          { key: "all" as const, label: "All", badge: 0 },
+        ].map((tab) => {
+          const isSelected = activeTab === tab.key;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              onPress={() => setActiveTab(tab.key)}
+              className={`flex-1 py-3 rounded-lg items-center justify-center flex-row ${
+                isSelected ? "bg-white dark:bg-[#21262D] shadow-sm" : ""
+              }`}
+            >
+              <Text
+                className={`text-xs font-bold uppercase tracking-wider ${
+                  isSelected ? "text-gray-900 dark:text-white" : "text-gray-500 dark:text-gray-400"
+                }`}
+              >
+                {tab.label}
+              </Text>
+              {tab.badge && tab.badge > 0 ? (
+                <View className="bg-[#FF6900] px-1.5 py-0.5 rounded-full ml-1.5 items-center justify-center">
+                  <Text className="text-white text-[10px] font-black">{tab.badge}</Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
+      {/* Search & Method Filter Bar */}
+      <View className="flex-row gap-3 mb-4">
+        <View className="flex-1 flex-row items-center bg-[#EAEEF2] dark:bg-[#0F141C] rounded-xl px-4 py-2.5 border border-[#D0D7DE] dark:border-[#21262D]">
+          <Search size={18} color={isDark ? "#9CA3AF" : "#6B7280"} />
+          <TextInput
+            className="flex-1 ml-2 text-gray-900 dark:text-white font-medium"
+            placeholder="Search student, adm #, reference, receipt..."
+            placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery ? (
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <X size={16} color={isDark ? "#9CA3AF" : "#6B7280"} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        {dynamicMethods.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 6, alignItems: "center" }}
+          >
+            <TouchableOpacity
+              onPress={() => setSelectedMethodFilter("all")}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 10,
+                backgroundColor:
+                  selectedMethodFilter === "all"
+                    ? "#FF6900"
+                    : isDark
+                    ? "#0F141C"
+                    : "#EAEEF2",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "700",
+                  color: selectedMethodFilter === "all" ? "#FFF" : isDark ? "#9CA3AF" : "#4B5563",
+                }}
+              >
+                All Methods
+              </Text>
+            </TouchableOpacity>
+            {dynamicMethods.map((m) => {
+              const active = selectedMethodFilter === m.code;
               return (
-                <View
-                  key={label}
+                <TouchableOpacity
+                  key={m.id}
+                  onPress={() => setSelectedMethodFilter(m.code)}
                   style={{
-                    backgroundColor: sample.bg,
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    borderRadius: 999,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 10,
+                    backgroundColor: active ? "#FF6900" : isDark ? "#0F141C" : "#EAEEF2",
                   }}
                 >
                   <Text
                     style={{
-                      color: sample.color,
-                      fontSize: 10,
-                      fontWeight: '700',
-                      textTransform: 'uppercase',
-                      letterSpacing: 0.5,
+                      fontSize: 12,
+                      fontWeight: "700",
+                      color: active ? "#FFF" : isDark ? "#9CA3AF" : "#4B5563",
                     }}
                   >
-                    {label}
+                    {m.name}
                   </Text>
-                </View>
+                </TouchableOpacity>
               );
             })}
-          </View>
-        </View>
-      </ActionTooltip>
-
-      {/* Tab Switcher */}
-      <ActionTooltip targetId="admin.finance.view_mode">
-        <View className="flex-row bg-[#EAEEF2] dark:bg-[#0F141C] p-1 rounded-lg mb-6 border border-[#D0D7DE] dark:border-[#21262D]">
-        <TouchableOpacity
-          onPress={() => setViewMode('list')}
-          className={`flex-1 py-3 rounded-xl items-center justify-center ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 ' : ''}`}
-        >
-          <Text className={`text-xs font-bold uppercase tracking-widest ${viewMode === 'list' ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>Transactions</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setViewMode('review')}
-          className={`flex-1 py-3 rounded-xl items-center justify-center flex-row ${viewMode === 'review' ? 'bg-white dark:bg-gray-700 ' : ''}`}
-        >
-          <Text className={`text-xs font-bold uppercase tracking-widest ${viewMode === 'review' ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
-            Review Receipts
-          </Text>
-          {pendingPayments.length > 0 && (
-            <View className="bg-[#FF6900] w-5 h-5 rounded-full items-center justify-center ml-2 border border-white dark:border-gray-900">
-              <Text className="text-white text-[9px] font-black">{pendingPayments.length}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+          </ScrollView>
+        )}
       </View>
-      </ActionTooltip>
 
-      {viewMode === 'list' ? (
-        <>
-          {/* Search Bar */}
-          <View className="flex-row items-center bg-[#EAEEF2] dark:bg-[#0F141C] rounded-xl px-4 py-3 mb-6 border border-[#D0D7DE] dark:border-[#21262D]">
-            <Ionicons name="search" size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
-            <TextInput
-              className="flex-1 ml-2 text-gray-900 dark:text-white font-medium"
-              placeholder="Search by student name, ID or reference..."
-              placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
+      {/* Bulk Selection Bar (for Needs Review tab) */}
+      {activeTab === "needs_review" && filteredPayments.length > 0 && (
+        <View className="flex-row items-center justify-between bg-orange-50 dark:bg-orange-950/30 px-4 py-3 rounded-xl mb-4 border border-orange-200 dark:border-orange-900/50">
+          <TouchableOpacity onPress={toggleSelectAll} className="flex-row items-center">
+            {selectedIds.length === filteredPayments.length ? (
+              <CheckSquare size={18} color="#FF6900" />
+            ) : (
+              <Square size={18} color={isDark ? "#9CA3AF" : "#6B7280"} />
+            )}
+            <Text className="ml-2 font-bold text-xs text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+              {selectedIds.length === filteredPayments.length ? "Deselect All" : "Select All"} ({filteredPayments.length})
+            </Text>
+          </TouchableOpacity>
 
-      {loading ? (
-        <View className="pb-20">
-          <TableRowSkeleton loading={loading} columns={5} count={8} label="Loading payments..." />
-        </View>
-      ) : (
-        <View className="pb-20">
-          {filteredPayments.length > 0 ? (
-            filteredPayments.map((item) => (
-              <View key={item.id}>
-                {renderPaymentItem({ item })}
-              </View>
-            ))
-          ) : (
-            <EmptyState
-              title={searchQuery ? "No matching payments" : "No payments made"}
-              message={searchQuery
-                ? `We couldn't find any payments matching "${searchQuery}"`
-                : "No payments have been recorded in the system yet."
-              }
-              icon={Receipt}
-              color="#FF6B00"
-              actionLabel={searchQuery ? "Clear Search" : "Record Payment"}
-              onAction={() => searchQuery ? setSearchQuery("") : setShowForm(true)}
-            />
+          {selectedIds.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setBulkConfirmModalVisible(true)}
+              className="bg-[#10B981] px-4 py-2 rounded-lg flex-row items-center shadow-sm"
+            >
+              <Check size={16} color="#FFF" />
+              <Text className="text-white font-bold text-xs ml-1.5 uppercase tracking-wider">
+                Confirm Selected ({selectedIds.length})
+              </Text>
+            </TouchableOpacity>
           )}
         </View>
       )}
-        </>
-      ) : (
+
+      {/* Payments List */}
+      {loadingInbox ? (
         <View className="pb-20">
-          {loadingPending ? (
-            <View className="pb-20">
-              <TableRowSkeleton loading={loadingPending} columns={4} count={6} label="Loading pending receipts..." />
-            </View>
-          ) : pendingPayments.length === 0 ? (
-            <EmptyState
-              title="All caught up!"
-              message="No pending receipts require review."
-              icon={Clock}
-              color="#FF6B00"
-            />
-          ) : (
-            pendingPayments.map((item) => (
+          <TableRowSkeleton loading={loadingInbox} columns={5} count={6} label="Loading payments..." />
+        </View>
+      ) : filteredPayments.length === 0 ? (
+        <EmptyState
+          title={searchQuery ? "No matching payments" : "No payments in this tab"}
+          message={
+            searchQuery
+              ? `No transactions match "${searchQuery}"`
+              : activeTab === "needs_review"
+              ? "All caught up! No submissions require review right now."
+              : "No payments recorded in this status."
+          }
+          icon={Receipt}
+          color="#FF6900"
+          actionLabel={searchQuery ? "Clear Search" : undefined}
+          onAction={searchQuery ? () => setSearchQuery("") : undefined}
+        />
+      ) : (
+        <ScrollView className="pb-24" showsVerticalScrollIndicator={false}>
+          {filteredPayments.map((item) => {
+            const statusBadge = getStatusBadge(item.status);
+            const isSelected = selectedIds.includes(item.id);
+            const proofUrl =
+              item.signed_proofs?.[0]?.signed_url ||
+              item.payment_proofs?.[0]?.file_url ||
+              item.proof_url;
+            const amount = item.total_amount || item.amount || 0;
+            const studentName = item.student?.users?.full_name || item.student_name || "Unknown Student";
+            const admNumber = item.student?.admission_number || item.student_id || "STU-N/A";
+            const isPending = ["submitted", "under_review", "pending"].includes(item.status);
+            const isConfirmed = ["confirmed", "completed"].includes(item.status);
+            const isFlagged = ["flagged", "failed"].includes(item.status);
+
+            return (
               <View
                 key={item.id}
-                className="bg-white dark:bg-gray-900 rounded-[32px] p-6 mb-6 border border-gray-100 dark:border-gray-800"
+                className="bg-[#F6F8FA] dark:bg-[#161B22] rounded-2xl p-4 mb-3 border border-[#D0D7DE] dark:border-[#21262D]"
               >
-                <View className="flex-row justify-between items-start mb-6">
-                  <View className="flex-1">
-                    <Text className="text-gray-900 dark:text-white font-black text-xl tracking-tighter">
-                      {item.students?.users?.full_name || "Unknown Student"}
-                    </Text>
-                    <Text className="text-[#FF6B00] text-[10px] font-black uppercase tracking-widest mt-1">
-                      {(item.payment_method || '').replace('_', ' ')}{' \u2022 '}{item.reference_number || 'No Ref'}
-                    </Text>
-                  </View>
-                  <View className="bg-orange-50 dark:bg-orange-950/30 px-3 py-1 rounded-full border border-orange-100 dark:border-orange-900">
-                    <Text className="text-orange-700 dark:text-orange-400 text-[10px] font-black uppercase">Pending Approval</Text>
-                  </View>
-                </View>
-
-                <View className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-xl mb-6">
-                  <View className="flex-row justify-between mb-2">
-                    <Text className="text-gray-400 text-[10px] font-bold uppercase">Requested Credit</Text>
-                    <Text className="text-gray-400 text-[10px] font-bold uppercase">Submitted On</Text>
-                  </View>
-                  <View className="flex-row justify-between items-end">
-                    <Text className="text-gray-900 dark:text-white font-black text-3xl tracking-tighter">{formatAmount(item.amount)}</Text>
-                    <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold mb-1">
-                      {item.created_at ? new Date(item.created_at).toISOString().split('T')[0] : 'N/A'}
-                    </Text>
-                  </View>
-
-                  <View className="mt-4" style={{ gap: 8 }}>
-                    <View className="flex-row justify-between items-center">
-                      <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">Completed at</Text>
-                      <Text className="text-gray-900 dark:text-white text-xs font-semibold">{formatDateTime(item.confirmed_at)}</Text>
-                    </View>
-                    <View className="flex-row justify-between items-center">
-                      <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">Retention until</Text>
-                      <View className="flex-row items-center" style={{ gap: 8 }}>
-                        <Text className="text-gray-900 dark:text-white text-xs font-semibold">{formatDateTime(item.retention_until)}</Text>
-                        <View
-                          style={{
-                            backgroundColor: getRetentionBadge(item.retention_until).bg,
-                            paddingHorizontal: 8,
-                            paddingVertical: 3,
-                            borderRadius: 999,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              color: getRetentionBadge(item.retention_until).color,
-                              fontSize: 10,
-                              fontWeight: '700',
-                              textTransform: 'uppercase',
-                              letterSpacing: 0.5,
-                            }}
-                          >
-                            {getRetentionBadge(item.retention_until).label}
-                          </Text>
-                        </View>
-                      </View>
+                {/* Header Row */}
+                <View className="flex-row items-center justify-between mb-2">
+                  <View className="flex-row items-center flex-1">
+                    {activeTab === "needs_review" && (
+                      <TouchableOpacity
+                        onPress={() => toggleSelectPayment(item.id)}
+                        className="mr-3 p-1"
+                      >
+                        {isSelected ? (
+                          <CheckSquare size={20} color="#FF6900" />
+                        ) : (
+                          <Square size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
+                        )}
+                      </TouchableOpacity>
+                    )}
+                    <View className="flex-1">
+                      <Text className="text-base font-bold text-gray-900 dark:text-white">
+                        {studentName}
+                      </Text>
+                      <Text className="text-xs text-[#FF6900] font-semibold">
+                        Adm: {admNumber}
+                      </Text>
                     </View>
                   </View>
-                </View>
 
-                {item.proof_url && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      Alert.alert("Receipt Document", "Review payment receipt carefully before approval.", [
-                        { text: "Open URL", onPress: async () => {
-                          if (!item.proof_url) return;
-                          try {
-                            const supported = await Linking.canOpenURL(item.proof_url);
-                            if (supported) {
-                              await Linking.openURL(item.proof_url);
-                            } else {
-                              Toast.show({ type: 'error', text1: 'Error', text2: 'Cannot open receipt URL' });
-                            }
-                          } catch {
-                            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to open receipt URL' });
-                          }
-                        } },
-                        { text: "Close", style: "cancel" }
-                      ]);
-                    }}
-                    className="flex-row items-center justify-center bg-[#EAEEF2] dark:bg-[#0F141C] p-4 rounded-lg mb-6 border border-[#D0D7DE] dark:border-[#21262D]"
+                  <View
+                    className="px-2.5 py-1 rounded-full"
+                    style={{ backgroundColor: statusBadge.bg }}
                   >
-                    <ExternalLink size={16} color={isDark ? "#9CA3AF" : "#4B5563"} />
-                    <Text className="ml-2 text-gray-700 dark:text-gray-300 font-bold text-xs uppercase tracking-widest">View Attachment</Text>
-                  </TouchableOpacity>
+                    <Text
+                      className="text-[11px] font-bold uppercase tracking-wider"
+                      style={{ color: statusBadge.text }}
+                    >
+                      {statusBadge.label}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Amount & Method Banner */}
+                <View className="flex-row justify-between items-baseline mb-3">
+                  <Text className="text-2xl font-black text-[#FF6900]">
+                    {formatMoney(amount)}
+                  </Text>
+                  <View className="flex-row items-center">
+                    <Text className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">
+                      {item.payment_method?.replace(/_/g, " ")}
+                    </Text>
+                    {item.reference_number ? (
+                      <Text className="text-xs text-gray-500 dark:text-gray-400 ml-2 font-mono">
+                        Ref: {item.reference_number}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+
+                {/* Allocations Breakdown (if split or itemized) */}
+                {Array.isArray(item.payment_allocations) && item.payment_allocations.length > 0 && (
+                  <View className="bg-white dark:bg-[#0F141C] p-2.5 rounded-xl mb-3 border border-[#D0D7DE] dark:border-[#21262D]">
+                    <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                      Fee Item Allocations ({item.payment_allocations.length})
+                    </Text>
+                    {item.payment_allocations.map((alloc: any, idx: number) => (
+                      <View key={idx} className="flex-row justify-between py-0.5">
+                        <Text className="text-xs text-gray-700 dark:text-gray-300">
+                          {alloc.fee_types?.name || "Tuition / General Fee"}
+                        </Text>
+                        <Text className="text-xs font-semibold text-gray-900 dark:text-white">
+                          {formatMoney(alloc.allocated_amount || alloc.amount || 0)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
                 )}
 
-                <View className="flex-row gap-4">
-                  <TouchableOpacity
-                    disabled={!!reviewingId}
-                    onPress={() => handleReview(item.id, 'reject')}
-                    className="flex-1 bg-red-50 dark:bg-red-950/20 p-4 rounded-lg border border-red-100 dark:border-red-900/50 items-center flex-row justify-center"
-                  >
-                    <X size={18} color="#EF4444" />
-                    <Text className="ml-2 text-red-600 dark:text-red-400 font-black text-[10px] uppercase tracking-widest">Decline</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    disabled={!!reviewingId}
-                    onPress={() => handleReview(item.id, 'approve')}
-                    className="flex-2 bg-[#10B981] p-4 rounded-lg items-center flex-row justify-center shadow-lg shadow-emerald-500/20"
-                  >
-                    <Check size={18} color="white" />
-                    <Text className="ml-2 text-white font-black text-[10px] uppercase tracking-widest">Approve & Credit</Text>
-                  </TouchableOpacity>
+                {/* Flags / Reason notes */}
+                {isFlagged && item.payment_flags?.[0] && (
+                  <View className="bg-red-50 dark:bg-red-950/30 p-2.5 rounded-xl mb-3 border border-red-200 dark:border-red-900/50">
+                    <View className="flex-row items-center mb-1">
+                      <AlertTriangle size={14} color="#EF4444" />
+                      <Text className="text-xs font-bold text-red-600 dark:text-red-400 ml-1.5">
+                        Flag Reason: {item.payment_flags[0].flag_reasons?.label || item.payment_flags[0].reason_code}
+                      </Text>
+                    </View>
+                    {item.payment_flags[0].admin_notes ? (
+                      <Text className="text-xs text-red-700 dark:text-red-300">
+                        "{item.payment_flags[0].admin_notes}"
+                      </Text>
+                    ) : null}
+                  </View>
+                )}
+
+                {/* Meta details */}
+                <View className="flex-row justify-between text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  <Text className="text-[11px] text-gray-500">
+                    Submitted: {new Date(item.payment_date || item.created_at).toLocaleDateString()}
+                  </Text>
+                  {item.payer_name ? (
+                    <Text className="text-[11px] text-gray-500">
+                      Payer: {item.payer_name}
+                    </Text>
+                  ) : null}
+                </View>
+
+                {/* Action Buttons Row */}
+                <View className="flex-row items-center gap-2 pt-2 border-t border-[#D0D7DE] dark:border-[#21262D]">
+                  {/* View Proof Button */}
+                  {proofUrl && (
+                    <TouchableOpacity
+                      onPress={() => setProofModalUrl(proofUrl)}
+                      className="flex-1 bg-[#EAEEF2] dark:bg-[#0F141C] py-2.5 rounded-xl items-center justify-center flex-row border border-[#D0D7DE] dark:border-[#21262D]"
+                    >
+                      <Eye size={14} color={isDark ? "#FFF" : "#374151"} />
+                      <Text className="text-xs font-bold text-gray-800 dark:text-gray-200 ml-1.5">
+                        View Proof
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Actions for Pending/Needs Review */}
+                  {isPending && (
+                    <>
+                      <TouchableOpacity
+                        onPress={() => openFlagModal(item)}
+                        className="flex-1 bg-red-50 dark:bg-red-950/20 py-2.5 rounded-xl items-center justify-center flex-row border border-red-200 dark:border-red-900/50"
+                      >
+                        <X size={14} color="#EF4444" />
+                        <Text className="text-xs font-bold text-red-600 dark:text-red-400 ml-1.5 uppercase">
+                          Flag
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        onPress={() => openConfirmModal(item)}
+                        className="flex-1 bg-[#10B981] py-2.5 rounded-xl items-center justify-center flex-row shadow-sm"
+                      >
+                        <Check size={14} color="#FFF" />
+                        <Text className="text-xs font-bold text-white ml-1.5 uppercase">
+                          Confirm
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  {/* Actions for Confirmed: Receipt & Reversal */}
+                  {isConfirmed && (
+                    <>
+                      <TouchableOpacity
+                        onPress={() => handleDownloadReceipt(item.id)}
+                        disabled={downloadingReceiptId === item.id}
+                        className="flex-1 bg-[#EAEEF2] dark:bg-[#0F141C] py-2.5 rounded-xl items-center justify-center flex-row border border-[#D0D7DE] dark:border-[#21262D]"
+                      >
+                        {downloadingReceiptId === item.id ? (
+                          <Spinner size="small" />
+                        ) : (
+                          <>
+                            <Receipt size={14} color={isDark ? "#FFF" : "#374151"} />
+                            <Text className="text-xs font-bold text-gray-800 dark:text-gray-200 ml-1.5">
+                              Receipt PDF
+                            </Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        onPress={() => openReverseModal(item)}
+                        className="flex-1 bg-amber-50 dark:bg-amber-950/20 py-2.5 rounded-xl items-center justify-center flex-row border border-amber-200 dark:border-amber-900/50"
+                      >
+                        <RotateCcw size={14} color="#D97706" />
+                        <Text className="text-xs font-bold text-amber-600 dark:text-amber-400 ml-1.5 uppercase">
+                          Reverse
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
                 </View>
               </View>
-            ))
-          )}
-        </View>
+            );
+          })}
+        </ScrollView>
       )}
 
-      {/* Payment Form Modal */}
-      <Modal
-        visible={showForm}
-        animationType="fade"
-        transparent
-        onRequestClose={() => { setShowForm(false); resetForm(); }}
-      >
-        <KeyboardAvoidingView
-          className="flex-1"
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
-        >
-          <View className="flex-1">
-            <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); setShowForm(false); resetForm(); }}>
-              <View className="absolute inset-0 bg-black/45" />
-            </TouchableWithoutFeedback>
-
-            <View className="flex-1 items-center justify-center p-4">
-              <View className="w-full max-w-3xl bg-[#F6F8FA] dark:bg-[#161B22] rounded-3xl border border-[#D0D7DE] dark:border-[#21262D] overflow-hidden">
-            <View className="flex-row justify-between items-center px-5 py-4 border-b border-[#D0D7DE] dark:border-[#21262D] bg-[#F6F8FA] dark:bg-[#0F141C]">
-              <Text className="text-lg font-semibold text-gray-900 dark:text-white">Record Payment</Text>
-              <TouchableOpacity onPress={() => { setShowForm(false); resetForm(); }}>
-                <View className="bg-gray-100 dark:bg-gray-800 w-9 h-9 rounded-full items-center justify-center">
-                  <Text className="text-gray-700 dark:text-gray-200 font-bold text-base">X</Text>
-                </View>
+      {/* CONFIRM PAYMENT MODAL */}
+      <Modal visible={!!confirmModalPayment} transparent animationType="fade">
+        <View className="flex-1 bg-black/60 items-center justify-center p-4">
+          <View className="w-full max-w-lg bg-white dark:bg-[#161B22] rounded-3xl p-6 border border-[#D0D7DE] dark:border-[#21262D]">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-xl font-bold text-gray-900 dark:text-white">
+                Confirm Payment
+              </Text>
+              <TouchableOpacity onPress={() => setConfirmModalPayment(null)}>
+                <X size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView className="max-h-[78vh] p-5" keyboardShouldPersistTaps="handled" nestedScrollEnabled>
-              <View className="space-y-4">
+            {confirmModalPayment && (
+              <View className="mb-4">
+                <Text className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                  Student:{" "}
+                  <Text className="font-bold text-gray-900 dark:text-white">
+                    {confirmModalPayment.student?.users?.full_name || confirmModalPayment.student_name}
+                  </Text>
+                </Text>
+                <Text className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                  Method:{" "}
+                  <Text className="font-bold text-gray-900 dark:text-white uppercase">
+                    {confirmModalPayment.payment_method}
+                  </Text>
+                </Text>
+                {confirmModalPayment.reference_number ? (
+                  <Text className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    Reference:{" "}
+                    <Text className="font-bold font-mono text-gray-900 dark:text-white">
+                      {confirmModalPayment.reference_number}
+                    </Text>
+                  </Text>
+                ) : null}
 
-              {/* Student Search */}
-              <View style={{ zIndex: showStudentDropdown ? 30 : 10, elevation: showStudentDropdown ? 8 : 1 }}>
-                <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <Text className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+                  Confirmed Amount ({formatMoney(0).replace(/\d|\.|\,/g, "").trim()})
+                </Text>
+                <TextInput
+                  value={confirmedAmountInput}
+                  onChangeText={setConfirmedAmountInput}
+                  keyboardType="numeric"
+                  className="bg-[#F6F8FA] dark:bg-[#0F141C] p-3 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] text-lg font-bold text-gray-900 dark:text-white mb-3"
+                />
+
+                <Text className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+                  Admin Verification Notes (Optional)
+                </Text>
+                <TextInput
+                  value={confirmAdminNotes}
+                  onChangeText={setConfirmAdminNotes}
+                  placeholder="e.g. Verified against bank statement"
+                  placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+                  className="bg-[#F6F8FA] dark:bg-[#0F141C] p-3 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] text-sm text-gray-900 dark:text-white mb-4"
+                  multiline
+                  numberOfLines={2}
+                />
+              </View>
+            )}
+
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => setConfirmModalPayment(null)}
+                className="flex-1 py-3 rounded-xl bg-gray-200 dark:bg-gray-800 items-center"
+              >
+                <Text className="font-bold text-gray-700 dark:text-gray-300">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={submitSingleConfirm}
+                disabled={actionProcessing}
+                className="flex-1 py-3 rounded-xl bg-[#10B981] items-center flex-row justify-center"
+              >
+                {actionProcessing ? (
+                  <Spinner color="#FFF" size="small" />
+                ) : (
+                  <Text className="font-bold text-white uppercase tracking-wider">Confirm Payment</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* FLAG PAYMENT MODAL */}
+      <Modal visible={!!flagModalPayment} transparent animationType="fade">
+        <View className="flex-1 bg-black/60 items-center justify-center p-4">
+          <View className="w-full max-w-lg bg-white dark:bg-[#161B22] rounded-3xl p-6 border border-[#D0D7DE] dark:border-[#21262D]">
+            <View className="flex-row justify-between items-center mb-4">
+              <View className="flex-row items-center">
+                <AlertCircle size={22} color="#EF4444" />
+                <Text className="text-xl font-bold text-gray-900 dark:text-white ml-2">
+                  Flag Payment
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setFlagModalPayment(null)}>
+                <X size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
+              </TouchableOpacity>
+            </View>
+
+            <Text className="text-xs text-gray-500 mb-3">
+              Mark this payment as not received or requiring correction from the parent.
+            </Text>
+
+            {dynamicFlagReasons.length > 0 && (
+              <View className="mb-4">
+                <Text className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                  Select Reason *
+                </Text>
+                <ScrollView style={{ maxHeight: 160 }}>
+                  {dynamicFlagReasons.map((r) => {
+                    const isSelected = selectedFlagReasonId === r.id;
+                    return (
+                      <TouchableOpacity
+                        key={r.id}
+                        onPress={() => setSelectedFlagReasonId(r.id)}
+                        className={`p-3 rounded-xl mb-1.5 flex-row items-center justify-between border ${
+                          isSelected
+                            ? "bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800"
+                            : "bg-[#F6F8FA] dark:bg-[#0F141C] border-[#D0D7DE] dark:border-[#21262D]"
+                        }`}
+                      >
+                        <Text
+                          className={`text-sm font-semibold ${
+                            isSelected ? "text-red-700 dark:text-red-400" : "text-gray-800 dark:text-gray-200"
+                          }`}
+                        >
+                          {r.label}
+                        </Text>
+                        {isSelected && <Check size={16} color="#EF4444" />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+
+            <Text className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+              Instructions for Parent (Optional)
+            </Text>
+            <TextInput
+              value={flagAdminNotes}
+              onChangeText={setFlagAdminNotes}
+              placeholder="e.g. Reference code ST-1234 could not be matched. Please re-upload legible slip."
+              placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+              className="bg-[#F6F8FA] dark:bg-[#0F141C] p-3 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] text-sm text-gray-900 dark:text-white mb-4"
+              multiline
+              numberOfLines={3}
+            />
+
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => setFlagModalPayment(null)}
+                className="flex-1 py-3 rounded-xl bg-gray-200 dark:bg-gray-800 items-center"
+              >
+                <Text className="font-bold text-gray-700 dark:text-gray-300">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={submitSingleFlag}
+                disabled={actionProcessing}
+                className="flex-1 py-3 rounded-xl bg-[#EF4444] items-center flex-row justify-center"
+              >
+                {actionProcessing ? (
+                  <Spinner color="#FFF" size="small" />
+                ) : (
+                  <Text className="font-bold text-white uppercase tracking-wider">Flag Payment</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* REVERSE PAYMENT MODAL */}
+      <Modal visible={!!reverseModalPayment} transparent animationType="fade">
+        <View className="flex-1 bg-black/60 items-center justify-center p-4">
+          <View className="w-full max-w-lg bg-white dark:bg-[#161B22] rounded-3xl p-6 border border-[#D0D7DE] dark:border-[#21262D]">
+            <View className="flex-row justify-between items-center mb-4">
+              <View className="flex-row items-center">
+                <RotateCcw size={22} color="#D97706" />
+                <Text className="text-xl font-bold text-gray-900 dark:text-white ml-2">
+                  Reverse Confirmed Payment
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setReverseModalPayment(null)}>
+                <X size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
+              </TouchableOpacity>
+            </View>
+
+            <Text className="text-xs text-gray-500 mb-3">
+              This will create a negative ledger adjustment reversing the credit on the student bill. An audit trail is permanently maintained.
+            </Text>
+
+            <Text className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+              Reversal Reason * (Mandatory)
+            </Text>
+            <TextInput
+              value={reversalReason}
+              onChangeText={setReversalReason}
+              placeholder="e.g. Bank chargeback / Cheque returned unpaid / Entry error"
+              placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+              className="bg-[#F6F8FA] dark:bg-[#0F141C] p-3 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] text-sm text-gray-900 dark:text-white mb-4"
+              multiline
+              numberOfLines={3}
+            />
+
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => setReverseModalPayment(null)}
+                className="flex-1 py-3 rounded-xl bg-gray-200 dark:bg-gray-800 items-center"
+              >
+                <Text className="font-bold text-gray-700 dark:text-gray-300">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={submitSingleReversal}
+                disabled={actionProcessing}
+                className="flex-1 py-3 rounded-xl bg-[#D97706] items-center flex-row justify-center"
+              >
+                {actionProcessing ? (
+                  <Spinner color="#FFF" size="small" />
+                ) : (
+                  <Text className="font-bold text-white uppercase tracking-wider">Execute Reversal</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* BULK CONFIRM CONFIRMATION MODAL */}
+      <Modal visible={bulkConfirmModalVisible} transparent animationType="fade">
+        <View className="flex-1 bg-black/60 items-center justify-center p-4">
+          <View className="w-full max-w-md bg-white dark:bg-[#161B22] rounded-3xl p-6 border border-[#D0D7DE] dark:border-[#21262D]">
+            <Text className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              Confirm {selectedIds.length} Payments?
+            </Text>
+            <Text className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              All {selectedIds.length} selected submissions will be marked as Confirmed, official receipts will be issued, and the student ledger accounts updated.
+            </Text>
+
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => setBulkConfirmModalVisible(false)}
+                className="flex-1 py-3 rounded-xl bg-gray-200 dark:bg-gray-800 items-center"
+              >
+                <Text className="font-bold text-gray-700 dark:text-gray-300">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleBulkConfirm}
+                disabled={bulkProcessing}
+                className="flex-1 py-3 rounded-xl bg-[#10B981] items-center flex-row justify-center"
+              >
+                {bulkProcessing ? (
+                  <Spinner color="#FFF" size="small" />
+                ) : (
+                  <Text className="font-bold text-white uppercase tracking-wider">Yes, Confirm All</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* PROOF PREVIEW MODAL */}
+      <Modal visible={!!proofModalUrl} transparent animationType="fade">
+        <View className="flex-1 bg-black/80 items-center justify-center p-4">
+          <View className="w-full max-w-xl bg-white dark:bg-[#161B22] rounded-3xl p-5 border border-[#D0D7DE] dark:border-[#21262D]">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-lg font-bold text-gray-900 dark:text-white">
+                Payment Proof Attachment
+              </Text>
+              <TouchableOpacity onPress={() => setProofModalUrl(null)}>
+                <X size={22} color={isDark ? "#9CA3AF" : "#6B7280"} />
+              </TouchableOpacity>
+            </View>
+
+            {proofModalUrl ? (
+              <View className="items-center mb-4">
+                <Image
+                  source={{ uri: proofModalUrl }}
+                  style={{ width: "100%", height: 350, borderRadius: 16 }}
+                  resizeMode="contain"
+                />
+              </View>
+            ) : null}
+
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => {
+                  if (proofModalUrl) Linking.openURL(proofModalUrl);
+                }}
+                className="flex-1 py-3 rounded-xl bg-[#EAEEF2] dark:bg-[#0F141C] border border-[#D0D7DE] dark:border-[#21262D] items-center flex-row justify-center"
+              >
+                <ExternalLink size={16} color={isDark ? "#FFF" : "#374151"} />
+                <Text className="text-xs font-bold text-gray-800 dark:text-gray-200 ml-2">Open Fullscreen / Link</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setProofModalUrl(null)}
+                className="py-3 px-6 rounded-xl bg-gray-200 dark:bg-gray-800 items-center"
+              >
+                <Text className="font-bold text-gray-700 dark:text-gray-300">Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MANUAL RECORD PAYMENT MODAL */}
+      <Modal visible={showForm} transparent animationType="fade">
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <View className="flex-1 bg-black/60 items-center justify-center p-4">
+            <View className="w-full max-w-lg bg-white dark:bg-[#161B22] rounded-3xl p-6 border border-[#D0D7DE] dark:border-[#21262D]">
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-xl font-bold text-gray-900 dark:text-white">
+                  Record Student Payment
+                </Text>
+                <TouchableOpacity onPress={() => setShowForm(false)}>
+                  <X size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView className="max-h-[75vh]" showsVerticalScrollIndicator={false}>
+                {/* Student Search */}
+                <Text className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
                   Student *
                 </Text>
-
                 {formData.student_id ? (
-                  <View style={{
-                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                    backgroundColor: isDark ? '#1a2e1a' : '#f0fdf4',
-                    borderWidth: 1, borderColor: isDark ? '#166534' : '#86efac',
-                    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-                  }}>
+                  <View className="flex-row items-center justify-between p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 mb-3">
                     <View>
-                      <Text style={{ fontWeight: '700', fontSize: 15, color: isDark ? '#bbf7d0' : '#166534' }}>
+                      <Text className="font-bold text-emerald-800 dark:text-emerald-300">
                         {formData.student_name}
                       </Text>
-                      <Text style={{ fontSize: 11, color: isDark ? '#4ade80' : '#15803d', fontWeight: '600', marginTop: 2 }}>
+                      <Text className="text-xs text-emerald-600 dark:text-emerald-400">
                         {formData.student_id}
                       </Text>
                     </View>
-                    <TouchableOpacity onPress={() => {
-                      setFormData({ ...formData, student_id: "", student_name: "" });
-                      setShowStudentDropdown(true);
-                    }}>
-                      <Ionicons name="close-circle" size={22} color={isDark ? '#4ade80' : '#16a34a'} />
+                    <TouchableOpacity
+                      onPress={() => setFormData({ ...formData, student_id: "", student_name: "" })}
+                    >
+                      <X size={18} color="#10B981" />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <View>
-                    <View style={{
-                      flexDirection: 'row', alignItems: 'center',
-                      borderWidth: 1, borderColor: isDark ? '#374151' : '#d1d5db',
-                      borderRadius: 12, paddingHorizontal: 12, paddingVertical: 3,
-                      backgroundColor: isDark ? '#0F141C' : '#ffffff',
-                    }}>
-                      <Ionicons name="search" size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                  <View className="mb-3">
+                    <View className="flex-row items-center bg-[#F6F8FA] dark:bg-[#0F141C] p-3 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]">
+                      <Search size={16} color={isDark ? "#9CA3AF" : "#6B7280"} />
                       <TextInput
                         value={studentSearch}
-                        onChangeText={(text) => {
-                          setStudentSearch(text);
+                        onChangeText={(t) => {
+                          setStudentSearch(t);
                           setShowStudentDropdown(true);
                         }}
                         onFocus={() => setShowStudentDropdown(true)}
-                        placeholder="Search by name or ID..."
+                        placeholder="Search student by name or adm #..."
                         placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
-                        style={{
-                          flex: 1, marginLeft: 8, fontSize: 15,
-                          color: isDark ? '#fff' : '#111827',
-                          paddingVertical: 10,
-                        }}
+                        className="flex-1 ml-2 text-sm text-gray-900 dark:text-white"
                       />
                     </View>
-
                     {showStudentDropdown && (
-                      <View style={{
-                        marginTop: 4, borderWidth: 1,
-                        borderColor: isDark ? '#374151' : '#e5e7eb',
-                        borderRadius: 12, overflow: 'hidden',
-                        backgroundColor: isDark ? '#0F141C' : '#ffffff',
-                        maxHeight: 200,
-                      }}>
-                        {filteredStudents.length === 0 ? (
-                          <View style={{ padding: 16, alignItems: 'center' }}>
-                            <Text style={{ color: isDark ? '#6B7280' : '#9CA3AF', fontSize: 13 }}>
-                              {studentSearch ? 'No students found' : 'Type to search students...'}
-                            </Text>
-                          </View>
-                        ) : (
-                          <FlatList
-                            data={filteredStudents.slice(0, 20)}
-                            keyExtractor={(item) => item.id}
-                            keyboardShouldPersistTaps="handled"
-                            nestedScrollEnabled
-                            style={{ maxHeight: 200 }}
-                            renderItem={({ item }) => (
-                              <TouchableOpacity
-                                onPress={() => selectStudent(item)}
-                                style={{
-                                  flexDirection: 'row', alignItems: 'center',
-                                  paddingHorizontal: 14, paddingVertical: 12,
-                                  borderBottomWidth: 1,
-                                  borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
-                                }}
-                              >
-                                <View style={{
-                                  width: 36, height: 36, borderRadius: 10,
-                                  backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
-                                  alignItems: 'center', justifyContent: 'center', marginRight: 12,
-                                }}>
-                                  <Ionicons name="person" size={16} color="#FF6900" />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ fontWeight: '600', fontSize: 14, color: isDark ? '#f1f1f1' : '#111827' }}>
-                                    {item.full_name}
-                                  </Text>
-                                  <Text style={{ fontSize: 11, color: '#FF6900', fontWeight: '500', marginTop: 1 }}>
-                                    {item.id}
-                                  </Text>
-                                </View>
-                                <Ionicons name="chevron-forward" size={16} color={isDark ? '#6B7280' : '#9CA3AF'} />
-                              </TouchableOpacity>
-                            )}
-                          />
-                        )}
+                      <View className="max-h-40 bg-[#F6F8FA] dark:bg-[#0F141C] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl mt-1 overflow-hidden">
+                        <FlatList
+                          data={allStudents
+                            .filter(
+                              (s) =>
+                                s.full_name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+                                s.id.toLowerCase().includes(studentSearch.toLowerCase())
+                            )
+                            .slice(0, 15)}
+                          keyExtractor={(s) => s.id}
+                          renderItem={({ item }) => (
+                            <TouchableOpacity
+                              onPress={() => {
+                                setFormData({
+                                  ...formData,
+                                  student_id: item.id,
+                                  student_name: item.full_name,
+                                });
+                                setShowStudentDropdown(false);
+                                setStudentSearch("");
+                              }}
+                              className="p-3 border-b border-gray-100 dark:border-gray-800"
+                            >
+                              <Text className="font-semibold text-gray-900 dark:text-white text-sm">
+                                {item.full_name}
+                              </Text>
+                              <Text className="text-xs text-[#FF6900]">{item.id}</Text>
+                            </TouchableOpacity>
+                          )}
+                        />
                       </View>
                     )}
                   </View>
                 )}
-              </View>
 
-              {/* Amount */}
-              <View>
-                <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {/* Amount */}
+                <Text className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
                   Amount *
                 </Text>
                 <TextInput
                   value={formData.amount}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, amount: text.replace(/[^0-9.]/g, '') })
-                  }
+                  onChangeText={(t) => setFormData({ ...formData, amount: t.replace(/[^0-9.]/g, "") })}
+                  keyboardType="numeric"
                   placeholder="0.00"
                   placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
-                  keyboardType="numeric"
-                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-[#F6F8FA] dark:bg-[#0F141C]"
+                  className="bg-[#F6F8FA] dark:bg-[#0F141C] p-3 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] text-lg font-bold text-gray-900 dark:text-white mb-3"
                 />
-              </View>
 
-              {/* Payment Method — custom picker */}
-              <View style={{ zIndex: 20, elevation: 6 }}>
-                <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {/* Dynamic Payment Method Picker */}
+                <Text className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
                   Payment Method
                 </Text>
-
-                {/* Trigger */}
-                <TouchableOpacity
-                  onPress={() => setShowPaymentPicker(true)}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: isDark ? '#374151' : '#D1D5DB',
-                    borderRadius: 12,
-                    backgroundColor: isDark ? '#0F141C' : '#F6F8FA',
-                    paddingHorizontal: 12,
-                    height: 50,
-                  }}
-                >
-                  <Ionicons name="card-outline" size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                  <Text style={{
-                    flex: 1,
-                    marginLeft: 8,
-                    fontSize: 15,
-                    color: formData.payment_method
-                      ? (isDark ? '#fff' : '#111827')
-                      : (isDark ? '#9CA3AF' : '#6B7280'),
-                  }}>
-                    {selectedPaymentLabel}
-                  </Text>
-                  <Ionicons name="chevron-down" size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
-                </TouchableOpacity>
-
-                {/* Bottom sheet modal */}
-                <Modal visible={showPaymentPicker} transparent animationType="fade">
-                  <TouchableOpacity
-                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}
-                    onPress={() => setShowPaymentPicker(false)}
-                    activeOpacity={1}
-                  />
-                  <View style={{
-                    position: 'absolute',
-                    bottom: 0, left: 0, right: 0,
-                    backgroundColor: isDark ? '#161B22' : '#fff',
-                    borderTopLeftRadius: 20,
-                    borderTopRightRadius: 20,
-                    paddingBottom: 40,
-                    borderTopWidth: 1,
-                    borderColor: isDark ? '#21262D' : '#E5E7EB',
-                  }}>
-                    <View style={{
-                      width: 36, height: 4, borderRadius: 2,
-                      backgroundColor: isDark ? '#374151' : '#D1D5DB',
-                      alignSelf: 'center', marginTop: 12, marginBottom: 8,
-                    }} />
-                    <Text style={{
-                      color: isDark ? '#9CA3AF' : '#6B7280',
-                      fontSize: 11, fontWeight: '700',
-                      letterSpacing: 1.5, textTransform: 'uppercase',
-                      paddingHorizontal: 16, paddingVertical: 12,
-                    }}>
-                      Payment Method
-                    </Text>
-                    {paymentMethods.map((method) => (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3" style={{ gap: 8 }}>
+                  {dynamicMethods.map((m) => {
+                    const isSelected = formData.payment_method === m.code;
+                    return (
                       <TouchableOpacity
-                        key={method.value}
-                        onPress={() => {
-                          setFormData({ ...formData, payment_method: method.value as Payment["payment_method"] });
-                          setShowPaymentPicker(false);
-                        }}
-                        style={{
-                          flexDirection: 'row',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          paddingHorizontal: 16,
-                          paddingVertical: 14,
-                          borderBottomWidth: 1,
-                          borderBottomColor: isDark ? '#21262D' : '#F3F4F6',
-                        }}
+                        key={m.id}
+                        onPress={() => setFormData({ ...formData, payment_method: m.code })}
+                        className={`px-4 py-2.5 rounded-xl border ${
+                          isSelected
+                            ? "bg-[#FF6900] border-[#FF6900]"
+                            : "bg-[#F6F8FA] dark:bg-[#0F141C] border-[#D0D7DE] dark:border-[#21262D]"
+                        }`}
                       >
-                        <Text style={{ color: isDark ? '#fff' : '#111827', fontSize: 15 }}>
-                          {method.label}
+                        <Text
+                          className={`text-xs font-bold ${
+                            isSelected ? "text-white" : "text-gray-800 dark:text-gray-200"
+                          }`}
+                        >
+                          {m.name}
                         </Text>
-                        {formData.payment_method === method.value && (
-                          <Ionicons name="checkmark" size={18} color="#FF6900" />
-                        )}
                       </TouchableOpacity>
-                    ))}
-                  </View>
-                </Modal>
-              </View>
+                    );
+                  })}
+                </ScrollView>
 
-              {/* Reference Number */}
-              <View>
-                <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Reference Number
+                {/* Reference Number */}
+                <Text className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+                  Reference Code / Slip #
                 </Text>
                 <TextInput
                   value={formData.reference_number}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, reference_number: text })
-                  }
-                  placeholder="Transaction reference (optional)"
+                  onChangeText={(t) => setFormData({ ...formData, reference_number: t })}
+                  placeholder="e.g. QX9100293 or Slip 4492"
                   placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
-                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-[#F6F8FA] dark:bg-[#0F141C]"
+                  className="bg-[#F6F8FA] dark:bg-[#0F141C] p-3 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] text-sm text-gray-900 dark:text-white mb-3 font-mono"
                 />
-              </View>
 
-              {/* Notes */}
-              <View>
-                <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Notes
+                {/* Notes */}
+                <Text className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+                  Notes (Optional)
                 </Text>
                 <TextInput
                   value={formData.notes}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, notes: text })
-                  }
-                  placeholder="Additional notes (optional)"
+                  onChangeText={(t) => setFormData({ ...formData, notes: t })}
+                  placeholder="Additional remarks"
                   placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+                  className="bg-[#F6F8FA] dark:bg-[#0F141C] p-3 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] text-sm text-gray-900 dark:text-white mb-4"
                   multiline
-                  numberOfLines={3}
-                  className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-3 text-base text-gray-900 dark:text-white bg-[#F6F8FA] dark:bg-[#0F141C]"
+                  numberOfLines={2}
                 />
-              </View>
-              </View>
-            </ScrollView>
+              </ScrollView>
 
-            <View className="px-5 py-4 border-t border-[#D0D7DE] dark:border-[#21262D] flex-row" style={{ gap: 10 }}>
-              <TouchableOpacity
-                onPress={() => { setShowForm(false); resetForm(); }}
-                className="flex-1 py-3 rounded-xl items-center bg-gray-100 dark:bg-gray-800"
-                disabled={submittingPayment}
-              >
-                <Text className="text-gray-700 dark:text-gray-200 font-bold text-xs uppercase tracking-widest">Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleSubmit}
-                disabled={submittingPayment}
-                className="flex-1 py-3 rounded-xl items-center bg-[#10B981]"
-                accessibilityState={{ disabled: submittingPayment }}
-              >
-                {submittingPayment ? (
-                  <Spinner color="#FFFFFF" size="small" label="Saving payment" />
-                ) : (
-                  <Text className="text-white font-semibold text-xs uppercase tracking-widest">Save Payment</Text>
-                )}
-              </TouchableOpacity>
+              <View className="flex-row gap-3 pt-3 border-t border-[#D0D7DE] dark:border-[#21262D]">
+                <TouchableOpacity
+                  onPress={() => setShowForm(false)}
+                  className="flex-1 py-3 rounded-xl bg-gray-200 dark:bg-gray-800 items-center"
+                >
+                  <Text className="font-bold text-gray-700 dark:text-gray-300">Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleManualSubmit}
+                  disabled={submittingPayment}
+                  className="flex-1 py-3 rounded-xl bg-[#10B981] items-center flex-row justify-center"
+                >
+                  {submittingPayment ? (
+                    <Spinner color="#FFF" size="small" />
+                  ) : (
+                    <Text className="font-bold text-white uppercase tracking-wider">Save & Record</Text>
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
-          </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>

@@ -334,4 +334,131 @@ export class FinanceService {
         const response = await api.post('/finance/reminders/overdue');
         return response.data;
     }
+
+    /**
+     * ==========================================
+     * RECONSTRUCTED FINANCE API METHODS
+     * ==========================================
+     */
+
+    // Fee Categories
+    static async getFeeCategories(): Promise<any[]> {
+        const response = await api.get('/finance/categories');
+        return response.data || [];
+    }
+
+    static async createFeeCategory(payload: { name: string; description?: string; display_order?: number }): Promise<any> {
+        const response = await api.post('/finance/categories', payload);
+        return response.data;
+    }
+
+    // Fee Types
+    static async getFeeTypes(params?: { category_id?: string; status?: string; term_id?: string }): Promise<any[]> {
+        const response = await api.get('/finance/fee-types', { params });
+        return response.data || [];
+    }
+
+    static async createFeeType(payload: any): Promise<any> {
+        const response = await api.post('/finance/fee-types', payload);
+        return response.data;
+    }
+
+    static async updateFeeType(id: string, payload: any): Promise<any> {
+        const response = await api.put(`/finance/fee-types/${id}`, payload);
+        return response.data;
+    }
+
+    // Payments Inbox & Verification
+    static async getPaymentsInbox(params?: { tab?: string; search?: string; method?: string; page?: number; limit?: number }): Promise<{ data: any[]; total: number; page: number; limit: number }> {
+        const response = await api.get('/finance/inbox', { params });
+        return response.data || { data: [], total: 0, page: 1, limit: 20 };
+    }
+
+    static async confirmPayment(id: string, payload?: { confirmed_amount?: number; admin_notes?: string }): Promise<any> {
+        const response = await api.post(`/finance/payments/${id}/confirm`, payload || {});
+        return response.data;
+    }
+
+    static async flagPayment(id: string, payload: { reason_code?: string; reason_id?: string; admin_notes?: string }): Promise<any> {
+        const response = await api.post(`/finance/payments/${id}/flag`, payload);
+        return response.data;
+    }
+
+    static async bulkConfirmPayments(payment_ids: string[]): Promise<any> {
+        const response = await api.post('/finance/payments/bulk-confirm', { payment_ids });
+        return response.data;
+    }
+
+    static async reversePayment(id: string, reason: string): Promise<any> {
+        const response = await api.post(`/finance/payments/${id}/reverse`, { reason });
+        return response.data;
+    }
+
+    // Settings
+    static async getFinanceSettings(): Promise<any> {
+        const response = await api.get('/finance/settings');
+        return response.data;
+    }
+
+    static async updateFinanceSettings(payload: any): Promise<any> {
+        const response = await api.put('/finance/settings', payload);
+        return response.data;
+    }
+
+    static async createPaymentMethod(payload: any): Promise<any> {
+        const response = await api.post('/finance/payment-methods', payload);
+        return response.data;
+    }
+
+    static async updatePaymentMethod(id: string, payload: any): Promise<any> {
+        const response = await api.put(`/finance/payment-methods/${id}`, payload);
+        return response.data;
+    }
+
+    static async createFlagReason(payload: any): Promise<any> {
+        const response = await api.post('/finance/flag-reasons', payload);
+        return response.data;
+    }
+
+    static async updateFlagReason(id: string, payload: any): Promise<any> {
+        const response = await api.put(`/finance/flag-reasons/${id}`, payload);
+        return response.data;
+    }
+
+    // Parent Experience
+    static async getParentOverview(): Promise<any> {
+        const response = await api.get('/finance/parent/overview');
+        return response.data;
+    }
+
+    static async getChildPayableItems(studentId: string): Promise<any[]> {
+        const response = await api.get(`/finance/parent/child/${encodeURIComponent(studentId)}/payable-items`);
+        return response.data || [];
+    }
+
+    static async recordParentPayment(payload: {
+        student_id?: string;
+        total_amount: number;
+        payment_method: string;
+        reference_number: string;
+        payer_name?: string;
+        payer_phone?: string;
+        paid_date?: string;
+        proof_urls?: string[];
+        allocations?: Array<{ student_id: string; fee_type_id?: string; amount: number; notes?: string }>;
+        idempotency_key?: string;
+    }): Promise<any> {
+        const response = await api.post('/finance/parent/payments/record', payload);
+        return response.data;
+    }
+
+    static async getParentPaymentHistory(studentId?: string): Promise<any[]> {
+        const response = await api.get('/finance/parent/history', { params: studentId ? { studentId } : undefined });
+        return response.data || [];
+    }
+
+    static async getOfficialReceiptBase64(receiptId: string): Promise<{ base64: string; filename: string }> {
+        const response = await api.post(`/finance/receipts/${encodeURIComponent(receiptId)}/compile-base64`, {});
+        return response.data;
+    }
 }

@@ -6,7 +6,10 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ClassService } from '@/services/ClassService';
 import { GradingAPI } from '@/services/GradingService';
+import { FinanceService } from '@/services/FinanceService';
+import { supabase } from '@/libs/supabase';
 import { FeeStructure } from '@/types/types';
+import { Eye, Search, X, Users, Check } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 
@@ -43,17 +46,6 @@ type ScopeType = 'institution' | 'level' | 'class' | 'student';
 const ANNUAL_TERM_ID = '__annual';
 const ANNUAL_TERM_NAME = 'Annual';
 
-const COMPONENT_CATEGORIES = [
-  'tuition',
-  'transport',
-  'meals',
-  'activities',
-  'examination',
-  'boarding',
-  'facility',
-  'other',
-];
-
 const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
   feeStructures,
   loading,
@@ -82,6 +74,26 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
   const [confirmDestructive, setConfirmDestructive] = useState(false);
   const [confirmAction, setConfirmAction] = useState<null | (() => Promise<void>)>(null);
 
+  // Dynamic Fee Categories
+  const [feeCategories, setFeeCategories] = useState<Array<{ id: string; name: string; code: string }>>([
+    { id: '1', name: 'Tuition', code: 'tuition' },
+    { id: '2', name: 'Transport', code: 'transport' },
+    { id: '3', name: 'Meals', code: 'meals' },
+    { id: '4', name: 'Activities', code: 'activities' },
+    { id: '5', name: 'Examination', code: 'examination' },
+    { id: '6', name: 'Boarding', code: 'boarding' },
+    { id: '7', name: 'Facility', code: 'facility' },
+    { id: '8', name: 'Other', code: 'other' },
+  ]);
+
+  // Parent View Preview State
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  const [previewStudents, setPreviewStudents] = useState<any[]>([]);
+  const [previewSearch, setPreviewSearch] = useState('');
+  const [selectedStudentForPreview, setSelectedStudentForPreview] = useState<any | null>(null);
+  const [previewPayableItems, setPreviewPayableItems] = useState<any[]>([]);
+  const [loadingPreviewItems, setLoadingPreviewItems] = useState(false);
+
   const [formData, setFormData] = useState({
     title: '',
     amount: '',
@@ -105,13 +117,29 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     const loadOptions = async () => {
       try {
         setLoadingOptions(true);
-        const [yearsData, termsData, classesData] = await Promise.all([
+        const [yearsData, termsData, classesData, categoriesData, studentsData] = await Promise.all([
           GradingAPI.getAcademicYears(),
           GradingAPI.getTerms(),
           ClassService.getClasses(),
+          FinanceService.getFeeCategories().catch(() => []),
+          Promise.resolve(supabase.from('students').select('id, user_id, admission_number, grade_level, users(full_name)').order('id')).catch(() => ({ data: [] } as any))
         ]);
 
         if (!mounted) return;
+
+        if (Array.isArray(categoriesData) && categoriesData.length > 0) {
+          setFeeCategories(categoriesData);
+        }
+
+        if (studentsData?.data) {
+          const mapped = (studentsData.data || []).map((s: any) => ({
+            id: s.id,
+            admission_number: s.admission_number,
+            grade_level: s.grade_level,
+            full_name: s.users?.full_name || 'Unknown Student',
+          }));
+          setPreviewStudents(mapped);
+        }
 
         const normalizedYears: AcademicYearOption[] = (yearsData || []).map((y: any) => ({
           id: y.id,
@@ -157,6 +185,20 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
       mounted = false;
     };
   }, []);
+
+  const handleSelectStudentForPreview = async (student: any) => {
+    setSelectedStudentForPreview(student);
+    try {
+      setLoadingPreviewItems(true);
+      const items = await FinanceService.getChildPayableItems(student.id);
+      setPreviewPayableItems(items || []);
+    } catch (e) {
+      console.error('Error loading preview items:', e);
+      setPreviewPayableItems([]);
+    } finally {
+      setLoadingPreviewItems(false);
+    }
+  };
 
   const yearTerms = useMemo(() => {
     const scopedTerms = terms.filter((t) => t.academic_year_id === formData.academic_year_id);
@@ -652,12 +694,21 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     <View className="flex-1">
       <View className="flex-row items-center justify-between px-2 mb-4">
         <Text className="text-gray-900 dark:text-white font-bold text-xl">Fee Structures</Text>
-        <TouchableOpacity
-          onPress={openCreateForm}
-          className="bg-gray-900 dark:bg-gray-700 px-4 py-2 rounded-xl flex-row items-center gap-2"
-        >
-          <Text className="text-white text-xs font-black uppercase tracking-widest">+ New</Text>
-        </TouchableOpacity>
+        <View className="flex-row gap-2">
+          <TouchableOpacity
+            onPress={() => setPreviewModalVisible(true)}
+            className="bg-[#FF6900] px-3.5 py-2 rounded-xl flex-row items-center gap-1.5"
+          >
+            <Eye size={14} color="#FFF" />
+            <Text className="text-white text-xs font-black uppercase tracking-widest">Parent View Preview</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={openCreateForm}
+            className="bg-gray-900 dark:bg-gray-700 px-4 py-2 rounded-xl flex-row items-center gap-2"
+          >
+            <Text className="text-white text-xs font-black uppercase tracking-widest">+ New</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
@@ -1003,14 +1054,14 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                     </View>
 
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-1">
-                      {COMPONENT_CATEGORIES.map((cat) => (
+                      {feeCategories.map((cat) => (
                         <TouchableOpacity
-                          key={cat}
-                          onPress={() => updateComponentField(idx, 'category', cat)}
-                          className={`px-2.5 py-1 rounded-lg mr-1.5 ${c.category === cat ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'}`}
+                          key={cat.id || cat.code}
+                          onPress={() => updateComponentField(idx, 'category', cat.code)}
+                          className={`px-2.5 py-1 rounded-lg mr-1.5 ${c.category === cat.code ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'}`}
                         >
-                          <Text className={`text-[10px] font-bold capitalize ${c.category === cat ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`}>
-                            {cat}
+                          <Text className={`text-[10px] font-bold capitalize ${c.category === cat.code ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`}>
+                            {cat.name || cat.code}
                           </Text>
                         </TouchableOpacity>
                       ))}
@@ -1051,6 +1102,161 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* PARENT VIEW PREVIEW MODAL */}
+      <Modal visible={previewModalVisible} transparent animationType="fade">
+        <View className="flex-1 bg-black/60 items-center justify-center p-4">
+          <View className="w-full max-w-xl bg-white dark:bg-[#161B22] rounded-3xl p-6 border border-[#D0D7DE] dark:border-[#21262D]">
+            <View className="flex-row justify-between items-center mb-4">
+              <View className="flex-row items-center">
+                <Eye size={20} color="#FF6900" />
+                <Text className="text-xl font-bold text-gray-900 dark:text-white ml-2">
+                  Parent View Preview
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setPreviewModalVisible(false)}>
+                <X size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
+              </TouchableOpacity>
+            </View>
+
+            <Text className="text-xs text-gray-500 mb-3">
+              Select a student to preview the exact bill, fees checklist, and payable amounts their parent sees on mobile and web.
+            </Text>
+
+            {/* Student Search / Selector */}
+            <View className="flex-row items-center bg-[#F6F8FA] dark:bg-[#0F141C] p-3 rounded-xl border border-[#D0D7DE] dark:border-[#21262D] mb-3">
+              <Search size={16} color={isDark ? "#9CA3AF" : "#6B7280"} />
+              <TextInput
+                value={previewSearch}
+                onChangeText={setPreviewSearch}
+                placeholder="Search student by name or ID..."
+                placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+                className="flex-1 ml-2 text-sm text-gray-900 dark:text-white"
+              />
+            </View>
+
+            {/* Student Selection List (if searching or none selected) */}
+            {!selectedStudentForPreview && (
+              <ScrollView className="max-h-52 mb-4 border border-[#D0D7DE] dark:border-[#21262D] rounded-xl overflow-hidden">
+                {previewStudents
+                  .filter(
+                    (s) =>
+                      s.full_name.toLowerCase().includes(previewSearch.toLowerCase()) ||
+                      s.id.toLowerCase().includes(previewSearch.toLowerCase()) ||
+                      (s.admission_number && s.admission_number.toLowerCase().includes(previewSearch.toLowerCase()))
+                  )
+                  .slice(0, 10)
+                  .map((student) => (
+                    <TouchableOpacity
+                      key={student.id}
+                      onPress={() => handleSelectStudentForPreview(student)}
+                      className="p-3 border-b border-gray-100 dark:border-gray-800 flex-row justify-between items-center"
+                    >
+                      <View>
+                        <Text className="font-bold text-gray-900 dark:text-white text-sm">
+                          {student.full_name}
+                        </Text>
+                        <Text className="text-xs text-[#FF6900]">
+                          Adm: {student.admission_number || student.id} {student.grade_level ? `• Grade ${student.grade_level}` : ''}
+                        </Text>
+                      </View>
+                      <Text className="text-xs font-bold text-indigo-600 dark:text-indigo-400">Preview Bill →</Text>
+                    </TouchableOpacity>
+                  ))}
+              </ScrollView>
+            )}
+
+            {/* Preview Results */}
+            {selectedStudentForPreview && (
+              <View className="mb-4">
+                <View className="flex-row justify-between items-center bg-orange-50 dark:bg-orange-950/30 p-3 rounded-xl border border-orange-200 dark:border-orange-900/50 mb-3">
+                  <View>
+                    <Text className="font-bold text-gray-900 dark:text-white text-sm">
+                      {selectedStudentForPreview.full_name}
+                    </Text>
+                    <Text className="text-xs text-orange-700 dark:text-orange-400">
+                      Adm: {selectedStudentForPreview.admission_number || selectedStudentForPreview.id}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedStudentForPreview(null);
+                      setPreviewPayableItems([]);
+                    }}
+                    className="bg-white dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-orange-200"
+                  >
+                    <Text className="text-xs font-bold text-orange-600">Change</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {loadingPreviewItems ? (
+                  <View className="py-8 items-center justify-center">
+                    <Spinner size="small" label="Loading student fee schedule..." />
+                  </View>
+                ) : previewPayableItems.length === 0 ? (
+                  <View className="py-6 items-center justify-center bg-gray-50 dark:bg-gray-800/40 rounded-xl">
+                    <Text className="text-xs text-gray-500 font-semibold">No active bill or fee items found for this student.</Text>
+                  </View>
+                ) : (
+                  <ScrollView className="max-h-64 mb-3">
+                    <Text className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+                      Applicable Fee Items ({previewPayableItems.length})
+                    </Text>
+                    {previewPayableItems.map((item, idx) => (
+                      <View
+                        key={item.id || idx}
+                        className="p-3 mb-2 rounded-xl bg-[#F6F8FA] dark:bg-[#0F141C] border border-[#D0D7DE] dark:border-[#21262D] flex-row justify-between items-center"
+                      >
+                        <View className="flex-1 mr-2">
+                          <Text className="font-bold text-gray-900 dark:text-white text-xs">
+                            {item.name || item.fee_types?.name}
+                          </Text>
+                          <View className="flex-row items-center gap-1.5 mt-1">
+                            <View className="bg-indigo-100 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded">
+                              <Text className="text-[9px] font-bold text-indigo-700 dark:text-indigo-400 capitalize">
+                                {item.fee_categories?.name || item.category || 'Fee'}
+                              </Text>
+                            </View>
+                            <Text className="text-[10px] text-gray-400">
+                              {item.frequency || 'Per term'}
+                            </Text>
+                            {item.is_optional && (
+                              <Text className="text-[10px] text-amber-500 font-semibold">Optional</Text>
+                            )}
+                          </View>
+                        </View>
+                        <Text className="font-black text-sm text-[#FF6900]">
+                          {formatAmount(item.amount || item.balance || 0)}
+                        </Text>
+                      </View>
+                    ))}
+
+                    <View className="p-3 rounded-xl bg-gray-900 flex-row justify-between items-center mt-2">
+                      <Text className="text-white font-bold text-xs uppercase tracking-wider">Total Bill Payable</Text>
+                      <Text className="text-emerald-400 font-black text-base">
+                        {formatAmount(
+                          previewPayableItems.reduce((acc, curr) => acc + Number(curr.amount || curr.balance || 0), 0)
+                        )}
+                      </Text>
+                    </View>
+                  </ScrollView>
+                )}
+              </View>
+            )}
+
+            <TouchableOpacity
+              onPress={() => {
+                setPreviewModalVisible(false);
+                setSelectedStudentForPreview(null);
+                setPreviewPayableItems([]);
+              }}
+              className="py-3 rounded-xl bg-gray-200 dark:bg-gray-800 items-center"
+            >
+              <Text className="font-bold text-gray-700 dark:text-gray-300">Close Preview</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </View>
   );
