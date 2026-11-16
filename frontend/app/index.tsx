@@ -26,7 +26,6 @@ import { FuturisticPricing } from '@/components/landing/FuturisticPricing';
 import { FuturisticContact } from '@/components/landing/FuturisticContact';
 import { FloatingScrollTop } from '@/components/landing/FloatingScrollTop';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { Reveal } from '@/components/ui/Reveal';
 import {
   Building,
   Plus,
@@ -242,23 +241,17 @@ function WebLandingIndex() {
 
           {/* 2. ASYMMETRIC BENTO FEATURES MATRIX */}
           <View onLayout={(e) => handleLayout('features', e.nativeEvent.layout.y)}>
-            <Reveal variant="cards">
-              <BentoFeatures />
-            </Reveal>
+            <BentoFeatures />
           </View>
 
           {/* 3. ENTERPRISE INFRASTRUCTURE TELEMETRY */}
           <View onLayout={(e) => handleLayout('architecture', e.nativeEvent.layout.y)}>
-            <Reveal variant="wrapper">
-              <TelemetryStrip />
-            </Reveal>
+            <TelemetryStrip />
           </View>
 
           {/* 4. FUTURISTIC GLASS ARMOR PRICING & ADD-ONS */}
           <View onLayout={(e) => handleLayout('pricing', e.nativeEvent.layout.y)}>
-            <Reveal variant="wrapper">
-              <FuturisticPricing onSelectPlan={openRegistrationModal} />
-            </Reveal>
+            <FuturisticPricing onSelectPlan={openRegistrationModal} />
           </View>
 
           {/* 5. HYPER-CONNECT COMMUNICATION PORTAL & FOOTER */}

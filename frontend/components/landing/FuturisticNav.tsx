@@ -10,6 +10,7 @@ import {
 import { Sparkles, Menu, X } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { CloudoraLogo } from '@/components/common/CloudoraLogo';
+import { Reveal } from '../ui/Reveal';
 
 interface FuturisticNavProps {
   onScrollTo: (sectionKey: string) => void;
@@ -84,6 +85,7 @@ export const FuturisticNav: React.FC<FuturisticNavProps> = ({
     >
       {/* ── UNBOXED NAV ROW — no shared background, border, or shadow.
           Every element floats directly on the page. ── */}
+      <Reveal variant="wrapper" duration={600} style={{ width: '100%', alignItems: 'center' }}>
       <View style={styles.navRow}>
         {/* ── LEFT: WORDMARK ── */}
         <TouchableOpacity
@@ -212,6 +214,7 @@ export const FuturisticNav: React.FC<FuturisticNavProps> = ({
           )}
         </View>
       </View>
+      </Reveal>
 
       {/* ── MOBILE MENU: an edge-to-edge sheet, not a boxed card. ── */}
       {isMobile && mobileMenuOpen && (

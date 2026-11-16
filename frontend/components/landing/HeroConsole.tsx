@@ -20,7 +20,8 @@ import {
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { DemoPulseButton } from '@/components/ui/DemoPulseButton';
+import { DemoButton } from '@/components/ui/DemoButton';
+import { Reveal } from '@/components/ui/Reveal';
 
 interface HeroConsoleProps {
   onExplorePricing: () => void;
@@ -213,257 +214,269 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
         {/* Left Column: Asymmetric Visionary Copy & Telemetry */}
         <View style={{ flex: isDesktop ? 1 : undefined, maxWidth: isDesktop ? 580 : '100%' }}>
           {/* Status Telemetry Pill */}
-          <View
-            style={[
-              {
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-                alignSelf: 'flex-start',
-                paddingHorizontal: 16,
-                paddingVertical: 7,
-                borderRadius: 30,
-                backgroundColor: 'rgba(255, 107, 0, 0.12)',
-                borderWidth: 1,
-                borderColor: 'rgba(255, 107, 0, 0.35)',
-                marginBottom: 24,
-                boxShadow: [{
-                  offsetX: 0,
-                  offsetY: 4,
-                  blurRadius: 16,
-                  color: 'rgba(255, 107, 0, 0.15)',
-                }],
-              },
-              isWeb
-                ? ({
-                    backdropFilter: 'blur(20px) saturate(180%)',
-                    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                    background: 'linear-gradient(135deg, rgba(255, 107, 0, 0.18) 0%, rgba(24, 15, 52, 0.6) 100%)',
-                  } as any)
-                : {},
-            ]}
-          >
+          <Reveal variant="cta" delay={0}>
             <View
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: '#FF6B00',
-                shadowColor: '#FF6B00',
-                boxShadow: [{
-                  offsetX: 0,
-                  offsetY: 0,
-                  blurRadius: 8,
-                  color: '#FF6B00',
-                }],
-              }}
-            />
-            <Text
-              style={{
-                color: '#FF8C40',
-                fontSize: 11,
-                fontWeight: '800',
-                letterSpacing: 1.5,
-                textTransform: 'uppercase',
-              }}
-            >
-              ALL-IN-ONE SCHOOL OPERATIONS PLATFORM
-            </Text>
-          </View>
-
-          {/* Monumental Headline */}
-          <Text
-            style={{
-              color: '#FFFFFF',
-              fontSize: isDesktop ? 54 : isTablet ? 44 : 34,
-              fontWeight: '900',
-              lineHeight: isDesktop ? 62 : isTablet ? 52 : 42,
-              letterSpacing: -1.2,
-              marginBottom: 20,
-              ...(isWeb ? ({ textWrap: 'balance' } as any) : {}),
-            }}
-          >
-            The Complete{' '}
-            <Text
-              style={{
-                color: '#FF8C40',
-                textShadowColor: 'rgba(255, 107, 0, 0.45)',
-                textShadowOffset: { width: 0, height: 0 },
-                textShadowRadius: 18,
-              }}
-            >
-              Management
-            </Text>{' '}
-            Platform for{' '}
-            <Text
-              style={{
-                color: '#A78BFA',
-                textShadowColor: 'rgba(139, 92, 246, 0.45)',
-                textShadowOffset: { width: 0, height: 0 },
-                textShadowRadius: 18,
-              }}
-            >
-              Every
-            </Text>{' '}
-            School.
-          </Text>
-
-          {/* Subtitle with Clear, Simple Value */}
-          <Text
-            style={{
-              color: 'rgba(255, 255, 255, 0.65)',
-              fontSize: isDesktop ? 16.5 : 15,
-              lineHeight: 25,
-              marginBottom: 32,
-              ...(isWeb ? ({ textWrap: 'pretty' } as any) : {}),
-            }}
-          >
-            Connect school leadership, teachers, finance staff, students, and parents in one unified cloud system. Built to adapt easily to any curriculum, class hierarchy, and grading style.
-          </Text>
-
-          {/* High-Impact Actions */}
-          <View
-            style={{
-              flexDirection: isDesktop || isTablet ? 'row' : 'column',
-              alignItems: 'stretch',
-              gap: 14,
-              marginBottom: 40,
-            }}
-          >
-            {/* Primary Action: Interactive Demo with Attention Pulse */}
-            <DemoPulseButton
-              id="hero-demo-pulse"
-              size="lg"
-              label="Try Interactive Demo"
-              onPress={() => router.push('/demo' as any)}
-            />
-
-            {/* Secondary Action: Explore Architecture & Pricing */}
-            <TouchableOpacity
-              onPress={onExplorePricing}
-              activeOpacity={0.85}
-              //@ts-ignore
-              onPointerEnter={() => setPricingHovered(true)}
-              onPointerLeave={() => setPricingHovered(false)}
               style={[
                 {
-                  position: 'relative',
                   flexDirection: 'row',
                   alignItems: 'center',
-                  justifyContent: 'center',
                   gap: 8,
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  paddingVertical: 18,
-                  paddingHorizontal: 24,
-                  borderRadius: 18,
-                  borderWidth: 1.5,
-                  borderColor: pricingHovered ? 'rgba(255, 255, 255, 0.35)' : 'rgba(255, 255, 255, 0.14)',
-                  overflow: 'hidden',
+                  alignSelf: 'flex-start',
+                  paddingHorizontal: 16,
+                  paddingVertical: 7,
+                  borderRadius: 30,
+                  backgroundColor: 'rgba(255, 107, 0, 0.12)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 107, 0, 0.35)',
+                  marginBottom: 24,
                   boxShadow: [{
                     offsetX: 0,
-                    offsetY: 8,
-                    blurRadius: 24,
-                    color: 'rgba(0, 0, 0, 0.35)',
+                    offsetY: 4,
+                    blurRadius: 16,
+                    color: 'rgba(255, 107, 0, 0.15)',
                   }],
                 },
                 isWeb
                   ? ({
-                      backdropFilter: 'blur(28px) saturate(190%)',
-                      WebkitBackdropFilter: 'blur(28px) saturate(190%)',
-                      background: pricingHovered
-                        ? 'linear-gradient(165deg, rgba(35, 22, 75, 0.85) 0%, rgba(18, 12, 50, 0.9) 100%)'
-                        : 'linear-gradient(165deg, rgba(255, 255, 255, 0.08) 0%, rgba(15, 11, 46, 0.65) 100%)',
-                      transitionProperty: 'all',
-                      transitionDuration: '0.2s',
-                      transitionTimingFunction: 'ease',
-                      transform: pricingHovered ? [{ translateY: -2 }] : [{ translateY: 0 }],
-                      cursor: 'pointer',
+                      backdropFilter: 'blur(20px) saturate(180%)',
+                      WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                      background: 'linear-gradient(135deg, rgba(255, 107, 0, 0.18) 0%, rgba(24, 15, 52, 0.6) 100%)',
                     } as any)
                   : {},
               ]}
             >
-              {/* Top refraction sheen */}
               <View
-                pointerEvents="none"
                 style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: '40%',
-                  opacity: 0.6,
-                  ...(isWeb ? ({
-                    background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 100%)',
-                  } as any) : {}),
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: '#FF6B00',
+                  shadowColor: '#FF6B00',
+                  boxShadow: [{
+                    offsetX: 0,
+                    offsetY: 0,
+                    blurRadius: 8,
+                    color: '#FF6B00',
+                  }],
                 }}
               />
               <Text
                 style={{
-                  color: '#FFFFFF',
-                  fontWeight: '700',
-                  fontSize: 14.5,
-                  letterSpacing: 0.2,
+                  color: '#FF8C40',
+                  fontSize: 11,
+                  fontWeight: '800',
+                  letterSpacing: 1.5,
+                  textTransform: 'uppercase',
                 }}
               >
-                View Plans & Pricing
+                ALL-IN-ONE SCHOOL OPERATIONS PLATFORM
               </Text>
-            </TouchableOpacity>
-          </View>
+            </View>
+          </Reveal>
 
-          {/* Telemetry Proof Strip */}
-          <View
-            style={{
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              gap: 12,
-              paddingTop: 20,
-              borderTopWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.08)',
-            }}
-          >
-            {[
-              { label: 'Staff & Roles', val: '10+ Roles' },
-              { label: 'Evaluation Styles', val: 'Flexible' },
-              { label: 'Timetable Clashes', val: '0 Clashes' },
-              { label: 'Fee Structures', val: 'Multi-Tier' },
-            ].map((item, idx) => (
-              <GlassCard
-                key={idx}
-                variant="subtle"
-                borderRadius={14}
-                style={{ minWidth: 100 }}
-                contentStyle={{ paddingVertical: 10, paddingHorizontal: 14 }}
+          {/* Monumental Headline */}
+          <Reveal variant="headline" delay={150}>
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontSize: isDesktop ? 54 : isTablet ? 44 : 34,
+                fontWeight: '900',
+                lineHeight: isDesktop ? 62 : isTablet ? 52 : 42,
+                letterSpacing: -1.2,
+                marginBottom: 20,
+                ...(isWeb ? ({ textWrap: 'balance' } as any) : {}),
+              }}
+            >
+              The Complete{' '}
+              <Text
+                style={{
+                  color: '#FF8C40',
+                  textShadowColor: 'rgba(255, 107, 0, 0.45)',
+                  textShadowOffset: { width: 0, height: 0 },
+                  textShadowRadius: 18,
+                }}
               >
+                Management
+              </Text>{' '}
+              Platform for{' '}
+              <Text
+                style={{
+                  color: '#A78BFA',
+                  textShadowColor: 'rgba(139, 92, 246, 0.45)',
+                  textShadowOffset: { width: 0, height: 0 },
+                  textShadowRadius: 18,
+                }}
+              >
+                Every
+              </Text>{' '}
+              School.
+            </Text>
+          </Reveal>
+
+          {/* Subtitle with Clear, Simple Value */}
+          <Reveal variant="sentences" delay={300}>
+            <Text
+              style={{
+                color: 'rgba(255, 255, 255, 0.65)',
+                fontSize: isDesktop ? 16.5 : 15,
+                lineHeight: 25,
+                marginBottom: 32,
+                ...(isWeb ? ({ textWrap: 'pretty' } as any) : {}),
+              }}
+            >
+              Connect school leadership, teachers, finance staff, students, and parents in one unified cloud system. Built to adapt easily to any curriculum, class hierarchy, and grading style.
+            </Text>
+          </Reveal>
+
+          {/* High-Impact Actions */}
+          <Reveal variant="cta" delay={450}>
+            <View
+              style={{
+                flexDirection: isDesktop || isTablet ? 'row' : 'column',
+                alignItems: 'stretch',
+                gap: 14,
+                marginBottom: 40,
+              }}
+            >
+              {/* Primary Action: Interactive Demo with Premium Aura */}
+              <DemoButton
+                id="hero-demo-pulse"
+                size="lg"
+                label="Try Interactive Demo"
+                onPress={() => router.push('/demo' as any)}
+              />
+
+              {/* Secondary Action: Explore Architecture & Pricing */}
+              <TouchableOpacity
+                onPress={onExplorePricing}
+                activeOpacity={0.85}
+                //@ts-ignore
+                onPointerEnter={() => setPricingHovered(true)}
+                onPointerLeave={() => setPricingHovered(false)}
+                style={[
+                  {
+                    position: 'relative',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    paddingVertical: 18,
+                    paddingHorizontal: 24,
+                    borderRadius: 18,
+                    borderWidth: 1.5,
+                    borderColor: pricingHovered ? 'rgba(255, 255, 255, 0.35)' : 'rgba(255, 255, 255, 0.14)',
+                    overflow: 'hidden',
+                    boxShadow: [{
+                      offsetX: 0,
+                      offsetY: 8,
+                      blurRadius: 24,
+                      color: 'rgba(0, 0, 0, 0.35)',
+                    }],
+                  },
+                  isWeb
+                    ? ({
+                        backdropFilter: 'blur(28px) saturate(190%)',
+                        WebkitBackdropFilter: 'blur(28px) saturate(190%)',
+                        background: pricingHovered
+                          ? 'linear-gradient(165deg, rgba(35, 22, 75, 0.85) 0%, rgba(18, 12, 50, 0.9) 100%)'
+                          : 'linear-gradient(165deg, rgba(255, 255, 255, 0.08) 0%, rgba(15, 11, 46, 0.65) 100%)',
+                        transitionProperty: 'all',
+                        transitionDuration: '0.2s',
+                        transitionTimingFunction: 'ease',
+                        transform: pricingHovered ? [{ translateY: -2 }] : [{ translateY: 0 }],
+                        cursor: 'pointer',
+                      } as any)
+                    : {},
+                ]}
+              >
+                {/* Top refraction sheen */}
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '40%',
+                    opacity: 0.6,
+                    ...(isWeb ? ({
+                      background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 100%)',
+                    } as any) : {}),
+                  }}
+                />
                 <Text
                   style={{
                     color: '#FFFFFF',
-                    fontWeight: '900',
-                    fontSize: 18,
-                    letterSpacing: -0.2,
-                    ...(isWeb ? ({ fontVariantNumeric: 'tabular-nums' } as any) : {}),
-                  }}
-                >
-                  {item.val}
-                </Text>
-                <Text
-                  style={{
-                    color: 'rgba(255, 255, 255, 0.48)',
-                    fontSize: 10.5,
                     fontWeight: '700',
-                    marginTop: 2,
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.5,
+                    fontSize: 14.5,
+                    letterSpacing: 0.2,
                   }}
                 >
-                  {item.label}
+                  View Plans & Pricing
                 </Text>
-              </GlassCard>
-            ))}
-          </View>
+              </TouchableOpacity>
+            </View>
+          </Reveal>
+
+          {/* Telemetry Proof Strip */}
+          <Reveal variant="list" delay={600}>
+            <View
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                gap: 12,
+                paddingTop: 20,
+                borderTopWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.08)',
+              }}
+            >
+              {[
+                { label: 'Staff & Roles', val: '10+ Roles' },
+                { label: 'Evaluation Styles', val: 'Flexible' },
+                { label: 'Timetable Clashes', val: '0 Clashes' },
+                { label: 'Fee Structures', val: 'Multi-Tier' },
+              ].map((item, idx) => (
+                <GlassCard
+                  key={idx}
+                  variant="subtle"
+                  borderRadius={14}
+                  style={{ minWidth: 100 }}
+                  contentStyle={{ paddingVertical: 10, paddingHorizontal: 14 }}
+                >
+                  <Text
+                    style={{
+                      color: '#FFFFFF',
+                      fontWeight: '900',
+                      fontSize: 18,
+                      letterSpacing: -0.2,
+                      ...(isWeb ? ({ fontVariantNumeric: 'tabular-nums' } as any) : {}),
+                    }}
+                  >
+                    {item.val}
+                  </Text>
+                  <Text
+                    style={{
+                      color: 'rgba(255, 255, 255, 0.48)',
+                      fontSize: 10.5,
+                      fontWeight: '700',
+                      marginTop: 2,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {item.label}
+                  </Text>
+                </GlassCard>
+              ))}
+            </View>
+          </Reveal>
         </View>
 
         {/* Right Column: Interactive Holographic Platform HUD Preview */}
-        <View
+        <Reveal
+          variant="image"
+          delay={250}
           style={{
             flex: isDesktop ? 1.1 : undefined,
             width: '100%',
@@ -958,7 +971,7 @@ export const HeroConsole: React.FC<HeroConsoleProps> = ({ onExplorePricing, onOp
               </View>
             </View>
           )}
-        </View>
+        </Reveal>
       </View>
     </View>
   );

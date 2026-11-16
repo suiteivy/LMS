@@ -6,12 +6,12 @@ import {
   Platform,
   useWindowDimensions,
   Linking,
+  ViewStyle,
 } from 'react-native';
+import Svg, { Path, Rect, Circle } from 'react-native-svg';
 import {
   Mail,
   Phone,
-  Instagram,
-  Linkedin,
   MoveRight,
   ExternalLink,
   Copy,
@@ -19,7 +19,7 @@ import {
 } from 'lucide-react-native';
 import { GlassCard } from '../ui/GlassCard';
 import { SITE_CONFIG } from '@/constants/siteConfig';
-import { Reveal } from '../ui/Reveal';
+import { Reveal, RevealText } from '../ui/Reveal';
 
 interface FuturisticContactProps {
   onOpenBooking: () => void;
@@ -38,17 +38,85 @@ interface ContactItem {
   accessibilityLabel: string;
 }
 
+// Crisp inline SVGs for Social Platforms
+const InstagramIcon: React.FC<{ size?: number; color?: string }> = ({
+  size = 22,
+  color = '#EC4899',
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="2"
+      y="2"
+      width="20"
+      height="20"
+      rx="5.5"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Circle
+      cx="12"
+      cy="12"
+      r="4.2"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Circle cx="17.6" cy="6.4" r="1.2" fill={color} />
+  </Svg>
+);
+
+const TikTokIcon: React.FC<{ size?: number; color?: string }> = ({
+  size = 22,
+  color = '#25F4EE',
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M19.32 8.16a5.55 5.55 0 0 1-3.6-1.33V16a5.6 5.6 0 1 1-6.72-5.48v3.2a2.4 2.4 0 1 0 3.52 2.12V2.4h3.2a5.6 5.6 0 0 0 3.6 5.76z"
+      fill={color}
+    />
+  </Svg>
+);
+
+const LinkedInIcon: React.FC<{ size?: number; color?: string }> = ({
+  size = 22,
+  color = '#3B82F6',
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Rect
+      x="2"
+      y="9"
+      width="4"
+      height="12"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Circle cx="4" cy="4" r="2" fill={color} />
+  </Svg>
+);
+
 export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBooking }) => {
   const isWeb = Platform.OS === 'web';
   const { width } = useWindowDimensions();
-  const isDesktop = width >= 1024;
+  const isDesktop = width >= 1060;
+  const isTablet = width >= 680 && width < 1060;
 
   const [setupBtnHovered, setSetupBtnHovered] = useState(false);
   const [hoveredCardKey, setHoveredCardKey] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Build contact list dynamically from SITE_CONFIG.
-  // Missing or empty values are automatically filtered out.
+  // 5 Tiles: Email, Phone, Instagram, TikTok, LinkedIn
   const rawContacts: (ContactItem | null)[] = [
     SITE_CONFIG.supportEmail
       ? {
@@ -79,24 +147,37 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
     SITE_CONFIG.socials?.instagram?.url
       ? {
           key: 'instagram',
-          title: 'Social Channels',
+          title: 'Instagram',
           value: SITE_CONFIG.socials.instagram.handle,
           sub: SITE_CONFIG.socials.instagram.sub,
           url: SITE_CONFIG.socials.instagram.url,
-          icon: <Instagram size={22} color="#EC4899" />,
+          icon: <InstagramIcon size={22} color="#EC4899" />,
           accent: '#EC4899',
           isExternal: true,
           accessibilityLabel: SITE_CONFIG.socials.instagram.label,
         }
       : null,
+    SITE_CONFIG.socials?.tiktok?.url
+      ? {
+          key: 'tiktok',
+          title: 'TikTok',
+          value: SITE_CONFIG.socials.tiktok.handle,
+          sub: SITE_CONFIG.socials.tiktok.sub,
+          url: SITE_CONFIG.socials.tiktok.url,
+          icon: <TikTokIcon size={22} color="#25F4EE" />,
+          accent: '#25F4EE',
+          isExternal: true,
+          accessibilityLabel: SITE_CONFIG.socials.tiktok.label,
+        }
+      : null,
     SITE_CONFIG.socials?.linkedin?.url
       ? {
           key: 'linkedin',
-          title: 'Office & Partnerships',
+          title: 'LinkedIn',
           value: SITE_CONFIG.socials.linkedin.handle,
           sub: SITE_CONFIG.socials.linkedin.sub,
           url: SITE_CONFIG.socials.linkedin.url,
-          icon: <Linkedin size={22} color="#3B82F6" />,
+          icon: <LinkedInIcon size={22} color="#3B82F6" />,
           accent: '#3B82F6',
           isExternal: true,
           accessibilityLabel: SITE_CONFIG.socials.linkedin.label,
@@ -140,7 +221,7 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
       }}
     >
       {/* Header */}
-      <Reveal variant="wrapper" style={{ alignItems: 'center', marginBottom: 44 }}>
+      <Reveal variant="headline" style={{ alignItems: 'center', marginBottom: 44 }}>
         <View
           style={[
             {
@@ -200,13 +281,14 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
         </Text>
       </Reveal>
 
-      {/* Modern 2x2 Clickable Contact Matrix */}
+      {/* Modern 5-Tile Clickable Connect Matrix */}
       <View
         style={{
           flexDirection: 'row',
           flexWrap: 'wrap',
-          gap: 16,
+          gap: 14,
           justifyContent: 'center',
+          alignItems: 'stretch',
           marginBottom: 48,
         }}
       >
@@ -214,27 +296,35 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
           const isHovered = hoveredCardKey === c.key;
           const isCopied = copiedKey === c.key;
 
+          // Responsive width for 5 tiles:
+          // Desktop: 5 items row (approx 18.5% each with gap)
+          // Tablet: 3 on row 1, 2 on row 2 (approx 31% each)
+          // Mobile: 100% full width
+          const cardWidthStyle: ViewStyle = isDesktop
+            ? { width: '18.7%', minWidth: 200 }
+            : isTablet
+            ? { width: '31%', minWidth: 200 }
+            : { width: '100%', minWidth: 260 };
+
           return (
             <Reveal
               key={c.key}
               variant="cards"
               staggerIndex={i}
-              style={{
-                width: isDesktop ? '48.5%' : '100%',
-                minWidth: 280,
-              }}
+              style={[cardWidthStyle, { display: 'flex' }]}
             >
               <TouchableOpacity
                 onPress={() => handleCardPress(c)}
                 activeOpacity={0.85}
                 accessibilityRole="link"
                 accessibilityLabel={c.accessibilityLabel}
-                //@ts-ignore
+                // @ts-ignore
                 onPointerEnter={() => setHoveredCardKey(c.key)}
                 onPointerLeave={() => setHoveredCardKey(null)}
                 style={[
                   {
                     width: '100%',
+                    height: '100%',
                     borderRadius: 20,
                   },
                   isWeb
@@ -256,33 +346,98 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
                   borderRadius={20}
                   style={{
                     width: '100%',
+                    height: '100%',
                     borderWidth: 1,
                     borderColor: isHovered ? `${c.accent}80` : 'rgba(255, 255, 255, 0.1)',
                   }}
                   contentStyle={{
-                    padding: 24,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 18,
+                    padding: 20,
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    height: '100%',
+                    gap: 16,
                   }}
                 >
-                  <View
-                    style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 16,
-                      backgroundColor: `${c.accent}18`,
-                      borderWidth: 1,
-                      borderColor: isHovered ? `${c.accent}66` : `${c.accent}33`,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {c.icon}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 15,
+                        backgroundColor: `${c.accent}18`,
+                        borderWidth: 1,
+                        borderColor: isHovered ? `${c.accent}66` : `${c.accent}33`,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {c.icon}
+                    </View>
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      {c.canCopy && isDesktop && (
+                        <TouchableOpacity
+                          onPress={(e) => handleCopy(e, c)}
+                          activeOpacity={0.7}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Copy ${c.value}`}
+                          style={{
+                            padding: 6,
+                            borderRadius: 8,
+                            backgroundColor: isCopied
+                              ? 'rgba(16, 185, 129, 0.2)'
+                              : 'rgba(255, 255, 255, 0.06)',
+                            borderWidth: 1,
+                            borderColor: isCopied
+                              ? 'rgba(16, 185, 129, 0.4)'
+                              : 'rgba(255, 255, 255, 0.1)',
+                          }}
+                        >
+                          {isCopied ? (
+                            <Check size={13} color="#10B981" />
+                          ) : (
+                            <Copy size={13} color="rgba(255, 255, 255, 0.6)" />
+                          )}
+                        </TouchableOpacity>
+                      )}
+
+                      <View
+                        style={[
+                          {
+                            width: 30,
+                            height: 30,
+                            borderRadius: 9,
+                            backgroundColor: isHovered
+                              ? `${c.accent}25`
+                              : 'rgba(255, 255, 255, 0.05)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          },
+                          isWeb
+                            ? ({
+                                transform: isHovered ? [{ translateX: 2 }] : [{ translateX: 0 }],
+                                transition: 'transform 0.2s ease',
+                              } as any)
+                            : {},
+                        ]}
+                      >
+                        {c.isExternal ? (
+                          <ExternalLink
+                            size={13}
+                            color={isHovered ? c.accent : 'rgba(255, 255, 255, 0.5)'}
+                          />
+                        ) : (
+                          <MoveRight
+                            size={14}
+                            color={isHovered ? c.accent : 'rgba(255, 255, 255, 0.5)'}
+                          />
+                        )}
+                      </View>
+                    </View>
                   </View>
 
-                  <View style={{ flex: 1 }}>
+                  <View style={{ marginTop: 'auto' }}>
                     <Text
                       style={{
                         color: 'rgba(255, 255, 255, 0.45)',
@@ -290,7 +445,7 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
                         fontWeight: '700',
                         textTransform: 'uppercase',
                         letterSpacing: 1,
-                        marginBottom: 3,
+                        marginBottom: 4,
                       }}
                     >
                       {c.title}
@@ -298,79 +453,25 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
                     <Text
                       style={{
                         color: '#FFFFFF',
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: '800',
                         letterSpacing: -0.2,
-                        marginBottom: 2,
+                        marginBottom: 4,
                       }}
+                      numberOfLines={1}
                     >
                       {c.value}
                     </Text>
-                    <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 12 }}>
+                    <Text
+                      style={{
+                        color: 'rgba(255, 255, 255, 0.45)',
+                        fontSize: 11.5,
+                        lineHeight: 16,
+                      }}
+                      numberOfLines={2}
+                    >
                       {c.sub}
                     </Text>
-                  </View>
-
-                  {/* Actions / indicators */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    {c.canCopy && isDesktop && (
-                      <TouchableOpacity
-                        onPress={(e) => handleCopy(e, c)}
-                        activeOpacity={0.7}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Copy ${c.value}`}
-                        style={{
-                          padding: 8,
-                          borderRadius: 8,
-                          backgroundColor: isCopied
-                            ? 'rgba(16, 185, 129, 0.2)'
-                            : 'rgba(255, 255, 255, 0.06)',
-                          borderWidth: 1,
-                          borderColor: isCopied
-                            ? 'rgba(16, 185, 129, 0.4)'
-                            : 'rgba(255, 255, 255, 0.1)',
-                        }}
-                      >
-                        {isCopied ? (
-                          <Check size={14} color="#10B981" />
-                        ) : (
-                          <Copy size={14} color="rgba(255, 255, 255, 0.6)" />
-                        )}
-                      </TouchableOpacity>
-                    )}
-
-                    <View
-                      style={[
-                        {
-                          width: 32,
-                          height: 32,
-                          borderRadius: 10,
-                          backgroundColor: isHovered
-                            ? `${c.accent}25`
-                            : 'rgba(255, 255, 255, 0.05)',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        },
-                        isWeb
-                          ? ({
-                              transform: isHovered ? [{ translateX: 2 }] : [{ translateX: 0 }],
-                              transition: 'transform 0.2s ease',
-                            } as any)
-                          : {},
-                      ]}
-                    >
-                      {c.isExternal ? (
-                        <ExternalLink
-                          size={14}
-                          color={isHovered ? c.accent : 'rgba(255, 255, 255, 0.5)'}
-                        />
-                      ) : (
-                        <MoveRight
-                          size={15}
-                          color={isHovered ? c.accent : 'rgba(255, 255, 255, 0.5)'}
-                        />
-                      )}
-                    </View>
                   </View>
                 </GlassCard>
               </TouchableOpacity>
@@ -410,7 +511,7 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
           <TouchableOpacity
             onPress={onOpenBooking}
             activeOpacity={0.85}
-            //@ts-ignore
+            // @ts-ignore
             onPointerEnter={() => setSetupBtnHovered(true)}
             onPointerLeave={() => setSetupBtnHovered(false)}
             style={[
@@ -488,22 +589,49 @@ export const FuturisticContact: React.FC<FuturisticContactProps> = ({ onOpenBook
         </GlassCard>
       </Reveal>
 
-      {/* Cyber Footer */}
-      <View
-        style={{
-          borderTopWidth: 1,
-          borderColor: 'rgba(255, 255, 255, 0.08)',
-          paddingTop: 28,
-          flexDirection: isDesktop ? 'row' : 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 16,
-        }}
-      >
-        <Text style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: 13, textAlign: 'center' }}>
-          © {new Date().getFullYear()} {SITE_CONFIG.legalName}. All rights reserved.
-        </Text>
-      </View>
+      {/* Cyber Footer with Socials */}
+      <Reveal variant="wrapper">
+        <View
+          style={{
+            borderTopWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+            paddingTop: 28,
+            flexDirection: isDesktop ? 'row' : 'column',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+          }}
+        >
+          <Text style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: 13, textAlign: 'center' }}>
+            © {new Date().getFullYear()} {SITE_CONFIG.legalName}. All rights reserved.
+          </Text>
+
+          {/* Social Links In Footer */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <TouchableOpacity
+              onPress={() => handleCardPress(contacts.find((c) => c.key === 'instagram')!)}
+              accessibilityLabel="Instagram"
+              style={{ padding: 6, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.04)' }}
+            >
+              <InstagramIcon size={18} color="rgba(255,255,255,0.7)" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleCardPress(contacts.find((c) => c.key === 'tiktok')!)}
+              accessibilityLabel="TikTok"
+              style={{ padding: 6, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.04)' }}
+            >
+              <TikTokIcon size={18} color="rgba(255,255,255,0.7)" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleCardPress(contacts.find((c) => c.key === 'linkedin')!)}
+              accessibilityLabel="LinkedIn"
+              style={{ padding: 6, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.04)' }}
+            >
+              <LinkedInIcon size={18} color="rgba(255,255,255,0.7)" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Reveal>
     </View>
   );
 };

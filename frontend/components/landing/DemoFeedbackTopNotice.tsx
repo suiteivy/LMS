@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { MessageSquare, MoveDown, X, Check } from 'lucide-react-native';
+import { Reveal } from '@/components/ui/Reveal';
 import {
   isNoticeDismissed,
   dismissDemoNotice,
@@ -67,6 +68,7 @@ export const DemoFeedbackTopNotice: React.FC<DemoFeedbackTopNoticeProps> = ({
   };
 
   return (
+    <Reveal variant="cta" style={{ width: '100%' }}>
     <View
       style={[
         {
@@ -148,6 +150,7 @@ export const DemoFeedbackTopNotice: React.FC<DemoFeedbackTopNoticeProps> = ({
         </TouchableOpacity>
       </View>
     </View>
+    </Reveal>
   );
 };
 

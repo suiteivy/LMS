@@ -2,6 +2,8 @@
  * Central platform configuration for Cloudora LMS.
  * All platform contact details, links, branding metadata, and demo configurations
  * are centralized here so updates are a single-line edit.
+ *
+ * Complies with Section 3 of Landing Page Fixes.
  */
 
 export const SITE_CONFIG = {
@@ -27,18 +29,28 @@ export const SITE_CONFIG = {
   },
 
   // Social & Web Links
+  // Note: Original URLs had share/tracking query parameters that were stripped for permanent profile stability:
+  // - Instagram: https://www.instagram.com/cloudora.limited?xtok=MTcxZnBobG1ud2lkbg==
+  // - TikTok: https://www.tiktok.com/@cloudora.limited?_r=1&_t=ZS-9AzQTNjONHN
+  // - LinkedIn: https://www.linkedin.com/company/cloudora-limited
   socials: {
     instagram: {
-      handle: '@cloudora.solutions',
-      url: 'https://instagram.com/cloudora.solutions',
-      label: 'Open our Instagram profile',
-      sub: 'Product updates & guides',
+      handle: '@cloudora.limited',
+      url: 'https://www.instagram.com/cloudora.limited',
+      label: 'Open our Instagram page',
+      sub: 'Platform updates & school highlights',
+    },
+    tiktok: {
+      handle: '@cloudora.limited',
+      url: 'https://www.tiktok.com/@cloudora.limited',
+      label: 'Open our TikTok page',
+      sub: 'Short guides, feature walkthroughs & campus life',
     },
     linkedin: {
       handle: 'Cloudora Solutions',
-      url: 'https://linkedin.com/company/cloudora-solutions',
-      label: 'Open our LinkedIn company page',
-      sub: 'School visits & demonstrations',
+      url: 'https://www.linkedin.com/company/cloudora-limited',
+      label: 'Open our LinkedIn page',
+      sub: 'Institutional partnerships & company milestones',
     },
   },
 

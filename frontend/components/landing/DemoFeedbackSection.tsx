@@ -24,6 +24,7 @@ import {
   ChevronDown,
 } from 'lucide-react-native';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Reveal } from '@/components/ui/Reveal';
 import { SITE_CONFIG } from '@/constants/siteConfig';
 import { getApiBaseUrl } from '@/utils/backendUrl';
 import {
@@ -262,7 +263,8 @@ export const DemoFeedbackSection: React.FC<DemoFeedbackSectionProps> = ({
   const selectedRoleObj = SITE_CONFIG.feedbackRoles.find((r) => r.value === role);
 
   return (
-    <View id="feedback-section" style={{ width: '100%', marginTop: 48, marginBottom: 40 }}>
+    <Reveal variant="wrapper" style={{ width: '100%', marginTop: 48, marginBottom: 40 }}>
+    <View id="feedback-section" style={{ width: '100%' }}>
       <GlassCard
         variant="elevated"
         accentColor="#FF6B00"
@@ -279,6 +281,7 @@ export const DemoFeedbackSection: React.FC<DemoFeedbackSectionProps> = ({
         }}
       >
         {/* Header */}
+        <Reveal variant="headline">
         <View style={{ alignItems: 'center', marginBottom: 28 }}>
           <View
             style={{
@@ -319,8 +322,10 @@ export const DemoFeedbackSection: React.FC<DemoFeedbackSectionProps> = ({
             Your feedback directly shapes our platform. All fields are completely optional.
           </Text>
         </View>
+        </Reveal>
 
         {/* 1. Overall Rating (1 to 5 Stars) */}
+        <Reveal variant="cards" staggerIndex={0}>
         <View style={{ marginBottom: 28, alignItems: 'center' }}>
           <Text
             style={{
@@ -378,8 +383,10 @@ export const DemoFeedbackSection: React.FC<DemoFeedbackSectionProps> = ({
             </Text>
           )}
         </View>
+        </Reveal>
 
         {/* 2. Modules Explored (Chips) */}
+        <Reveal variant="cards" staggerIndex={1}>
         <View style={{ marginBottom: 26 }}>
           <Text
             style={{
@@ -431,8 +438,10 @@ export const DemoFeedbackSection: React.FC<DemoFeedbackSectionProps> = ({
             })}
           </View>
         </View>
+        </Reveal>
 
         {/* 3. Your Role Selector */}
+        <Reveal variant="cards" staggerIndex={2}>
         <View style={{ marginBottom: 26 }}>
           <Text
             style={{
@@ -507,8 +516,10 @@ export const DemoFeedbackSection: React.FC<DemoFeedbackSectionProps> = ({
             </View>
           )}
         </View>
+        </Reveal>
 
-        {/* 4. What did you like? */}
+        {/* 4. What did you like & 5. What could be better? */}
+        <Reveal variant="sentences" staggerIndex={3}>
         <View style={{ marginBottom: 22 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
             <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 13.5, fontWeight: '700' }}>
@@ -577,8 +588,10 @@ export const DemoFeedbackSection: React.FC<DemoFeedbackSectionProps> = ({
             }}
           />
         </View>
+        </Reveal>
 
         {/* 6. Contact Me Toggle */}
+        <Reveal variant="cards" staggerIndex={4}>
         <View
           style={{
             padding: 18,
@@ -737,6 +750,7 @@ export const DemoFeedbackSection: React.FC<DemoFeedbackSectionProps> = ({
             </View>
           )}
         </View>
+        </Reveal>
 
         {/* Hidden Honeypot Field for Spam Bots */}
         <TextInput
@@ -768,6 +782,7 @@ export const DemoFeedbackSection: React.FC<DemoFeedbackSectionProps> = ({
         )}
 
         {/* Submit & Skip Actions */}
+        <Reveal variant="cta" staggerIndex={5}>
         <View
           style={{
             flexDirection: isDesktop ? 'row' : 'column',
@@ -820,8 +835,10 @@ export const DemoFeedbackSection: React.FC<DemoFeedbackSectionProps> = ({
             </Text>
           </TouchableOpacity>
         </View>
+        </Reveal>
       </GlassCard>
     </View>
+    </Reveal>
   );
 };
 
