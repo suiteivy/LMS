@@ -12,37 +12,41 @@ export const TelemetryStrip: React.FC = () => {
 
   const stats = [
     {
-      label: 'Platform Uptime',
-      val: 99.98,
-      decimals: 2,
+      label: 'System Availability',
+      val: 99.9,
+      decimals: 1,
       suffix: '%',
-      sub: 'Multi-region failover',
+      sub: 'Online 24/7 on phones & computers',
       accent: '#10B981',
+      icon: <Server size={14} color="#10B981" />,
     },
     {
-      label: 'Sync Response',
-      val: 120,
+      label: 'Page Load Speed',
+      val: 1,
       decimals: 0,
-      prefix: '<',
-      suffix: 'ms',
-      sub: 'Ultra-low latency',
+      prefix: '< ',
+      suffix: 's',
+      sub: 'Fast on mobile data & Wi-Fi',
       accent: '#FF8C40',
+      icon: <Zap size={14} color="#FF8C40" />,
     },
     {
-      label: 'Learners Served',
-      val: 40000,
+      label: 'Dedicated Portals',
+      val: 4,
       decimals: 0,
-      suffix: '+',
-      sub: 'Across East Africa',
+      suffix: ' in 1',
+      sub: 'Admin, Teachers, Students & Parents',
       accent: '#3B82F6',
+      icon: <Users size={14} color="#3B82F6" />,
     },
     {
-      label: 'Data Sovereignty',
+      label: 'Automated Backups',
       val: 100,
       decimals: 0,
       suffix: '%',
-      sub: 'Secure encrypted cloud',
+      sub: 'Daily protection for school records',
       accent: '#8B5CF6',
+      icon: <ShieldCheck size={14} color="#8B5CF6" />,
     },
   ];
 
@@ -116,7 +120,7 @@ export const TelemetryStrip: React.FC = () => {
                 <Text style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>
                   {s.label}
                 </Text>
-                <Activity size={14} color={s.accent} />
+                {s.icon}
               </View>
 
               <CountUp
