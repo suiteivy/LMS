@@ -7,7 +7,17 @@ import { StatsData } from '@/types/types';
 import { hasFinanceDashboardAccess } from '@/utils/financeAccess';
 import { showFetchError } from '@/utils/toast';
 import { useEffect, useRef, useState } from 'react';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused as _useIsFocused } from '@react-navigation/native';
+
+// Safe wrapper: returns true when called outside a NavigationContainer
+function useIsFocused(): boolean {
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return _useIsFocused();
+  } catch {
+    return true;
+  }
+}
 
 export const useDashboardStats = () => {
     const isFocused = useIsFocused();

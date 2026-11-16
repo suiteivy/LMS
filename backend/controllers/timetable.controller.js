@@ -1297,7 +1297,71 @@ async function getTeacherTimetable(req, res) {
       if (subjectIds.length === 0) {
         timetableQuery = timetableQuery.eq("teacher_id", teacherId);
       } else {
-        timetableQuery = timetableQuery.or(`teacher_id.eq.${teacherId},subject_id.in.(${subjectIds.join(',')})`);
+        // PostgREST or() with in.() chokes on UUID hyphens — fetch two slices and merge
+        const [byTeacher, bySubject] = await Promise.all([
+          timetableQuery
+            .eq("teacher_id", teacherId)
+            .order("day_of_week", { ascending: true })
+            .order("start_time", { ascending: true }),
+          supabase
+            .from("timetables")
+            .select(`
+              id, day_of_week, start_time, end_time, room_number, class_id, subject_id, teacher_id, is_draft,
+              classes ( id, name, display_name, grade_level, form_level, stream, class_type ),
+              subjects ( id, title, category )
+            `)
+            .eq("institution_id", institution_id)
+            .or("is_draft.is.null,is_draft.eq.false")
+            .in("subject_id", subjectIds)
+            .order("day_of_week", { ascending: true })
+            .order("start_time", { ascending: true }),
+        ]);
+
+        if (byTeacher.error) throw byTeacher.error;
+        if (bySubject.error) throw bySubject.error;
+
+        // Deduplicate by id
+        const seen = new Set();
+        const merged = [...(byTeacher.data || []), ...(bySubject.data || [])].filter(row => {
+          if (seen.has(row.id)) return false;
+          seen.add(row.id);
+          return true;
+        }).sort((a, b) => {
+          const dayOrder = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+          const dA = dayOrder.indexOf(a.day_of_week), dB = dayOrder.indexOf(b.day_of_week);
+          if (dA !== dB) return dA - dB;
+          return a.start_time.localeCompare(b.start_time);
+        });
+
+        // Apply filtering and normalization then return early
+        let filteredMerged = merged;
+        if (filteredMerged.length > 0) {
+          const { data: allStForSubjs } = await supabase
+            .from("subject_teachers")
+            .select("subject_id, class_id, teacher_id")
+            .eq("institution_id", institution_id);
+
+          filteredMerged = filteredMerged.filter((row) => {
+            if (row.teacher_id === teacherId) return true;
+            const classAssignments = (allStForSubjs || []).filter(
+              (st) => st.subject_id === row.subject_id && st.class_id === row.class_id
+            );
+            if (classAssignments.length > 0) {
+              return classAssignments.some((st) => st.teacher_id === teacherId);
+            }
+            return (primarySubjectRows || []).some((s) => s.id === row.subject_id);
+          });
+        }
+
+        const normalizedMerged = filteredMerged.map((row) => {
+          const classLabel = row.classes ? buildClassLabel(row.classes) : null;
+          return {
+            ...row,
+            room_number: row.room_number || classLabel || "Main Classroom",
+            classes: row.classes ? { ...row.classes, name: classLabel } : row.classes,
+          };
+        });
+        return res.json(normalizedMerged);
       }
     }
 

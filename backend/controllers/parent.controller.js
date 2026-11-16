@@ -119,10 +119,11 @@ exports.getLinkedStudents = async (req, res) => {
             .select(`
                 student:students(
                     id, 
+                    user_id,
                     grade_level, 
                     form_level,
                     institution_id,
-                    users(first_name, last_name, full_name, avatar_url, email)
+                    users(id, first_name, last_name, full_name, avatar_url, email)
                 )
             `)
             .eq("parent_id", parent.id);
@@ -137,16 +138,28 @@ exports.getLinkedStudents = async (req, res) => {
             if (enrollment?.class_id) {
                 const { data: klass } = await supabase
                     .from('classes')
-                    .select('id, grade_level, form_level, stream')
+                    .select('id, name, grade_level, form_level, stream, is_final_level')
                     .eq('id', enrollment.class_id)
                     .maybeSingle();
                 classData = klass;
             }
 
+            const fullName = student?.users?.full_name || `${student?.users?.first_name || ''} ${student?.users?.last_name || ''}`.trim();
+            const classLabel = buildClassLabel(classData) || classData?.name || 'Unassigned';
+
             return {
                 ...student,
+                user_id: student?.user_id || student?.users?.id || null,
+                first_name: student?.users?.first_name || fullName.split(' ')[0] || '',
+                last_name: student?.users?.last_name || fullName.split(' ').slice(1).join(' ') || '',
+                name: fullName || 'Child',
+                full_name: fullName || 'Child',
                 class_id: classData?.id || null,
-                class_name: buildClassLabel(classData) || 'Unassigned',
+                class_name: classLabel,
+                class: classData ? {
+                    ...classData,
+                    name: classLabel,
+                } : null,
             };
         }));
 

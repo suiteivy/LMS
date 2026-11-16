@@ -7,7 +7,16 @@ import { Spinner } from "@/components/ui/Spinner";
 import { ChatMessageSkeleton, ConversationListItemSkeleton } from "@/components/ui/skeletons";
 import { showFetchError } from "@/utils/toast";
 import { Alert, Image, Modal, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from "react-native";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused as _useIsFocused } from "@react-navigation/native";
+
+function useIsFocused(): boolean {
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return _useIsFocused();
+  } catch {
+    return true;
+  }
+}
 import { AlertCircle, Check, CheckCheck, CheckCircle2, ChevronLeft, ChevronRight, Clock3, MessageCircle, MoreVertical, Plus, Search, Send, User } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 

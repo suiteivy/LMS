@@ -11,7 +11,7 @@ import { logger } from "@/services/LoggingService";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React from "react";
-import { LogBox, Platform, View, ActivityIndicator } from "react-native";
+import { LogBox, Platform, View, ActivityIndicator, StatusBar as RNStatusBar } from "react-native";
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -222,8 +222,8 @@ function AppShell() {
   return (
     <View style={{ flex: 1 }}>
       {Platform.OS === 'android' ? (
-        <StatusBar
-          style={showEntrance ? "light" : (isDark ? "light" : "dark")}
+        <RNStatusBar
+          barStyle={showEntrance ? "light-content" : (isDark ? "light-content" : "dark-content")}
           backgroundColor={showEntrance ? '#0D1117' : (isDark ? '#0D1117' : '#ffffff')}
           translucent={true}
         />

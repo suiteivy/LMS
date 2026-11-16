@@ -103,6 +103,10 @@ app.use("/api/diary", authMiddleware, checkSubscription, require("./routes/diary
 app.use("/api/reports", authMiddleware, checkSubscription, require("./routes/reports.route.js"));
 app.use("/api/assessment-types", authMiddleware, checkSubscription, require("./routes/assessmentTypes.route.js"));
 app.use("/api/academic-years", authMiddleware, checkSubscription, require("./routes/academicYears.route.js"));
+// CRM authenticates with its own dedicated read key; no school login is used.
+if (process.env.CRM_READ_API_KEY) {
+  app.use('/api/crm/v1', require('./routes/crm_integration.route.js'));
+}
 app.use("/api/grading-scales", authMiddleware, checkSubscription, require("./routes/gradingScales.route.js"));
 app.use("/api/grade-entries", authMiddleware, checkSubscription, require("./routes/gradeEntries.route.js"));
 app.use("/api/report-cards", authMiddleware, checkSubscription, require("./routes/reportCards.route.js"));

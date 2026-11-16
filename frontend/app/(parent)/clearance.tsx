@@ -28,9 +28,33 @@ import {
   Wallet,
 } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { getParentSelectedChild } from '@/utils/parentSelectedChild';
+
+const getChildDisplayName = (child: any) => {
+  if (!child) return 'Child';
+  return (
+    child.name ||
+    child.full_name ||
+    child.users?.full_name ||
+    (child.users?.first_name ? `${child.users.first_name} ${child.users.last_name || ''}`.trim() : null) ||
+    (child.first_name ? `${child.first_name} ${child.last_name || ''}`.trim() : null) ||
+    'Child'
+  );
+};
+
+const getChildClassName = (child: any) => {
+  return (
+    child?.class_name ||
+    child?.class?.name ||
+    (child?.grade_level ? `Grade ${child.grade_level}` : null) ||
+    (child?.form_level ? `Form ${child.form_level}` : null) ||
+    'Assigned Class'
+  );
+};
 
 export default function ParentClearanceScreen() {
+  const params = useLocalSearchParams<{ studentId?: string }>();
   const { user } = useAuth();
   const { isDark } = useTheme();
 
@@ -64,7 +88,12 @@ export default function ParentClearanceScreen() {
       const list = Array.isArray(res) ? res : res?.data || [];
       setChildren(list);
       if (list.length > 0 && !selectedChild) {
-        setSelectedChild(list[0]);
+        const saved = await getParentSelectedChild().catch(() => null);
+        const targetId = params.studentId || saved?.studentId;
+        const matched = targetId
+          ? list.find((c: any) => c.id === targetId || c.user_id === targetId)
+          : null;
+        setSelectedChild(matched || list[0]);
       }
     } catch (err) {
       console.error('Failed to load children:', err);
@@ -94,18 +123,18 @@ export default function ParentClearanceScreen() {
   };
 
   useEffect(() => {
-    const childUserId = selectedChild?.user_id || selectedChild?.user?.id || selectedChild?.id;
+    const childUserId = selectedChild?.user_id || selectedChild?.users?.id || selectedChild?.user?.id || selectedChild?.id;
     if (childUserId) {
       loadChildClearance(childUserId);
     }
   }, [selectedChild]);
 
   const isFinalLevel = Boolean(
-    selectedChild?.class?.is_final_level ?? false
+    selectedChild?.class?.is_final_level ?? selectedChild?.is_final_level ?? false
   );
 
   const handleInitiate = async () => {
-    const childUserId = selectedChild?.user_id || selectedChild?.user?.id || selectedChild?.id;
+    const childUserId = selectedChild?.user_id || selectedChild?.users?.id || selectedChild?.user?.id || selectedChild?.id;
     if (!childUserId) {
       Alert.alert('Error', 'Please select a valid child.');
       return;
@@ -179,7 +208,7 @@ export default function ParentClearanceScreen() {
                 text1: 'Clearance Cancelled',
                 text2: 'Clearance request withdrawn successfully.',
               });
-              const childUserId = selectedChild?.user_id || selectedChild?.user?.id || selectedChild?.id;
+              const childUserId = selectedChild?.user_id || selectedChild?.users?.id || selectedChild?.user?.id || selectedChild?.id;
               if (childUserId) loadChildClearance(childUserId);
             } catch (err: any) {
               Alert.alert('Error', err?.response?.data?.error || 'Failed to cancel.');
@@ -244,7 +273,7 @@ export default function ParentClearanceScreen() {
             <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
               {children.map((c) => {
                 const isSelected = selectedChild?.id === c.id;
-                const name = c.first_name ? `${c.first_name} ${c.last_name || ''}` : c.name || 'Child';
+                const name = getChildDisplayName(c);
                 return (
                   <TouchableOpacity
                     key={c.id}
@@ -298,10 +327,10 @@ export default function ParentClearanceScreen() {
                 </View>
                 <View>
                   <Text style={{ color: textPrimary, fontSize: 15, fontWeight: '900' }}>
-                    {selectedChild.first_name ? `${selectedChild.first_name} ${selectedChild.last_name || ''}` : selectedChild.name || 'Student'}
+                    {getChildDisplayName(selectedChild)}
                   </Text>
                   <Text style={{ color: textSecondary, fontSize: 12 }}>
-                    Class: {selectedChild.class?.name || 'Assigned Class'}
+                    Class: {getChildClassName(selectedChild)}
                   </Text>
                 </View>
               </View>

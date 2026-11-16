@@ -419,7 +419,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await handleLogout(true, LogoutReason.USER_INITIATED, true /* skipDemoExitCheck */, true /* skipDemoCleanup */);
 
       // 4. Navigate directly to demo page
-      router.replace('/(auth)/demo');
+      if (isNavReadyRef.current) {
+        router.replace('/(auth)/demo');
+      }
       return { error: null };
     } catch (err: any) {
       console.error('[AuthContext] exitDemoSession error:', err);
@@ -1069,7 +1071,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Navigate to role portal
       const targetPath = getRoleRedirect(profile, isPlatformAdmin, normalized);
-      if (targetPath) {
+      if (targetPath && isNavReadyRef.current) {
         router.replace(targetPath as any);
       }
       // Brief pause to allow the portal view transition to render smoothly
