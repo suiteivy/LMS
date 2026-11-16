@@ -4,6 +4,7 @@ import { Linking, ScrollView, Text, TextInput, TouchableOpacity, View, Modal, Ac
 import { useTheme } from '@/contexts/ThemeContext';
 import Toast from 'react-native-toast-message';
 import { SupportService } from '@/services/SupportService';
+import { SITE_CONFIG } from '@/constants/siteConfig';
 
 interface FAQItemProps {
  question: string;
@@ -115,12 +116,12 @@ export default function AdminHelp() {
   </TouchableOpacity>
 
   <TouchableOpacity
-  onPress={() => Linking.openURL('mailto:Support@cloudora.live')}
+  onPress={() => Linking.openURL(`mailto:${SITE_CONFIG.supportEmail}`)}
   style={{ flex: 1, backgroundColor: themeColors.card, padding: 20, borderRadius: 20, borderWidth: 1, borderColor: themeColors.border, alignItems: 'center' }}
   >
   <Mail size={24} color="#3b82f6" />
   <Text style={{ marginTop: 8, fontWeight: '700', color: themeColors.text }}>Email Us</Text>
-  <Text style={{ fontSize: 10, color: '#3b82f6', marginTop: 2 }}>Support@cloudora.live</Text>
+  <Text style={{ fontSize: 10, color: '#3b82f6', marginTop: 2 }}>{SITE_CONFIG.supportEmail}</Text>
   <Text style={{ fontSize: 10, color: themeColors.subtext, marginTop: 2 }}>Response in 1 business day</Text>
   </TouchableOpacity>
   </View>

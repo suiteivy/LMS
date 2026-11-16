@@ -19,13 +19,14 @@ import {
   StyleSheet,
   ViewStyle,
   Image,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { ChevronLeft, Bell, User, Shield, GraduationCap, Briefcase, Users, Globe } from 'lucide-react-native';
+import { ChevronLeft, Bell, User, Shield, GraduationCap, Briefcase, Users, Globe, LogOut } from 'lucide-react-native';
 import { mobileColors, MIN_TOUCH_TARGET } from '@/mobile/utils/platform';
 import { NotificationBellDropdown } from '@/components/common/NotificationBellDropdown';
 
@@ -52,6 +53,10 @@ export interface MobileHeaderProps {
   showUserAvatar?: boolean;
   /** User avatar press handler (default: navigates to settings/profile) */
   onUserAvatarPress?: () => void;
+  /** Show logout button in top right (default: true when largeTitle) */
+  showLogout?: boolean;
+  /** Logout press handler override */
+  onLogout?: () => void;
   /** Right-side action element slot */
   rightAction?: React.ReactNode;
   /** Additional right-side action element slot */
@@ -74,6 +79,8 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   onNotificationPress,
   showUserAvatar = false,
   onUserAvatarPress,
+  showLogout,
+  onLogout,
   rightAction,
   rightActionSecondary,
   largeTitle = false,
@@ -83,9 +90,37 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { profile, institutionName } = useAuth();
+  const { profile, institutionName, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+
+  const shouldShowLogout = showLogout !== undefined ? showLogout : largeTitle;
+
+  const handleLogout = () => {
+    if (onLogout) {
+      onLogout();
+      return;
+    }
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              router.replace('/(auth)/signIn' as any);
+            } catch (e) {
+              console.error('Logout error:', e);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const textColor = isDark ? mobileColors.textPrimary : mobileColors.textDark;
   const subtitleColor = isDark ? mobileColors.textSecondary : mobileColors.textDarkSecondary;
@@ -262,6 +297,29 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               accessibilityLabel="Account and settings"
             >
               <Text style={styles.avatarText}>{userInitials}</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Top-Right Logout Button */}
+          {shouldShowLogout && (
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={[
+                styles.iconButton,
+                {
+                  backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : '#FEE2E2',
+                  borderColor: isDark ? 'rgba(239, 68, 68, 0.25)' : '#FECACA',
+                },
+              ]}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Sign out"
+            >
+              <LogOut
+                size={17}
+                color={isDark ? '#F87171' : '#DC2626'}
+                strokeWidth={2.2}
+              />
             </TouchableOpacity>
           )}
         </View>

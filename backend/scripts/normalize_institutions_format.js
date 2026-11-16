@@ -90,6 +90,12 @@ function normalizeInstitutionRow(row, validCategoryIds) {
         : Number.isFinite(Number(row.custom_student_limit))
         ? Number(row.custom_student_limit)
         : null,
+    custom_admin_limit:
+      row.custom_admin_limit === null || row.custom_admin_limit === undefined || row.custom_admin_limit === ''
+        ? null
+        : Number.isFinite(Number(row.custom_admin_limit))
+        ? Number(row.custom_admin_limit)
+        : null,
     category_id,
   };
 }

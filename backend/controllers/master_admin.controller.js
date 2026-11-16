@@ -1098,8 +1098,20 @@ exports.getAllInstitutions = async (_req, res) => {
                 addon_bursary: inst.addon_bursary,
             });
 
+            const normalizedPlan = normalizeInstitutionPlan(inst.subscription_plan);
+            const planLimit = INSTITUTION_PLAN_LIMITS[normalizedPlan] || { maxStudents: 900, maxAdmins: Infinity };
+            let maxAdmins = planLimit.maxAdmins === Infinity ? null : planLimit.maxAdmins;
+            if (normalizedPlan === 'beta' && inst.custom_admin_limit !== null && inst.custom_admin_limit !== undefined) {
+                const parsedAdminLimit = Number(inst.custom_admin_limit);
+                if (Number.isFinite(parsedAdminLimit) && parsedAdminLimit > 0) {
+                    maxAdmins = parsedAdminLimit;
+                }
+            }
+
             return {
                 ...inst,
+                subscription_plan: normalizedPlan,
+                max_admins: maxAdmins,
                 ...effectiveAddons,
                 category_ids: (categoriesByInstitution.get(inst.id) || []).map((cat) => cat.id).filter(Boolean),
                 categories: categoriesByInstitution.get(inst.id) || [],
@@ -1144,7 +1156,13 @@ exports.getInstitutionDetails = async (req, res) => {
         const institutionCategories = categoryMap.get(id) || [];
         const normalizedPlan = normalizeInstitutionPlan(institution.subscription_plan);
         const planLimit = INSTITUTION_PLAN_LIMITS[normalizedPlan] || { maxStudents: 900, maxAdmins: Infinity };
-        const maxAdmins = planLimit.maxAdmins === Infinity ? null : planLimit.maxAdmins;
+        let maxAdmins = planLimit.maxAdmins === Infinity ? null : planLimit.maxAdmins;
+        if (normalizedPlan === 'beta' && institution.custom_admin_limit !== null && institution.custom_admin_limit !== undefined) {
+            const parsedAdminLimit = Number(institution.custom_admin_limit);
+            if (Number.isFinite(parsedAdminLimit) && parsedAdminLimit > 0) {
+                maxAdmins = parsedAdminLimit;
+            }
+        }
 
         res.status(200).json({
             institution: {
@@ -1195,6 +1213,7 @@ exports.updateInstitutionDetails = async (req, res) => {
             addon_diary,
             addon_bursary, 
             custom_student_limit,
+            custom_admin_limit,
             admin_first_name,
             admin_last_name,
         } = req.body;
@@ -1207,6 +1226,13 @@ exports.updateInstitutionDetails = async (req, res) => {
             const parsedLimit = Number(custom_student_limit);
             if (!Number.isInteger(parsedLimit) || parsedLimit <= 0) {
                 return res.status(400).json({ error: 'custom_student_limit must be a positive whole number.' });
+            }
+        }
+
+        if (custom_admin_limit !== undefined && custom_admin_limit !== null && String(custom_admin_limit).trim() !== '') {
+            const parsedAdminLimit = Number(custom_admin_limit);
+            if (!Number.isInteger(parsedAdminLimit) || parsedAdminLimit <= 0) {
+                return res.status(400).json({ error: 'custom_admin_limit must be a positive whole number.' });
             }
         }
         
@@ -1261,6 +1287,13 @@ exports.updateInstitutionDetails = async (req, res) => {
                 updates.custom_student_limit = Number(custom_student_limit);
             }
         }
+        if (custom_admin_limit !== undefined) {
+            if (custom_admin_limit === null || String(custom_admin_limit).trim() === '') {
+                updates.custom_admin_limit = null;
+            } else {
+                updates.custom_admin_limit = Number(custom_admin_limit);
+            }
+        }
 
         const { data: institutionBeforeUpdate, error: beforeErr } = await adminClient
             .from('institutions')
@@ -1273,6 +1306,9 @@ exports.updateInstitutionDetails = async (req, res) => {
         const targetPlan = updates.subscription_plan || normalizeInstitutionPlan(institutionBeforeUpdate?.subscription_plan);
         if (targetPlan === 'beta') {
             Object.assign(updates, resolveInstitutionAddonFlags({ plan: 'beta' }));
+        } else if (updates.subscription_plan && updates.subscription_plan !== 'beta') {
+            updates.custom_student_limit = null;
+            updates.custom_admin_limit = null;
         }
 
         const { data: updatedInst, error } = await adminClient
@@ -1970,6 +2006,14 @@ exports.enrollInstitution = async (req, res) => {
                 return res.status(400).json({ error: 'custom_student_limit must be a positive whole number.' });
             }
         }
+        let customAdminLimit = null;
+        if (effectivePlan === 'beta' && req.body.custom_admin_limit !== undefined && req.body.custom_admin_limit !== null && String(req.body.custom_admin_limit).trim() !== '') {
+            const parsedAdminLimit = Number(req.body.custom_admin_limit);
+            if (!Number.isInteger(parsedAdminLimit) || parsedAdminLimit <= 0) {
+                return res.status(400).json({ error: 'custom_admin_limit must be a positive whole number.' });
+            }
+            customAdminLimit = parsedAdminLimit;
+        }
         const subscriptionStartIso =
             effectivePlan === 'beta'
                 ? null
@@ -2000,7 +2044,8 @@ exports.enrollInstitution = async (req, res) => {
                     addon_diary: req.body.addon_diary,
                     addon_bursary: req.body.addon_bursary,
                 }),
-                custom_student_limit: effectivePlan === 'beta' ? Number(req.body.custom_student_limit) : null
+                custom_student_limit: effectivePlan === 'beta' ? Number(req.body.custom_student_limit) : null,
+                custom_admin_limit: effectivePlan === 'beta' ? customAdminLimit : null
             }])
             .select('id')
             .single();
@@ -2438,7 +2483,7 @@ exports.addInstitutionAdmin = async (req, res) => {
         // 1. Get institution & verify existence
         const { data: institution, error: instError } = await adminClient
             .from('institutions')
-            .select('id, name, email_domain, subscription_plan, subscription_status')
+            .select('id, name, email_domain, subscription_plan, subscription_status, custom_admin_limit')
             .eq('id', institutionId)
             .single();
 
@@ -2448,7 +2493,13 @@ exports.addInstitutionAdmin = async (req, res) => {
 
         // 2. Check admin capacity based on subscription plan
         const normalizedPlan = normalizeInstitutionPlan(institution.subscription_plan);
-        const limits = INSTITUTION_PLAN_LIMITS[normalizedPlan] || { maxStudents: 900, maxAdmins: Infinity };
+        let limits = { ...(INSTITUTION_PLAN_LIMITS[normalizedPlan] || { maxStudents: 900, maxAdmins: Infinity }) };
+        if (normalizedPlan === 'beta' && institution.custom_admin_limit !== null && institution.custom_admin_limit !== undefined) {
+            const parsedAdminLimit = Number(institution.custom_admin_limit);
+            if (Number.isFinite(parsedAdminLimit) && parsedAdminLimit > 0) {
+                limits.maxAdmins = parsedAdminLimit;
+            }
+        }
 
         const { data: existingAdmins, error: adminCountErr } = await adminClient
             .from('admins')

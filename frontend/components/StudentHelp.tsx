@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Linking, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { SupportService } from '@/services/SupportService';
+import { SITE_CONFIG } from '@/constants/siteConfig';
 
 interface FAQItemProps {
     question: string;
@@ -167,7 +168,7 @@ export default function StudentHelp() {
 
                         <TouchableOpacity
                             onPress={() => {
-                                Linking.openURL('mailto:Support@cloudora.live');
+                                Linking.openURL(`mailto:${SITE_CONFIG.supportEmail}`);
                                 setSelectedTab(null);
                             }}
                             style={{
@@ -191,7 +192,7 @@ export default function StudentHelp() {
                         >
                             <Mail size={24} color="#3b82f6" />
                             <Text style={{ marginTop: 8, fontWeight: '700', color: tokens.textPrimary }}>Email Us</Text>
-                            <Text style={{ fontSize: 10, color: '#3b82f6', marginTop: 4 }}>Support@cloudora.live</Text>
+                            <Text style={{ fontSize: 10, color: '#3b82f6', marginTop: 4 }}>{SITE_CONFIG.supportEmail}</Text>
                             <Text style={{ fontSize: 10, color: tokens.textMuted, marginTop: 2 }}>Response in 1 business day</Text>
                         </TouchableOpacity>
                     </View>
@@ -298,7 +299,7 @@ export default function StudentHelp() {
                                             <Mail size={32} color="#3b82f6" />
                                         </View>
                                         <Text style={{ color: tokens.textPrimary, fontWeight: '700', fontSize: 18 }}>Email Support</Text>
-                                        <Text style={{ color: '#3b82f6', fontWeight: '500', fontSize: 14, marginTop: 4 }}>Support@cloudora.live</Text>
+                                        <Text style={{ color: '#3b82f6', fontWeight: '500', fontSize: 14, marginTop: 4 }}>{SITE_CONFIG.supportEmail}</Text>
                                     </View>
 
                                     <Text style={{ color: tokens.textSecondary, textAlign: 'center', marginBottom: 24, fontSize: 14 }}>
@@ -320,7 +321,7 @@ export default function StudentHelp() {
                                             shadowColor: '#f97316',
                                         }}
                                         onPress={() => {
-                                            Linking.openURL('mailto:Support@cloudora.live');
+                                            Linking.openURL(`mailto:${SITE_CONFIG.supportEmail}`);
                                             setSelectedTab(null);
                                         }}
                                     >

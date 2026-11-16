@@ -2084,23 +2084,6 @@ export default function AcademicSetupPage() {
                         </View>
 
                         <ScrollView style={{ padding: 20 }} keyboardShouldPersistTaps="handled">
-                            {/* Scale Name */}
-                            <View style={{ marginBottom: 20 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                    Scale Name *
-                                </Text>
-                                <TextInput
-                                    style={{
-                                        backgroundColor: inputBg, borderWidth: 1.5, borderColor: inputBorder,
-                                        borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
-                                        color: textPrimary, fontSize: 15, fontWeight: '500',
-                                    }}
-                                    placeholder="e.g. Standard 7-Point"
-                                    value={scaleFormName}
-                                    onChangeText={setScaleFormName}
-                                    placeholderTextColor={textMuted}
-                                />
-                            </View>
 
                             {/* Min / Max Score */}
                             <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
@@ -2183,29 +2166,10 @@ export default function AcademicSetupPage() {
                                 </View>
                             </View>
 
-                            {/* Description */}
-                            <View style={{ marginBottom: 24 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                    Description / Remarks (Optional)
-                                </Text>
-                                <TextInput
-                                    style={{
-                                        backgroundColor: inputBg, borderWidth: 1.5, borderColor: inputBorder,
-                                        borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
-                                        color: textPrimary, fontSize: 15, fontWeight: '500',
-                                    }}
-                                    placeholder="e.g. Demonstrates thorough understanding of curriculum objectives"
-                                    value={scaleFormDesc}
-                                    onChangeText={setScaleFormDesc}
-                                    placeholderTextColor={textMuted}
-                                />
-                            </View>
-
                             {(() => {
                                 const minN = parseFloat(scaleFormMin);
                                 const maxN = parseFloat(scaleFormMax);
                                 const canSaveScale =
-                                    !!scaleFormName.trim() &&
                                     !!scaleFormGrade.trim() &&
                                     scaleFormMin.trim() !== '' &&
                                     scaleFormMax.trim() !== '' &&

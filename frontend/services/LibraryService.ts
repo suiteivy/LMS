@@ -427,6 +427,36 @@ export class LibraryAPI {
       returnerName: backendBorrow.returner?.full_name,
     };
   }
+
+  /**
+   * Get library configuration
+   */
+  static async getLibraryConfig(): Promise<any> {
+    try {
+      const response = await api.get("/library/config");
+      return response.data?.config;
+    } catch (error) {
+      console.error("Error fetching library config:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update library configuration
+   */
+  static async updateLibraryConfig(payload: {
+    min_fee_percent_for_borrow?: number;
+    default_borrow_limit?: number;
+    settings?: any;
+  }): Promise<any> {
+    try {
+      const response = await api.put("/library/config", payload);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating library config:", error);
+      throw error;
+    }
+  }
 }
 
 /**

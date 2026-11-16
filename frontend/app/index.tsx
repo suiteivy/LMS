@@ -13,6 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppLoading } from '@/components/AppLoading';
 import { api } from '@/services/api';
@@ -137,6 +138,11 @@ function WebLandingIndex() {
   };
 
   const openRegistrationModal = (planName: string) => {
+    if (planName.toLowerCase().includes('demo') || planName.toLowerCase().includes('trial')) {
+      router.push('/demo');
+      return;
+    }
+
     setSelectedPlan(planName);
     setForm({ name: '', email: '', message: '' });
     setSelectedAddons([]);
@@ -144,9 +150,7 @@ function WebLandingIndex() {
     setSelectedCoreModules([]);
     setSubmitted(false);
 
-    if (planName.toLowerCase().includes('free trial')) {
-      setModalVisible(true);
-    } else if (planName.toLowerCase().includes('custom')) {
+    if (planName.toLowerCase().includes('custom')) {
       setCustomModalVisible(true);
     } else {
       setAddonModalVisible(true);
@@ -231,7 +235,7 @@ function WebLandingIndex() {
           <View onLayout={(e) => handleLayout('hero', e.nativeEvent.layout.y)}>
             <HeroConsole
               onExplorePricing={() => scrollToSection('pricing')}
-              onOpenTrial={() => openRegistrationModal('Free Trial')}
+              onOpenTrial={() => router.push('/demo')}
             />
           </View>
 

@@ -118,6 +118,29 @@ export default function Grades() {
                 finalGrade?: string, 
                 manualScore?: number }> = {};
 
+            if (isDemo && (!data || data.length === 0) && (!examResults || examResults.length === 0)) {
+                const dummy = (await import('@/demoDummyData')).default;
+                setGrades(dummy.student.grades.map((g: any) => ({
+                    SubjectName: g.SubjectName,
+                    SubjectCode: g.SubjectCode,
+                    score: g.score,
+                    grade: g.grade,
+                    credits: g.credits,
+                    isDark,
+                    onPress: () => {}
+                })));
+                setStats({
+                    gpa: Number(dummy.student.gradeStats.gpa) || 3.62,
+                    credits: dummy.student.gradeStats.credits || 18,
+                    totalMarks: dummy.student.gradeStats.totalMarks || 485,
+                    avgMark: Number(dummy.student.gradeStats.avgMark) || 81,
+                    rank: dummy.student.gradeStats.rank || '4th',
+                    totalStudents: dummy.student.gradeStats.totalStudents || 42
+                });
+                setLoading(false);
+                return;
+            }
+
             data?.forEach((sub: any) => {
                 const subjectId = sub.assignment?.subject?.id;
                 const score = Number(sub.grade);

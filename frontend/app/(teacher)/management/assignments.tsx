@@ -367,7 +367,15 @@ export default function AssignmentsPage() {
 
             if (error) throw error;
 
-            const assignmentList = (data as any[] || []);
+            let assignmentList = (data as any[] || []);
+            if (assignmentList.length === 0 && isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                assignmentList = dummy.teacher.assignments.map((a: any) => ({
+                    ...a,
+                    total_points: a.total_points || 100,
+                    subject: { title: a.subjects?.title || 'Mathematics', class_id: 'cls-1' }
+                })) as any[];
+            }
             const assignmentIds = assignmentList.map(a => a.id);
             const subjectIds = [...new Set(assignmentList.map(a => a.subject_id).filter(Boolean))];
             const classIds = [...new Set(assignmentList.map(a => a.subject?.class_id).filter(Boolean))];
@@ -476,6 +484,15 @@ export default function AssignmentsPage() {
 
     const handleToggleRelease = async (a: Assignment) => {
         const nextState = !a.grades_released;
+        if (isDemo) {
+            setAssignments(prev => prev.map(item => item.id === a.id ? { ...item, grades_released: nextState } : item));
+            Toast.show({
+                type: 'success',
+                text1: nextState ? 'Grades Released' : 'Grades Hidden',
+                text2: nextState ? 'Students and parents can now view assignment grades.' : 'Assignment grades are now restricted.'
+            });
+            return;
+        }
         try {
             const { error } = await (supabase.from('assignments') as any)
                 .update({ grades_released: nextState })

@@ -1795,7 +1795,7 @@ const preparePaymentReceiptData = async (req, paymentId) => {
     const [studentRes, institutionRes, currency] = await Promise.all([
         supabase
             .from('students')
-            .select('id, admission_number, grade_level, form_level, users:user_id(first_name, last_name, full_name), classes:class_id(name)')
+            .select('id, admission_number, grade_level, form_level, users:user_id(first_name, last_name, full_name), classes:class_id(display_name)')
             .eq('id', payment.student_id)
             .maybeSingle(),
         supabase
@@ -2918,7 +2918,7 @@ const prepareInvoiceData = async (req, invoiceId) => {
     const [studentRes, institutionRes, currency] = await Promise.all([
         supabase
             .from('students')
-            .select('id, admission_number, grade_level, form_level, users:user_id(first_name, last_name, full_name), classes:class_id(name)')
+            .select('id, admission_number, grade_level, form_level, users:user_id(first_name, last_name, full_name), classes:class_id(display_name)')
             .eq('id', invoice.student_id)
             .maybeSingle(),
         supabase

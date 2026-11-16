@@ -1149,3 +1149,103 @@ exports.getMyDesignation = async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 };
+
+/**
+ * Get library configuration for the institution.
+ */
+exports.getLibraryConfig = async (req, res) => {
+  try {
+    const institutionId = req.institution_id || req.user?.institution_id;
+    let query = supabase
+      .from("library_config")
+      .select("*")
+      .eq("active", true)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (institutionId) {
+      query = query.eq("institution_id", institutionId);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    const config = data || {
+      min_fee_percent_for_borrow: 0.5,
+      default_borrow_limit: 3,
+      settings: {
+        gracePeriod: 3,
+        maxFineAmount: 50.0,
+        autoReminders: true,
+        reminderDays: 2,
+        userRoles: [
+          { id: "1", name: "Student", description: "Regular students", maxBooks: 3, borrowDuration: 14, canRenew: true, maxRenewals: 1, finePerDay: 0.5, isActive: true },
+          { id: "2", name: "Teacher", description: "Academic instructors and teaching staff", maxBooks: 5, borrowDuration: 30, canRenew: true, maxRenewals: 2, finePerDay: 0.25, isActive: true },
+        ]
+      }
+    };
+
+    return res.status(200).json({ config });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "Server error" });
+  }
+};
+
+/**
+ * Update library configuration for the institution.
+ */
+exports.updateLibraryConfig = async (req, res) => {
+  try {
+    const institutionId = req.institution_id || req.user?.institution_id;
+    const { min_fee_percent_for_borrow, default_borrow_limit, settings } = req.body;
+
+    const payload = {
+      institution_id: institutionId,
+      active: true,
+    };
+    if (min_fee_percent_for_borrow !== undefined) payload.min_fee_percent_for_borrow = Number(min_fee_percent_for_borrow);
+    if (default_borrow_limit !== undefined) payload.default_borrow_limit = Number(default_borrow_limit);
+    if (settings !== undefined) payload.settings = settings;
+
+    let existingQuery = supabase
+      .from("library_config")
+      .select("id")
+      .eq("active", true);
+
+    if (institutionId) {
+      existingQuery = existingQuery.eq("institution_id", institutionId);
+    } else {
+      existingQuery = existingQuery.is("institution_id", null);
+    }
+    const { data: existing } = await existingQuery.maybeSingle();
+
+    let result;
+    if (existing?.id) {
+      result = await supabase
+        .from("library_config")
+        .update(payload)
+        .eq("id", existing.id)
+        .select()
+        .single();
+    } else {
+      payload.created_at = new Date().toISOString();
+      payload.effective_from = new Date().toISOString();
+      result = await supabase
+        .from("library_config")
+        .insert(payload)
+        .select()
+        .single();
+    }
+
+    if (result.error) {
+      return res.status(500).json({ error: result.error.message });
+    }
+
+    return res.status(200).json({ success: true, config: result.data });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "Server error" });
+  }
+};
+

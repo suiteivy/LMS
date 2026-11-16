@@ -11,5 +11,10 @@ router.get('/start', (req, res) => {
 router.post('/start', demoController.startDemo);
 router.post('/end', demoController.endDemo);
 
+// Feedback endpoints (Section 2)
+router.post('/feedback', demoController.submitFeedback);
+router.get('/feedback', demoController.getFeedback);
+router.patch('/feedback/:id', demoController.updateFeedbackStatus);
+
 module.exports = router;
 

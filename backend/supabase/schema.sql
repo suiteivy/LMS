@@ -87,6 +87,7 @@ CREATE TABLE institutions (
     addon_diary BOOLEAN NOT NULL DEFAULT false,
     email_domain TEXT,
     custom_student_limit INTEGER,
+    custom_admin_limit INTEGER,
     currency_id UUID REFERENCES currencies(id),
     category_id UUID REFERENCES school_categories(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),

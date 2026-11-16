@@ -42,10 +42,22 @@ function isModeAllowed(mode: TeacherRoleMode, roles: string[], isLibrarianAuth: 
 }
 
 export function useTeacherRoleMode() {
-  const { teacherId, session, isDemo, isLibrarian: isLibrarianAuth, isFinanceAdmin: isFinanceAdminAuth } = useAuth();
+  const {
+    teacherId,
+    session,
+    isDemo,
+    isLibrarian: isLibrarianAuth,
+    isFinanceAdmin: isFinanceAdminAuth,
+    activeRole,
+    profile,
+    user
+  } = useAuth();
   const [mode, setLocalMode] = useState<TeacherRoleMode>(getActiveTeacherRoleMode());
   const [roles, setLocalRoles] = useState<string[]>(getTeacherRolesInMemory());
   const [loading, setLoading] = useState<boolean>(!isTeacherRoleModeInitialized());
+
+  const currentRole = (activeRole || profile?.role || user?.role || '').toLowerCase();
+  const isTeacherUser = Boolean(teacherId || currentRole === 'teacher');
 
   // Subscribe to changes from other screens/instances
   useEffect(() => {
@@ -67,26 +79,47 @@ export function useTeacherRoleMode() {
 
     const init = async () => {
       try {
-        // 1. Load saved mode from AsyncStorage
-        const savedMode = await AsyncStorage.getItem(TEACHER_ROLE_MODE_KEY);
-        if (savedMode === 'subject' || savedMode === 'class' || savedMode === 'librarian' || savedMode === 'finance') {
-          setActiveTeacherRoleModeInMemory(savedMode as TeacherRoleMode);
-        }
-
-        // 2. Demo mode mock roles
-        if (isDemo) {
-          const demoRoles = ['Subject Teacher', 'Class Teacher', 'Head of Department'];
-          setTeacherRolesInMemory(demoRoles);
+        // 1. If not a teacher context, mark initialized and exit immediately to avoid 403 on teacher endpoints
+        if (!isTeacherUser && !isDemo) {
+          if (getTeacherRolesInMemory().length > 0) {
+            setTeacherRolesInMemory([]);
+          }
           setTeacherRoleModeInitialized(true);
           if (isMounted) {
             setLocalMode(getActiveTeacherRoleMode());
-            setLocalRoles(demoRoles);
+            setLocalRoles([]);
             setLoading(false);
           }
           return;
         }
 
-        // 3. Try to hydrate roles from cache first
+        // 2. Demo mode mock roles
+        if (isDemo) {
+          if (currentRole === 'teacher') {
+            const demoRoles = ['Subject Teacher', 'Class Teacher', 'Head of Department'];
+            setTeacherRolesInMemory(demoRoles);
+            setTeacherRoleModeInitialized(true);
+            if (isMounted) {
+              setLocalMode(getActiveTeacherRoleMode());
+              setLocalRoles(demoRoles);
+              setLoading(false);
+            }
+          } else {
+            setTeacherRoleModeInitialized(true);
+            if (isMounted) {
+              setLoading(false);
+            }
+          }
+          return;
+        }
+
+        // 3. Load saved mode from AsyncStorage
+        const savedMode = await AsyncStorage.getItem(TEACHER_ROLE_MODE_KEY);
+        if (savedMode === 'subject' || savedMode === 'class' || savedMode === 'librarian' || savedMode === 'finance') {
+          setActiveTeacherRoleModeInMemory(savedMode as TeacherRoleMode);
+        }
+
+        // 4. Try to hydrate roles from cache first
         const cacheKey = teacherId ? `teacher_dashboard_${teacherId}` : null;
         if (cacheKey) {
           const cached = await CacheService.get<any>(cacheKey, { allowStale: true });
@@ -106,22 +139,28 @@ export function useTeacherRoleMode() {
           }
         }
 
-        // 4. Fetch fresh roles if not yet available
+        // 5. Fetch fresh roles if not yet available (ONLY if user is a teacher)
         const curRoles = getTeacherRolesInMemory();
-        if (session && (!curRoles.length || !isTeacherRoleModeInitialized())) {
-          const data = await TeacherAPI.getDashboardStats();
-          const fetchedRoles = data?.roles || [];
-          setTeacherRolesInMemory(fetchedRoles);
+        if (session && isTeacherUser && (!curRoles.length || !isTeacherRoleModeInitialized())) {
+          try {
+            const data = await TeacherAPI.getDashboardStats();
+            const fetchedRoles = data?.roles || [];
+            setTeacherRolesInMemory(fetchedRoles);
 
-          const fallback = getFallbackMode(fetchedRoles, isLibrarianAuth, isFinanceAdminAuth);
-          if (!isModeAllowed(getActiveTeacherRoleMode(), fetchedRoles, isLibrarianAuth, isFinanceAdminAuth)) {
-            setActiveTeacherRoleModeInMemory(fallback);
-          }
-          setTeacherRoleModeInitialized(true);
-          if (isMounted) {
-            setLocalMode(getActiveTeacherRoleMode());
-            setLocalRoles(fetchedRoles);
-            setLoading(false);
+            const fallback = getFallbackMode(fetchedRoles, isLibrarianAuth, isFinanceAdminAuth);
+            if (!isModeAllowed(getActiveTeacherRoleMode(), fetchedRoles, isLibrarianAuth, isFinanceAdminAuth)) {
+              setActiveTeacherRoleModeInMemory(fallback);
+            }
+            setTeacherRoleModeInitialized(true);
+            if (isMounted) {
+              setLocalMode(getActiveTeacherRoleMode());
+              setLocalRoles(fetchedRoles);
+              setLoading(false);
+            }
+          } catch (fetchErr) {
+            // Mark initialized to prevent endless 403 / network retry loops
+            setTeacherRoleModeInitialized(true);
+            console.warn('[useTeacherRoleMode] Failed to fetch teacher dashboard stats:', fetchErr);
           }
         }
       } catch (err) {
@@ -138,7 +177,7 @@ export function useTeacherRoleMode() {
     return () => {
       isMounted = false;
     };
-  }, [teacherId, session, isDemo, isLibrarianAuth, isFinanceAdminAuth]);
+  }, [teacherId, session, isDemo, isLibrarianAuth, isFinanceAdminAuth, activeRole, profile?.role, user?.role, isTeacherUser]);
 
   // Set mode, persist to AsyncStorage, and notify all hook consumers
   const setMode = useCallback((newMode: TeacherRoleMode) => {

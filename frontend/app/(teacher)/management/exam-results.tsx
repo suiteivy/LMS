@@ -61,7 +61,7 @@ export default function ExamResultsPage() {
     const fetchInitialData = async () => {
         try {
             setLoading(true);
-            const [currentExam, studentList, existingResults, customScales, defaultScale, hodList] = await Promise.all([
+            let [currentExam, studentList, existingResults, customScales, defaultScale, hodList] = await Promise.all([
                 ExamService.getExamById(examId as string),
                 ExamService.getExamRoster(examId as string).catch(() => []),
                 ExamService.getExamResults(examId as string).catch(() => []),
@@ -82,12 +82,31 @@ export default function ExamResultsPage() {
             }
 
             if (!currentExam) {
-                showError("Error", "Exam not found");
-                router.back();
-                return;
+                if (isDemo) {
+                    currentExam = {
+                        id: (examId as string) || 'demo-exam-1',
+                        title: 'End of Term Mathematics Assessment',
+                        date: '2026-03-25',
+                        max_score: 100,
+                        subject_id: 'subj-1',
+                        subject_title: 'Mathematics',
+                        term: 'Term 1',
+                        weight: 20
+                    } as any;
+                    setExam(currentExam);
+                } else {
+                    showError("Error", "Exam not found");
+                    router.back();
+                    return;
+                }
             }
 
-            const initialScores = (studentList || []).map((s: any) => {
+            let effectiveStudents = studentList || [];
+            if (effectiveStudents.length === 0 && isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                effectiveStudents = dummy.teacher.studentList as any;
+            }
+            const initialScores = effectiveStudents.map((s: any) => {
                 const existing = (existingResults || []).find((r: any) => r.student_id === s.student_id);
                 return {
                     student_id: s.student_id,

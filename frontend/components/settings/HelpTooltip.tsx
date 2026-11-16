@@ -73,19 +73,33 @@ export function HelpTooltip({ id, targetId, role: propRole, tier: propTier, size
     }
   };
 
-  const updateAnchorFromTrigger = () => {
-    const node = triggerRef.current as any;
-    if (!node || typeof node.measureInWindow !== 'function') return;
-    node.measureInWindow((x: number, y: number, w: number, h: number) => {
-      if (Number.isFinite(x) && Number.isFinite(y)) {
+  const updateAnchorFromTrigger = (customNode?: any) => {
+    const node = customNode || (triggerRef.current as any);
+    if (!node) return;
+    if (typeof node.getBoundingClientRect === 'function') {
+      const rect = node.getBoundingClientRect();
+      if (rect && Number.isFinite(rect.left) && Number.isFinite(rect.top)) {
         setAnchor({
-          x: Math.max(0, x),
-          y: Math.max(0, y),
-          w: Math.max(1, w || 1),
-          h: Math.max(1, h || 1),
+          x: Math.max(0, rect.left),
+          y: Math.max(0, rect.top),
+          w: Math.max(1, rect.width || 1),
+          h: Math.max(1, rect.height || 1),
         });
+        return;
       }
-    });
+    }
+    if (typeof node.measureInWindow === 'function') {
+      node.measureInWindow((x: number, y: number, w: number, h: number) => {
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          setAnchor({
+            x: Math.max(0, x),
+            y: Math.max(0, y),
+            w: Math.max(1, w || 1),
+            h: Math.max(1, h || 1),
+          });
+        }
+      });
+    }
   };
 
   const closeTooltipSoon = () => {
@@ -98,7 +112,8 @@ export function HelpTooltip({ id, targetId, role: propRole, tier: propTier, size
 
   const showTooltip = (event?: any) => {
     clearHoverTimer();
-    updateAnchorFromTrigger();
+    const target = event?.currentTarget || triggerRef.current;
+    updateAnchorFromTrigger(target);
     if (Platform.OS === 'web') {
       setWebVisible(true);
       return;

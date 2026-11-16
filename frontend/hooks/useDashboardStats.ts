@@ -38,7 +38,7 @@ export const useDashboardStats = () => {
     
     const { formatAmount } = useCurrency();
 
-    const { isInitializing, session, profile, activeRole, availableRoles, canonicalRole } = useAuth();
+    const { isInitializing, session, profile, activeRole, availableRoles, canonicalRole, isDemo } = useAuth();
     const requiresCredentialSetup = !!profile?.must_change_password || !!profile?.requires_security_questions_setup;
     const cacheKey = profile?.institution_id ? `admin_dashboard_stats_${profile.institution_id}` : null;
     const canRequestFinanceStats = hasFinanceDashboardAccess({
@@ -55,6 +55,28 @@ export const useDashboardStats = () => {
         }
         const controller = new AbortController();
         abortControllerRef.current = controller;
+        if (isDemo) {
+            const demoStats: StatsData[] = [
+                { label: "Total Students", value: "248", icon: "users", color: "blue" },
+                { label: "Teachers", value: "24", icon: "school", color: "green" },
+                { label: "Attendance", value: "96%", subValue: "238 present today", icon: "calendar", color: "orange" },
+                { label: "Revenue", value: formatAmount(1840000), subValue: "142 completed payments", icon: "wallet", color: "yellow" },
+            ];
+            const demoRevenue = [
+                { day: "Mon", amount: 240000 },
+                { day: "Tue", amount: 180000 },
+                { day: "Wed", amount: 320000 },
+                { day: "Thu", amount: 290000 },
+                { day: "Fri", amount: 410000 },
+                { day: "Sat", amount: 120000 },
+                { day: "Sun", amount: 280000 },
+            ];
+            setStats(demoStats);
+            setRevenueData(demoRevenue);
+            setLoading(false);
+            return;
+        }
+
         if (requiresCredentialSetup || !profile?.institution_id) {
             setStats([]);
             setRevenueData([]);

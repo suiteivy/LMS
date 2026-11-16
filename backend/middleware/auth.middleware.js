@@ -810,11 +810,13 @@ async function authMiddleware(req, res, next) {
       }
     }
 
-    req.isDemo = !!(user.user_metadata?.id_demo)
-    if(req.isDemo) {
-      req.institution_id = process.env.TEMPLATE_INSTITUTION_ID
-      if(req.userRole === 'teacher') {
-        req.teacherId = process.env.TEMPLATE_TEACHER_ID
+    req.isDemo = !!(user.user_metadata?.is_demo || user.user_metadata?.id_demo || user.email?.startsWith('demo.') || profile?.is_demo);
+    if (req.isDemo) {
+      if (!req.institution_id) {
+        req.institution_id = profile?.institution_id || process.env.TEMPLATE_INSTITUTION_ID || 'b5bd788c-8297-4a96-b8b3-157814504fba';
+      }
+      if (req.userRole === 'teacher' && !req.teacherId) {
+        req.teacherId = (Array.isArray(profile?.teachers) ? profile.teachers[0]?.id : profile?.teachers?.id) || process.env.TEMPLATE_TEACHER_ID || 'TCH-MOMENTUM-001';
       }
     }
 

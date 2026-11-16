@@ -140,7 +140,7 @@ const MasterRecordController = {
         if (!targetStudent) {
           const { data: s } = await supabase
             .from('students')
-            .select('*, classes(id, name, grade_level, form_level, is_final_level)')
+            .select('*, classes(id, display_name, grade_level, form_level, is_final_level)')
             .eq('user_id', targetUser.id)
             .maybeSingle();
           targetStudent = s;
@@ -392,7 +392,7 @@ const MasterRecordController = {
       if (targetUser.role === 'student') {
         const { data: s } = await supabase
           .from('students')
-          .select('id, admission_number, enrollment_status, classes(name, grade_level)')
+          .select('id, admission_number, enrollment_status, classes(display_name, grade_level)')
           .eq('user_id', targetUser.id)
           .maybeSingle();
 

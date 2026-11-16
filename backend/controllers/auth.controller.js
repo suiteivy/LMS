@@ -8,6 +8,7 @@ const { assignStudentToSingleClass, resolveAutoAssignClass } = require('../utils
 const { clearUserCache } = require("../middleware/auth.middleware.js");
 const { logRecordChange } = require("../utils/auditLogger.js");
 const logger = require("../utils/logger.js");
+const SITE_CONFIG = require("../config/siteConfig.js");
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const ADMIN_DELEGATED_USER_EDIT_PERMISSIONS = new Set([
@@ -414,7 +415,7 @@ const getInstitutionSlotCapacity = async (institutionId) => {
 
   const { data: institution, error: institutionError } = await supabase
     .from('institutions')
-    .select('id, subscription_plan, custom_student_limit')
+    .select('id, subscription_plan, custom_student_limit, custom_admin_limit')
     .eq('id', institutionId)
     .single();
 
@@ -426,12 +427,16 @@ const getInstitutionSlotCapacity = async (institutionId) => {
   const canonicalPlan = canonicalPlanFrom(institution.subscription_plan || 'basic');
   const baseLimits = PLAN_LIMITS[canonicalPlan] || PLAN_LIMITS.basic;
   let maxStudents = baseLimits.maxStudents;
-  const maxAdmins = baseLimits.maxAdmins;
+  let maxAdmins = baseLimits.maxAdmins;
 
   if (canonicalPlan === 'beta') {
     const parsed = Number(institution.custom_student_limit);
     if (Number.isFinite(parsed) && parsed > 0) {
       maxStudents = parsed;
+    }
+    const parsedAdmins = Number(institution.custom_admin_limit);
+    if (Number.isFinite(parsedAdmins) && parsedAdmins > 0) {
+      maxAdmins = parsedAdmins;
     }
   }
 
@@ -887,7 +892,7 @@ exports.enrollUser = async (req, res) => {
     if (targetInstitutionId) {
       const { data: inst } = await supabase
         .from('institutions')
-        .select('subscription_plan, email_domain, custom_student_limit')
+        .select('subscription_plan, email_domain, custom_student_limit, custom_admin_limit')
         .eq('id', targetInstitutionId)
         .single();
 
@@ -896,11 +901,19 @@ exports.enrollUser = async (req, res) => {
       const canonicalPlan = canonicalPlanFrom(inst?.subscription_plan || 'basic');
       let limits = PLAN_LIMITS[canonicalPlan] ?? { maxStudents: 900, maxAdmins: Infinity };
 
-      // Beta supports institution-level custom student limit override.
-      if (canonicalPlan === 'beta' && inst?.custom_student_limit !== null && inst?.custom_student_limit !== undefined) {
-        const parsedLimit = Number(inst.custom_student_limit);
-        if (Number.isFinite(parsedLimit) && parsedLimit > 0) {
-          limits = { ...limits, maxStudents: parsedLimit };
+      // Beta supports institution-level custom student and admin limit override.
+      if (canonicalPlan === 'beta') {
+        if (inst?.custom_student_limit !== null && inst?.custom_student_limit !== undefined) {
+          const parsedLimit = Number(inst.custom_student_limit);
+          if (Number.isFinite(parsedLimit) && parsedLimit > 0) {
+            limits = { ...limits, maxStudents: parsedLimit };
+          }
+        }
+        if (inst?.custom_admin_limit !== null && inst?.custom_admin_limit !== undefined) {
+          const parsedAdminLimit = Number(inst.custom_admin_limit);
+          if (Number.isFinite(parsedAdminLimit) && parsedAdminLimit > 0) {
+            limits = { ...limits, maxAdmins: parsedAdminLimit };
+          }
         }
       }
 
@@ -1327,7 +1340,7 @@ exports.enrollUser = async (req, res) => {
                     <p style="font-size: 14px; color: #666;">For security reasons, please change your password after your first login.</p>
                     
                     <div style="margin-top: 32px; text-align: center;">
-                      <a href="https://cloudoralms.live" style="background-color: #FF6B00; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Go to Dashboard</a>
+                      <a href="${process.env.FRONTEND_URL || SITE_CONFIG.webUrl}" style="background-color: #FF6B00; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Go to Dashboard</a>
                     </div>
                   </div>
                   <div style="background-color: #f0f0f0; padding: 16px; text-align: center; font-size: 12px; color: #777;">
@@ -1636,7 +1649,7 @@ exports.adminUpdateUser = async (req, res) => {
           .single();
         if (institutionError) throw institutionError;
 
-        const effectiveDomain = institution?.email_domain || (institution?.slug ? `${institution.slug}.suiteivy.com` : null);
+        const effectiveDomain = institution?.email_domain || (institution?.slug ? `${institution.slug}.${SITE_CONFIG.domain}` : null);
 
         if (effectiveDomain) {
           const nextEmail = await generateUniqueInstitutionEmail({
@@ -1955,7 +1968,7 @@ exports.adminUpdateUser = async (req, res) => {
           email: updatedUserForAuth?.email || userUpdates.email,
           password: temporaryPassword,
           temporary_password: temporaryPassword,
-          login_url: process.env.FRONTEND_URL || 'https://lms.suiteivy.com',
+          login_url: process.env.FRONTEND_URL || SITE_CONFIG.webUrl,
           message: 'Institutional email and temporary password generated following name update.',
           copy_text: `Cloudora LMS Account Credentials\nName: ${updatedUserForAuth?.full_name || userUpdates.full_name || targetUser.full_name || 'User'}\nEmail: ${updatedUserForAuth?.email || userUpdates.email}\nTemporary Password: ${temporaryPassword}\n\nNote: Please log in and update your password immediately.`,
         };
@@ -3915,6 +3928,54 @@ exports.revokeAllOtherSessions = async (req, res) => {
 /**
  * Simple ping endpoint to reset backend last_active_at timer
  */
+
+/**
+ * Delete a specific session record
+ */
+exports.deleteSession = async (req, res) => {
+  try {
+    const id = req.params.id || req.body.id;
+    const currentUserId = req.userId;
+
+    if (!id) {
+      return res.status(400).json({ error: "Session ID is required" });
+    }
+
+    const { error } = await supabase
+      .from('user_sessions')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', currentUserId);
+
+    if (error) throw error;
+
+    res.json({ message: "Session record cleared successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * Clear all inactive / revoked session records for user
+ */
+exports.clearInactiveSessions = async (req, res) => {
+  try {
+    const currentUserId = req.userId;
+
+    const { error } = await supabase
+      .from('user_sessions')
+      .delete()
+      .eq('user_id', currentUserId)
+      .eq('is_revoked', true);
+
+    if (error) throw error;
+
+    res.json({ message: "Inactive sessions cleared successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.pingSession = async (req, res) => {
   // Middleware handles updating last_active_at automatically
   res.json({ success: true });

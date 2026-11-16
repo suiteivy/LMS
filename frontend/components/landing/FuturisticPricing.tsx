@@ -22,6 +22,9 @@ import {
   Zap,
 } from 'lucide-react-native';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { DemoButton } from '@/components/ui/DemoButton';
+import { Reveal } from '@/components/ui/Reveal';
+import { router } from 'expo-router';
 
 interface ExchangeRateConfig {
   usdToKsh: number;
@@ -231,7 +234,8 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
       }}
     >
       {/* ── SECTION HEADER ── */}
-      <View style={{ alignItems: 'center', marginBottom: 54 }}>
+      <Reveal variant="headline">
+        <View style={{ alignItems: 'center', marginBottom: 54 }}>
         <View
           style={{
             flexDirection: 'row',
@@ -503,6 +507,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
           </View>
         </View>
       </View>
+      </Reveal>
 
       {/* ── PLAN CARDS CONTAINER ── */}
       <Animated.View
@@ -532,21 +537,30 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
             marginBottom: 44,
           }}
         >
-          {planConfigs.map((plan) => {
+          {planConfigs.map((plan, i) => {
             const isHovered = hoveredCard === plan.name;
             const isPopular = plan.popular;
 
             return (
-              <GlassCard
+              <Reveal
                 key={plan.name}
+                variant="cards"
+                staggerIndex={i}
+                style={{
+                  flex: 1,
+                  minWidth: isDesktop ? 300 : '100%',
+                  display: 'flex',
+                }}
+              >
+              <GlassCard
                 variant={isPopular ? 'elevated' : 'standard'}
                 accentColor={plan.accent}
                 glowColor={isPopular ? 'rgba(255, 107, 0, 0.4)' : `${plan.accentGlow}`}
                 borderRadius={30}
                 style={[
                   {
-                    flex: 1,
-                    minWidth: isDesktop ? 300 : '100%',
+                    width: '100%',
+                    height: '100%',
                     transform: isHovered
                       ? [{ translateY: isPopular ? -16 : -8 }]
                       : [{ translateY: isPopular && isDesktop ? -10 : 0 }],
@@ -775,11 +789,13 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                   <MoveRight size={16} color="#FFFFFF" />
                 </TouchableOpacity>
               </GlassCard>
+              </Reveal>
             );
           })}
         </View>
       ) : (
         /* ── CUSTOM ENTERPRISE LIQUID GLASS CONSOLE ── */
+        <Reveal variant="cards" style={{ width: '100%' }}>
         <GlassCard
           variant="elevated"
           accentColor="#8B5CF6"
@@ -913,10 +929,12 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
             </TouchableOpacity>
           </View>
         </GlassCard>
+        </Reveal>
       )}
       </Animated.View>
 
-      {/* ── 14-DAY ZERO-RISK TRIAL (EMERALD LIQUID GLASS) ── */}
+      {/* ── LIVE INTERACTIVE DEMO SANDBOX (EMERALD LIQUID GLASS) ── */}
+      <Reveal variant="cards" style={{ width: '100%' }}>
       <GlassCard
         variant="elevated"
         accentColor="#10B981"
@@ -964,7 +982,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <Text style={{ color: '#FFFFFF', fontSize: 21, fontWeight: '900', letterSpacing: -0.3 }}>
-                  Experience Cloudora Free for 14 Days
+                  Experience Cloudora with Our Interactive Demo
                 </Text>
                 <View
                   style={{
@@ -977,7 +995,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                   }}
                 >
                   <Text style={{ color: '#34D399', fontSize: 10.5, fontWeight: '800', letterSpacing: 0.8 }}>
-                    NO CREDIT CARD NEEDED
+                    LIVE INTERACTIVE SANDBOX
                   </Text>
                 </View>
               </View>
@@ -989,100 +1007,48 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                   lineHeight: 21,
                 }}
               >
-                Instant access to all 4 portals. Try it out with sample or real school data with zero commitment.
+                Instant access to explore all 4 portals (Admin, Teacher, Student, Parent) in real time with interactive mock data and zero commitment.
               </Text>
             </View>
           </View>
 
-          <TouchableOpacity
-            onPress={() => onSelectPlan('Free Trial')}
-            activeOpacity={0.85}
-            //@ts-ignore
-            onPointerEnter={() => setTrialBtnHovered(true)}
-            onPointerLeave={() => setTrialBtnHovered(false)}
-            style={[
-              {
-                backgroundColor: '#10B981',
-                paddingVertical: 17,
-                paddingHorizontal: 30,
-                borderRadius: 18,
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: 180,
-                flexDirection: 'row',
-                gap: 8,
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.3)',
-                boxShadow: [{
-                  offsetX: 0,
-                  offsetY: 8,
-                  blurRadius: 22,
-                  color: 'rgba(16, 185, 129, 0.5)',
-                }],
-              },
-              isWeb
-                ? ({
-                    background: trialBtnHovered
-                      ? 'linear-gradient(135deg, #34D399 0%, #10B981 50%, #059669 100%)'
-                      : 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                    boxShadow: trialBtnHovered
-                      ? '0 0 28px rgba(16,185,129,0.65), inset 0 1px 0 rgba(255,255,255,0.3)'
-                      : '0 8px 22px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
-                    transitionProperty: 'all',
-                    transitionDuration: '0.22s',
-                    transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
-                    transform: trialBtnHovered
-                      ? [{ translateY: -3 }, { scale: 1.03 }]
-                      : [{ translateY: 0 }, { scale: 1 }],
-                    cursor: 'pointer',
-                  } as any)
-                : {},
-            ]}
-          >
-            <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 15, letterSpacing: 0.3 }}>
-              Start Free Trial
-            </Text>
-            <MoveRight
-              size={16}
-              color="#FFFFFF"
-              style={
-                isWeb
-                  ? ({
-                      transition: 'transform 0.25s ease',
-                      transform: trialBtnHovered ? [{ translateX: 4 }] : [{ translateX: 0 }],
-                    } as any)
-                  : {}
-              }
-            />
-          </TouchableOpacity>
+          <DemoButton
+            id="pricing-demo-pulse"
+            label="Try Interactive Demo"
+            size="lg"
+            onPress={() => router.push('/demo' as any)}
+          />
         </View>
       </GlassCard>
+      </Reveal>
 
       {/* ── OPTIONAL EXTRA MODULES (ADD-ONS MATRIX) ── */}
-      <View style={{ alignItems: 'center', marginBottom: 28 }}>
-        <Text
-          style={{
-            color: '#FFFFFF',
-            fontSize: 24,
-            fontWeight: '900',
-            textAlign: 'center',
-            marginBottom: 8,
-            letterSpacing: -0.3,
-          }}
-        >
-          Optional Extra Modules
-        </Text>
-        <Text
-          style={{
-            color: 'rgba(255, 255, 255, 0.52)',
-            fontSize: 14.5,
-            textAlign: 'center',
-            maxWidth: 500,
-          }}
-        >
-          Add extra tools anytime as your school grows.
-        </Text>
-      </View>
+      <Reveal variant="headline">
+        <View style={{ alignItems: 'center', marginBottom: 28 }}>
+          <Text
+            style={{
+              color: '#FFFFFF',
+              fontSize: 24,
+              fontWeight: '900',
+              textAlign: 'center',
+              marginBottom: 8,
+              letterSpacing: -0.3,
+            }}
+          >
+            Optional Extra Modules
+          </Text>
+          <Text
+            style={{
+              color: 'rgba(255, 255, 255, 0.52)',
+              fontSize: 14.5,
+              textAlign: 'center',
+              maxWidth: 500,
+            }}
+          >
+            Add extra tools anytime as your school grows.
+          </Text>
+        </View>
+      </Reveal>
 
       <View
         style={{
@@ -1092,13 +1058,22 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
           justifyContent: 'center',
         }}
       >
-        {addOns.map((addon) => {
+        {addOns.map((addon, idx) => {
           const isCardHovered = hoveredAddon === addon.name;
           const isBtnHovered = hoveredAddonBtn === addon.name;
 
           return (
-            <GlassCard
+            <Reveal
               key={addon.name}
+              variant="cards"
+              staggerIndex={idx}
+              style={{
+                width: isDesktop ? '48%' : '100%',
+                minWidth: 280,
+                display: 'flex',
+              }}
+            >
+            <GlassCard
               variant="interactive"
               hoverable
               accentColor={addon.accent}
@@ -1107,9 +1082,8 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
               onPointerEnter={() => setHoveredAddon(addon.name)}
               onPointerLeave={() => setHoveredAddon(null)}
               style={{
-                flex: isDesktop ? 1 : undefined,
-                width: isDesktop ? '48%' : '100%',
-                minWidth: 280,
+                width: '100%',
+                height: '100%',
               }}
               contentStyle={{
                 padding: 26,
@@ -1228,6 +1202,7 @@ export const FuturisticPricing: React.FC<FuturisticPricingProps> = ({ onSelectPl
                 </Text>
               </TouchableOpacity>
             </GlassCard>
+            </Reveal>
           );
         })}
       </View>

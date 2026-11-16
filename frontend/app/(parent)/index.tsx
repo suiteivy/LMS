@@ -50,6 +50,7 @@ export default function ParentIndex() {
 
 function ParentDashboard({ user, logout }: any) {
   const { isDark } = useTheme();
+  const { isDemo } = useAuth();
   const classTypeLabel =
     user?.institutions?.school_categories?.class_type ||
     user?.institutions?.categories?.[0]?.class_type ||
@@ -84,8 +85,12 @@ function ParentDashboard({ user, logout }: any) {
     }
 
     try {
-      const students = await ParentService.getLinkedStudents();
-      setLinkedStudents(students);
+      let students = await ParentService.getLinkedStudents().catch(() => []);
+      if ((!students || students.length === 0) && isDemo) {
+        const dummy = (await import('@/demoDummyData')).default;
+        students = dummy.parent.children as any[];
+      }
+      setLinkedStudents(students || []);
       if (students.length > 0) {
         if (cacheKey) {
           CacheService.set(cacheKey, students, 15 * 60 * 1000);
@@ -123,9 +128,27 @@ function ParentDashboard({ user, logout }: any) {
 
     try {
       const [performance, attendance] = await Promise.all([
-        ParentService.getStudentPerformance(studentId),
-        ParentService.getStudentAttendance(studentId)
+        ParentService.getStudentPerformance(studentId).catch(() => ({})),
+        ParentService.getStudentAttendance(studentId).catch(() => ([]))
       ]);
+
+      if (isDemo && (!performance?.grades || performance.grades.length === 0)) {
+        const dummy = (await import('@/demoDummyData')).default;
+        const mockStudentData = {
+          student: selectedStudent,
+          averageGrade: 'A-',
+          attendancePercentage: '92%',
+          recentGrades: dummy.student.grades.slice(0, 3).map((g: any) => ({
+            id: g.SubjectCode,
+            title: `${g.SubjectName} Assessment`,
+            grade: g.grade,
+            date: new Date().toISOString()
+          })),
+          schedule: dummy.student.todaysSchedule || []
+        };
+        setStudentData(mockStudentData);
+        return;
+      }
 
       let avgGrade = "N/A";
       if (performance.grades && performance.grades.length > 0) {

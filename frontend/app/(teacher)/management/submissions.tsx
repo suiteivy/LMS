@@ -82,11 +82,50 @@ export default function SubmissionsPage() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const { data: assignmentData, error: assignmentError } = await supabase
-                .from('assignments')
-                .select('*, subject:subjects(title, id, class_id)')
-                .eq('id', assignmentId)
-                .single();
+            let assignmentData: any = null;
+            let assignmentError: any = null;
+            try {
+                const res = await supabase
+                    .from('assignments')
+                    .select('*, subject:subjects(title, id, class_id)')
+                    .eq('id', assignmentId)
+                    .single();
+                assignmentData = res.data;
+                assignmentError = res.error;
+            } catch (e) {
+                assignmentError = e;
+            }
+
+            if ((assignmentError || !assignmentData) && isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                const mockAssignment = {
+                    id: assignmentId || 'demo-asg-1',
+                    title: 'Calculus Problem Set 1',
+                    total_points: 100,
+                    grading_style: 'points',
+                    due_date: '2026-03-30',
+                    subject: { id: 'subj-1', title: 'Mathematics', class_id: 'cls-1' },
+                    teacher_id: teacherId || 'DEMO-TCH-001',
+                    status: 'active',
+                    grades_released: false
+                } as any;
+                setAssignment(mockAssignment);
+                setCanGrade(true);
+
+                const merged: SubmissionEntry[] = dummy.teacher.studentList.map((s: any, idx: number) => ({
+                    id: idx < 3 ? `demo-sub-${idx + 1}` : null,
+                    student_id: s.id,
+                    student_name: s.full_name || s.name || 'Student',
+                    status: idx < 2 ? 'graded' : (idx === 2 ? 'submitted' : 'missing'),
+                    score: idx === 0 ? 95 : (idx === 1 ? 88 : null),
+                    feedback: idx === 0 ? 'Excellent clarity and proof!' : (idx === 1 ? 'Good progress, check question 4.' : null),
+                    submittedAt: idx < 3 ? new Date(Date.now() - (idx + 1) * 3600000).toISOString() : null,
+                    file_url: idx < 3 ? 'https://example.com/demo-submission.pdf' : null
+                }));
+                setSubmissions(merged);
+                setLoading(false);
+                return;
+            }
 
             if (assignmentError) throw assignmentError;
             const typedAssignment = assignmentData as unknown as JoinedAssignment;

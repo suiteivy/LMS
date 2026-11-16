@@ -94,6 +94,48 @@ export default function ActiveSessions() {
     }
   };
 
+  const handleDeleteSession = async (sessionId: string) => {
+    setActionLoading(sessionId);
+    try {
+      await api.delete(`/auth/sessions/${sessionId}`);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    } catch (err: any) {
+      console.error("Failed to delete session record:", err.message);
+      Alert.alert("Error", "Could not remove session record.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleClearInactiveSessions = async () => {
+    const performClear = async () => {
+      setActionLoading('clear-all');
+      try {
+        await api.delete("/auth/sessions/inactive");
+        setSessions((prev) => prev.filter((s) => s.is_active !== false && !s.is_revoked));
+      } catch (err: any) {
+        console.error("Failed to clear inactive sessions:", err.message);
+        Alert.alert("Error", "Could not clear inactive sessions.");
+      } finally {
+        setActionLoading(null);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirm = window.confirm("Clear all inactive and ended sessions from the display?");
+      if (confirm) performClear();
+    } else {
+      Alert.alert(
+        "Clear Inactive Sessions",
+        "Clear all inactive and ended sessions from the display?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Clear", style: "destructive", onPress: performClear }
+        ]
+      );
+    }
+  };
+
   const handleRevokeOthers = async () => {
     const performRevokeOthers = async () => {
       setRevokeAllLoading(true);
@@ -170,6 +212,7 @@ export default function ActiveSessions() {
   }
 
   const activeCount = sessions.filter(s => s.is_active !== false || s.is_current).length;
+  const inactiveCount = sessions.filter(s => s.is_active === false || s.is_revoked).length;
 
   return (
     <ScrollView

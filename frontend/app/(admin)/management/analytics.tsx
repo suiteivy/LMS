@@ -77,9 +77,9 @@ export default function AnalyticsScreen() {
 
     const totalStudents = parseInt(stats.find(s => s.label === "Total Students")?.value || "0", 10) || 0;
     const teachers = parseInt(stats.find(s => s.label === "Teachers")?.value || "0", 10) || 0;
+    const activeSubjects = parseInt(stats.find(s => s.label === "Active Subjects")?.value || "0", 10) || 0;
     const hasRevenueStat = stats.some((s) => s.label === "Revenue");
     const attendanceRate = parseInt((stats.find(s => s.label === "Attendance")?.value || "0").replace('%', ''), 10) || 0;
-    const studentTeacherRatio = teachers > 0 ? (totalStudents / teachers).toFixed(1) : "0.0";
     const engagementRate = attendanceRate;
     const attendanceSummary = stats.find(s => s.label === "Attendance")?.subValue || "No data recorded today";
     const toPercent = (value: number): `${number}%` => `${Math.min(Math.max(value, 0), 100)}%`;
@@ -93,11 +93,11 @@ export default function AnalyticsScreen() {
             width: toPercent(attendanceRate)
         },
         {
-            title: "Student-Teacher Ratio",
-            value: `${studentTeacherRatio} : 1`,
-            helper: "Student load distribution",
+            title: "Curriculum Coverage",
+            value: `${activeSubjects} Subjects`,
+            helper: "Active academic courses offered",
             color: "#8b5cf6",
-            width: toPercent(Math.round(Number(studentTeacherRatio) * 5))
+            width: toPercent(Math.min(activeSubjects * 5, 100))
         },
         {
             title: "Engagement Index",
@@ -216,26 +216,44 @@ export default function AnalyticsScreen() {
                                 </View>
                             )}
 
-                            {/* System Capacity */}
+                            {/* Academic Operations Overview */}
                             <View className="bg-[#F6F8FA] dark:bg-[#161B22] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5">
-                                <Text className="text-gray-900 dark:text-white font-bold text-base mb-4">System Capacity</Text>
+                                <Text className="text-gray-900 dark:text-white font-bold text-base mb-4">Academic Operations Status</Text>
 
                                 <View className="mb-4">
                                     <View className="flex-row justify-between mb-1.5">
-                                        <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">Studend Capacity</Text>
+                                        <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">Student Enrollment</Text>
                                         <Text className="text-gray-900 dark:text-white text-xs font-black">
-                                            {parseInt(stats.find(s => s.label === "Total Students")?.value || "0", 10) > 1000 ? "Medium" : "Low"}
+                                            {totalStudents} Enrolled
                                         </Text>
                                     </View>
                                     <View className="h-1.5 bg-[#EAEEF2] dark:bg-[#161B22] rounded-full overflow-hidden">
                                         <View style={{
                                             height: '100%',
                                             backgroundColor: '#3b82f6',
-                                            width: `${Math.min((parseInt(stats.find(s => s.label === "Total Students")?.value || "0", 10) / 5000) * 100, 100)}%`,
+                                            width: `${Math.min((totalStudents / 1000) * 100, 100)}%`,
                                             borderRadius: 999,
                                         }} />
                                     </View>
-                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] mt-1">Based on student records</Text>
+                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] mt-1">Active student body</Text>
+                                </View>
+
+                                <View>
+                                    <View className="flex-row justify-between mb-1.5">
+                                        <Text className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest">Curriculum Offerings</Text>
+                                        <Text className="text-gray-900 dark:text-white text-xs font-black">
+                                            {activeSubjects} Subjects
+                                        </Text>
+                                    </View>
+                                    <View className="h-1.5 bg-[#EAEEF2] dark:bg-[#161B22] rounded-full overflow-hidden">
+                                        <View style={{
+                                            height: '100%',
+                                            backgroundColor: '#10b981',
+                                            width: `${Math.min((activeSubjects / 50) * 100, 100)}%`,
+                                            borderRadius: 999,
+                                        }} />
+                                    </View>
+                                    <Text className="text-gray-500 dark:text-gray-400 text-[10px] mt-1">Configured subject courses</Text>
                                 </View>
                             </View>
                         </>

@@ -64,7 +64,7 @@ const checkSubscription = async (req, res, next) => {
     if (!institutionData || (now - institutionData.timestamp > CACHE_TTL)) {
       const { data: institution, error: instError } = await supabase
         .from('institutions')
-        .select('subscription_status, subscription_plan, addon_library, addon_messaging, addon_diary, addon_bursary, custom_student_limit')
+        .select('subscription_status, subscription_plan, addon_library, addon_messaging, addon_diary, addon_bursary, custom_student_limit, custom_admin_limit')
         .eq('id', institutionId)
         .single();
 
@@ -78,8 +78,16 @@ const checkSubscription = async (req, res, next) => {
       let limits = PLAN_LIMITS[canonicalPlan] || PLAN_LIMITS['basic'];
 
       // Beta allows custom student limit override where configured.
-      if (canonicalPlan === 'beta' && institution.custom_student_limit !== null && institution.custom_student_limit !== undefined) {
-        limits = { ...limits, maxStudents: institution.custom_student_limit };
+            if (canonicalPlan === 'beta') {
+        if (institution.custom_student_limit !== null && institution.custom_student_limit !== undefined) {
+          limits = { ...limits, maxStudents: institution.custom_student_limit };
+        }
+        if (institution.custom_admin_limit !== null && institution.custom_admin_limit !== undefined) {
+          const parsedAdminLimit = Number(institution.custom_admin_limit);
+          if (Number.isFinite(parsedAdminLimit) && parsedAdminLimit > 0) {
+            limits = { ...limits, maxAdmins: parsedAdminLimit };
+          }
+        }
       }
 
       // Check Student Counts

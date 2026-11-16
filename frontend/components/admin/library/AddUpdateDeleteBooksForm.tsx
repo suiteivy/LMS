@@ -276,7 +276,7 @@ const AddUpdateDeleteBooksForm: React.FC<AddUpdateDeleteBooksFormProps> = ({
                     <Text className="mt-2" style={{ color: textMuted }}>Loading...</Text>
                 </View>
             )}
-            {error && (
+            {!!error && (
                 <View className="items-center py-2">
                     <Text className="text-red-500 dark:text-red-400">{error}</Text>
                     <TouchableOpacity onPress={clearError}>

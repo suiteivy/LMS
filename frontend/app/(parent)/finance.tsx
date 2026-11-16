@@ -168,7 +168,11 @@ export default function ParentFinancePage() {
   };
 
   const fetchLinkedStudents = async () => {
-    const students = (await ParentService.getLinkedStudents()) || [];
+    let students = (await ParentService.getLinkedStudents()) || [];
+    if (students.length === 0) {
+      const dummy = (await import('@/demoDummyData')).default;
+      students = dummy.parent.children as any[];
+    }
     setLinkedStudents(students);
 
     if (students.length === 0) {
@@ -190,7 +194,11 @@ export default function ParentFinancePage() {
   };
 
   const fetchFinance = async (studentId: string) => {
-    const payload = await ParentService.getStudentFinance(studentId);
+    let payload = await ParentService.getStudentFinance(studentId);
+    if (!payload) {
+      const dummy = (await import('@/demoDummyData')).default;
+      payload = dummy.student.finance as any;
+    }
     setFinance(payload || null);
   };
 

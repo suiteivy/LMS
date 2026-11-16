@@ -14,7 +14,7 @@ import {
   useWindowDimensions,
   AccessibilityInfo,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -33,6 +33,9 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { LivingBackground } from "@/components/landing/LivingBackground";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { DemoFeedbackTopNotice } from "@/components/landing/DemoFeedbackTopNotice";
+import { DemoFeedbackSection } from "@/components/landing/DemoFeedbackSection";
+import { Reveal } from "@/components/ui/Reveal";
 
 // ─── Design Tokens ──────────────────────────────────────────────────────────
 const FLAME = "#FF6B00";
@@ -758,8 +761,30 @@ export default function Demo() {
   const [selectedRoleData, setSelectedRoleData] = useState<RoleData | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
-  const { startDemo } = useAuth();
+  const { startDemo, getRoleRedirect, isPlatformAdmin } = useAuth();
   const { width: screenWidth } = useWindowDimensions();
+  const searchParams = useLocalSearchParams<{ redirect?: string }>();
+  const mainScrollRef = useRef<ScrollView>(null);
+
+  const scrollToFeedback = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const el = document.getElementById('feedback-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+    }
+    mainScrollRef.current?.scrollToEnd({ animated: true });
+  };
+
+  useEffect(() => {
+    if (searchParams?.redirect === 'feedback') {
+      const t = setTimeout(() => {
+        scrollToFeedback();
+      }, 400);
+      return () => clearTimeout(t);
+    }
+  }, [searchParams?.redirect]);
 
   // Responsive Breakpoints
   const isDesktop = screenWidth >= 960;
@@ -880,10 +905,10 @@ export default function Demo() {
     setModalVisible(false);
 
     try {
-      const { error } = await startDemo(selectedRoleData.id);
+      const res = await startDemo(selectedRoleData.id);
 
-      if (error) {
-        const errorMsg = typeof error === 'string' ? error : (error?.message || '');
+      if (res?.error) {
+        const errorMsg = typeof res.error === 'string' ? res.error : (res.error?.message || '');
         const isNetworkErr =
           errorMsg.includes('fetch') ||
           errorMsg.includes('network') ||
@@ -899,6 +924,13 @@ export default function Demo() {
         );
         setIsLoading(false);
         return;
+      }
+
+      const roleKey = selectedRoleData.id as string;
+      const normalizedRole = roleKey === 'readonly_admin' ? 'admin' : roleKey;
+      const targetPath = getRoleRedirect ? getRoleRedirect(res?.data?.profile || { role: normalizedRole } as any, isPlatformAdmin, normalizedRole) : `/(${normalizedRole})`;
+      if (targetPath) {
+        router.replace(targetPath as any);
       }
     } catch (error: any) {
       console.error(error?.message || error);
@@ -987,6 +1019,7 @@ export default function Demo() {
 
         {/* ── MAIN SCROLL CONTAINER ── */}
         <ScrollView
+          ref={mainScrollRef}
           contentContainerStyle={{
             paddingBottom: 80,
             flexGrow: 1,
@@ -1003,123 +1036,126 @@ export default function Demo() {
             }}
           >
             {/* ── TOP NAV & CONSOLE HEADER ── */}
-            <Animated.View
-              style={{
-                opacity: headerFade,
-                transform: [{ translateY: headerSlide }],
-                marginBottom: 32,
-              }}
-            >
-              {/* Telemetry Strip & Navigation Bar */}
+            <Reveal variant="headline">
               <View
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 28,
-                  paddingVertical: 10,
+                  marginBottom: 32,
                 }}
               >
-                {/* Back Button */}
-                <TouchableOpacity
-                  onPress={() => {
-                    if (router.canGoBack()) {
-                      router.back();
-                    } else {
-                      router.push("/");
-                    }
-                  }}
-                  activeOpacity={0.75}
-                  style={[
-                    {
-                      width: 46,
-                      height: 46,
-                      borderRadius: 15,
-                      backgroundColor: "rgba(255,255,255,0.05)",
-                      borderWidth: 1,
-                      borderColor: "rgba(255,255,255,0.11)",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      ...(Platform.OS === "web"
-                        ? {
-                            backdropFilter: "blur(20px)",
-                            WebkitBackdropFilter: "blur(20px)",
-                            boxShadow:
-                              "0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.12)",
-                            cursor: "pointer",
-                          }
-                        : {}),
-                    } as any,
-                  ]}
-                >
-                  <ArrowLeft size={20} color="rgba(255,255,255,0.85)" />
-                </TouchableOpacity>
-
-                {/* Playground Status Pill */}
+                {/* Telemetry Strip & Navigation Bar */}
                 <View
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    backgroundColor: "rgba(255,107,0,0.12)",
-                    borderRadius: 14,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderWidth: 1,
-                    borderColor: "rgba(255,107,0,0.3)",
-                    ...(Platform.OS === "web"
-                      ? {
-                          backdropFilter: "blur(12px)",
-                          WebkitBackdropFilter: "blur(12px)",
-                          boxShadow: "0 0 16px rgba(255,107,0,0.2)",
-                        }
-                      : {}),
-                  } as any}
+                    justifyContent: "space-between",
+                    marginBottom: 20,
+                    paddingVertical: 10,
+                  }}
                 >
-                  <Sparkles size={13} color="#FF8C40" />
+                  {/* Back Button */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (router.canGoBack()) {
+                        router.back();
+                      } else {
+                        router.push("/");
+                      }
+                    }}
+                    activeOpacity={0.75}
+                    style={[
+                      {
+                        width: 46,
+                        height: 46,
+                        borderRadius: 15,
+                        backgroundColor: "rgba(255,255,255,0.05)",
+                        borderWidth: 1,
+                        borderColor: "rgba(255,255,255,0.11)",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        ...(Platform.OS === "web"
+                          ? {
+                              backdropFilter: "blur(20px)",
+                              WebkitBackdropFilter: "blur(20px)",
+                              boxShadow:
+                                "0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.12)",
+                              cursor: "pointer",
+                            }
+                          : {}),
+                      } as any,
+                    ]}
+                  >
+                    <ArrowLeft size={20} color="rgba(255,255,255,0.85)" />
+                  </TouchableOpacity>
+
+                  {/* Playground Status Pill */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: "rgba(255,107,0,0.12)",
+                      borderRadius: 14,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderWidth: 1,
+                      borderColor: "rgba(255,107,0,0.3)",
+                      ...(Platform.OS === "web"
+                        ? {
+                            backdropFilter: "blur(12px)",
+                            WebkitBackdropFilter: "blur(12px)",
+                            boxShadow: "0 0 16px rgba(255,107,0,0.2)",
+                          }
+                        : {}),
+                    } as any}
+                  >
+                    <Sparkles size={13} color="#FF8C40" />
+                    <Text
+                      style={{
+                        color: "#FF8C40",
+                        fontWeight: "800",
+                        fontSize: 11,
+                        textTransform: "uppercase",
+                        letterSpacing: 1.8,
+                        marginLeft: 6,
+                      }}
+                    >
+                      Playground
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Top-of-page Feedback Notice */}
+                <DemoFeedbackTopNotice onJumpToFeedback={scrollToFeedback} />
+
+                {/* Main Headline & Subtitle */}
+                <View style={{ alignItems: "center", paddingHorizontal: 16 }}>
                   <Text
                     style={{
-                      color: "#FF8C40",
-                      fontWeight: "800",
-                      fontSize: 11,
-                      textTransform: "uppercase",
-                      letterSpacing: 1.8,
-                      marginLeft: 6,
+                      color: "#FFFFFF",
+                      fontWeight: "900",
+                      fontSize: isDesktop ? 36 : isTablet ? 30 : 26,
+                      textAlign: "center",
+                      letterSpacing: -0.5,
+                      marginBottom: 10,
                     }}
                   >
-                    Playground
+                    Select Persona
+                  </Text>
+
+                  <Text
+                    style={{
+                      color: "rgba(255,255,255,0.52)",
+                      fontSize: isDesktop ? 16 : 14.5,
+                      textAlign: "center",
+                      lineHeight: isDesktop ? 24 : 22,
+                      maxWidth: 620,
+                    }}
+                  >
+                    Choose a role to explore the platform. Each module showcases
+                    real features in a safe demo environment.
                   </Text>
                 </View>
               </View>
-
-              {/* Main Headline & Subtitle */}
-              <View style={{ alignItems: "center", paddingHorizontal: 16 }}>
-                <Text
-                  style={{
-                    color: "#FFFFFF",
-                    fontWeight: "900",
-                    fontSize: isDesktop ? 36 : isTablet ? 30 : 26,
-                    textAlign: "center",
-                    letterSpacing: -0.5,
-                    marginBottom: 10,
-                  }}
-                >
-                  Select Persona
-                </Text>
-
-                <Text
-                  style={{
-                    color: "rgba(255,255,255,0.52)",
-                    fontSize: isDesktop ? 16 : 14.5,
-                    textAlign: "center",
-                    lineHeight: isDesktop ? 24 : 22,
-                    maxWidth: 620,
-                  }}
-                >
-                  Choose a role to explore the platform. Each module showcases
-                  real features in a safe demo environment.
-                </Text>
-              </View>
-            </Animated.View>
+            </Reveal>
 
             {/* ── PERSONA MODULE SELECTION GRID ── */}
             <View
@@ -1144,67 +1180,79 @@ export default function Demo() {
                         : "100%",
                     }}
                   >
-                    <PersonaCard
-                      role={role}
-                      index={index}
-                      entranceAnim={entranceAnim}
-                      onSelect={openDemoModal}
-                      isSelected={selectedRoleData?.id === role.id && modalVisible}
-                      reducedMotion={reducedMotion}
-                    />
+                    <Reveal variant="cards" staggerIndex={index}>
+                      <PersonaCard
+                        role={role}
+                        index={index}
+                        entranceAnim={entranceAnim}
+                        onSelect={openDemoModal}
+                        isSelected={selectedRoleData?.id === role.id && modalVisible}
+                        reducedMotion={reducedMotion}
+                      />
+                    </Reveal>
                   </View>
                 );
               })}
             </View>
 
             {/* ── TELEMETRY INFO FOOTER ── */}
-            <GlassCard
-              variant="subtle"
-              borderRadius={22}
-              style={{
-                width: "100%",
-              }}
-              contentStyle={{
-                alignItems: "center",
-                paddingVertical: 22,
-                paddingHorizontal: 26,
-              }}
-            >
-              <View
+            <Reveal variant="wrapper" staggerIndex={4}>
+              <GlassCard
+                variant="subtle"
+                borderRadius={22}
                 style={{
-                  flexDirection: "row",
+                  width: "100%",
+                }}
+                contentStyle={{
                   alignItems: "center",
-                  marginBottom: 10,
-                  gap: 8,
+                  paddingVertical: 22,
+                  paddingHorizontal: 26,
                 }}
               >
-                <LayoutDashboard size={16} color="rgba(255,255,255,0.6)" />
-                <Text
+                <View
                   style={{
-                    color: "rgba(255,255,255,0.65)",
-                    fontWeight: "800",
-                    fontSize: 12.5,
-                    textTransform: "uppercase",
-                    letterSpacing: 1.4,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginBottom: 10,
+                    gap: 8,
                   }}
                 >
-                  What to expect
-                </Text>
-              </View>
+                  <LayoutDashboard size={16} color="rgba(255,255,255,0.6)" />
+                  <Text
+                    style={{
+                      color: "rgba(255,255,255,0.65)",
+                      fontWeight: "800",
+                      fontSize: 12.5,
+                      textTransform: "uppercase",
+                      letterSpacing: 1.4,
+                    }}
+                  >
+                    What to expect
+                  </Text>
+                </View>
 
-              <Text
-                style={{
-                  color: "rgba(255,255,255,0.42)",
-                  fontSize: 12.5,
-                  textAlign: "center",
-                  lineHeight: 20,
-                  fontWeight: "500",
-                }}
-              >
-                15-minute interactive session{" \u2022 "}Pre-populated data{"\n"}
-                Real features, no signup required{" \u2022 "}Data resets periodically
-              </Text>
-            </GlassCard>
+                <Text
+                  style={{
+                    color: "rgba(255,255,255,0.42)",
+                    fontSize: 12.5,
+                    textAlign: "center",
+                    lineHeight: 20,
+                    fontWeight: "500",
+                  }}
+                >
+                  15-minute interactive session{" \u2022 "}Pre-populated data{"\n"}
+                  Real features, no signup required{" \u2022 "}Data resets periodically
+                </Text>
+              </GlassCard>
+            </Reveal>
+
+            {/* ── OPTIONAL DEMO FEEDBACK SECTION ── */}
+            <DemoFeedbackSection
+              onSubmitted={() => {}}
+              onSkip={() => {
+                mainScrollRef.current?.scrollTo({ y: 0, animated: true });
+              }}
+            />
           </View>
         </ScrollView>
 

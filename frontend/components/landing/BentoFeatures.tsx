@@ -21,6 +21,7 @@ import {
   Check,
 } from 'lucide-react-native';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Reveal } from '@/components/ui/Reveal';
 
 type PersonaFilter = 'all' | 'academics' | 'operations' | 'finance' | 'families';
 
@@ -61,127 +62,131 @@ export const BentoFeatures: React.FC = () => {
       }}
     >
       {/* Section Header */}
-      <View style={{ alignItems: 'center', marginBottom: 38 }}>
-        <View
-          style={[
-            {
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 7,
-              paddingHorizontal: 16,
-              paddingVertical: 7,
-              borderRadius: 30,
-              backgroundColor: 'rgba(139, 92, 246, 0.12)',
-              borderWidth: 1,
-              borderColor: 'rgba(139, 92, 246, 0.35)',
-              marginBottom: 18,
-              boxShadow: [{
-                offsetX: 0,
-                offsetY: 4,
-                blurRadius: 16,
-                color: 'rgba(139, 92, 246, 0.2)',
-              }],
-            },
-            isWeb
-              ? ({
-                  backdropFilter: 'blur(20px) saturate(180%)',
-                  WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(24, 15, 52, 0.6) 100%)',
-                } as any)
-              : {},
-          ]}
-        >
-          <Sparkles size={13} color="#A78BFA" />
+      <Reveal variant="headline">
+        <View style={{ alignItems: 'center', marginBottom: 38 }}>
+          <View
+            style={[
+              {
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 7,
+                paddingHorizontal: 16,
+                paddingVertical: 7,
+                borderRadius: 30,
+                backgroundColor: 'rgba(139, 92, 246, 0.12)',
+                borderWidth: 1,
+                borderColor: 'rgba(139, 92, 246, 0.35)',
+                marginBottom: 18,
+                boxShadow: [{
+                  offsetX: 0,
+                  offsetY: 4,
+                  blurRadius: 16,
+                  color: 'rgba(139, 92, 246, 0.2)',
+                }],
+              },
+              isWeb
+                ? ({
+                    backdropFilter: 'blur(20px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                    background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(24, 15, 52, 0.6) 100%)',
+                  } as any)
+                : {},
+            ]}
+          >
+            <Sparkles size={13} color="#A78BFA" />
+            <Text
+              style={{
+                color: '#A78BFA',
+                fontSize: 11,
+                fontWeight: '800',
+                letterSpacing: 1.5,
+                textTransform: 'uppercase',
+              }}
+            >
+              EVERYTHING YOUR SCHOOL NEEDS
+            </Text>
+          </View>
+
           <Text
             style={{
-              color: '#A78BFA',
-              fontSize: 11,
-              fontWeight: '800',
-              letterSpacing: 1.5,
-              textTransform: 'uppercase',
+              color: '#FFFFFF',
+              fontSize: isDesktop ? 40 : 30,
+              fontWeight: '900',
+              textAlign: 'center',
+              letterSpacing: -0.8,
+              marginBottom: 14,
+              ...(isWeb ? ({ textWrap: 'balance' } as any) : {}),
             }}
           >
-            EVERYTHING YOUR SCHOOL NEEDS
+            Complete School Management,{' '}
+            <Text style={{ color: '#FF8C40' }}>Built for Simplicity</Text>
+          </Text>
+
+          <Text
+            style={{
+              color: 'rgba(255, 255, 255, 0.55)',
+              fontSize: 16,
+              textAlign: 'center',
+              maxWidth: 620,
+              lineHeight: 25,
+              ...(isWeb ? ({ textWrap: 'pretty' } as any) : {}),
+            }}
+          >
+            From lesson tracking and conflict-free timetables to multi-tier fee collection and official transcripts—manage your entire institution with clarity and ease.
           </Text>
         </View>
-
-        <Text
-          style={{
-            color: '#FFFFFF',
-            fontSize: isDesktop ? 40 : 30,
-            fontWeight: '900',
-            textAlign: 'center',
-            letterSpacing: -0.8,
-            marginBottom: 14,
-            ...(isWeb ? ({ textWrap: 'balance' } as any) : {}),
-          }}
-        >
-          Complete School Management,{' '}
-          <Text style={{ color: '#FF8C40' }}>Built for Simplicity</Text>
-        </Text>
-
-        <Text
-          style={{
-            color: 'rgba(255, 255, 255, 0.55)',
-            fontSize: 16,
-            textAlign: 'center',
-            maxWidth: 620,
-            lineHeight: 25,
-            ...(isWeb ? ({ textWrap: 'pretty' } as any) : {}),
-          }}
-        >
-          From lesson tracking and conflict-free timetables to multi-tier fee collection and official transcripts—manage your entire institution with clarity and ease.
-        </Text>
-      </View>
+      </Reveal>
 
       {/* Audience / Persona Filter Tabs */}
-      <View
-        style={{
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: 8,
-          justifyContent: 'center',
-          marginBottom: 44,
-        }}
-      >
-        {FILTERS.map((f) => {
-          const isSelected = activeFilter === f.id;
-          return (
-            <TouchableOpacity
-              key={f.id}
-              onPress={() => setActiveFilter(f.id)}
-              activeOpacity={0.8}
-              style={[
-                {
-                  paddingVertical: 9,
-                  paddingHorizontal: 18,
-                  borderRadius: 20,
-                  backgroundColor: isSelected ? 'rgba(255, 107, 0, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                  borderWidth: 1.5,
-                  borderColor: isSelected ? '#FF6B00' : 'rgba(255, 255, 255, 0.08)',
-                },
-                isWeb
-                  ? ({
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: isSelected ? '0 0 16px rgba(255, 107, 0, 0.25)' : 'none',
-                    } as any)
-                  : {},
-              ]}
-            >
-              <Text
-                style={{
-                  color: isSelected ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)',
-                  fontSize: 13,
-                  fontWeight: isSelected ? '800' : '600',
-                }}
+      <Reveal variant="list" delay={120}>
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 8,
+            justifyContent: 'center',
+            marginBottom: 44,
+          }}
+        >
+          {FILTERS.map((f) => {
+            const isSelected = activeFilter === f.id;
+            return (
+              <TouchableOpacity
+                key={f.id}
+                onPress={() => setActiveFilter(f.id)}
+                activeOpacity={0.8}
+                style={[
+                  {
+                    paddingVertical: 9,
+                    paddingHorizontal: 18,
+                    borderRadius: 20,
+                    backgroundColor: isSelected ? 'rgba(255, 107, 0, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+                    borderWidth: 1.5,
+                    borderColor: isSelected ? '#FF6B00' : 'rgba(255, 255, 255, 0.08)',
+                  },
+                  isWeb
+                    ? ({
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        boxShadow: isSelected ? '0 0 16px rgba(255, 107, 0, 0.25)' : 'none',
+                      } as any)
+                    : {},
+                ]}
               >
-                {f.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+                <Text
+                  style={{
+                    color: isSelected ? '#FFFFFF' : 'rgba(255, 255, 255, 0.65)',
+                    fontSize: 13,
+                    fontWeight: isSelected ? '800' : '600',
+                  }}
+                >
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </Reveal>
 
       {/* Asymmetric Bento Grid */}
       <View
@@ -194,14 +199,24 @@ export const BentoFeatures: React.FC = () => {
       >
         {/* TILE 1: Curriculum Planning & Record of Work (Hero Tile - 64% on Desktop) */}
         {matchesFilter(['academics', 'operations']) && (
+          <Reveal
+            variant="cards"
+            staggerIndex={0}
+            style={{
+              width: isDesktop ? '64%' : '100%',
+              minHeight: 340,
+              display: 'flex',
+            }}
+          >
           <GlassCard
             variant="interactive"
             hoverable
             accentColor="#FF6B00"
             borderRadius={28}
             style={{
-              width: isDesktop ? '64%' : '100%',
+              width: '100%',
               minHeight: 340,
+              height: '100%',
             }}
             contentStyle={{
               padding: isDesktop ? 34 : 24,
@@ -354,18 +369,29 @@ export const BentoFeatures: React.FC = () => {
               ))}
             </View>
           </GlassCard>
+          </Reveal>
         )}
 
         {/* TILE 2: Conflict-Free Timetable Builder (32.5% on Desktop) */}
         {matchesFilter(['operations', 'academics']) && (
+          <Reveal
+            variant="cards"
+            staggerIndex={1}
+            style={{
+              width: isDesktop ? (matchesFilter(['academics', 'operations']) ? '32.5%' : '48%') : '100%',
+              minHeight: 340,
+              display: 'flex',
+            }}
+          >
           <GlassCard
             variant="interactive"
             hoverable
             accentColor="#8B5CF6"
             borderRadius={28}
             style={{
-              width: isDesktop ? (matchesFilter(['academics', 'operations']) ? '32.5%' : '48%') : '100%',
+              width: '100%',
               minHeight: 340,
+              height: '100%',
             }}
             contentStyle={{
               padding: 26,
@@ -439,18 +465,29 @@ export const BentoFeatures: React.FC = () => {
               </Text>
             </View>
           </GlassCard>
+          </Reveal>
         )}
 
         {/* TILE 3: Flexible Grading & Transcripts (32.5% on Desktop) */}
         {matchesFilter(['academics', 'families']) && (
+          <Reveal
+            variant="cards"
+            staggerIndex={2}
+            style={{
+              width: isDesktop ? '32.5%' : isTablet ? '48%' : '100%',
+              minHeight: 280,
+              display: 'flex',
+            }}
+          >
           <GlassCard
             variant="interactive"
             hoverable
             accentColor="#3B82F6"
             borderRadius={28}
             style={{
-              width: isDesktop ? '32.5%' : isTablet ? '48%' : '100%',
+              width: '100%',
               minHeight: 280,
+              height: '100%',
             }}
             contentStyle={{
               padding: 26,
@@ -518,18 +555,29 @@ export const BentoFeatures: React.FC = () => {
               </Text>
             </View>
           </GlassCard>
+          </Reveal>
         )}
 
         {/* TILE 4: Multi-Tier Fee Billing & Receipts (32.5% on Desktop) */}
         {matchesFilter(['finance', 'operations']) && (
+          <Reveal
+            variant="cards"
+            staggerIndex={3}
+            style={{
+              width: isDesktop ? '32.5%' : isTablet ? '48%' : '100%',
+              minHeight: 280,
+              display: 'flex',
+            }}
+          >
           <GlassCard
             variant="interactive"
             hoverable
             accentColor="#10B981"
             borderRadius={28}
             style={{
-              width: isDesktop ? '32.5%' : isTablet ? '48%' : '100%',
+              width: '100%',
               minHeight: 280,
+              height: '100%',
             }}
             contentStyle={{
               padding: 26,
@@ -597,18 +645,29 @@ export const BentoFeatures: React.FC = () => {
               </Text>
             </View>
           </GlassCard>
+          </Reveal>
         )}
 
         {/* TILE 5: Physical Library & Academic Vault (31% on Desktop) */}
         {matchesFilter(['finance', 'academics', 'families']) && (
+          <Reveal
+            variant="cards"
+            staggerIndex={4}
+            style={{
+              width: isDesktop ? '31%' : '100%',
+              minHeight: 280,
+              display: 'flex',
+            }}
+          >
           <GlassCard
             variant="interactive"
             hoverable
             accentColor="#EC4899"
             borderRadius={28}
             style={{
-              width: isDesktop ? '31%' : '100%',
+              width: '100%',
               minHeight: 280,
+              height: '100%',
             }}
             contentStyle={{
               padding: 26,
@@ -676,10 +735,19 @@ export const BentoFeatures: React.FC = () => {
               </Text>
             </View>
           </GlassCard>
+          </Reveal>
         )}
 
         {/* TILE 6: Student Lifecycle, Clearance & Messaging (Full row or 100% on Desktop) */}
         {matchesFilter(['operations', 'families']) && (
+          <Reveal
+            variant="cards"
+            staggerIndex={5}
+            style={{
+              width: '100%',
+              display: 'flex',
+            }}
+          >
           <GlassCard
             variant="interactive"
             hoverable
@@ -778,6 +846,7 @@ export const BentoFeatures: React.FC = () => {
               ))}
             </View>
           </GlassCard>
+          </Reveal>
         )}
       </View>
     </View>

@@ -140,7 +140,7 @@ function SubjectDetailsScreen() {
           subject_teachers(
             teacher_id,
             class_id,
-            is_primary
+            is_hod
           )
         `)
         .eq("id", subjectId)
@@ -669,7 +669,7 @@ function SubjectDetailsScreen() {
                   return hodTeacher?.users?.full_name || form.hod_teacher_id;
                 })()}
               </Text>
-              {form.hod_teacher_id && (
+              {!!form.hod_teacher_id && (
                 <View style={{ backgroundColor: '#FF6B00', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
                   <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>HOD</Text>
                 </View>
@@ -889,9 +889,9 @@ function SubjectDetailsScreen() {
                             })}
                           </ScrollView>
                         )}
-                        {isUnassigned && editing && (
+                        {Boolean(isUnassigned && editing) && (
                           <Text style={{ fontSize: 11, color: '#F59E0B', marginTop: 4, fontWeight: '500' }}>
-                            ⚠️ No teacher assigned for {c.name}
+                            ⚠️ No teacher assigned for {c.display_name || c.name || 'this class'}
                           </Text>
                         )}
                       </View>

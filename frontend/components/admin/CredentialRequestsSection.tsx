@@ -16,7 +16,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { api } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
-import { TableScreenSkeleton } from '@/components/ui/skeletons';
+import { ListItemSkeleton } from '@/components/ui/skeletons';
 
 export interface CredentialRequestItem {
   id: string;
@@ -287,9 +287,8 @@ export function CredentialRequestsSection() {
 
       {/* List */}
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
-          <TableScreenSkeleton rows={6} columns={3} />
-          <Text style={{ color: textSecondary, marginTop: 12, fontSize: 13 }}>Loading credential requests...</Text>
+        <View style={{ flex: 1, padding: 16 }}>
+          <ListItemSkeleton count={4} label="Loading credential requests..." />
         </View>
       ) : filteredRequests.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>

@@ -41,6 +41,7 @@ type Institution = {
   subscription_cycle?: string | null;
   subscription_tracking_start_date?: string | null;
   custom_student_limit?: number | null;
+  custom_admin_limit?: number | null;
   subscription_start_date?: string | null;
   admin_first_name?: string | null;
   admin_last_name?: string | null;
@@ -140,6 +141,7 @@ export default function MasterInstitutionsPage() {
     subscription_plan: 'basic',
     subscription_start_date: new Date().toISOString().slice(0, 10),
     custom_student_limit: '',
+    custom_admin_limit: '',
     currency_id: '',
     category_ids: [] as string[],
   });
@@ -416,6 +418,7 @@ export default function MasterInstitutionsPage() {
       subscription_plan: 'basic',
       subscription_start_date: new Date().toISOString().slice(0, 10),
       custom_student_limit: '',
+      custom_admin_limit: '',
       currency_id: currencies.find((currency) => currency.is_default)?.id || currencies[0]?.id || '',
       category_ids: [],
     });
@@ -1200,17 +1203,30 @@ export default function MasterInstitutionsPage() {
                     </View>
                   )}
 
-                  {enrollForm.subscription_plan === 'beta' && (
-                    <Field
-                      label="Custom Student Limit*"
-                      c={c}
-                      value={enrollForm.custom_student_limit}
-                      keyboardType="number-pad"
-                      onChangeText={(v) => {
-                        const numericOnly = String(v || '').replace(/\D/g, '');
-                        setEnrollForm((p) => ({ ...p, custom_student_limit: numericOnly }));
-                      }}
-                    />
+                                    {enrollForm.subscription_plan === 'beta' && (
+                    <>
+                      <Field
+                        label="Custom Student Limit*"
+                        c={c}
+                        value={enrollForm.custom_student_limit}
+                        keyboardType="number-pad"
+                        onChangeText={(v) => {
+                          const numericOnly = String(v || '').replace(/\D/g, '');
+                          setEnrollForm((p) => ({ ...p, custom_student_limit: numericOnly }));
+                        }}
+                      />
+                      <Field
+                        label="Custom Admin Limit (Optional)"
+                        c={c}
+                        placeholder="Default: 2"
+                        value={enrollForm.custom_admin_limit}
+                        keyboardType="number-pad"
+                        onChangeText={(v) => {
+                          const numericOnly = String(v || '').replace(/\D/g, '');
+                          setEnrollForm((p) => ({ ...p, custom_admin_limit: numericOnly }));
+                        }}
+                      />
+                    </>
                   )}
 
                 </>
@@ -1403,16 +1419,29 @@ export default function MasterInstitutionsPage() {
               )}
 
               {String(editForm.subscription_plan || 'basic') === 'beta' && (
-                <Field
-                  label="Custom Student Limit*"
-                  c={c}
-                  value={String(editForm.custom_student_limit ?? '')}
-                  keyboardType="number-pad"
-                  onChangeText={(v) => {
-                    const numericOnly = String(v || '').replace(/\D/g, '');
-                    setEditForm((p) => ({ ...p, custom_student_limit: numericOnly === '' ? null : Number(numericOnly) }));
-                  }}
-                />
+                <>
+                  <Field
+                    label="Custom Student Limit*"
+                    c={c}
+                    value={String(editForm.custom_student_limit ?? '')}
+                    keyboardType="number-pad"
+                    onChangeText={(v) => {
+                      const numericOnly = String(v || '').replace(/\D/g, '');
+                      setEditForm((p) => ({ ...p, custom_student_limit: numericOnly === '' ? null : Number(numericOnly) }));
+                    }}
+                  />
+                  <Field
+                    label="Custom Admin Limit (Optional)"
+                    c={c}
+                    placeholder="Default: 2"
+                    value={String(editForm.custom_admin_limit ?? '')}
+                    keyboardType="number-pad"
+                    onChangeText={(v) => {
+                      const numericOnly = String(v || '').replace(/\D/g, '');
+                      setEditForm((p) => ({ ...p, custom_admin_limit: numericOnly === '' ? null : Number(numericOnly) }));
+                    }}
+                  />
+                </>
               )}
 
               <TouchableOpacity
@@ -1551,7 +1580,9 @@ export default function MasterInstitutionsPage() {
                       Toast.show({
                         type: 'info',
                         text1: 'Plan Capacity Reached',
-                        text2: `The ${(adminInstitution?.subscription_plan || '').toUpperCase()} plan allows up to ${adminInstitution?.max_admins} admins. Upgrade plan to add more.`,
+                        text2: adminInstitution?.subscription_plan === 'beta'
+                          ? `The BETA plan allows up to ${adminInstitution?.max_admins} admins. Increase custom admin limit in Edit Institution to add more.`
+                          : `The ${(adminInstitution?.subscription_plan || '').toUpperCase()} plan allows up to ${adminInstitution?.max_admins} admins. Upgrade plan to add more.`,
                         position: 'top',
                       });
                       return;
@@ -2076,6 +2107,7 @@ function Field({
   c,
   value,
   onChangeText,
+  placeholder,
   keyboardType,
   secureTextEntry,
   editable,
@@ -2085,6 +2117,7 @@ function Field({
   c: ReturnType<typeof useThemeColors>;
   value: string;
   onChangeText: (v: string) => void;
+  placeholder?: string;
   keyboardType?: 'default' | 'numeric' | 'number-pad' | 'phone-pad';
   secureTextEntry?: boolean;
   editable?: boolean;
@@ -2096,6 +2129,7 @@ function Field({
       <TextInput
         value={value}
         onChangeText={onChangeText}
+        placeholder={placeholder}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
         editable={editable}

@@ -208,7 +208,7 @@ const GlassInput = ({
       </View>
 
       {/* Inline error message */}
-      {error && (
+      {!!error && (
         <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6, marginLeft: 4 }}>
           <IconIonicons name="alert-circle" size={13} color="rgba(252,165,165,0.9)" />
           <Text style={{ color: "rgba(252,165,165,0.9)", fontSize: 12, marginLeft: 4, fontWeight: "600" }}>

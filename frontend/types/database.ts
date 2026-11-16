@@ -2430,6 +2430,7 @@ export type Database = {
           created_at: string | null
           crm_api_key: string | null
           currency_id: string
+          custom_admin_limit: number | null
           custom_student_limit: number | null
           email: string | null
           email_domain: string | null
@@ -2456,6 +2457,7 @@ export type Database = {
           created_at?: string | null
           crm_api_key?: string | null
           currency_id: string
+          custom_admin_limit?: number | null
           custom_student_limit?: number | null
           email?: string | null
           email_domain?: string | null
@@ -2482,6 +2484,7 @@ export type Database = {
           created_at?: string | null
           crm_api_key?: string | null
           currency_id?: string
+          custom_admin_limit?: number | null
           custom_student_limit?: number | null
           email?: string | null
           email_domain?: string | null

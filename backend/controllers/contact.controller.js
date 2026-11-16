@@ -1,5 +1,6 @@
 const process = require("node:process");
 const nodemailer = require("nodemailer");
+const SITE_CONFIG = require("../config/siteConfig.js");
 
 /**
  * Handle Booking Form Submission
@@ -12,7 +13,7 @@ exports.submitBooking = async (req, res) => {
             return res.status(400).json({ error: "Missing required fields" });
         }
 
-        console.log(`[Email] Sending booking notification to: Support@cloudora.live`);
+        console.log(`[Email] Sending booking notification to: ${SITE_CONFIG.supportEmail}`);
 
         // Check if SMTP credentials exist
         if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
@@ -87,7 +88,7 @@ exports.submitBooking = async (req, res) => {
 
         const mailOptions = {
             from: `"Cloudora LMS Request" <${process.env.SMTP_USER}>`,
-            to: 'Support@cloudora.live',
+            to: SITE_CONFIG.supportEmail,
             subject: `New Booking Request: ${plan} Plan (${name})`,
             replyTo: email,
             html: htmlBody,
@@ -98,7 +99,7 @@ exports.submitBooking = async (req, res) => {
 
         res.json({
             success: true,
-            message: "Thank you! Your request has been submitted to Support@cloudora.live."
+            message: `Thank you! Your request has been submitted to ${SITE_CONFIG.supportEmail}.`
         });
     } catch (err) {
         console.error("Booking submission error:", err);

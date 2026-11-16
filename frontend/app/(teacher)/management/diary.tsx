@@ -96,13 +96,17 @@ export default function TeacherDiaryPage() {
     }, [selectedClassId]);
 
     const fetchClasses = async () => {
-        if (!teacherId) return;
+        if (!teacherId && !isDemo) return;
         setLoading(true);
         try {
             const data = await ClassAPI.getClasses({ teacher_id: teacherId } as any);
-            const designatedClasses = (Array.isArray(data) ? data : []).filter(
+            let designatedClasses = (Array.isArray(data) ? data : []).filter(
                 (c: any) => c.teacher_id === teacherId
             );
+            if (designatedClasses.length === 0 && isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                designatedClasses = dummy.teacher.classes as any;
+            }
             setClasses(designatedClasses);
             if (designatedClasses.length > 0) {
                 setSelectedClassId(designatedClasses[0].id);
@@ -110,8 +114,15 @@ export default function TeacherDiaryPage() {
                 setSelectedClassId("");
             }
         } catch (error: any) {
-            console.error("Error fetching classes:", error);
-            showFetchError("assigned classes", error);
+            if (isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                const designatedClasses = dummy.teacher.classes as any;
+                setClasses(designatedClasses);
+                setSelectedClassId(designatedClasses[0]?.id || "");
+            } else {
+                console.error("Error fetching classes:", error);
+                showFetchError("assigned classes", error);
+            }
         } finally {
             setLoading(false);
         }
@@ -122,10 +133,40 @@ export default function TeacherDiaryPage() {
         setLoading(true);
         try {
             const data = await DiaryAPI.getEntries(selectedClassId);
-            setEntries(data);
+            if ((!data || data.length === 0) && isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                setEntries(dummy.teacher.diaryEntries.map((e: any) => ({
+                    id: e.id,
+                    institution_id: e.institution_id || '',
+                    class_id: selectedClassId,
+                    teacher_id: e.teacher_id || '',
+                    title: e.title,
+                    content: e.content || '',
+                    entry_date: e.entry_date || new Date().toISOString().split('T')[0],
+                    created_at: e.entry_date || new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })));
+            } else {
+                setEntries(data);
+            }
         } catch (error: any) {
-            console.error("Error fetching diary entries:", error);
-            showFetchError("diary entries", error);
+            if (isDemo) {
+                const dummy = (await import('@/demoDummyData')).default;
+                setEntries(dummy.teacher.diaryEntries.map((e: any) => ({
+                    id: e.id,
+                    institution_id: e.institution_id || '',
+                    class_id: selectedClassId,
+                    teacher_id: e.teacher_id || '',
+                    title: e.title,
+                    content: e.content || '',
+                    entry_date: e.entry_date || new Date().toISOString().split('T')[0],
+                    created_at: e.entry_date || new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })));
+            } else {
+                console.error("Error fetching diary entries:", error);
+                showFetchError("diary entries", error);
+            }
         } finally {
             setLoading(false);
         }

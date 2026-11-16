@@ -169,7 +169,7 @@ const LibraryAction = () => {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6900" colors={["#FF6900"]} />}
             >
                 <View style={{ padding: 16 }}>
-                    {error && (
+                    {!!error && (
                         <View style={{ backgroundColor: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2', borderWidth: 1, borderColor: isDark ? 'rgba(239,68,68,0.2)' : '#fecaca', borderRadius: 12, padding: 12, marginBottom: 16 }}>
                             <Text style={{ color: '#ef4444', fontWeight: '600' }}>Error: {error}</Text>
                             <TouchableOpacity style={{ marginTop: 8, backgroundColor: '#ef4444', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start' }} onPress={() => { setError(null); loadInitialData(); }}>
@@ -232,12 +232,7 @@ const LibraryAction = () => {
             case "books": return <AddUpdateDeleteBooksForm books={books} onAddBook={handleAddBook} onUpdateBook={handleUpdateBook} onDeleteBook={handleDeleteBook} />;
             case "borrowed": return <BorrowedBooksOverview borrowedBooks={borrowedBooks} onReturnBook={handleReturnBook} onExtendDueDate={handleExtendDueDate} onSendReminder={handleSendReminder} />;
             case "config": return (
-                <BorrowLimitConfiguration
-                    userRoles={userRoles}
-                    onUpdateRole={(roleId, updatedRole) => setUserRoles(userRoles.map(r => r.id === roleId ? { ...r, ...updatedRole } : r))}
-                    onAddRole={(roleData) => setUserRoles([...userRoles, { ...roleData, id: Date.now().toString() }])}
-                    onDeleteRole={(roleId) => setUserRoles(userRoles.filter(r => r.id !== roleId))}
-                />
+                <BorrowLimitConfiguration />
             );
             case "librarians": return <LibrarianManagement />;
             default: return renderOverview();
