@@ -2,12 +2,13 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/libs/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
+import { useIsFocused as _useIsFocused } from '@react-navigation/native';
 
 // Safe wrapper: returns true (always focused) when called outside a NavigationContainer
 function useIsFocused(): boolean {
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    return useIsFocused();
+    return _useIsFocused();
   } catch {
     return true;
   }
