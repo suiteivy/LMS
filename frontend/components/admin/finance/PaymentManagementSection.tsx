@@ -711,7 +711,7 @@ export const PaymentManagementSection: React.FC<PaymentManagementSectionProps> =
               item.proof_url;
             const amount = item.total_amount || item.amount || 0;
             const studentName = item.student?.users?.full_name || item.student_name || "Unknown Student";
-            const admNumber = item.student?.admission_number || item.student_id || "STU-N/A";
+            const admNumber = item.student?.admission_number || item.student_display_id || (item.student_id && !item.student_id.startsWith('s') && !item.student_id.startsWith('STU') ? item.student_id : "—");
             const isPending = ["submitted", "under_review", "pending"].includes(item.status);
             const isConfirmed = ["confirmed", "completed"].includes(item.status);
             const isFlagged = ["flagged", "failed"].includes(item.status);

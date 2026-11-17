@@ -215,7 +215,8 @@ export interface Lesson {
 // interfaces for bursary features
 export interface Payment {
   id: string;
-  student_id: string; // Refers to custom STU- ID
+  student_id: string; // Permanent internal student ID
+  admission_number?: string; // Standard 4-digit admission number (e.g. 0001)
   student_name: string;
   student_display_id?: string;
   amount: number;
@@ -254,11 +255,13 @@ export interface Bursary {
 export interface BursaryApplication {
   id: string;
   bursary_id: string;
-  student_id: string; // Refers to custom STU- ID
+  student_id: string; // Permanent internal student ID
+  admission_number?: string;
   justification: string;
   status: 'pending' | 'approved' | 'rejected';
   applied_at: string;
-  reviewed_by?: string; // Refers to custom ADM- ID
+  reviewed_by?: string;
+  staff_number?: string;
   reviewed_at?: string;
 }
 

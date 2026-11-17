@@ -76,7 +76,7 @@ export const DEMO_MASTER_DATA: Record<string, any> = {
         status: 'completed', 
         reference_id: 'PAY-1',
         user_id: 'USER-GEN-0',
-        student: { id: 'STU-GEN-0', user: { full_name: 'Alex Zulu' } },
+        student: { id: 'STU-GEN-0', admission_number: '0001', user: { full_name: 'Alex Zulu' } },
         users: { full_name: 'Alex Zulu', first_name: 'Alex' }
       },
       { 
@@ -86,7 +86,7 @@ export const DEMO_MASTER_DATA: Record<string, any> = {
         status: 'completed', 
         reference_id: 'PAY-2',
         user_id: 'USER-GEN-1',
-        student: { id: 'STU-GEN-1', user: { full_name: 'Sarah Zulu' } },
+        student: { id: 'STU-GEN-1', admission_number: '0002', user: { full_name: 'Sarah Zulu' } },
         users: { full_name: 'Sarah Zulu', first_name: 'Sarah' }
       }
     ]
@@ -135,9 +135,11 @@ export const DEMO_MASTER_DATA: Record<string, any> = {
     {
       id: 'STU-GEN-0',
       student_id: 'STU-GEN-0',
+      admission_number: '0001',
       users: { full_name: 'Alex Zulu', avatar_url: null, email: 'alex@demo.test' },
       students: {
         id: 'STU-GEN-0',
+        admission_number: '0001',
         users: { full_name: 'Alex Zulu' }
       },
       classes: { display_name: 'Form 1 Alpha' },
@@ -147,9 +149,11 @@ export const DEMO_MASTER_DATA: Record<string, any> = {
     {
       id: 'STU-GEN-1',
       student_id: 'STU-GEN-1',
+      admission_number: '0002',
       users: { full_name: 'Sarah Zulu', avatar_url: null, email: 'sarah@demo.test' },
       students: {
         id: 'STU-GEN-1',
+        admission_number: '0002',
         users: { full_name: 'Sarah Zulu' }
       },
       classes: { display_name: 'Form 2 Beta' },
@@ -245,6 +249,8 @@ export const DEMO_MASTER_DATA: Record<string, any> = {
 // 500 Students Generator
 const BULK_STUDENTS = Array.from({ length: 500 }).map((_, i) => ({
   id: `STU-GEN-${i}`, user_id: `USER-GEN-${i}`,
+  admission_number: String(i + 1).padStart(4, '0'),
+  number_value: i + 1,
   full_name: `Student Name #${i + 1}`,
   classes: { display_name: `Form ${(i % 4) + 1} Stream ${i % 2 === 0 ? 'A' : 'B'}` },
   users: { full_name: `Student Name #${i + 1}`, avatar_url: null, email: `stu.${i}@demo.lms` }

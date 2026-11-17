@@ -3,6 +3,7 @@ const supabase = require('../utils/supabaseClient.js');
 const crypto = require('crypto');
 const { clearUserCache } = require("../middleware/auth.middleware.js");
 const SITE_CONFIG = require("../config/siteConfig.js");
+const IdentifierService = require('../services/identifier.service.js');
 
 const TEMPLATE_INSTITUTION_ID = process.env.TEMPLATE_INSTITUTION_ID || 'b5bd788c-8297-4a96-b8b3-157814504fba';
 const TEMPLATE_TEACHER_ID = process.env.TEMPLATE_TEACHER_ID || 'TCH-DEMO-001';
@@ -66,6 +67,12 @@ exports.startDemo = async (req, res) => {
 
         // 3. Create role-specific profile
         if (role === 'teacher') {
+            let staffIdent = null;
+            try {
+                staffIdent = await IdentifierService.assignIdentifier(TEMPLATE_INSTITUTION_ID, 'staff');
+            } catch (idErr) {
+                staffIdent = { formatted_number: `ST${String(Math.floor(1000 + Math.random() * 8999))}`, number_value: 1 };
+            }
             const teacherId = `TEA-DEMO-${sessionId}`;
             const { error: e } = await supabase.from('teachers').insert({
                 id: teacherId,
@@ -73,7 +80,9 @@ exports.startDemo = async (req, res) => {
                 institution_id: TEMPLATE_INSTITUTION_ID,
                 department: 'Mathematics & Sciences',
                 position: 'class_teacher',
-                qualification: 'B.Ed Science (Mathematics)'
+                qualification: 'B.Ed Science (Mathematics)',
+                staff_number: staffIdent?.formatted_number,
+                number_value: staffIdent?.number_value
             });
             if (e) throw new Error(`Teacher insert failed: ${e.message}`);
 
@@ -100,13 +109,20 @@ exports.startDemo = async (req, res) => {
             }
 
         } else if (role === 'student') {
+            let stuIdent = null;
+            try {
+                stuIdent = await IdentifierService.assignIdentifier(TEMPLATE_INSTITUTION_ID, 'student');
+            } catch (idErr) {
+                stuIdent = { formatted_number: String(Math.floor(1000 + Math.random() * 8999)), number_value: 1 };
+            }
             const { data: stu, error: e } = await supabase.from('students').insert({
                 user_id: userId,
                 institution_id: TEMPLATE_INSTITUTION_ID,
                 class_id: '417561a5-48c5-4c45-b736-97d49e74bd35',
                 form_level: 3,
                 academic_year: '2026',
-                admission_number: `STU-DEMO-${sessionId}`
+                admission_number: stuIdent?.formatted_number,
+                number_value: stuIdent?.number_value
             }).select('id').single();
             if (e) throw new Error(`Student insert failed: ${e.message}`);
 
@@ -185,21 +201,37 @@ exports.startDemo = async (req, res) => {
             }
 
         } else if (dbRole === 'admin') {
+            let adminIdent = null;
+            try {
+                adminIdent = await IdentifierService.assignIdentifier(TEMPLATE_INSTITUTION_ID, 'staff');
+            } catch (idErr) {
+                adminIdent = { formatted_number: `ST${String(Math.floor(1000 + Math.random() * 8999))}`, number_value: 1 };
+            }
             const { error: e } = await supabase.from('admins').insert({
                 id: `ADM-DEMO-${sessionId}`,
                 user_id: userId,
                 institution_id: TEMPLATE_INSTITUTION_ID,
                 is_main: !isReadOnly,
-                access_level: isReadOnly ? 'read_only' : 'read_write'
+                access_level: isReadOnly ? 'read_only' : 'read_write',
+                staff_number: adminIdent?.formatted_number,
+                number_value: adminIdent?.number_value
             });
             if (e) throw new Error(`Admin insert failed: ${e.message}`);
 
         } else if (role === 'parent') {
+            let parentIdent = null;
+            try {
+                parentIdent = await IdentifierService.assignIdentifier(TEMPLATE_INSTITUTION_ID, 'parent');
+            } catch (idErr) {
+                parentIdent = { formatted_number: `PA${String(Math.floor(1000 + Math.random() * 8999))}`, number_value: 1 };
+            }
             const parentId = `PAR-DEMO-${sessionId}`;
             const { error: e } = await supabase.from('parents').insert({
                 id: parentId,
                 user_id: userId,
-                institution_id: TEMPLATE_INSTITUTION_ID
+                institution_id: TEMPLATE_INSTITUTION_ID,
+                parent_number: parentIdent?.formatted_number,
+                number_value: parentIdent?.number_value
             });
             if (e) throw new Error(`Parent insert failed: ${e.message}`);
 

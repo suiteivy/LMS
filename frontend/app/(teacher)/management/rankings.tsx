@@ -90,7 +90,7 @@ export default function StudentRankingsScreen() {
           rankings: dummy.teacher.studentList.map((s: any, idx: number) => ({
             student_id: s.id,
             name: s.full_name || s.name,
-            admission_number: s.id,
+            admission_number: s.admission_number || s.id,
             average_score: Math.max(50, 96 - idx * 3.5),
             rank: idx + 1,
             grade: idx === 0 ? 'A' : (idx < 3 ? 'A-' : (idx < 6 ? 'B+' : 'B')),

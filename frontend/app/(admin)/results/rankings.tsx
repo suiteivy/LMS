@@ -13,6 +13,7 @@ import {
     CheckCircle2,
     ChevronDown,
     ChevronRight,
+    Download,
     Filter,
     Medal,
     RefreshCw,
@@ -23,6 +24,7 @@ import {
     Users,
     X
 } from "lucide-react-native";
+import { formatPersonNumber } from "@/utils/formatters";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -560,7 +562,7 @@ export default function AdminStudentRankingsScreen() {
                                     {topThree[1].full_name}
                                 </Text>
                                 <Text style={{ fontSize: 11, color: textSecondary, marginTop: 2 }}>
-                                    {topThree[1].admission_number || "Student"}
+                                    {formatPersonNumber(topThree[1].admission_number, 'student') || "Student"}
                                 </Text>
                             </View>
                             <Text style={{ fontWeight: "800", fontSize: 16, color: "#3B82F6" }}>
@@ -600,7 +602,7 @@ export default function AdminStudentRankingsScreen() {
                                     {topThree[0].full_name}
                                 </Text>
                                 <Text style={{ fontSize: 11, color: textSecondary, marginTop: 2 }}>
-                                    {topThree[0].admission_number || "Student"}
+                                    {formatPersonNumber(topThree[0].admission_number, 'student') || "Student"}
                                 </Text>
                             </View>
                             <Text style={{ fontWeight: "900", fontSize: 20, color: "#F59E0B" }}>
@@ -635,7 +637,7 @@ export default function AdminStudentRankingsScreen() {
                                     {topThree[2].full_name}
                                 </Text>
                                 <Text style={{ fontSize: 11, color: textSecondary, marginTop: 2 }}>
-                                    {topThree[2].admission_number || "Student"}
+                                    {formatPersonNumber(topThree[2].admission_number, 'student') || "Student"}
                                 </Text>
                             </View>
                             <Text style={{ fontWeight: "800", fontSize: 16, color: "#B45309" }}>
@@ -765,7 +767,7 @@ export default function AdminStudentRankingsScreen() {
                                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
                                             {st.admission_number ? (
                                                 <Text style={{ fontSize: 11, color: textSecondary }}>
-                                                    Adm: {st.admission_number}
+                                                    Adm: {formatPersonNumber(st.admission_number, 'student')}
                                                 </Text>
                                             ) : null}
                                             <Text style={{ fontSize: 11, color: textSecondary }}>

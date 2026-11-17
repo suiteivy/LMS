@@ -43,21 +43,27 @@ async function startDemo(role = 'teacher') {
 
     // 3. Create role profile
     if (role === 'teacher') {
+        const staffNum = `ST${String(Math.floor(1000 + Math.random() * 8999))}`;
         const { error: teacherErr } = await supabase.from('teachers').insert({
             id: `TEA-DEMO-${sessionId}`,
             user_id: userId,
             institution_id: TEMPLATE_INSTITUTION_ID,
             department: 'Mathematics',
-            qualification: 'MEd'
+            qualification: 'MEd',
+            staff_number: staffNum,
+            number_value: parseInt(staffNum.replace('ST', ''), 10)
         });
         if (teacherErr) throw new Error(`Teacher insert failed: ${teacherErr.message}`);
 
     } else if (role === 'student') {
+        const admNum = String(Math.floor(1000 + Math.random() * 8999));
         const { data: stu, error: stuErr } = await supabase.from('students').insert({
             user_id: userId,
             institution_id: TEMPLATE_INSTITUTION_ID,
             class_id: '417561a5-48c5-4c45-b736-97d49e74bd35',
-            grade_level: 10
+            grade_level: 10,
+            admission_number: admNum,
+            number_value: parseInt(admNum, 10)
         }).select('id').single();
         if (stuErr) throw new Error(`Student insert failed: ${stuErr.message}`);
 
@@ -72,21 +78,27 @@ async function startDemo(role = 'teacher') {
         });
 
     } else if (role === 'admin') {
+        const staffNum = `ST${String(Math.floor(1000 + Math.random() * 8999))}`;
         const { error: adminErr } = await supabase.from('admins').insert({
             id: `ADM-DEMO-${sessionId}`,
             user_id: userId,
             institution_id: TEMPLATE_INSTITUTION_ID,
-            is_main: false
+            is_main: false,
+            staff_number: staffNum,
+            number_value: parseInt(staffNum.replace('ST', ''), 10)
         });
         if (adminErr) throw new Error(`Admin insert failed: ${adminErr.message}`);
 
     } else if (role === 'parent') {
         const parentId = `PAR-DEMO-${sessionId}`;
+        const parentNum = `PA${String(Math.floor(1000 + Math.random() * 8999))}`;
 
         const { error: parentErr } = await supabase.from('parents').insert({
             id: parentId,
             user_id: userId,
-            institution_id: TEMPLATE_INSTITUTION_ID
+            institution_id: TEMPLATE_INSTITUTION_ID,
+            parent_number: parentNum,
+            number_value: parseInt(parentNum.replace('PA', ''), 10)
         });
         if (parentErr) throw new Error(`Parent insert failed: ${parentErr.message}`);
 

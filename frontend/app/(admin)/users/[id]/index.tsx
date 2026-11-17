@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { showSuccess, showError } from '@/utils/toast';
 import { SITE_CONFIG } from '@/constants/siteConfig';
+import { formatPersonNumber, getPersonNumberLabel } from '@/utils/formatters';
 
 type UserRow = Database['public']['Tables']['users']['Row'];
 
@@ -198,15 +199,7 @@ export default function UserDetailsScreen() {
         email: user.email || '',
         role: user.role as UserRole, 
         joinDate: user.created_at || new Date().toISOString(),
-        displayId: (() => {
-            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-            if (user.role === 'student') {
-                // Always show — admission_number is the official student ID even if it looks like a UUID
-                return roleData?.admission_number || roleData?.id_number || undefined;
-            }
-            const rid = roleData?.id;
-            return rid && !uuidRegex.test(String(rid)) ? rid : undefined;
-        })(),
+        displayId: formatPersonNumber(roleData || user, user.role, undefined),
         avatar: user.avatar_url || undefined,
         is_active: (user as any).is_active !== false,
         access_level: roleData?.access_level || (user.role === 'admin' ? 'read_write' : undefined),
@@ -1296,14 +1289,7 @@ export default function UserDetailsScreen() {
                 {/* Profile Info */}
                 <View style={{ marginHorizontal: 24, marginTop: 16, backgroundColor: card, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16 }}>
                     <Text style={{ fontSize: 11, fontWeight: '700', color: textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Profile Information</Text>
-                    {renderReadOnly(user.role === 'student' ? 'Admission No.' : 'User ID', (() => {
-                        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-                        if (user.role === 'student')
-                            // Always show — admission_number is the official student ID
-                            return roleData?.admission_number || roleData?.id_number || 'N/A';
-                        const rid = roleData?.id;
-                        return rid && !uuidRegex.test(String(rid)) ? rid : 'N/A';
-                    })())}
+                    {renderReadOnly(getPersonNumberLabel(user.role), formatPersonNumber(roleData || user, user.role, '—'))}
                     {renderReadOnly('Role', user.role)}
                     {renderReadOnly('Account Status', (user as any).is_active === false ? 'Disabled' : 'Active')}
                     {renderReadOnly('Joined', user.created_at ? format(new Date(user.created_at), 'MMM dd, yyyy') : 'N/A')}

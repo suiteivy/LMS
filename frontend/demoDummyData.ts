@@ -1078,31 +1078,31 @@ const revenueData = (() => {
 
 // ── Recent Users (Admin dashboard) ───────────────────────────────
 const recentUsers = [
-  { id: 'u1', displayId: 'STU-DEMO-1031', name: 'Amina Hassan',     first_name: 'Amina',   last_name: 'Hassan',    email: 'amina.hassan@cloudoraacademy.ac.ke',   role: 'student', joinDate: daysAgo(1)  },
-  { id: 'u2', displayId: 'TCH-DEMO-0088', name: 'Dr. Felix Ndung\'u', first_name: 'Felix',  last_name: 'Ndungu',   email: 'f.ndungu@cloudoraacademy.ac.ke',        role: 'teacher', joinDate: daysAgo(2)  },
-  { id: 'u3', displayId: 'STU-DEMO-1032', name: 'Peter Kamau',      first_name: 'Peter',   last_name: 'Kamau',     email: 'peter.kamau@cloudoraacademy.ac.ke',     role: 'student', joinDate: daysAgo(3)  },
-  { id: 'u4', displayId: 'PAR-DEMO-0044', name: 'Mary Njeri',       first_name: 'Mary',    last_name: 'Njeri',     email: 'mary.njeri@cloudoraacademy.ac.ke',      role: 'parent',  joinDate: daysAgo(4)  },
-  { id: 'u5', displayId: 'STU-DEMO-1033', name: 'Grace Wanjiku',    first_name: 'Grace',   last_name: 'Wanjiku',   email: 'grace.wanjiku@cloudoraacademy.ac.ke',   role: 'student', joinDate: daysAgo(5)  },
-  { id: 'u6', displayId: 'TCH-DEMO-0089', name: 'James Abuor',      first_name: 'James',   last_name: 'Abuor',     email: 'j.abuor@cloudoraacademy.ac.ke',         role: 'teacher', joinDate: daysAgo(6)  },
-  { id: 'u7', displayId: 'STU-DEMO-1034', name: 'David Mutuku',     first_name: 'David',   last_name: 'Mutuku',    email: 'david.mutuku@cloudoraacademy.ac.ke',    role: 'student', joinDate: daysAgo(7)  },
+  { id: 'u1', displayId: '0031', name: 'Amina Hassan',     first_name: 'Amina',   last_name: 'Hassan',    email: 'amina.hassan@cloudoraacademy.ac.ke',   role: 'student', joinDate: daysAgo(1)  },
+  { id: 'u2', displayId: 'ST0088', name: 'Dr. Felix Ndung\'u', first_name: 'Felix',  last_name: 'Ndungu',   email: 'f.ndungu@cloudoraacademy.ac.ke',        role: 'teacher', joinDate: daysAgo(2)  },
+  { id: 'u3', displayId: '0032', name: 'Peter Kamau',      first_name: 'Peter',   last_name: 'Kamau',     email: 'peter.kamau@cloudoraacademy.ac.ke',     role: 'student', joinDate: daysAgo(3)  },
+  { id: 'u4', displayId: 'PA0044', name: 'Mary Njeri',       first_name: 'Mary',    last_name: 'Njeri',     email: 'mary.njeri@cloudoraacademy.ac.ke',      role: 'parent',  joinDate: daysAgo(4)  },
+  { id: 'u5', displayId: '0033', name: 'Grace Wanjiku',    first_name: 'Grace',   last_name: 'Wanjiku',   email: 'grace.wanjiku@cloudoraacademy.ac.ke',   role: 'student', joinDate: daysAgo(5)  },
+  { id: 'u6', displayId: 'ST0089', name: 'James Abuor',      first_name: 'James',   last_name: 'Abuor',     email: 'j.abuor@cloudoraacademy.ac.ke',         role: 'teacher', joinDate: daysAgo(6)  },
+  { id: 'u7', displayId: '0034', name: 'David Mutuku',     first_name: 'David',   last_name: 'Mutuku',    email: 'david.mutuku@cloudoraacademy.ac.ke',    role: 'student', joinDate: daysAgo(7)  },
 ];
 
 // ── Admin – Student list (for classes/users screens) ──────────────
 const studentList = [
-  { id: 'STU-DEMO-0001', full_name: 'Kelson Otieno',  form_level: 2, fee_balance: 8_750,  academic_year: '2026', class: 'Form 2 East' },
-  { id: 'STU-DEMO-0002', full_name: 'Amina Hassan',   form_level: 1, fee_balance: 0,       academic_year: '2026', class: 'Form 1 North' },
-  { id: 'STU-DEMO-0003', full_name: 'Peter Kamau',    form_level: 2, fee_balance: 15_200,  academic_year: '2026', class: 'Form 2 East' },
-  { id: 'STU-DEMO-0004', full_name: 'Grace Wanjiku',  form_level: 1, fee_balance: 3_000,   academic_year: '2026', class: 'Form 1 North' },
-  { id: 'STU-DEMO-0005', full_name: 'David Mutuku',   form_level: 2, fee_balance: 0,       academic_year: '2026', class: 'Form 2 East' },
-  { id: 'STU-DEMO-0006', full_name: 'Faith Akinyi',   form_level: 3, fee_balance: 5_500,   academic_year: '2026', class: 'Form 3 West' },
-  { id: 'STU-DEMO-0007', full_name: 'Samuel Kipchoge',form_level: 3, fee_balance: 0,       academic_year: '2026', class: 'Form 3 West' },
+  { id: 'STU-DEMO-0001', admission_number: '0001', full_name: 'Kelson Otieno',  form_level: 2, fee_balance: 8_750,  academic_year: '2026', class: 'Form 2 East' },
+  { id: 'STU-DEMO-0002', admission_number: '0002', full_name: 'Amina Hassan',   form_level: 1, fee_balance: 0,       academic_year: '2026', class: 'Form 1 North' },
+  { id: 'STU-DEMO-0003', admission_number: '0003', full_name: 'Peter Kamau',    form_level: 2, fee_balance: 15_200,  academic_year: '2026', class: 'Form 2 East' },
+  { id: 'STU-DEMO-0004', admission_number: '0004', full_name: 'Grace Wanjiku',  form_level: 1, fee_balance: 3_000,   academic_year: '2026', class: 'Form 1 North' },
+  { id: 'STU-DEMO-0005', admission_number: '0005', full_name: 'David Mutuku',   form_level: 2, fee_balance: 0,       academic_year: '2026', class: 'Form 2 East' },
+  { id: 'STU-DEMO-0006', admission_number: '0006', full_name: 'Faith Akinyi',   form_level: 3, fee_balance: 5_500,   academic_year: '2026', class: 'Form 3 West' },
+  { id: 'STU-DEMO-0007', admission_number: '0007', full_name: 'Samuel Kipchoge',form_level: 3, fee_balance: 0,       academic_year: '2026', class: 'Form 3 West' },
 ];
 
 // ── Admin – Teacher list ──────────────────────────────────────────
 const teacherList = [
-  { id: 'TCH-DEMO-0001', full_name: 'Sarah Chemutai',  department: 'Mathematics & Sciences', qualification: 'MEd', position: 'class_teacher', specialization: 'Algebra & Statistics' },
-  { id: 'TCH-DEMO-0002', full_name: 'Brian Ochieng',   department: 'Sciences',               qualification: 'BSc', position: 'teacher',       specialization: 'Biology & Chemistry'  },
-  { id: 'TCH-DEMO-0003', full_name: 'Dr. Felix Ndung\'u', department: 'Languages',           qualification: 'PhD', position: 'head_of_department', specialization: 'English Literature' },
+  { id: 'TCH-DEMO-0001', staff_number: 'ST0001', full_name: 'Sarah Chemutai',  department: 'Mathematics & Sciences', qualification: 'MEd', position: 'class_teacher', specialization: 'Algebra & Statistics' },
+  { id: 'TCH-DEMO-0002', staff_number: 'ST0002', full_name: 'Brian Ochieng',   department: 'Sciences',               qualification: 'BSc', position: 'teacher',       specialization: 'Biology & Chemistry'  },
+  { id: 'TCH-DEMO-0003', staff_number: 'ST0003', full_name: 'Dr. Felix Ndung\'u', department: 'Languages',           qualification: 'PhD', position: 'head_of_department', specialization: 'English Literature' },
   { id: 'TCH-DEMO-0004', full_name: 'Christine Odhiambo', department: 'Humanities',          qualification: 'BEd', position: 'teacher',       specialization: 'History & Geography' },
 ];
 
@@ -1411,12 +1411,12 @@ const demoDummyData = {
 
     /** Finance screen – Payment[] */
     payments: [
-      { id: 'PAY-001', student_id: 'STU-DEMO-0001', student_name: 'Kelson Otieno',   student_display_id: 'STU-DEMO-0001', amount: 25_000, payment_date: daysAgo(2),  payment_method: 'mobile_money'  as const, status: 'completed' as const, reference_number: 'MPD20260601' },
-      { id: 'PAY-002', student_id: 'STU-DEMO-0002', student_name: 'Amina Hassan',    student_display_id: 'STU-DEMO-0002', amount: 29_500, payment_date: daysAgo(3),  payment_method: 'bank_transfer' as const, status: 'completed' as const, reference_number: 'KCB2026060X' },
-      { id: 'PAY-003', student_id: 'STU-DEMO-0003', student_name: 'Samuel Kipchoge', student_display_id: 'STU-DEMO-0003', amount: 32_500, payment_date: daysAgo(5),  payment_method: 'mobile_money'  as const, status: 'completed' as const, reference_number: 'MPD20260599' },
-      { id: 'PAY-004', student_id: 'STU-DEMO-0004', student_name: 'Grace Wanjiku',   student_display_id: 'STU-DEMO-0004', amount:  4_500, payment_date: daysAgo(15), payment_method: 'mobile_money'  as const, status: 'completed' as const, reference_number: 'MPD20260580' },
-      { id: 'PAY-005', student_id: 'STU-DEMO-0005', student_name: 'Faith Akinyi',    student_display_id: 'STU-DEMO-0005', amount: 21_000, payment_date: daysAgo(22), payment_method: 'bank_transfer' as const, status: 'completed' as const, reference_number: 'KCB2026051X' },
-      { id: 'PAY-006', student_id: 'STU-DEMO-0006', student_name: 'David Mutuku',    student_display_id: 'STU-DEMO-0006', amount: 15_000, payment_date: daysAgo(30), payment_method: 'cash'          as const, status: 'pending'   as const, reference_number: 'CSH20260501' },
+      { id: 'PAY-001', student_id: 'STU-DEMO-0001', student_name: 'Kelson Otieno',   student_display_id: '0001', amount: 25_000, payment_date: daysAgo(2),  payment_method: 'mobile_money'  as const, status: 'completed' as const, reference_number: 'MPD20260601' },
+      { id: 'PAY-002', student_id: 'STU-DEMO-0002', student_name: 'Amina Hassan',    student_display_id: '0002', amount: 29_500, payment_date: daysAgo(3),  payment_method: 'bank_transfer' as const, status: 'completed' as const, reference_number: 'KCB2026060X' },
+      { id: 'PAY-003', student_id: 'STU-DEMO-0003', student_name: 'Samuel Kipchoge', student_display_id: '0003', amount: 32_500, payment_date: daysAgo(5),  payment_method: 'mobile_money'  as const, status: 'completed' as const, reference_number: 'MPD20260599' },
+      { id: 'PAY-004', student_id: 'STU-DEMO-0004', student_name: 'Grace Wanjiku',   student_display_id: '0004', amount:  4_500, payment_date: daysAgo(15), payment_method: 'mobile_money'  as const, status: 'completed' as const, reference_number: 'MPD20260580' },
+      { id: 'PAY-005', student_id: 'STU-DEMO-0005', student_name: 'Faith Akinyi',    student_display_id: '0005', amount: 21_000, payment_date: daysAgo(22), payment_method: 'bank_transfer' as const, status: 'completed' as const, reference_number: 'KCB2026051X' },
+      { id: 'PAY-006', student_id: 'STU-DEMO-0006', student_name: 'David Mutuku',    student_display_id: '0006', amount: 15_000, payment_date: daysAgo(30), payment_method: 'cash'          as const, status: 'pending'   as const, reference_number: 'CSH20260501' },
     ],
 
   },
@@ -1443,12 +1443,12 @@ const demoDummyData = {
     exams,
     examResults,
     payments: [
-      { id: 'PAY-001', student_id: 'STU-DEMO-0001', student_name: 'Kelson Otieno',   student_display_id: 'STU-DEMO-0001', amount: 25_000, payment_date: daysAgo(2),  payment_method: 'mobile_money'  as const, status: 'completed' as const, reference_number: 'MPD20260601' },
-      { id: 'PAY-002', student_id: 'STU-DEMO-0002', student_name: 'Amina Hassan',    student_display_id: 'STU-DEMO-0002', amount: 29_500, payment_date: daysAgo(3),  payment_method: 'bank_transfer' as const, status: 'completed' as const, reference_number: 'KCB2026060X' },
-      { id: 'PAY-003', student_id: 'STU-DEMO-0003', student_name: 'Samuel Kipchoge', student_display_id: 'STU-DEMO-0003', amount: 32_500, payment_date: daysAgo(5),  payment_method: 'mobile_money'  as const, status: 'completed' as const, reference_number: 'MPD20260599' },
-      { id: 'PAY-004', student_id: 'STU-DEMO-0004', student_name: 'Grace Wanjiku',   student_display_id: 'STU-DEMO-0004', amount:  4_500, payment_date: daysAgo(15), payment_method: 'mobile_money'  as const, status: 'completed' as const, reference_number: 'MPD20260580' },
-      { id: 'PAY-005', student_id: 'STU-DEMO-0005', student_name: 'Faith Akinyi',    student_display_id: 'STU-DEMO-0005', amount: 21_000, payment_date: daysAgo(22), payment_method: 'bank_transfer' as const, status: 'completed' as const, reference_number: 'KCB2026051X' },
-      { id: 'PAY-006', student_id: 'STU-DEMO-0006', student_name: 'David Mutuku',    student_display_id: 'STU-DEMO-0006', amount: 15_000, payment_date: daysAgo(30), payment_method: 'cash'          as const, status: 'pending'   as const, reference_number: 'CSH20260501' },
+      { id: 'PAY-001', student_id: 'STU-DEMO-0001', student_name: 'Kelson Otieno',   student_display_id: '0001', amount: 25_000, payment_date: daysAgo(2),  payment_method: 'mobile_money'  as const, status: 'completed' as const, reference_number: 'MPD20260601' },
+      { id: 'PAY-002', student_id: 'STU-DEMO-0002', student_name: 'Amina Hassan',    student_display_id: '0002', amount: 29_500, payment_date: daysAgo(3),  payment_method: 'bank_transfer' as const, status: 'completed' as const, reference_number: 'KCB2026060X' },
+      { id: 'PAY-003', student_id: 'STU-DEMO-0003', student_name: 'Samuel Kipchoge', student_display_id: '0003', amount: 32_500, payment_date: daysAgo(5),  payment_method: 'mobile_money'  as const, status: 'completed' as const, reference_number: 'MPD20260599' },
+      { id: 'PAY-004', student_id: 'STU-DEMO-0004', student_name: 'Grace Wanjiku',   student_display_id: '0004', amount:  4_500, payment_date: daysAgo(15), payment_method: 'mobile_money'  as const, status: 'completed' as const, reference_number: 'MPD20260580' },
+      { id: 'PAY-005', student_id: 'STU-DEMO-0005', student_name: 'Faith Akinyi',    student_display_id: '0005', amount: 21_000, payment_date: daysAgo(22), payment_method: 'bank_transfer' as const, status: 'completed' as const, reference_number: 'KCB2026051X' },
+      { id: 'PAY-006', student_id: 'STU-DEMO-0006', student_name: 'David Mutuku',    student_display_id: '0006', amount: 15_000, payment_date: daysAgo(30), payment_method: 'cash'          as const, status: 'pending'   as const, reference_number: 'CSH20260501' },
     ],
   },
 

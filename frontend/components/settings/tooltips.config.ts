@@ -128,7 +128,15 @@ export type TooltipTargetId =
   | 'teacher.diary.class_selector'
   | 'teacher.diary.entry_card'
   | 'student.diary.entry_card'
-  | 'parent.diary.entry_card';
+  | 'parent.diary.entry_card'
+  | 'identifiers.admission_number'
+  | 'identifiers.staff_number'
+  | 'identifiers.parent_number'
+  | 'reports.performance.overview'
+  | 'reports.performance.distribution'
+  | 'reports.performance.trends'
+  | 'reports.performance.rankings'
+  | 'reports.performance.insights';
 
 export interface TooltipEntry {
   id: TooltipTargetId;
@@ -1107,5 +1115,61 @@ export const SETTINGS_TOOLTIPS: Record<TooltipTargetId, TooltipEntry> = {
     learnMoreAnchor: 'diary-workflow',
     feature: 'diary',
     roles: ['parent'],
+  },
+  'identifiers.admission_number': {
+    id: 'identifiers.admission_number',
+    title: 'Admission number',
+    text: 'The permanent number the school gives every student when they join.',
+    learnMoreAnchor: 'reports-ops',
+    roles: EXTENDED_SETTINGS_ROLES,
+  },
+  'identifiers.staff_number': {
+    id: 'identifiers.staff_number',
+    title: 'Staff number',
+    text: 'The permanent number the school gives every staff member, including teachers.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin', 'teacher'],
+  },
+  'identifiers.parent_number': {
+    id: 'identifiers.parent_number',
+    title: 'Parent number',
+    text: 'The permanent number the school gives every parent or guardian.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin', 'parent'],
+  },
+  'reports.performance.overview': {
+    id: 'reports.performance.overview',
+    title: 'Performance overview',
+    text: 'Class and cohort statistical metrics including mean, median, pass rate, and score spreads.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin', 'teacher'],
+  },
+  'reports.performance.distribution': {
+    id: 'reports.performance.distribution',
+    title: 'Score distribution',
+    text: 'Learner distribution breakdown across institutional grading bands and CBC performance levels.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin', 'teacher'],
+  },
+  'reports.performance.trends': {
+    id: 'reports.performance.trends',
+    title: 'Performance trends',
+    text: 'Longitudinal assessment trajectories comparing current metrics against previous terms and academic cycles.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin', 'teacher'],
+  },
+  'reports.performance.rankings': {
+    id: 'reports.performance.rankings',
+    title: 'Rankings & leaderboards',
+    text: 'Cohort standing and leaderboard standings governed strictly by institutional visibility policies.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin', 'teacher'],
+  },
+  'reports.performance.insights': {
+    id: 'reports.performance.insights',
+    title: 'Automated insights',
+    text: 'Data-driven highlights detailing top-performing areas, growth indicators, and recommended interventions.',
+    learnMoreAnchor: 'reports-ops',
+    roles: ['admin', 'teacher'],
   },
 };

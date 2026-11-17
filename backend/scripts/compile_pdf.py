@@ -1341,6 +1341,218 @@ def compile_payment_receipt(data):
     return elements
 
 
+def compile_performance_summary_report(data):
+    inst_name = data.get("institution_name", "Academic Institution")
+    doc_title = data.get("report_title", "Performance Summary Report")
+    doc_subtitle = data.get("report_subtitle", "Academic Evaluation & Cohort Analysis")
+    date_str = data.get("generated_at", "")[:10] or datetime.now().strftime("%Y-%m-%d")
+    ref_no = f"PERF-{data.get('academic_year', '2026')}-{date_str.replace('-', '')}"
+
+    elements = build_header(
+        inst_name=inst_name,
+        doc_title=doc_title,
+        doc_subtitle=doc_subtitle,
+        ref_no=ref_no,
+        date_str=date_str
+    )
+
+    styles = getSampleStyleSheet()
+    label_style = ParagraphStyle('PerfLbl', fontName='Helvetica-Bold', fontSize=8.5, textColor=TEXT_MUTED)
+    val_style = ParagraphStyle('PerfVal', fontName='Helvetica', fontSize=9, textColor=TEXT_DARK)
+    bold_val = ParagraphStyle('PerfBVal', fontName='Helvetica-Bold', fontSize=9, textColor=NAVY_DARK)
+    sec_heading = ParagraphStyle('PerfSecH', fontName='Helvetica-Bold', fontSize=11, leading=14, textColor=NAVY_DARK)
+    sub_heading = ParagraphStyle('PerfSubH', fontName='Helvetica-Bold', fontSize=9, leading=12, textColor=ORANGE_DARK)
+    small_text = ParagraphStyle('PerfSm', fontName='Helvetica', fontSize=8, leading=10, textColor=TEXT_MUTED)
+    insight_style = ParagraphStyle('PerfIns', fontName='Helvetica', fontSize=8.5, leading=12, textColor=NAVY_DARK)
+
+    stats = data.get("stats", {})
+
+    # 1. Executive Summary Metrics Table
+    elements.append(Paragraph("1. Executive Summary & Key Indicators", sec_heading))
+    elements.append(Spacer(1, 2 * mm))
+
+    stat_data = [
+        [
+            Paragraph("Enrolled / Assessed", label_style),
+            Paragraph(str(stats.get("count", 0)), bold_val),
+            Paragraph("Mean Score", label_style),
+            Paragraph(f"<font color='#FF6900'><b>{stats.get('average', 0)}%</b></font>", bold_val),
+            Paragraph("Median Score", label_style),
+            Paragraph(f"{stats.get('median', 0)}%", val_style),
+        ],
+        [
+            Paragraph("Highest Score", label_style),
+            Paragraph(f"{stats.get('highest', 0)}%", val_style),
+            Paragraph("Lowest Score", label_style),
+            Paragraph(f"{stats.get('lowest', 0)}%", val_style),
+            Paragraph("Overall Pass Rate", label_style),
+            Paragraph(f"<b>{stats.get('pass_rate', 0)}%</b>", bold_val),
+        ]
+    ]
+    stat_table = Table(stat_data, colWidths=[30 * mm, 30 * mm, 30 * mm, 30 * mm, 30 * mm, 30 * mm])
+    stat_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), BG_LIGHT),
+        ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('TOPPADDING', (0, 0), (-1, -1), 2 * mm),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2 * mm),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    elements.append(stat_table)
+    elements.append(Spacer(1, 4 * mm))
+
+    # 2. Performance Level & Grading Distribution
+    elements.append(Paragraph("2. Performance Level & Grade Distribution", sec_heading))
+    elements.append(Spacer(1, 2 * mm))
+
+    dist_map = data.get("distribution", {})
+    dist_rows = [
+        [
+            Paragraph("Performance Band / Level", ParagraphStyle('PH1', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK)),
+            Paragraph("Band Descriptor", ParagraphStyle('PH2', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK)),
+            Paragraph("Student Count", ParagraphStyle('PH3', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK, alignment=1)),
+            Paragraph("Proportion (%)", ParagraphStyle('PH4', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK, alignment=1)),
+        ]
+    ]
+    for key, info in dist_map.items():
+        dist_rows.append([
+            Paragraph(f"<b>{key}</b>", bold_val),
+            Paragraph(info.get("label", key), val_style),
+            Paragraph(str(info.get("count", 0)), ParagraphStyle('DC', fontName='Helvetica', fontSize=9, alignment=1)),
+            Paragraph(f"{info.get('percentage', 0)}%", ParagraphStyle('DP', fontName='Helvetica-Bold', fontSize=9, alignment=1)),
+        ])
+
+    dist_table = Table(dist_rows, colWidths=[40 * mm, 75 * mm, 32 * mm, 33 * mm])
+    dist_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), BG_LIGHT),
+        ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('TOPPADDING', (0, 0), (-1, -1), 1.8 * mm),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1.8 * mm),
+    ]))
+    elements.append(dist_table)
+    elements.append(Spacer(1, 4 * mm))
+
+    # 3. Subject Performance Breakdown
+    sub_analysis = data.get("subject_analysis", [])
+    if sub_analysis:
+        elements.append(Paragraph("3. Subject-by-Subject Comparative Performance", sec_heading))
+        elements.append(Spacer(1, 2 * mm))
+
+        sub_rows = [
+            [
+                Paragraph("Subject Title", ParagraphStyle('SH1', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK)),
+                Paragraph("Assessed", ParagraphStyle('SH2', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK, alignment=1)),
+                Paragraph("Average Score", ParagraphStyle('SH3', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK, alignment=1)),
+                Paragraph("High / Low", ParagraphStyle('SH4', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK, alignment=1)),
+                Paragraph("Pass Rate", ParagraphStyle('SH5', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK, alignment=1)),
+            ]
+        ]
+        for sub in sub_analysis:
+            sub_rows.append([
+                Paragraph(f"<b>{sub.get('title', 'Subject')}</b>", val_style),
+                Paragraph(str(sub.get("count", 0)), ParagraphStyle('SC', fontName='Helvetica', fontSize=8.5, alignment=1)),
+                Paragraph(f"<b>{sub.get('average', 0)}%</b>", ParagraphStyle('SA', fontName='Helvetica-Bold', fontSize=8.5, alignment=1, textColor=ORANGE_DARK)),
+                Paragraph(f"{sub.get('highest', 0)}% / {sub.get('lowest', 0)}%", ParagraphStyle('SHL', fontName='Helvetica', fontSize=8.5, alignment=1)),
+                Paragraph(f"{sub.get('pass_rate', 0)}%", ParagraphStyle('SPR', fontName='Helvetica', fontSize=8.5, alignment=1)),
+            ])
+
+        sub_table = Table(sub_rows, colWidths=[65 * mm, 25 * mm, 30 * mm, 30 * mm, 30 * mm])
+        sub_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), BG_LIGHT),
+            ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+            ('TOPPADDING', (0, 0), (-1, -1), 1.6 * mm),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 1.6 * mm),
+        ]))
+        elements.append(sub_table)
+        elements.append(Spacer(1, 4 * mm))
+
+    # 4. Leaderboard & Rankings (when included)
+    leaderboard = data.get("leaderboard", [])
+    if leaderboard:
+        elements.append(Paragraph("4. Cohort Standings & Top Performers", sec_heading))
+        elements.append(Spacer(1, 2 * mm))
+
+        rank_rows = [
+            [
+                Paragraph("Position", ParagraphStyle('RH1', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK, alignment=1)),
+                Paragraph("Admission Number", ParagraphStyle('RH2', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK)),
+                Paragraph("Student Name", ParagraphStyle('RH3', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK)),
+                Paragraph("Average Score", ParagraphStyle('RH4', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK, alignment=1)),
+            ]
+        ]
+        for item in leaderboard:
+            rank_rows.append([
+                Paragraph(f"#{item.get('rank', 1)}", ParagraphStyle('RP', fontName='Helvetica-Bold', fontSize=8.5, alignment=1, textColor=ORANGE_DARK)),
+                Paragraph(f"<b>{item.get('admission_number', '0001')}</b>", bold_val),
+                Paragraph(item.get("student_name", "Student"), val_style),
+                Paragraph(f"<b>{item.get('average_score', 0)}%</b>", ParagraphStyle('RS', fontName='Helvetica-Bold', fontSize=8.5, alignment=1)),
+            ])
+
+        rank_table = Table(rank_rows, colWidths=[25 * mm, 45 * mm, 75 * mm, 35 * mm])
+        rank_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), BG_LIGHT),
+            ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+            ('TOPPADDING', (0, 0), (-1, -1), 1.5 * mm),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 1.5 * mm),
+        ]))
+        elements.append(rank_table)
+        elements.append(Spacer(1, 4 * mm))
+
+    # 5. Automated Data-Driven Insights
+    insights = data.get("insights", [])
+    if insights:
+        elements.append(Paragraph("5. Academic Insights & Growth Indicators", sec_heading))
+        elements.append(Spacer(1, 2 * mm))
+
+        ins_boxes = []
+        for ins in insights:
+            ins_boxes.append([Paragraph(f"• {ins}", insight_style)])
+
+        ins_table = Table(ins_boxes, colWidths=[180 * mm])
+        ins_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), BG_LIGHT),
+            ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+            ('TOPPADDING', (0, 0), (-1, -1), 1.8 * mm),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 1.8 * mm),
+            ('LEFTPADDING', (0, 0), (-1, -1), 3 * mm),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 3 * mm),
+        ]))
+        elements.append(ins_table)
+        elements.append(Spacer(1, 4 * mm))
+
+    # 6. Data Notes & Sign-off Block
+    notes = data.get("data_notes", [])
+    if notes:
+        elements.append(Paragraph("Data Notes & Verification", sub_heading))
+        elements.append(Spacer(1, 1 * mm))
+        for note in notes:
+            elements.append(Paragraph(f"- {note}", small_text))
+            elements.append(Spacer(1, 0.8 * mm))
+        elements.append(Spacer(1, 3 * mm))
+
+    sig_data = [
+        [
+            Paragraph("________________________________________", ParagraphStyle('ST1', fontName='Helvetica', fontSize=8, alignment=1)),
+            Paragraph("________________________________________", ParagraphStyle('ST2', fontName='Helvetica', fontSize=8, alignment=1)),
+        ],
+        [
+            Paragraph("Senior Academic Officer / Head of Department", ParagraphStyle('ST3', fontName='Helvetica-Bold', fontSize=8.5, alignment=1, textColor=NAVY_DARK)),
+            Paragraph("Principal / Head of Institution", ParagraphStyle('ST4', fontName='Helvetica-Bold', fontSize=8.5, alignment=1, textColor=NAVY_DARK)),
+        ]
+    ]
+    sig_table = Table(sig_data, colWidths=[90 * mm, 90 * mm])
+    sig_table.setStyle(TableStyle([
+        ('TOPPADDING', (0, 0), (-1, -1), 2 * mm),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1 * mm),
+    ]))
+    elements.append(KeepTogether([sig_table]))
+
+    return elements
+
+
 def generate_pdf(doc_type, data, output_path=None):
     buffer = BytesIO() if not output_path else None
     target = output_path or buffer
@@ -1366,6 +1578,8 @@ def generate_pdf(doc_type, data, output_path=None):
         story = compile_fee_invoice(data)
     elif doc_type == "payment_receipt":
         story = compile_payment_receipt(data)
+    elif doc_type == "performance_summary_report":
+        story = compile_performance_summary_report(data)
     else:
         raise ValueError(f"Unsupported document type: {doc_type}")
 

@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SettingsService } from '@/services/SettingsService';
 import { AdminPasswordResetModal, VerificationDetails } from '@/components/auth/AdminPasswordResetModal';
 import { CredentialRequestsSection } from '@/components/admin/CredentialRequestsSection';
+import { formatPersonNumber } from '@/utils/formatters';
 import api from '@/services/api';
 import Toast from 'react-native-toast-message';
 
@@ -289,7 +290,7 @@ export default function UsersManagementScreen() {
 
             let query = supabase
                 .from('users')
-                .select(`id, full_name, first_name, last_name, email, role, is_active, created_at, students(id, admission_number, id_number, enrollment_status), teachers(id, employment_status), admins(id, is_main, access_level), parents(id)`);
+                .select(`id, full_name, first_name, last_name, email, role, is_active, created_at, students(id, admission_number, id_number, enrollment_status), teachers(id, staff_number, employment_status), admins(id, staff_number, is_main, access_level), parents(id, parent_number)`);
 
             if (instId) {
                 query = query.eq('institution_id', instId);
@@ -325,26 +326,18 @@ export default function UsersManagementScreen() {
             if (data) {
                 let formattedUsers = data.map((u: any) => {
                     try {
-                        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-                        let displayId = null;
                         const studentObj = Array.isArray(u.students) ? u.students[0] : u.students;
                         const teacherObj = Array.isArray(u.teachers) ? u.teachers[0] : u.teachers;
                         const adminObj = Array.isArray(u.admins) ? u.admins[0] : u.admins;
-                        if (u.role === 'student' && studentObj) {
-                            // Always show admission_number — it IS the official student ID even if it's a UUID
-                            displayId = studentObj.admission_number || studentObj.id_number || null;
-                        } else if (u.role === 'teacher' && teacherObj) {
-                            const tid = teacherObj?.id;
-                            displayId = tid && !uuidRegex.test(String(tid)) ? tid : null;
-                        } else {
-                            const getRoleId = (roleData: any) => {
-                                if (!roleData) return null;
-                                const rid = Array.isArray(roleData) ? roleData[0]?.id : roleData?.id;
-                                return rid && !uuidRegex.test(String(rid)) ? rid : null;
-                            };
-                            if (u.role === 'admin') displayId = getRoleId(u.admins);
-                            else if (u.role === 'parent') displayId = getRoleId(u.parents);
-                        }
+                        const parentObj = Array.isArray(u.parents) ? u.parents[0] : u.parents;
+
+                        const displayId = formatPersonNumber({
+                            ...u,
+                            students: studentObj,
+                            teachers: teacherObj,
+                            admins: adminObj,
+                            parents: parentObj,
+                        }, u.role, undefined);
                         let status: string | undefined = undefined;
                         if (u.role === 'student' && studentObj?.enrollment_status && studentObj.enrollment_status !== 'active') {
                             status = studentObj.enrollment_status;

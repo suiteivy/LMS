@@ -161,7 +161,7 @@ export default function AttendancePage() {
                 data = dummy.teacher.studentList.map((s: any) => ({
                     student_id: s.id,
                     name: s.full_name || s.name || 'Student',
-                    admission_number: s.id || 'STU-001',
+                    admission_number: s.admission_number || '0001',
                     status: 'present',
                     remarks: ''
                 })) as any;

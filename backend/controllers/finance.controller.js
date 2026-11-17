@@ -2819,7 +2819,22 @@ exports.generateStudentInvoice = async (req, res) => {
             discounts
         });
 
-        const invoiceNumber = `INV-${new Date().getFullYear()}-${student.admission_number || student.id.slice(0, 6).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+        const yearStr = String(new Date().getFullYear());
+        const cleanAdm = (student.admission_number || student.id.slice(0, 4)).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        
+        // Sequential institutional invoice counter
+        let seqNum = 1;
+        try {
+            const { count } = await supabase
+                .from('student_fee_invoices')
+                .select('id', { count: 'exact', head: true })
+                .eq('institution_id', institution_id);
+            seqNum = (count || 0) + 1;
+        } catch (cErr) {
+            seqNum = 1;
+        }
+        const seqPadded = String(seqNum).padStart(4, '0');
+        const invoiceNumber = `INV-${yearStr}-${cleanAdm}-${seqPadded}`;
 
         const invoicePayload = {
             institution_id,
@@ -2851,6 +2866,220 @@ exports.generateStudentInvoice = async (req, res) => {
         return res.status(201).json(invoice);
     } catch (err) {
         console.error('generateStudentInvoice error:', err);
+        return res.status(500).json({ error: err.message });
+    }
+};
+
+exports.voidStudentInvoice = async (req, res) => {
+    try {
+        const institution_id = req.institution_id || req.user?.institution_id;
+        if (!hasRequiredFinanceRole(req, FINANCE_ADMIN_ROLES)) {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        const { id } = req.params;
+        const { reason, notes } = req.body || {};
+        if (!id) return res.status(400).json({ error: "Invoice id is required" });
+
+        const { data: existing, error: findErr } = await supabase
+            .from('student_fee_invoices')
+            .select('*')
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .single();
+
+        if (findErr || !existing) {
+            return res.status(404).json({ error: "Invoice not found" });
+        }
+
+        if (existing.status === 'voided') {
+            return res.json({ success: true, message: "Invoice is already voided", invoice: existing });
+        }
+
+        const voidReason = reason || notes || 'Administrative void';
+        const updatedNotes = existing.notes 
+            ? `${existing.notes}\n[Voided on ${new Date().toISOString().slice(0, 10)}: ${voidReason}]`
+            : `Voided on ${new Date().toISOString().slice(0, 10)}: ${voidReason}`;
+
+        const updatePayload = {
+            status: 'voided',
+            voided_at: new Date().toISOString(),
+            voided_by: req.user?.id || null,
+            void_reason: voidReason,
+            notes: updatedNotes,
+            updated_at: new Date().toISOString()
+        };
+
+        const { data: updated, error: updErr } = await supabase
+            .from('student_fee_invoices')
+            .update(updatePayload)
+            .eq('id', id)
+            .eq('institution_id', institution_id)
+            .select()
+            .single();
+
+        if (updErr) throw updErr;
+
+        try {
+            await logRecordChange({
+                institution_id,
+                user_id: req.user?.id,
+                action: 'VOID_INVOICE',
+                entity: 'student_fee_invoices',
+                entity_id: id,
+                details: { previous_status: existing.status, void_reason: voidReason }
+            });
+        } catch (lErr) {
+            // Non-blocking audit logger
+        }
+
+        return res.json({ success: true, message: "Invoice voided successfully", invoice: updated });
+    } catch (err) {
+        console.error('voidStudentInvoice error:', err);
+        return res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getFamilyInvoice = async (req, res) => {
+    try {
+        const institution_id = req.institution_id || req.user?.institution_id;
+        const { parentId } = req.params;
+        if (!parentId) return res.status(400).json({ error: "parentId is required" });
+
+        let { data: parent } = await supabase
+            .from('parents')
+            .select('id, user_id, parent_number, users:user_id(id, first_name, last_name, full_name, email, phone)')
+            .eq('institution_id', institution_id)
+            .or(`id.eq.${parentId},user_id.eq.${parentId}`)
+            .maybeSingle();
+
+        if (!parent) {
+            const { data: parentUser } = await supabase
+                .from('users')
+                .select('id, first_name, last_name, full_name, email, phone')
+                .eq('id', parentId)
+                .maybeSingle();
+
+            if (parentUser) {
+                parent = {
+                    id: parentId,
+                    user_id: parentId,
+                    parent_number: 'PA0001',
+                    users: parentUser
+                };
+            } else {
+                return res.status(404).json({ error: "Parent not found" });
+            }
+        }
+
+        const { data: links } = await supabase
+            .from('parent_students')
+            .select('student_id, students(id, admission_number, grade_level, form_level, class_id, users:user_id(first_name, last_name, full_name), classes:class_id(display_name))')
+            .eq('parent_id', parent.id)
+            .eq('institution_id', institution_id);
+
+        const children = (links || []).map(l => l.students).filter(Boolean);
+        const currency = await getInstitutionCurrency(institution_id);
+        const childrenInvoices = [];
+        let totalGross = 0;
+        let totalDiscount = 0;
+        let totalNet = 0;
+        let totalPaid = 0;
+        let totalBalance = 0;
+
+        for (const child of children) {
+            const { data: invoices } = await supabase
+                .from('student_fee_invoices')
+                .select('*, fee_structures(id, title, due_date)')
+                .eq('institution_id', institution_id)
+                .eq('student_id', child.id)
+                .neq('status', 'voided')
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            const inv = invoices && invoices[0];
+            const childUser = child.users;
+            const childName = childUser?.first_name 
+                ? `${childUser.first_name} ${childUser.last_name || ''}`.trim()
+                : (childUser?.full_name || `Student ${child.admission_number || child.id}`);
+
+            if (inv) {
+                const gross = roundCurrency(inv.gross_amount);
+                const disc = roundCurrency(inv.discount_amount);
+                const net = roundCurrency(inv.net_amount);
+                const paid = roundCurrency(inv.paid_amount);
+                const bal = roundCurrency(inv.balance_due);
+
+                totalGross += gross;
+                totalDiscount += disc;
+                totalNet += net;
+                totalPaid += paid;
+                totalBalance += bal;
+
+                childrenInvoices.push({
+                    student_id: child.id,
+                    student_name: childName,
+                    admission_number: child.admission_number,
+                    grade_level: child.grade_level || child.form_level,
+                    class_name: child.classes?.display_name || 'N/A',
+                    invoice: {
+                        id: inv.id,
+                        invoice_number: inv.invoice_number,
+                        status: inv.status,
+                        due_date: inv.due_date,
+                        gross_amount: gross,
+                        discount_amount: disc,
+                        net_amount: net,
+                        paid_amount: paid,
+                        balance_due: bal,
+                        itemized_breakdown: inv.itemized_breakdown || []
+                    }
+                });
+            } else {
+                childrenInvoices.push({
+                    student_id: child.id,
+                    student_name: childName,
+                    admission_number: child.admission_number,
+                    grade_level: child.grade_level || child.form_level,
+                    class_name: child.classes?.display_name || 'N/A',
+                    invoice: null
+                });
+            }
+        }
+
+        const parentUser = parent.users;
+        const parentName = parentUser?.first_name 
+            ? `${parentUser.first_name} ${parentUser.last_name || ''}`.trim()
+            : (parentUser?.full_name || 'Valued Parent/Guardian');
+
+        return res.json({
+            success: true,
+            parent: {
+                id: parent.id,
+                parent_number: parent.parent_number || 'N/A',
+                name: parentName,
+                email: parentUser?.email || null,
+                phone: parentUser?.phone || null
+            },
+            currency: {
+                symbol: currency?.symbol || 'KSh',
+                code: currency?.code || 'KES',
+                decimal_places: currency?.decimal_places ?? 2
+            },
+            statement_number: `FAM-INV-${new Date().getFullYear()}-${parent.parent_number || parent.id.slice(0, 4)}-${Date.now().toString().slice(-4)}`,
+            summary: {
+                total_children: children.length,
+                total_invoiced_children: childrenInvoices.filter(c => c.invoice).length,
+                total_gross: roundCurrency(totalGross),
+                total_discount: roundCurrency(totalDiscount),
+                total_net: roundCurrency(totalNet),
+                total_paid: roundCurrency(totalPaid),
+                total_balance_due: roundCurrency(totalBalance)
+            },
+            children: childrenInvoices
+        });
+    } catch (err) {
+        console.error('getFamilyInvoice error:', err);
         return res.status(500).json({ error: err.message });
     }
 };

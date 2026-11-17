@@ -616,10 +616,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           institution_id: dummyData.institution.id,
           status: 'approved',
           is_demo: true,
-          students: demoUser.role === 'student' ? [{ id: demoRoleRecord.id || 'DEMO-STU-001' }] : undefined,
-          teachers: demoUser.role === 'teacher' ? [{ id: demoRoleRecord.id || 'DEMO-TCH-001' }] : undefined,
-          admins: demoUser.role === 'admin' ? [{ id: demoRoleRecord.id || 'DEMO-ADM-001', is_main: !isReadOnly, access_level: isReadOnly ? 'read_only' : 'read_write' }] : undefined,
-          parents: demoUser.role === 'parent' ? [{ id: demoRoleRecord.id || 'DEMO-PAR-001' }] : undefined,
+          students: demoUser.role === 'student' ? [{ id: demoRoleRecord.id || 'DEMO-STU-001', admission_number: demoRoleRecord.admission_number || '0001' }] : undefined,
+          teachers: demoUser.role === 'teacher' ? [{ id: demoRoleRecord.id || 'DEMO-TCH-001', staff_number: demoRoleRecord.staff_number || 'ST0001' }] : undefined,
+          admins: demoUser.role === 'admin' ? [{ id: demoRoleRecord.id || 'DEMO-ADM-001', staff_number: demoRoleRecord.staff_number || 'ST0002', is_main: !isReadOnly, access_level: isReadOnly ? 'read_only' : 'read_write' }] : undefined,
+          parents: demoUser.role === 'parent' ? [{ id: demoRoleRecord.id || 'DEMO-PAR-001', parent_number: demoRoleRecord.parent_number || 'PA0001' }] : undefined,
           institutions: dummyData.institution,
         };
 

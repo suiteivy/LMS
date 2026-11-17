@@ -9,6 +9,7 @@ const { clearUserCache } = require("../middleware/auth.middleware.js");
 const { logRecordChange, logAuditEvent } = require("../utils/auditLogger.js");
 const logger = require("../utils/logger.js");
 const SITE_CONFIG = require("../config/siteConfig.js");
+const IdentifierService = require('../services/identifier.service.js');
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const ADMIN_DELEGATED_USER_EDIT_PERMISSIONS = new Set([
@@ -1105,6 +1106,16 @@ exports.enrollUser = async (req, res) => {
       if (emergency_contact_name) updateFields.emergency_contact_name = emergency_contact_name;
       if (emergency_contact_phone) updateFields.emergency_contact_phone = emergency_contact_phone;
 
+      try {
+        const assignedStudent = await IdentifierService.assignIdentifier(targetInstitutionId, 'student');
+        if (assignedStudent?.formatted_number) {
+          updateFields.admission_number = assignedStudent.formatted_number;
+          updateFields.number_value = assignedStudent.number_value;
+        }
+      } catch (idErr) {
+        logger.warn('Failed to assign student admission number:', idErr?.message);
+      }
+
       if (Object.keys(updateFields).length > 0) {
         await supabase.from('students').update(updateFields).eq('user_id', uid);
       }
@@ -1275,11 +1286,22 @@ exports.enrollUser = async (req, res) => {
              throw new Error("The 'parents' record was not created fast enough by the database trigger.");
           }
 
-          // Update Parent role entry
-          await supabase.from('parents').update({
+          // Update Parent role entry with sequential parent number
+          const parentUpdates = {
             occupation: parent_info.occupation || null,
             address: parent_info.address || null,
-          }).eq('id', pData.id);
+          };
+          try {
+            const assignedParent = await IdentifierService.assignIdentifier(targetInstitutionId, 'parent');
+            if (assignedParent?.formatted_number) {
+              parentUpdates.parent_number = assignedParent.formatted_number;
+              parentUpdates.number_value = assignedParent.number_value;
+            }
+          } catch (pIdErr) {
+            logger.warn('Failed to assign parent number:', pIdErr?.message);
+          }
+
+          await supabase.from('parents').update(parentUpdates).eq('id', pData.id);
 
             if (customId) {
             // Link parent to student
@@ -1366,6 +1388,16 @@ exports.enrollUser = async (req, res) => {
       if (qualification) updateFields.qualification = qualification;
       updateFields.position = position || (class_teacher_id ? 'class_teacher' : 'teacher');
 
+      try {
+        const assignedStaff = await IdentifierService.assignIdentifier(targetInstitutionId, 'staff');
+        if (assignedStaff?.formatted_number) {
+          updateFields.staff_number = assignedStaff.formatted_number;
+          updateFields.number_value = assignedStaff.number_value;
+        }
+      } catch (sIdErr) {
+        logger.warn('Failed to assign teacher staff number:', sIdErr?.message);
+      }
+
       if (Object.keys(updateFields).length > 0) {
         await supabase.from('teachers').update(updateFields).eq('user_id', uid);
       }
@@ -1389,6 +1421,16 @@ exports.enrollUser = async (req, res) => {
       const updateFields = {};
       if (occupation) updateFields.occupation = occupation;
       if (parent_address) updateFields.address = parent_address;
+
+      try {
+        const assignedParent = await IdentifierService.assignIdentifier(targetInstitutionId, 'parent');
+        if (assignedParent?.formatted_number) {
+          updateFields.parent_number = assignedParent.formatted_number;
+          updateFields.number_value = assignedParent.number_value;
+        }
+      } catch (pIdErr) {
+        logger.warn('Failed to assign parent number:', pIdErr?.message);
+      }
 
       if (Object.keys(updateFields).length > 0) {
         await supabase.from('parents').update(updateFields).eq('user_id', uid);
@@ -1416,11 +1458,26 @@ exports.enrollUser = async (req, res) => {
       const { error: adminPermissionError } = await updateAdminManageUsersWithFallback(uid, !!adminData?.is_main);
       if (adminPermissionError) throw adminPermissionError;
 
+      const adminUpdates = {};
       const targetAccessLevel = req.body.access_level === 'read_only' ? 'read_only' : 'read_write';
       if (!adminData?.is_main && targetAccessLevel !== 'read_write') {
+        adminUpdates.access_level = targetAccessLevel;
+      }
+
+      try {
+        const assignedStaff = await IdentifierService.assignIdentifier(targetInstitutionId, 'staff');
+        if (assignedStaff?.formatted_number) {
+          adminUpdates.staff_number = assignedStaff.formatted_number;
+          adminUpdates.number_value = assignedStaff.number_value;
+        }
+      } catch (sIdErr) {
+        logger.warn('Failed to assign admin staff number:', sIdErr?.message);
+      }
+
+      if (Object.keys(adminUpdates).length > 0) {
         await supabase
           .from('admins')
-          .update({ access_level: targetAccessLevel })
+          .update(adminUpdates)
           .eq('user_id', uid);
       }
 

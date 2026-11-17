@@ -191,6 +191,8 @@ export type Database = {
           id: string
           institution_id: string | null
           is_main: boolean | null
+          number_value: number | null
+          staff_number: string | null
           updated_at: string | null
           user_id: string
         }
@@ -201,6 +203,8 @@ export type Database = {
           id?: string
           institution_id?: string | null
           is_main?: boolean | null
+          number_value?: number | null
+          staff_number?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -211,6 +215,8 @@ export type Database = {
           id?: string
           institution_id?: string | null
           is_main?: boolean | null
+          number_value?: number | null
+          staff_number?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -4782,7 +4788,9 @@ export type Database = {
           created_at: string | null
           id: string
           institution_id: string | null
+          number_value: number | null
           occupation: string | null
+          parent_number: string | null
           phone: string | null
           updated_at: string | null
           user_id: string
@@ -4792,7 +4800,9 @@ export type Database = {
           created_at?: string | null
           id?: string
           institution_id?: string | null
+          number_value?: number | null
           occupation?: string | null
+          parent_number?: string | null
           phone?: string | null
           updated_at?: string | null
           user_id: string
@@ -4802,7 +4812,9 @@ export type Database = {
           created_at?: string | null
           id?: string
           institution_id?: string | null
+          number_value?: number | null
           occupation?: string | null
+          parent_number?: string | null
           phone?: string | null
           updated_at?: string | null
           user_id?: string
@@ -8347,8 +8359,10 @@ export type Database = {
           exit_reason: string | null
           id: string
           institution_id: string | null
+          number_value: number | null
           position: string | null
           qualification: string | null
+          staff_number: string | null
           status: string | null
           updated_at: string | null
           user_id: string
@@ -8363,8 +8377,10 @@ export type Database = {
           exit_reason?: string | null
           id?: string
           institution_id?: string | null
+          number_value?: number | null
           position?: string | null
           qualification?: string | null
+          staff_number?: string | null
           status?: string | null
           updated_at?: string | null
           user_id: string
@@ -8379,8 +8395,10 @@ export type Database = {
           exit_reason?: string | null
           id?: string
           institution_id?: string | null
+          number_value?: number | null
           position?: string | null
           qualification?: string | null
+          staff_number?: string | null
           status?: string | null
           updated_at?: string | null
           user_id?: string

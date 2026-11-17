@@ -1,6 +1,7 @@
 import { ActionTooltip } from '@/components/common/ActionTooltip';
 import { useTheme } from '@/contexts/ThemeContext';
 import { BaseComponentProps, User } from '@/types/types';
+import { getPersonNumberLabel } from '@/utils/formatters';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
@@ -257,7 +258,7 @@ export const UserCard: React.FC<UserCardProps> = ({
                     </Text>
                     {user.displayId && (
                         <Text className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-tight mt-0.5">
-                            ID: {user.displayId}
+                            {user.role === 'student' ? 'Adm' : user.role === 'parent' ? 'Parent' : 'Staff'} No: {user.displayId}
                         </Text>
                     )}
                     <Text className="text-gray-500 dark:text-gray-400 font-medium text-xs mt-1" numberOfLines={1}>
@@ -408,7 +409,7 @@ export const UserCard: React.FC<UserCardProps> = ({
                                 </Text>
                                 {user.displayId && (
                                     <Text className="text-gray-500 dark:text-gray-400 font-bold text-[10px] mt-1 uppercase tracking-tighter">
-                                        ID: {user.displayId}
+                                        {getPersonNumberLabel(user.role)}: {user.displayId}
                                     </Text>
                                 )}
                             </View>

@@ -39,6 +39,8 @@ const {
     createFeeDiscountOrWaiver,
     revokeFeeDiscountOrWaiver,
     generateStudentInvoice,
+    voidStudentInvoice,
+    getFamilyInvoice,
     getStudentInvoices,
     compileInvoicePdf,
     compileInvoicePdfBase64,
@@ -161,6 +163,8 @@ router.post("/discounts/:id/revoke", authMiddleware, authorizeRoles(FINANCE_OPER
 
 // Billing Statements & Invoices
 router.post("/invoices/generate", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLES), generateStudentInvoice);
+router.post("/invoices/item/:id/void", authMiddleware, authorizeRoles(FINANCE_OPERATIONAL_ROLES), voidStudentInvoice);
+router.get("/invoices/family/:parentId", authMiddleware, getFamilyInvoice);
 router.get("/invoices/:studentId", authMiddleware, getStudentInvoices);
 router.get("/invoices/item/:id/pdf", authMiddleware, compileInvoicePdf);
 router.post("/invoices/item/:id/compile-base64", authMiddleware, compileInvoicePdfBase64);

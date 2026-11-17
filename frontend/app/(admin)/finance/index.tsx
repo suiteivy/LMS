@@ -58,8 +58,8 @@ export default function FinanceDashboard() {
                     'Grade';
                 // High-quality mock data for Admin Demo Mode
                 const mockPayments: Payment[] = [
-                    { id: 'p1', student_name: 'Emily Davis', student_display_id: 'STU-101', amount: 15000, payment_date: new Date().toISOString(), status: 'completed', student_id: 's1', payment_method: 'mobile_money' },
-                    { id: 'p2', student_name: 'Robert Wilson', student_display_id: 'STU-102', amount: 13500, payment_date: new Date(Date.now() - 86400000).toISOString(), status: 'completed', student_id: 's2', payment_method: 'bank_transfer' },
+                    { id: 'p1', student_name: 'Emily Davis', student_display_id: '0101', amount: 15000, payment_date: new Date().toISOString(), status: 'completed', student_id: 's1', payment_method: 'mobile_money' },
+                    { id: 'p2', student_name: 'Robert Wilson', student_display_id: '0102', amount: 13500, payment_date: new Date(Date.now() - 86400000).toISOString(), status: 'completed', student_id: 's2', payment_method: 'bank_transfer' },
                 ];
                 const mockFees: FeeStructure[] = [
                     { id: 'f1', Subject_name: `${instClassType} 12 Tuition`, base_fee: 45000, Subject_id: 'sub1', registration_fee: 5000, material_fee: 2000, teacher_rate: 1500, bursary_percentage: 10, effective_date: '2024-01-01', is_active: true },
