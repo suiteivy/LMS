@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Cloudora LMS",
+    "name": "LMS",
     "slug": "CloudoraLMS",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,6 +13,7 @@
       "bundleIdentifier": "com.cloudora.lms",
       "buildNumber": "1",
       "infoPlist": {
+        "CFBundleDisplayName": "LMS",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         },
@@ -55,7 +56,8 @@
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/cloudora-favicon.png",
-      "title": "Cloudora LMS"
+      "title": "Cloudora LMS",
+      "shortName": "LMS"
     },
     "plugins": [
       "expo-router",

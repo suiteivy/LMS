@@ -4,5 +4,6 @@
         "frontend",
         "backend"
     ],
-    "java.configuration.updateBuildConfiguration": "interactive"
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "workbench.colorCustomizations": {}
 }
