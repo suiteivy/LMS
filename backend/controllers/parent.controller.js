@@ -131,20 +131,50 @@ exports.getLinkedStudents = async (req, res) => {
 
         if (error) throw error;
 
-        const enrichedStudents = await Promise.all((students || []).map(async (s) => {
-            const student = s.student;
-            const enrollment = await getStudentCurrentClassEnrollment(student?.id, student?.institution_id || null);
+        const studentList = (students || []).map(s => s.student).filter(Boolean);
+        const studentIds = studentList.map(s => s.id).filter(Boolean);
 
-            let classData = null;
-            if (enrollment?.class_id) {
-                const { data: klass } = await supabase
+        // Batched query 1: fetch enrollments for all students at once (N+1 eliminated)
+        const enrollmentMap = new Map();
+        if (studentIds.length > 0) {
+            try {
+                const { data: batchEnrollments } = await supabase
+                    .from('class_enrollments')
+                    .select('id, student_id, class_id, enrolled_at')
+                    .in('student_id', studentIds)
+                    .order('enrolled_at', { ascending: false });
+
+                (batchEnrollments || []).forEach(e => {
+                    if (!enrollmentMap.has(e.student_id)) {
+                        enrollmentMap.set(e.student_id, e);
+                    }
+                });
+            } catch (_err) {}
+        }
+
+        // Collect distinct class IDs across all children
+        const classIds = Array.from(new Set(
+            studentList.map(s => enrollmentMap.get(s.id)?.class_id || s.class_id).filter(Boolean)
+        ));
+
+        // Batched query 2: fetch all relevant classes at once
+        const classMap = new Map();
+        if (classIds.length > 0) {
+            try {
+                const { data: batchClasses } = await supabase
                     .from('classes')
                     .select('id, name, grade_level, form_level, stream, is_final_level')
-                    .eq('id', enrollment.class_id)
-                    .maybeSingle();
-                classData = klass;
-            }
+                    .in('id', classIds);
 
+                (batchClasses || []).forEach(k => {
+                    classMap.set(k.id, k);
+                });
+            } catch (_err) {}
+        }
+
+        const enrichedStudents = studentList.map((student) => {
+            const classId = enrollmentMap.get(student?.id)?.class_id || student?.class_id;
+            const classData = classId ? classMap.get(classId) || null : null;
             const fullName = student?.users?.full_name || `${student?.users?.first_name || ''} ${student?.users?.last_name || ''}`.trim();
             const classLabel = buildClassLabel(classData) || classData?.name || 'Unassigned';
 
@@ -162,7 +192,7 @@ exports.getLinkedStudents = async (req, res) => {
                     name: classLabel,
                 } : null,
             };
-        }));
+        });
 
         res.json(enrichedStudents);
     } catch (err) {

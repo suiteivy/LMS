@@ -61,6 +61,8 @@ const { nullStringSanitizer } = require("./middleware/sanitizer.middleware.js");
 app.use(nullStringSanitizer);
 app.use(express.urlencoded({ extended: true }));
 app.use(metricsMiddleware);
+const { idempotencyGuard } = require("./middleware/idempotency.middleware.js");
+app.use(idempotencyGuard);
 
 // Apply rate limiting to public endpoints
 app.use("/api/auth", rateLimiters.authPublic);
@@ -282,15 +284,21 @@ cron.schedule('0 3 * * *', async () => {
   }
 });
 
-// Health and Readiness Checks (Part D2)
+// Health and Readiness Checks (Part D2 & Task Section 8)
 async function checkHealthStatus() {
+  const startTime = Date.now();
   const checks = {
     database: 'unknown',
     auth: 'unknown',
+    outbox: outboxService ? 'up' : 'unknown',
+    job_queue: jobQueueService ? 'up' : 'unknown',
   };
+  let dbLatencyMs = 0;
 
   try {
+    const dbStart = Date.now();
     const { error: dbErr } = await supabase.from('institutions').select('id').limit(1);
+    dbLatencyMs = Date.now() - dbStart;
     checks.database = dbErr ? 'degraded' : 'up';
   } catch (_e) {
     checks.database = 'down';
@@ -310,6 +318,7 @@ async function checkHealthStatus() {
     status: isHealthy ? 'ok' : 'degraded',
     timestamp: new Date().toISOString(),
     uptime_seconds: Math.floor(process.uptime()),
+    query_latency_ms: dbLatencyMs,
     memory: {
       heap_used_mb: Math.round((mem.heapUsed / 1024 / 1024) * 100) / 100,
       heap_total_mb: Math.round((mem.heapTotal / 1024 / 1024) * 100) / 100,
