@@ -11,7 +11,7 @@ A comprehensive, role-based mobile application for managing educational institut
 
 ## ✨ Key Features
 - **Master Platform Admin**: View `/(master-admin)` for global platform management, subscription controls, institution enrollment, scalable student limits (Custom plans), and Add-on (Digital Library, Bursary, Messaging, Virtual Diary) distribution. Includes a comprehensive Support Desk for ticket management and escalation.
-  - *Default Local Credentials:* `masteradmin@suiteivy.com` / `Master@123456`
+  - *Default Local Credentials:* Configured via `backend/.env` (`PLATFORM_ADMIN_EMAIL` / `PLATFORM_ADMIN_PASSWORD`, default: `admin@cloudora.africa`)
 - **Multi-Role Support**: Tailored experiences for Students, Teachers, Admins, and Parents.
 - **Academic Management**: Grading, Attendance tracking, Subject management, and Timetables.
 - **Virtual Diary**: Daily classroom logging to keep parents and students up to date seamlessly.

@@ -59,11 +59,11 @@ async function bootstrapAdmin() {
       password,
       email_confirm: true,
       user_metadata: {
-        role: 'platform_admin',
+        role: 'master_admin',
         first_name: 'Platform',
         last_name: 'Admin',
-        force_password_change: true,
-        mfa_required: true,
+        force_password_change: false,
+        mfa_required: false,
         is_platform_admin: true
       }
     });
@@ -107,8 +107,11 @@ async function bootstrapAdmin() {
         first_name: 'Platform',
         last_name: 'Admin',
         full_name: 'Platform Admin',
-        role: 'platform_admin',
-        status: 'active'
+        role: 'master_admin',
+        status: 'approved',
+        must_change_password: false,
+        requires_security_questions_setup: false,
+        is_active: true
       });
 
     if (insertUserError) {
@@ -128,7 +131,9 @@ async function bootstrapAdmin() {
     const { error: paError } = await supabase
       .from('platform_admins')
       .upsert({
-        user_id: adminUser.id
+        user_id: adminUser.id,
+        email: email,
+        full_name: 'Platform Admin'
       });
 
     if (paError) {
@@ -137,7 +142,7 @@ async function bootstrapAdmin() {
   }
 
   console.log('[Bootstrap Admin] Master Platform Admin verified.');
-  console.log('[Bootstrap Admin] Security check: force_password_change=true, mfa_required=true.');
+  console.log('[Bootstrap Admin] Credentials active for:', email);
   console.log('[Bootstrap Admin] Bootstrap finished successfully.');
 }
 
