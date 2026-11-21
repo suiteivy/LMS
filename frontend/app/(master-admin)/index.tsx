@@ -8,6 +8,7 @@ import { supabase } from '@/libs/supabase';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { SettingsService } from '@/services/SettingsService';
+import { IdentifierService } from '@/services/IdentifierService';
 import { DashboardStatCardSkeleton } from '@/components/ui/skeletons';
 import { CacheService } from '@/services/CacheService';
 import { api } from '@/services/api';
@@ -30,6 +31,7 @@ export default function MasterDashboard() {
     const [sweepPreviewLoading, setSweepPreviewLoading] = useState(false);
     const [sweepRunLoading, setSweepRunLoading] = useState(false);
     const [sweepPreview, setSweepPreview] = useState<any>(null);
+    const [migrationData, setMigrationData] = useState<any>(null);
 
     const fetchMaintenanceMode = useCallback(async () => {
         try {
@@ -85,6 +87,13 @@ export default function MasterDashboard() {
             if (res.data) {
                 setStats(res.data);
                 CacheService.set('master_admin_platform_stats', res.data, 5 * 60 * 1000);
+            }
+
+            const migStatus = await IdentifierService.getMigrationStatus().catch(() => null);
+            if (Array.isArray(migStatus)) {
+                const totalStu = migStatus.reduce((acc, m) => acc + (m.students_migrated || 0), 0);
+                const totalCross = migStatus.reduce((acc, m) => acc + (m.crosswalk_entries || 0), 0);
+                setMigrationData({ totalStudents: totalStu, crosswalkCount: totalCross, list: migStatus });
             }
         } catch (err: any) {
             console.error(err);
@@ -278,6 +287,38 @@ export default function MasterDashboard() {
                             <Text className="text-gray-500 dark:text-gray-400 text-xs">To Expire: {sweepPreview.expire_count || 0}</Text>
                         </View>
                     ) : null}
+                </View>
+
+                {/* ═══ Mandatory Identifier System & Migration Status ═══ */}
+                <View className="bg-[#F6F8FA] dark:bg-[#0F141C] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mb-4">
+                    <View className="flex-row items-center justify-between mb-3">
+                        <View className="flex-row items-center">
+                            <MaterialCommunityIcons name="swap-horizontal-bold" size={20} color="#10B981" style={{ marginRight: 8 }} />
+                            <Text className="text-gray-900 dark:text-white font-bold text-base">Identifier System & Migration</Text>
+                        </View>
+                        <View className="bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                            <Text className="text-emerald-500 text-[10px] font-bold uppercase tracking-wider">Mandatory 4-Digit Active</Text>
+                        </View>
+                    </View>
+
+                    <Text className="text-gray-500 dark:text-gray-400 text-sm mb-3">
+                        Enforcing 0001 admission numbers, ST0001 staff numbers, and PA0001 parent numbers across all tenant institutions with immutable crosswalk archives.
+                    </Text>
+
+                    <View className="flex-row justify-between bg-white dark:bg-[#161B22] p-3 rounded-xl border border-[#D0D7DE] dark:border-[#21262D]">
+                        <View>
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] uppercase font-bold">Students Migrated</Text>
+                            <Text className="text-gray-900 dark:text-white text-lg font-black">{migrationData?.totalStudents || stats?.totalStudents || 0}</Text>
+                        </View>
+                        <View>
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] uppercase font-bold">Staff Migrated</Text>
+                            <Text className="text-gray-900 dark:text-white text-lg font-black">{(stats?.totalTeachers || 0) + (stats?.totalAdmins || 0)}</Text>
+                        </View>
+                        <View>
+                            <Text className="text-gray-500 dark:text-gray-400 text-[10px] uppercase font-bold">Legacy Crosswalk</Text>
+                            <Text className="text-gray-900 dark:text-white text-lg font-black">{migrationData?.crosswalkCount || 0}</Text>
+                        </View>
+                    </View>
                 </View>
 
                 {loading && !stats ? (

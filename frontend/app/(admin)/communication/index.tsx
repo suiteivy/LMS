@@ -346,7 +346,7 @@ export default function CommunicationPage() {
                         <Text className="text-gray-500 dark:text-gray-400 text-center text-xs mb-6 leading-5">
                             Direct messaging is not enabled for this institution subscription.
                         </Text>
-                        <AddonRequestButton onPress={() => {}} />
+                        <AddonRequestButton onPress={() => router.push('/(admin)/request-feature')} />
                     </View>
                 </View>
             }

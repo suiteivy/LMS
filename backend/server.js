@@ -121,6 +121,7 @@ app.use("/api/clearance", authMiddleware, checkSubscription, require("./routes/c
 app.use("/api/documents", authMiddleware, checkSubscription, require("./routes/documents.route.js"));
 app.use("/api/violations", authMiddleware, checkSubscription, require("./routes/violations.route.js"));
 app.use("/api/users", authMiddleware, checkSubscription, require("./routes/user.route.js"));
+app.use("/api/identifiers", authMiddleware, checkSubscription, require("./routes/identifiers.route.js"));
 app.use("/api/addon-requests", authMiddleware, addonRequestRoutes);
 
 // Explicitly define currency route as public before using auth wrapper on settings

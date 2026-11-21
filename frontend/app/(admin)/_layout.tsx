@@ -65,6 +65,7 @@ const ALL_ADMIN_ROUTES = [
     "classes/index",
     "classes/transfers",
     "communication/index",
+    "documents/index",
     "finance/bursaries/create",
     "finance/bursaries/reports",
     "finance/bursaries/[id]",

@@ -275,7 +275,7 @@ export function DatePicker({
               shadowRadius: 10,
               elevation: 8,
             }}
-            onPress={() => {}}
+            onPress={(e) => { e?.stopPropagation?.(); }}
           >
             {/* Header / Month Navigation */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -570,7 +570,7 @@ export function DateRangePicker({
               shadowRadius: 10,
               elevation: 8,
             }}
-            onPress={() => {}}
+            onPress={(e) => { e?.stopPropagation?.(); }}
           >
             <Text style={{ fontSize: 16, fontWeight: '700', color: calText, marginBottom: 12 }}>
               {label || 'Select Date Range'}

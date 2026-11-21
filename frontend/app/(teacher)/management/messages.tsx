@@ -65,7 +65,7 @@ export default function MessagingPage() {
               <Text className="text-gray-500 dark:text-gray-400 text-center text-xs mb-6 leading-5">
                 Advanced messaging features are not included in your current subscription plan.
               </Text>
-              <AddonRequestButton onPress={() => { /* Handle request */ }} />
+              <AddonRequestButton onPress={() => router.push('/(teacher)/settings')} />
             </View>
           </View>
         }

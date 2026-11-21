@@ -22,6 +22,11 @@ export interface PublishedDocument {
   student_id?: string | null;
   student_name?: string | null;
   student_admission?: string | null;
+  recipient_count?: number;
+  opened_count?: number;
+  downloaded_count?: number;
+  audience_type?: string;
+  file_url?: string | null;
 }
 
 export interface DocumentTrackingStats {
@@ -60,6 +65,22 @@ export const DocumentsService = {
         search: params?.search,
         student_id: params?.student_id,
         unread_only: params?.unread_only ? 'true' : undefined
+      }
+    });
+    return res.data || [];
+  },
+
+  /**
+   * Admin: List all documents published by this institution with delivery stats
+   */
+  async getPublishedDocuments(params?: {
+    category?: string;
+    search?: string;
+  }): Promise<PublishedDocument[]> {
+    const res = await api.get('/documents/published', {
+      params: {
+        category: params?.category,
+        search: params?.search,
       }
     });
     return res.data || [];

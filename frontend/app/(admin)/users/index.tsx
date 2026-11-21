@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SettingsService } from '@/services/SettingsService';
 import { AdminPasswordResetModal, VerificationDetails } from '@/components/auth/AdminPasswordResetModal';
 import { CredentialRequestsSection } from '@/components/admin/CredentialRequestsSection';
+import { IdentifierCrosswalkModal } from '@/components/admin/identifiers/IdentifierCrosswalkModal';
 import { formatPersonNumber } from '@/utils/formatters';
 import api from '@/services/api';
 import Toast from 'react-native-toast-message';
@@ -66,6 +67,7 @@ export default function UsersManagementScreen() {
     const [adminForAccessLevel, setAdminForAccessLevel] = useState<User | null>(null);
     const [selectedAccessLevel, setSelectedAccessLevel] = useState<'read_write' | 'read_only'>('read_write');
     const [savingAccessLevel, setSavingAccessLevel] = useState(false);
+    const [crosswalkModalVisible, setCrosswalkModalVisible] = useState(false);
 
     const showReadOnlyNotice = () => {
         Toast.show({
@@ -435,6 +437,30 @@ export default function UsersManagementScreen() {
                         )}
                     </View>
                     <ActionTooltip
+                        label="Identifier Crosswalk & Old Code Lookup"
+                        description="Resolve legacy IDs to new admission numbers and download the institution migration crosswalk."
+                        learnMoreAnchor="identifier-migration"
+                    >
+                        <TouchableOpacity
+                            onPress={() => setCrosswalkModalVisible(true)}
+                            activeOpacity={0.7}
+                            style={{
+                                width: 48,
+                                height: 48,
+                                backgroundColor: isDark ? '#21262D' : '#E5E7EB',
+                                borderRadius: 16,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderWidth: 1,
+                                borderColor: border,
+                            }}
+                            accessibilityLabel="Identifier Crosswalk and Lookup"
+                        >
+                            <Ionicons name="swap-horizontal" size={22} color={textPrimary} />
+                        </TouchableOpacity>
+                    </ActionTooltip>
+
+                    <ActionTooltip
                         label="Create User"
                         description="Register a new student, teacher, admin, or parent account."
                         learnMoreAnchor="custom-roles"
@@ -779,6 +805,11 @@ export default function UsersManagementScreen() {
                 loading={confirmModalConfig.loading}
                 onConfirm={confirmModalConfig.onConfirm}
                 onClose={() => setConfirmModalConfig(prev => ({ ...prev, visible: false }))}
+            />
+            {/* Identifier Migration Crosswalk & Old Code Lookup Modal */}
+            <IdentifierCrosswalkModal
+                visible={crosswalkModalVisible}
+                onClose={() => setCrosswalkModalVisible(false)}
             />
         </View>
     );

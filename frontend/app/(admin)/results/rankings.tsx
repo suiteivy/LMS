@@ -25,6 +25,7 @@ import {
     X
 } from "lucide-react-native";
 import { formatPersonNumber } from "@/utils/formatters";
+import { PdfPreviewModal } from "@/components/pdf/PdfPreviewModal";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -80,6 +81,50 @@ export default function AdminStudentRankingsScreen() {
     const [selectedBand, setSelectedBand] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [evaluationWindow, setEvaluationWindow] = useState<'term' | 'cumulative'>('term');
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
+    const [previewPayload, setPreviewPayload] = useState<any | null>(null);
+
+    const handleDownloadPdf = async () => {
+        try {
+            setDownloadingPdf(true);
+            const params: any = {
+                scope: selectedClassId !== 'all' ? 'class' : 'institution',
+                academic_year: '2026',
+            };
+            if (selectedClassId !== 'all') params.class_id = selectedClassId;
+            if (selectedSubjectId !== 'all') params.subject_id = selectedSubjectId;
+
+            const summaryRes = await api.get('/reports/performance/summary', { params }).catch(() => null);
+            const summaryData = summaryRes?.data;
+
+            const selectedClassName = classes.find(c => c.id === selectedClassId)?.name || 'Whole School';
+            const selectedSubjectName = subjects.find(s => s.id === selectedSubjectId)?.title || 'All Subjects';
+
+            setPreviewPayload({
+                documentType: 'performance_summary_report',
+                title: `Performance Report - ${selectedClassName}`,
+                data: summaryData || {
+                    class_name: selectedClassName,
+                    subject_name: selectedSubjectName,
+                    stats: {
+                        count: data?.total_students || 0,
+                        average: cohortMean,
+                        median: cohortMean,
+                        highest: data?.rankings?.[0]?.average_score || 0,
+                        lowest: data?.rankings?.[data.rankings.length - 1]?.average_score || 0,
+                        pass_rate: Math.round(((data?.rankings?.filter((r: any) => r.average_score >= 50).length || 0) / (data?.total_students || 1)) * 100),
+                    },
+                    rankings: data?.rankings || [],
+                    distribution: data?.grade_distribution || data?.cbc_distribution || {},
+                },
+            });
+        } catch (err: any) {
+            console.error('Failed to download performance report PDF:', err);
+            Toast.show({ type: 'error', text1: 'Download Failed', text2: err.message || 'Unable to compile performance PDF.' });
+        } finally {
+            setDownloadingPdf(false);
+        }
+    };
 
     const bg = isDark ? "#0D1117" : "#F6F8FA";
     const card = isDark ? "#161B22" : "#FFFFFF";
@@ -230,24 +275,50 @@ export default function AdminStudentRankingsScreen() {
                 role="Admin"
                 onBack={() => router.back()}
                 rightActions={
-                    <ActionTooltip
-                        label="Student Rankings"
-                        description="Unrestricted institutional performance leaderboard computed from graded assessment submissions."
-                        learnMoreAnchor="student-rankings"
-                    >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <TouchableOpacity
-                            onPress={fetchRankings}
+                            onPress={handleDownloadPdf}
+                            disabled={downloadingPdf}
                             style={{
-                                padding: 8,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                paddingHorizontal: 12,
+                                paddingVertical: 7,
                                 borderRadius: 10,
-                                backgroundColor: card,
-                                borderWidth: 1,
-                                borderColor: border
+                                backgroundColor: orange,
+                                gap: 6,
                             }}
+                            accessibilityLabel="Download performance report PDF"
                         >
-                            <RefreshCw size={18} color={textSecondary} />
+                            {downloadingPdf ? (
+                                <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                                <>
+                                    <Download size={15} color="#FFFFFF" />
+                                    <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>Export PDF</Text>
+                                </>
+                            )}
                         </TouchableOpacity>
-                    </ActionTooltip>
+
+                        <ActionTooltip
+                            label="Student Rankings"
+                            description="Unrestricted institutional performance leaderboard computed from graded assessment submissions."
+                            learnMoreAnchor="student-rankings"
+                        >
+                            <TouchableOpacity
+                                onPress={fetchRankings}
+                                style={{
+                                    padding: 8,
+                                    borderRadius: 10,
+                                    backgroundColor: card,
+                                    borderWidth: 1,
+                                    borderColor: border
+                                }}
+                            >
+                                <RefreshCw size={18} color={textSecondary} />
+                            </TouchableOpacity>
+                        </ActionTooltip>
+                    </View>
                 }
             />
 
@@ -807,6 +878,12 @@ export default function AdminStudentRankingsScreen() {
                     </View>
                 )}
             </ScrollView>
+
+            <PdfPreviewModal
+                visible={!!previewPayload}
+                payload={previewPayload}
+                onClose={() => setPreviewPayload(null)}
+            />
         </View>
     );
 }

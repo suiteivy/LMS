@@ -20,6 +20,7 @@ import {
     Layers,
     Award,
     Shield,
+    FileText,
 } from 'lucide-react-native';
 import React from "react";
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -226,12 +227,24 @@ export default function AdminManagement() {
             darkBgColor: "#3d3000",
             route: "/(admin)/results",
             tooltipId: 'admin.manage.results'
+        },
+        {
+            icon: FileText,
+            title: "Documents Center",
+            description: "Publish circulars, fee structures, policies and track parent delivery",
+            color: "#FF6900",
+            bgColor: "#fff0e6",
+            darkBgColor: "#3d1a00",
+            route: "/(admin)/documents",
+            tooltipId: 'admin.manage.documents'
         }
     ];
 
     const isFeatureVisible = (feat: any) => {
         if (isUnrestricted) return true;
         switch (feat.route) {
+            case "/(admin)/documents":
+                return can('reports', 'view') || can('communication', 'view') || can('academic', 'view');
             case "/(admin)/management/analytics":
                 return can('reports', 'view');
             case "/(admin)/management/library":

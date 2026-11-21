@@ -5,6 +5,7 @@ const { authMiddleware } = require("../middleware/auth.middleware.js");
 const { authorizeRoles } = require("../middleware/authRole.js");
 const {
   uploadAndPublishDocument,
+  getPublishedDocuments,
   getDeliveredDocuments,
   recordDocumentInteraction,
   getDocumentTracking,
@@ -19,6 +20,7 @@ router.get("/delivered", authMiddleware, getDeliveredDocuments);
 router.post("/:documentId/interaction", authMiddleware, recordDocumentInteraction);
 
 // Admin Publisher & Tracking endpoints
+router.get("/published", authMiddleware, authorizeRoles(DOCUMENT_ADMIN_ROLES), getPublishedDocuments);
 router.post("/publish", authMiddleware, authorizeRoles(DOCUMENT_ADMIN_ROLES), uploadAndPublishDocument);
 router.get("/:documentId/tracking", authMiddleware, authorizeRoles(DOCUMENT_ADMIN_ROLES), getDocumentTracking);
 router.post("/:documentId/withdraw", authMiddleware, authorizeRoles(DOCUMENT_ADMIN_ROLES), withdrawDocument);

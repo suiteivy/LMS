@@ -62,7 +62,7 @@ export default function StudentLibraryPage() {
             <Text className="text-gray-500 dark:text-gray-400 text-center text-xs mb-6 leading-5">
               Library access is not enabled for this institution subscription.
             </Text>
-            <AddonRequestButton onPress={() => {}} />
+            <AddonRequestButton onPress={() => router.push('/(parent)/support')} />
           </View>
         </View>
       }

@@ -325,6 +325,71 @@ exports.getDeliveredDocuments = async (req, res) => {
 };
 
 /**
+ * Admin: List all documents published by this institution with delivery stats
+ */
+exports.getPublishedDocuments = async (req, res) => {
+  try {
+    const { institution_id } = req;
+    const { category, search } = req.query;
+
+    let query = supabase
+      .from('documents')
+      .select(`
+        id,
+        title,
+        description,
+        category,
+        storage_path,
+        file_name,
+        file_size,
+        mime_type,
+        is_pinned,
+        published_at,
+        version_label,
+        expires_at,
+        is_archived,
+        created_at
+      `)
+      .eq('institution_id', institution_id)
+      .eq('is_archived', false)
+      .order('published_at', { ascending: false });
+
+    if (category && category !== 'all') {
+      query = query.eq('category', category);
+    }
+    if (search) {
+      query = query.ilike('title', `%${search.trim()}%`);
+    }
+
+    const { data: docs, error } = await query;
+    if (error) throw error;
+
+    const enriched = await Promise.all((docs || []).map(async (doc) => {
+      const signed_url = await createDocumentSignedUrl(doc.storage_path);
+
+      const [delRes, viewRes, dlRes] = await Promise.all([
+        supabase.from('document_deliveries').select('id', { count: 'exact', head: true }).eq('document_id', doc.id),
+        supabase.from('document_deliveries').select('id', { count: 'exact', head: true }).eq('document_id', doc.id).not('viewed_at', 'is', null),
+        supabase.from('document_deliveries').select('id', { count: 'exact', head: true }).eq('document_id', doc.id).not('downloaded_at', 'is', null)
+      ]);
+
+      return {
+        ...doc,
+        signed_url,
+        recipient_count: delRes.count || 0,
+        opened_count: viewRes.count || 0,
+        downloaded_count: dlRes.count || 0,
+      };
+    }));
+
+    res.json(enriched);
+  } catch (error) {
+    console.error('getPublishedDocuments error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
  * Record that a document was viewed or downloaded by the recipient
  */
 exports.recordDocumentInteraction = async (req, res) => {
