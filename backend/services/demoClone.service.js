@@ -7,8 +7,8 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const TEMPLATE_INSTITUTION_ID = 'b5bd788c-8297-4a96-b8b3-157814504fba';
-const TEMPLATE_TEACHER_ID = 'TCH-MOMENTUM-001';
+const TEMPLATE_INSTITUTION_ID = process.env.DEMO_TEMPLATE_INSTITUTION_ID || 'b5bd788c-8297-4a96-b8b3-157814504fba';
+const TEMPLATE_TEACHER_ID = process.env.DEMO_TEMPLATE_TEACHER_ID || 'TCH-MOMENTUM-001';
 
 async function startDemo(role = 'teacher') {
     const sessionId = crypto.randomUUID().slice(0, 8);

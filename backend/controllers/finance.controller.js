@@ -1865,11 +1865,11 @@ const preparePaymentReceiptData = async (req, paymentId) => {
 
     return {
         institution: {
-            name: institution?.name || 'SuiteIvy Institution',
+            name: institution?.name || institution?.name || 'Academic Institution',
             logo_url: institution?.logo_url || null,
-            address: institution?.address || 'P.O. Box Nairobi, Kenya',
-            contact_email: institution?.contact_email || 'bursar@suiteivy.edu',
-            phone: institution?.phone || '+254 700 000 000'
+            address: institution?.address || institution?.address || null,
+            contact_email: institution?.contact_email || institution?.contact_email || null,
+            phone: institution?.phone || institution?.phone || null
         },
         receipt: {
             receipt_number: `RCP-${(payment.payment_date || new Date().toISOString()).slice(0, 4)}-${(payment.reference_number || payment.id.slice(0, 8)).toUpperCase()}`,
@@ -3194,11 +3194,11 @@ const prepareInvoiceData = async (req, invoiceId) => {
 
     return {
         institution: {
-            name: institution?.name || 'SuiteIvy Institution',
+            name: institution?.name || institution?.name || 'Academic Institution',
             logo_url: institution?.logo_url || null,
-            address: institution?.address || 'P.O. Box Nairobi, Kenya',
-            contact_email: institution?.contact_email || 'bursar@suiteivy.edu',
-            phone: institution?.phone || '+254 700 000 000'
+            address: institution?.address || institution?.address || null,
+            contact_email: institution?.contact_email || institution?.contact_email || null,
+            phone: institution?.phone || institution?.phone || null
         },
         invoice: {
             invoice_number: invoice.invoice_number || `INV-${invoice.id.slice(0, 8).toUpperCase()}`,
@@ -3228,10 +3228,10 @@ const prepareInvoiceData = async (req, invoiceId) => {
             balance_due: roundCurrency(invoice.balance_due)
         },
         payment_instructions: {
-            bank_name: bankDetails?.bank_name || 'Standard Chartered Bank',
-            account_number: bankDetails?.account_number || '010203040506',
-            account_name: bankDetails?.account_name || institution?.name || 'SuiteIvy Academy',
-            paybill_number: bankDetails?.paybill_number || '247247'
+            bank_name: bankDetails?.bank_name || bankDetails?.bank_name || null,
+            account_number: bankDetails?.account_number || bankDetails?.account_number || null,
+            account_name: bankDetails?.account_name || institution?.name || institution?.name || null,
+            paybill_number: bankDetails?.paybill_number || bankDetails?.paybill_number || null
         }
     };
 };

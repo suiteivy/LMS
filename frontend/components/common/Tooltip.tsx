@@ -16,6 +16,7 @@ import {
 import { usePathname, useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { SETTINGS_TOOLTIPS, type TooltipTargetId } from '@/components/settings/tooltips.config';
+import { useHelpContent } from '@/hooks/useHelpContent';
 
 let createPortal: any = null;
 if (Platform.OS === 'web') {
@@ -86,10 +87,13 @@ export const Tooltip: React.FC<TooltipProps> = ({
 
   const resolvedPlacement = (position || placement) as TooltipPlacement;
 
-  // Resolve content from SETTINGS_TOOLTIPS config or explicit props
+  const { getContent } = useHelpContent();
+  const dbHelpItem = tooltipId ? getContent(tooltipId) : undefined;
+
+  // Resolve content: explicit props > DB help_content > static SETTINGS_TOOLTIPS config
   const configEntry = tooltipId ? SETTINGS_TOOLTIPS[tooltipId] : undefined;
-  const resolvedTitle = label || title || configEntry?.title;
-  const resolvedText = description || text || configEntry?.text;
+  const resolvedTitle = label || title || dbHelpItem?.title || configEntry?.title;
+  const resolvedText = description || text || dbHelpItem?.body || configEntry?.text;
   const resolvedAnchor = learnMoreAnchor || configEntry?.learnMoreAnchor;
 
   const [visible, setVisible] = useState(false);

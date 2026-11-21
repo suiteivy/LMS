@@ -1,7 +1,8 @@
 const path = require("node:path");
 const supabase = require("../utils/supabaseClient.js");
 
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+const DEFAULT_MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = (parseInt(process.env.MAX_UPLOAD_SIZE_MB, 10) || DEFAULT_MAX_FILE_SIZE_MB) * 1024 * 1024;
 
 const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
     'application/pdf',
@@ -111,7 +112,7 @@ function isVideo(arg1, arg2) {
 /**
  * Validates file upload metadata & constraints
  */
-function validateUpload({ mimeType, fileName, sizeBytes }) {
+function validateUpload({ mimeType, fileName, sizeBytes, maxSizeBytes }) {
     const cleanFileName = extractFileName(fileName);
 
     // 1. Check video attempt first for clear plain-language messaging
@@ -122,11 +123,14 @@ function validateUpload({ mimeType, fileName, sizeBytes }) {
         throw err;
     }
 
-    // 2. Check file size limit (10MB)
+    // 2. Check file size limit (configurable with fallback default)
     if (sizeBytes !== undefined && sizeBytes !== null) {
         const numericSize = Number(sizeBytes);
-        if (numericSize > MAX_FILE_SIZE_BYTES) {
-            const err = new Error(SIZE_ERROR_MESSAGE);
+        const effectiveLimit = maxSizeBytes || MAX_FILE_SIZE_BYTES;
+        if (numericSize > effectiveLimit) {
+            const limitMB = Math.round(effectiveLimit / (1024 * 1024));
+            const message = `File exceeds the maximum allowed size of ${limitMB} MB. Please choose a smaller document.`;
+            const err = new Error(message);
             err.statusCode = 400;
             err.code = 'FILE_TOO_LARGE';
             throw err;

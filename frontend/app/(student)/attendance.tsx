@@ -34,26 +34,15 @@ export default function AttendancePage() {
         try {
             setLoading(true);
 
-            if (isDemo) {
-                // High-quality mock data for Demo Mode
-                const mockData = [
-                    { id: '1', date: new Date().toISOString(), status: 'present', classes: { name: 'Advanced Mathematics' } },
-                    { id: '2', date: new Date(Date.now() - 86400000).toISOString(), status: 'late', classes: { name: 'Theoretical Physics' } },
-                    { id: '3', date: new Date(Date.now() - 172800000).toISOString(), status: 'present', classes: { name: 'Software Engineering' } },
-                    { id: '4', date: new Date(Date.now() - 259200000).toISOString(), status: 'excused', classes: { name: 'Database Systems' } },
-                    { id: '5', date: new Date(Date.now() - 345600000).toISOString(), status: 'present', classes: { name: 'Advanced Mathematics' } },
-                ];
-                setAttendance(mockData);
-                setStats({ present: 22, absent: 1, late: 3, excused: 2, total: 28, percentage: 94 });
+            if (!studentId) {
                 setLoading(false);
                 return;
             }
 
-            if (!studentId) return;
             const { data, error } = await supabase
                 .from('attendance')
                 .select(`*, classes ( display_name )`)
-                .eq('student_id', studentId!)
+                .eq('student_id', studentId)
                 .order('date', { ascending: false });
 
             if (error) throw error;

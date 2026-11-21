@@ -319,7 +319,7 @@ function isLibrarianOrMainAdmin(req) {
 exports.issueBook = async (req, res) => {
   try {
     const { userRole, institution_id } = req;
-    let { bookId, studentId, teacherId, borrowerId, borrowerType, notes, days = 14, dueDate } = req.body || {};
+    let { bookId, studentId, teacherId, borrowerId, borrowerType, notes, days, dueDate } = req.body || {};
 
     if (!isLibrarianOrMainAdmin(req)) {
       return res.status(403).json({ error: "Access denied: Librarian designation required." });
@@ -427,8 +427,17 @@ exports.issueBook = async (req, res) => {
       }
     }
     if (!formattedDueDate) {
+      let borrowDays = Number(days);
+      if (!borrowDays || isNaN(borrowDays)) {
+        if (cfg?.settings?.userRoles) {
+          const bRole = studentId ? 'student' : 'teacher';
+          const rCfg = cfg.settings.userRoles.find(r => r.name?.toLowerCase() === bRole);
+          if (rCfg?.borrowDuration) borrowDays = Number(rCfg.borrowDuration);
+        }
+      }
+      if (!borrowDays || isNaN(borrowDays)) borrowDays = 14;
       const calcDueDate = new Date();
-      calcDueDate.setDate(calcDueDate.getDate() + Number(days));
+      calcDueDate.setDate(calcDueDate.getDate() + borrowDays);
       formattedDueDate = calcDueDate.toISOString().slice(0, 10);
     }
 
@@ -614,7 +623,24 @@ exports.updateBorrowStatus = async (req, res) => {
 
     // If transitioning to borrowed, set date and handle stock if not already handled
     if (status === 'borrowed' && loan.status !== 'borrowed') {
-      const days = 14;
+      let days = 14;
+      try {
+        const { data: libCfg } = await supabase
+          .from('library_config')
+          .select('settings')
+          .eq('institution_id', req.institution_id)
+          .eq('active', true)
+          .maybeSingle();
+        if (libCfg?.settings?.userRoles) {
+          const bType = (loan.borrower_type || (loan.teacher_id ? 'teacher' : 'student')).toLowerCase();
+          const roleCfg = libCfg.settings.userRoles.find(r => r.name?.toLowerCase() === bType);
+          if (roleCfg?.borrowDuration) {
+            days = Number(roleCfg.borrowDuration);
+          }
+        }
+      } catch (_) {
+        // Fallback to default if library_config lookup fails
+      }
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + days);
       updates.due_date = dueDate.toISOString().slice(0, 10);

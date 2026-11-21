@@ -7,24 +7,24 @@
  */
 
 export const SITE_CONFIG = {
-  name: 'Cloudora LMS',
-  legalName: 'Cloudora Solutions Limited',
-  domain: 'cloudora.africa',
-  webUrl: 'https://cloudora.africa',
-  appUrl: 'https://app.cloudora.africa',
-  apiDomain: 'api.cloudora.africa',
+  name: process.env.EXPO_PUBLIC_APP_NAME || 'Cloudora LMS',
+  legalName: process.env.EXPO_PUBLIC_LEGAL_NAME || 'Cloudora Solutions Limited',
+  domain: process.env.EXPO_PUBLIC_DOMAIN || 'cloudora.africa',
+  webUrl: process.env.EXPO_PUBLIC_WEB_URL || 'https://cloudora.africa',
+  appUrl: process.env.EXPO_PUBLIC_APP_URL || 'https://app.cloudora.africa',
+  apiDomain: process.env.EXPO_PUBLIC_API_DOMAIN || 'api.cloudora.africa',
 
   // Contact details
-  supportEmail: 'support@cloudora.africa',
-  salesEmail: 'sales@cloudora.africa',
-  billingEmail: 'billing@cloudora.africa',
-  adminEmail: 'admin@cloudora.africa',
+  supportEmail: process.env.EXPO_PUBLIC_SUPPORT_EMAIL || 'support@cloudora.africa',
+  salesEmail: process.env.EXPO_PUBLIC_SALES_EMAIL || 'sales@cloudora.africa',
+  billingEmail: process.env.EXPO_PUBLIC_BILLING_EMAIL || 'billing@cloudora.africa',
+  adminEmail: process.env.EXPO_PUBLIC_ADMIN_EMAIL || 'admin@cloudora.africa',
 
   // Phone / WhatsApp contact (International & display formats)
   phone: {
-    display: '+254 759 585 197',
-    international: '+254759585197',
-    hours: 'Monday to Friday, 08:00 - 18:00 EAT',
+    display: process.env.EXPO_PUBLIC_CONTACT_PHONE_DISPLAY || '+254 759 585 197',
+    international: process.env.EXPO_PUBLIC_CONTACT_PHONE_INTL || '+254759585197',
+    hours: process.env.EXPO_PUBLIC_CONTACT_HOURS || 'Monday to Friday, 08:00 - 18:00 EAT',
     sub: 'Direct phone & WhatsApp assistance',
   },
 

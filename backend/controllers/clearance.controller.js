@@ -843,7 +843,7 @@ exports.downloadClearancePdf = async (req, res) => {
     const pdfBuffer = await compilePdfBuffer({
       document_type: "clearance_confirmation",
       data: {
-        institution_name: institution?.name || "SuiteIvy Institution",
+        institution_name: institution?.name || institution?.name || "Academic Institution",
         institution_logo: institution?.logo_url || null,
         process: {
           id: process.id,
