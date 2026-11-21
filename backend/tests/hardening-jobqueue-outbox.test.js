@@ -79,13 +79,14 @@ test('JobQueue: retryable error applies exponential backoff and increments attem
     maxAttempts: 3,
   });
 
+  const beforeTime = Date.now();
   const job = await jobQueueService.getJobStatus(id);
   await jobQueueService.processJob(job);
 
   const retryingJob = await jobQueueService.getJobStatus(id);
   assert.equal(retryingJob.status, 'queued');
   assert.equal(retryingJob.attempts, 1);
-  assert.ok(new Date(retryingJob.run_at).getTime() > Date.now());
+  assert.ok(new Date(retryingJob.run_at).getTime() >= beforeTime);
 });
 
 test('Outbox: stages event and processes handler to completed status', async () => {

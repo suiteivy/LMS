@@ -7,6 +7,8 @@
     "backend": "cd backend && npm run dev",
     "frontend": "cd frontend && npx expo start",
     "check:hardcoded": "python scripts/ci_hardcoded_check.py",
+    "db:seed": "node backend/supabase/seed/runner.js",
+    "db:verify": "python scripts/validate_sql_syntax.py",
     "start": "start cmd /k \"cd backend && npm start\" && start cmd /k \"cd frontend && npx expo start\""
   },
   "devDependencies": {

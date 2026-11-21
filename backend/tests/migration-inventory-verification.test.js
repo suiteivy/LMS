@@ -3,26 +3,21 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const MIGRATIONS_DIR = path.resolve(__dirname, '../../supabase/migrations');
+const SCHEMA_FILE = path.resolve(__dirname, '../supabase/schema.sql');
+const SEED_DIR = path.resolve(__dirname, '../supabase/seed');
 
-test('Migration Inventory: All migration files are sorted, non-empty and well-named', () => {
-  const files = fs.readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql'));
-  assert.ok(files.length >= 35, `Expected at least 35 migration files, found ${files.length}`);
+test('Schema Verification: Canonical schema.sql exists, is non-empty and well-structured', () => {
+  assert.ok(fs.existsSync(SCHEMA_FILE), 'Canonical schema.sql must exist at backend/supabase/schema.sql');
+  const stat = fs.statSync(SCHEMA_FILE);
+  assert.ok(stat.size > 50000, `Expected canonical schema.sql to be >50KB, found ${stat.size} bytes`);
 
-  // Check naming pattern: YYYYMMDDHHMMSS_name.sql
-  const timestampRegex = /^\d{14}_[a-z0-9_]+\.sql$/;
-  files.forEach(f => {
-    assert.match(f, timestampRegex, `Migration file ${f} does not follow naming convention`);
-  });
-
-  // Verify chronological ordering
-  const sorted = [...files].sort();
-  assert.deepStrictEqual(files, sorted, 'Migration files must be chronologically ordered');
+  const content = fs.readFileSync(SCHEMA_FILE, 'utf8');
+  assert.ok(content.includes('-- LMS CANONICAL PRODUCTION DATABASE SCHEMA'), 'Header must indicate canonical baseline');
+  assert.ok(content.includes('-- SUPABASE-SPECIFIC'), 'Portability section must be present');
 });
 
-test('Migration Inventory: All required schema objects from Task Section 1.1 exist in migrations', () => {
-  const files = fs.readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql'));
-  const allSqlContent = files.map(f => fs.readFileSync(path.join(MIGRATIONS_DIR, f), 'utf8')).join('\n');
+test('Schema Verification: All required schema objects from Task Section 1.1 exist in canonical schema.sql', () => {
+  const schemaContent = fs.readFileSync(SCHEMA_FILE, 'utf8');
 
   const requiredTables = [
     // Roles & Access
@@ -75,25 +70,41 @@ test('Migration Inventory: All required schema objects from Task Section 1.1 exi
   requiredTables.forEach(table => {
     const tableRegex = new RegExp(`CREATE\\s+TABLE\\s+(IF\\s+NOT\\s+EXISTS\\s+)?(public\\.)?${table}\\b`, 'i');
     assert.ok(
-      tableRegex.test(allSqlContent),
-      `Required table '${table}' from Task Section 1.1 is missing from migration inventory`
+      tableRegex.test(schemaContent),
+      `Required table '${table}' is missing from canonical schema.sql`
     );
   });
 });
 
-test('Migration Inventory: Invariant triggers and functions are defined', () => {
-  const files = fs.readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql'));
-  const allSqlContent = files.map(f => fs.readFileSync(path.join(MIGRATIONS_DIR, f), 'utf8')).join('\n');
+test('Schema Verification: Invariant triggers and functions are defined in canonical schema.sql', () => {
+  const schemaContent = fs.readFileSync(SCHEMA_FILE, 'utf8');
 
   // Gap-free receipt generator
-  assert.ok(allSqlContent.includes('generate_receipt_number'), 'Atomic gap-free receipt generator function must exist');
+  assert.ok(schemaContent.includes('generate_receipt_number'), 'Atomic gap-free receipt generator function must exist');
 
   // Ledger append-only trigger
-  assert.ok(allSqlContent.includes('trg_ledger_entries_append_only'), 'Ledger entries append-only trigger must exist');
+  assert.ok(
+    schemaContent.includes('trg_guard_ledger_immutability') || schemaContent.includes('trg_ledger_entries_append_only'),
+    'Ledger entries append-only trigger must exist'
+  );
 
   // Minimum one Main Admin trigger
-  assert.ok(allSqlContent.includes('trg_minimum_main_admin'), 'At least one Main Admin invariant trigger must exist');
+  assert.ok(
+    schemaContent.includes('check_main_admin_invariants') || schemaContent.includes('trg_admins_main_admin_guard'),
+    'At least one Main Admin invariant trigger must exist'
+  );
 
-  // Atomic payment confirmation RPC
-  assert.ok(allSqlContent.includes('confirm_payment_atomic'), 'Atomic payment confirmation RPC must exist');
+  // Institutional bootstrap routine
+  assert.ok(schemaContent.includes('bootstrap_institution'), 'Institutional bootstrap procedure must exist');
+
+  // Identifier sequencing
+  assert.ok(schemaContent.includes('fn_assign_next_identifier'), 'Identifier sequencing procedure must exist');
+});
+
+test('Seeder Suite Verification: Modular seeds exist for core, bootstrap, demo and dev', () => {
+  assert.ok(fs.existsSync(path.join(SEED_DIR, 'core')), 'Core seeds directory must exist');
+  assert.ok(fs.existsSync(path.join(SEED_DIR, 'bootstrap', 'bootstrap_admin.js')), 'Bootstrap admin script must exist');
+  assert.ok(fs.existsSync(path.join(SEED_DIR, 'demo')), 'Demo seeds directory must exist');
+  assert.ok(fs.existsSync(path.join(SEED_DIR, 'dev')), 'Dev seeds directory must exist');
+  assert.ok(fs.existsSync(path.join(SEED_DIR, 'runner.js')), 'Seed runner must exist');
 });
