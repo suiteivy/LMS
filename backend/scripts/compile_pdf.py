@@ -1553,6 +1553,439 @@ def compile_performance_summary_report(data):
     return elements
 
 
+def compile_fee_structure(data):
+    inst_name = data.get("institution_name", "Academic Institution")
+    level_name = data.get("level_name") or data.get("level_label") or "All Levels"
+    period_name = data.get("period_name") or data.get("academic_term") or data.get("academic_year") or "Academic Period"
+    doc_title = f"Official Fee Structure – {level_name}"
+    doc_subtitle = f"Applicable Period: {period_name} · Level-Specific Schedule"
+    date_str = data.get("published_at", "")[:10] or datetime.now().strftime("%Y-%m-%d")
+    ref_no = f"FS-{str(data.get('structure_id', 'GEN'))[:8].upper()}-v{data.get('version_number', 1)}"
+
+    elements = build_header(
+        inst_name=inst_name,
+        doc_title=doc_title,
+        doc_subtitle=doc_subtitle,
+        ref_no=ref_no,
+        date_str=date_str
+    )
+
+    styles = getSampleStyleSheet()
+    label_style = ParagraphStyle('FsLbl', fontName='Helvetica-Bold', fontSize=8.5, textColor=TEXT_MUTED)
+    val_style = ParagraphStyle('FsVal', fontName='Helvetica', fontSize=9, textColor=TEXT_DARK)
+    bold_val = ParagraphStyle('FsBVal', fontName='Helvetica-Bold', fontSize=9, textColor=NAVY_DARK)
+    sec_heading = ParagraphStyle('FsSecH', fontName='Helvetica-Bold', fontSize=11, leading=14, textColor=NAVY_DARK)
+    sub_heading = ParagraphStyle('FsSubH', fontName='Helvetica-Bold', fontSize=9, leading=12, textColor=ORANGE_DARK)
+    small_text = ParagraphStyle('FsSm', fontName='Helvetica', fontSize=8, leading=11, textColor=TEXT_MUTED)
+    money_style = ParagraphStyle('FsMny', fontName='Helvetica-Bold', fontSize=9, textColor=NAVY_DARK, alignment=2)
+    header_col = ParagraphStyle('FsHCol', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK)
+    header_col_r = ParagraphStyle('FsHColR', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK, alignment=2)
+
+    currency = data.get("currency", "KES")
+    mandatory_items = data.get("mandatory_items", [])
+    optional_items = data.get("optional_items", [])
+    term_splits = data.get("term_splits", [])
+    total_mandatory = sum(float(item.get("amount", 0)) for item in mandatory_items)
+
+    # 1. Level & Period Summary Card
+    summary_data = [
+        [
+            Paragraph("Target Level / Cohort", label_style),
+            Paragraph(f"<b>{level_name}</b>", bold_val),
+            Paragraph("Billing Schedule", label_style),
+            Paragraph(period_name, val_style),
+        ],
+        [
+            Paragraph("Total Mandatory Tuition/Fees", label_style),
+            Paragraph(f"<font color='#FF6900'><b>{currency} {total_mandatory:,.2f}</b></font>", bold_val),
+            Paragraph("Structure Version / Status", label_style),
+            Paragraph(f"v{data.get('version_number', 1)} ({data.get('status', 'Published').upper()})", val_style),
+        ]
+    ]
+    summary_table = Table(summary_data, colWidths=[45 * mm, 45 * mm, 45 * mm, 45 * mm])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), BG_LIGHT),
+        ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('TOPPADDING', (0, 0), (-1, -1), 2 * mm),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2 * mm),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    elements.append(summary_table)
+    elements.append(Spacer(1, 4 * mm))
+
+    # 2. Mandatory Items (Fees Everyone Pays)
+    elements.append(Paragraph("1. Mandatory Fees (Payable for All Enrolled Students)", sec_heading))
+    elements.append(Spacer(1, 1.5 * mm))
+
+    mand_rows = [
+        [
+            Paragraph("#", header_col),
+            Paragraph("Fee Item & Description", header_col),
+            Paragraph("Category", header_col),
+            Paragraph("Frequency", header_col),
+            Paragraph("Due Date", header_col),
+            Paragraph(f"Amount ({currency})", header_col_r),
+        ]
+    ]
+    if mandatory_items:
+        for idx, item in enumerate(mandatory_items, start=1):
+            name_desc = f"<b>{item.get('name', 'Fee Item')}</b>"
+            if item.get("description"):
+                name_desc += f"<br/><font color='#57606A' size='7.5'>{item['description']}</font>"
+            due_str = item.get("due_date", "Standard")
+            mand_rows.append([
+                Paragraph(str(idx), small_text),
+                Paragraph(name_desc, val_style),
+                Paragraph(item.get("category", "General"), small_text),
+                Paragraph(item.get("billing_frequency", "Term").capitalize(), small_text),
+                Paragraph(due_str, small_text),
+                Paragraph(f"{float(item.get('amount', 0)):,.2f}", money_style),
+            ])
+        mand_rows.append([
+            Paragraph("", small_text),
+            Paragraph("<b>TOTAL MANDATORY FEES</b>", bold_val),
+            Paragraph("", small_text),
+            Paragraph("", small_text),
+            Paragraph("", small_text),
+            Paragraph(f"<font color='#FF6900'><b>{currency} {total_mandatory:,.2f}</b></font>", money_style),
+        ])
+    else:
+        mand_rows.append([
+            Paragraph("1", small_text),
+            Paragraph("No mandatory fee items configured for this structure.", val_style),
+            Paragraph("—", small_text),
+            Paragraph("—", small_text),
+            Paragraph("—", small_text),
+            Paragraph("0.00", money_style),
+        ])
+
+    mand_table = Table(mand_rows, colWidths=[10 * mm, 65 * mm, 30 * mm, 25 * mm, 22 * mm, 28 * mm])
+    mand_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), BG_LIGHT),
+        ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('TOPPADDING', (0, 0), (-1, -1), 1.6 * mm),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1.6 * mm),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+    elements.append(mand_table)
+    elements.append(Spacer(1, 4 * mm))
+
+    # 3. Optional Fees & Priced Variants
+    elements.append(Paragraph("2. Optional Services & Variant Selections", sec_heading))
+    elements.append(Spacer(1, 1.5 * mm))
+
+    opt_rows = [
+        [
+            Paragraph("Optional Service / Item", header_col),
+            Paragraph("Classification / Kind", header_col),
+            Paragraph("Options / Routes / Plans & Pricing", header_col),
+            Paragraph("Selection Rules", header_col),
+        ]
+    ]
+    if optional_items:
+        for item in optional_items:
+            name_p = f"<b>{item.get('name', 'Service')}</b>"
+            if item.get("description"):
+                name_p += f"<br/><font color='#57606A' size='7.5'>{item['description']}</font>"
+            kind_label = "Held Funds (Pocket Money)" if item.get("kind") == "held_funds" else ("Pass-Through (Exam/Third-party)" if item.get("kind") == "pass_through" else "School Service")
+            
+            variants = item.get("variants", [])
+            if variants:
+                var_text_lines = []
+                for v in variants:
+                    var_text_lines.append(f"• <b>{v.get('option_name', 'Option')}</b>: {currency} {float(v.get('price', 0)):,.2f}")
+                variant_cell = "<br/>".join(var_text_lines)
+            else:
+                variant_cell = f"Standard Rate: <b>{currency} {float(item.get('amount', 0)):,.2f}</b>"
+
+            rules = []
+            if item.get("selection_deadline"):
+                rules.append(f"Deadline: {item['selection_deadline'][:10]}")
+            if item.get("allows_quantity"):
+                rules.append(f"Quantity: {item.get('min_quantity', 1)}–{item.get('max_quantity', 1)} units")
+            rule_str = "<br/>".join(rules) if rules else "Parent Opt-in"
+
+            opt_rows.append([
+                Paragraph(name_p, val_style),
+                Paragraph(kind_label, small_text),
+                Paragraph(variant_cell, val_style),
+                Paragraph(rule_str, small_text),
+            ])
+    else:
+        opt_rows.append([
+            Paragraph("No optional items configured.", val_style),
+            Paragraph("—", small_text),
+            Paragraph("—", val_style),
+            Paragraph("—", small_text),
+        ])
+
+    opt_table = Table(opt_rows, colWidths=[50 * mm, 38 * mm, 62 * mm, 30 * mm])
+    opt_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), BG_LIGHT),
+        ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('TOPPADDING', (0, 0), (-1, -1), 1.6 * mm),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1.6 * mm),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+    elements.append(opt_table)
+    elements.append(Spacer(1, 4 * mm))
+
+    # 4. Term Splits & Instalment Schedule (if present)
+    if term_splits:
+        elements.append(Paragraph("3. Annual Term Split & Instalment Due Dates", sec_heading))
+        elements.append(Spacer(1, 1.5 * mm))
+        split_rows = [
+            [
+                Paragraph("Instalment / Term", header_col),
+                Paragraph("Proportion / Percentage", header_col),
+                Paragraph(f"Amount ({currency})", header_col_r),
+                Paragraph("Due Date", header_col),
+            ]
+        ]
+        for s in term_splits:
+            split_rows.append([
+                Paragraph(f"<b>{s.get('term_name', 'Term')}</b>", val_style),
+                Paragraph(f"{s.get('percentage', 0)}%", val_style),
+                Paragraph(f"{float(s.get('amount', 0)):,.2f}", money_style),
+                Paragraph(s.get("due_date", "Before Term Opening"), small_text),
+            ])
+        split_table = Table(split_rows, colWidths=[50 * mm, 40 * mm, 45 * mm, 45 * mm])
+        split_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), BG_LIGHT),
+            ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+            ('TOPPADDING', (0, 0), (-1, -1), 1.5 * mm),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 1.5 * mm),
+        ]))
+        elements.append(split_table)
+        elements.append(Spacer(1, 4 * mm))
+
+    # 5. Payment Instructions & Institutional Accounts
+    elements.append(Paragraph("4. Payment Instructions & Verified Channels", sec_heading))
+    elements.append(Spacer(1, 1.5 * mm))
+
+    methods = data.get("payment_methods", [
+        {"name": "M-Pesa Paybill", "details": "Business No: Contact School Office · Account: [Admission Number]"},
+        {"name": "Direct Bank Deposit", "details": "Account Name: Institutional Operations · Bank: Official Institution Partner"}
+    ])
+
+    m_rows = []
+    for m in methods:
+        m_rows.append([
+            Paragraph(f"<b>{m.get('name', 'Method')}</b>", bold_val),
+            Paragraph(m.get("details", m.get("instructions", "Remit with student admission number.")), val_style)
+        ])
+    m_table = Table(m_rows, colWidths=[50 * mm, 130 * mm])
+    m_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), BG_LIGHT),
+        ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('TOPPADDING', (0, 0), (-1, -1), 1.8 * mm),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1.8 * mm),
+    ]))
+    elements.append(m_table)
+    elements.append(Spacer(1, 4 * mm))
+
+    # 6. Notes & Sign-off
+    notes_list = [
+        "Held Funds: Pocket money and discretionary student deposits are held in trust and do not constitute school income. Unused balances are refundable upon formal clearance.",
+        "Optional Fee Opt-In: Optional services (transport, meals, trips) must be confirmed prior to the specified selection deadline.",
+        "Inquiries: Contact the Accounts & Bursar Office for clarifications on statements, balances, or bursary applications."
+    ]
+    elements.append(Paragraph("Important Institutional Notes", sub_heading))
+    elements.append(Spacer(1, 1 * mm))
+    for n in notes_list:
+        elements.append(Paragraph(f"• {n}", small_text))
+        elements.append(Spacer(1, 0.8 * mm))
+    elements.append(Spacer(1, 4 * mm))
+
+    sig_data = [
+        [
+            Paragraph("________________________________________", ParagraphStyle('FSS1', fontName='Helvetica', fontSize=8, alignment=1)),
+            Paragraph("________________________________________", ParagraphStyle('FSS2', fontName='Helvetica', fontSize=8, alignment=1)),
+        ],
+        [
+            Paragraph("Bursar / Finance Officer", ParagraphStyle('FSS3', fontName='Helvetica-Bold', fontSize=8.5, alignment=1, textColor=NAVY_DARK)),
+            Paragraph("Principal / Head of Institution", ParagraphStyle('FSS4', fontName='Helvetica-Bold', fontSize=8.5, alignment=1, textColor=NAVY_DARK)),
+        ]
+    ]
+    sig_table = Table(sig_data, colWidths=[90 * mm, 90 * mm])
+    sig_table.setStyle(TableStyle([
+        ('TOPPADDING', (0, 0), (-1, -1), 2 * mm),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1 * mm),
+    ]))
+    elements.append(KeepTogether([sig_table]))
+
+    return elements
+
+
+def compile_account_statement(data):
+    inst_name = data.get("institution_name", "Academic Institution")
+    student = data.get("student", {})
+    student_name = student.get("name") or student.get("full_name") or data.get("student_name", "Student")
+    admission_num = student.get("admission_number") or data.get("admission_number", "0001")
+    class_name = student.get("class_name") or data.get("class_name", "Unassigned")
+    doc_title = "Statement of Account"
+    doc_subtitle = "Consolidated Student Financial History & Ledger Audit"
+    date_str = data.get("generated_at", "")[:10] or datetime.now().strftime("%Y-%m-%d")
+    ref_no = f"STM-{admission_num}-{date_str.replace('-', '')}"
+
+    elements = build_header(
+        inst_name=inst_name,
+        doc_title=doc_title,
+        doc_subtitle=doc_subtitle,
+        ref_no=ref_no,
+        date_str=date_str
+    )
+
+    styles = getSampleStyleSheet()
+    label_style = ParagraphStyle('StmLbl', fontName='Helvetica-Bold', fontSize=8.5, textColor=TEXT_MUTED)
+    val_style = ParagraphStyle('StmVal', fontName='Helvetica', fontSize=9, textColor=TEXT_DARK)
+    bold_val = ParagraphStyle('StmBVal', fontName='Helvetica-Bold', fontSize=9, textColor=NAVY_DARK)
+    sec_heading = ParagraphStyle('StmSecH', fontName='Helvetica-Bold', fontSize=11, leading=14, textColor=NAVY_DARK)
+    small_text = ParagraphStyle('StmSm', fontName='Helvetica', fontSize=8, leading=10, textColor=TEXT_MUTED)
+    money_style = ParagraphStyle('StmMny', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK, alignment=2)
+    header_col = ParagraphStyle('StmHCol', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK)
+    header_col_r = ParagraphStyle('StmHColR', fontName='Helvetica-Bold', fontSize=8.5, textColor=NAVY_DARK, alignment=2)
+
+    currency = data.get("currency", "KES")
+    summary = data.get("summary", {})
+    entries = data.get("ledger_entries", [])
+
+    info_data = [
+        [
+            Paragraph("Student Name", label_style),
+            Paragraph(f"<b>{student_name}</b>", bold_val),
+            Paragraph("Admission Number", label_style),
+            Paragraph(f"<b>{admission_num}</b>", bold_val),
+        ],
+        [
+            Paragraph("Class / Cohort", label_style),
+            Paragraph(class_name, val_style),
+            Paragraph("Statement As Of", label_style),
+            Paragraph(date_str, val_style),
+        ]
+    ]
+    info_table = Table(info_data, colWidths=[40 * mm, 50 * mm, 40 * mm, 50 * mm])
+    info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), BG_LIGHT),
+        ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('TOPPADDING', (0, 0), (-1, -1), 1.8 * mm),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1.8 * mm),
+    ]))
+    elements.append(info_table)
+    elements.append(Spacer(1, 3.5 * mm))
+
+    tot_billed = float(summary.get("total_billed", 0))
+    tot_paid = float(summary.get("total_paid", 0))
+    pending_amt = float(summary.get("pending_amount", 0))
+    credit_amt = float(summary.get("credit_amount", 0))
+    held_amt = float(summary.get("held_funds_balance", 0))
+    balance_due = float(summary.get("balance_due", 0))
+
+    metric_data = [
+        [
+            Paragraph("Total Billed", label_style),
+            Paragraph(f"{currency} {tot_billed:,.2f}", bold_val),
+            Paragraph("Total Remitted", label_style),
+            Paragraph(f"<font color='#1A7F37'><b>{currency} {tot_paid:,.2f}</b></font>", bold_val),
+            Paragraph("Current Balance Due", label_style),
+            Paragraph(f"<font color='#CF222E'><b>{currency} {balance_due:,.2f}</b></font>", bold_val),
+        ],
+        [
+            Paragraph("Pending Verification", label_style),
+            Paragraph(f"{currency} {pending_amt:,.2f}", val_style),
+            Paragraph("Available Credit", label_style),
+            Paragraph(f"{currency} {credit_amt:,.2f}", val_style),
+            Paragraph("Held Funds (Pocket)", label_style),
+            Paragraph(f"{currency} {held_amt:,.2f}", val_style),
+        ]
+    ]
+    metric_table = Table(metric_data, colWidths=[30 * mm, 30 * mm, 30 * mm, 30 * mm, 30 * mm, 30 * mm])
+    metric_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), BG_LIGHT),
+        ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('TOPPADDING', (0, 0), (-1, -1), 2 * mm),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2 * mm),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    elements.append(metric_table)
+    elements.append(Spacer(1, 4 * mm))
+
+    elements.append(Paragraph("Itemized Financial Ledger Transactions", sec_heading))
+    elements.append(Spacer(1, 1.5 * mm))
+
+    entry_rows = [
+        [
+            Paragraph("Date", header_col),
+            Paragraph("Ref / Receipt #", header_col),
+            Paragraph("Description", header_col),
+            Paragraph("Type", header_col),
+            Paragraph(f"Amount ({currency})", header_col_r),
+            Paragraph(f"Balance ({currency})", header_col_r),
+        ]
+    ]
+    if entries:
+        for e in entries:
+            t_type = str(e.get("entry_type", "charge")).upper()
+            amt = float(e.get("amount", 0))
+            running_bal = float(e.get("running_balance", 0))
+            amt_str = f"+{amt:,.2f}" if amt > 0 else f"{amt:,.2f}"
+            entry_rows.append([
+                Paragraph(str(e.get("created_at", "")[:10] or date_str), small_text),
+                Paragraph(str(e.get("reference_number") or e.get("receipt_number") or "—"), small_text),
+                Paragraph(str(e.get("description", "Transaction")), val_style),
+                Paragraph(t_type, small_text),
+                Paragraph(amt_str, money_style),
+                Paragraph(f"{running_bal:,.2f}", money_style),
+            ])
+    else:
+        entry_rows.append([
+            Paragraph(date_str, small_text),
+            Paragraph("—", small_text),
+            Paragraph("No ledger transactions recorded.", val_style),
+            Paragraph("—", small_text),
+            Paragraph("0.00", money_style),
+            Paragraph("0.00", money_style),
+        ])
+
+    entry_table = Table(entry_rows, colWidths=[22 * mm, 28 * mm, 60 * mm, 22 * mm, 24 * mm, 24 * mm])
+    entry_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), BG_LIGHT),
+        ('BOX', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ('TOPPADDING', (0, 0), (-1, -1), 1.5 * mm),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1.5 * mm),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+    elements.append(entry_table)
+    elements.append(Spacer(1, 4 * mm))
+
+    sig_data = [
+        [
+            Paragraph("________________________________________", ParagraphStyle('StmS1', fontName='Helvetica', fontSize=8, alignment=1)),
+            Paragraph("________________________________________", ParagraphStyle('StmS2', fontName='Helvetica', fontSize=8, alignment=1)),
+        ],
+        [
+            Paragraph("Senior Accounts Officer / Bursar", ParagraphStyle('StmS3', fontName='Helvetica-Bold', fontSize=8.5, alignment=1, textColor=NAVY_DARK)),
+            Paragraph("Official Institutional Stamp & Date", ParagraphStyle('StmS4', fontName='Helvetica-Bold', fontSize=8.5, alignment=1, textColor=NAVY_DARK)),
+        ]
+    ]
+    sig_table = Table(sig_data, colWidths=[90 * mm, 90 * mm])
+    sig_table.setStyle(TableStyle([
+        ('TOPPADDING', (0, 0), (-1, -1), 2 * mm),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1 * mm),
+    ]))
+    elements.append(KeepTogether([sig_table]))
+
+    return elements
+
+
 def generate_pdf(doc_type, data, output_path=None):
     buffer = BytesIO() if not output_path else None
     target = output_path or buffer
@@ -1580,6 +2013,10 @@ def generate_pdf(doc_type, data, output_path=None):
         story = compile_payment_receipt(data)
     elif doc_type == "performance_summary_report":
         story = compile_performance_summary_report(data)
+    elif doc_type == "fee_structure":
+        story = compile_fee_structure(data)
+    elif doc_type in ("account_statement", "family_statement", "statement"):
+        story = compile_account_statement(data)
     else:
         raise ValueError(f"Unsupported document type: {doc_type}")
 

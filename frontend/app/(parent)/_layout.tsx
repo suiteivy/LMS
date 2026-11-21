@@ -2,7 +2,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { NavItem, WebSidebar } from "@/components/layouts/WebSideBar";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Slot, Tabs } from "expo-router";
-import { Bell, BookOpenCheck, Calendar, Clock, CreditCard, LayoutDashboard, MessageSquare, Settings } from "lucide-react-native";
+import { Bell, BookOpenCheck, Calendar, Clock, CreditCard, FileText, LayoutDashboard, MessageSquare, Settings } from "lucide-react-native";
 import { Platform, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
@@ -10,6 +10,8 @@ import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 // All nav items for web desktop persistent sidebar (includes Timetable and Assignments)
 const PARENT_SIDEBAR_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: LayoutDashboard, route: "/(parent)" },
+    { name: "finance", title: "Fees & Finance", icon: CreditCard, route: "/(parent)/finance" },
+    { name: "documents", title: "Documents", icon: FileText, route: "/(parent)/documents" },
     { name: "calendar", title: "Calendar", icon: Calendar, route: "/(parent)/calendar" },
     { name: "timetable", title: "Timetable", icon: Clock, route: "/(parent)/timetable" },
     { name: "assignments", title: "Assignments", icon: BookOpenCheck, route: "/(parent)/assignments" },
@@ -44,6 +46,7 @@ const ALL_PARENT_ROUTES = [
     "calendar",
     "clearance",
     "diary",
+    "documents",
     "exams",
     "finance",
     "grades",

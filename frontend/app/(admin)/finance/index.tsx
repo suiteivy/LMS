@@ -1,5 +1,6 @@
 import { BursariesList } from '@/components/admin/finance/BursariesList';
 import FeeStructureSection from '@/components/admin/finance/FeeStructureSection';
+import { OptionalItemsQueueSection } from '@/components/admin/finance/OptionalItemsQueueSection';
 import { PaymentManagementSection } from '@/components/admin/finance/PaymentManagementSection';
 import RevenueSection from '@/components/admin/finance/RevenueSection';
 import { IndividualRecordsSection } from '@/components/admin/finance/IndividualRecordsSection';
@@ -25,6 +26,7 @@ const TABS = [
     { key: 'payments', label: 'Payments' },
     { key: 'bursaries', label: 'Bursaries' },
     { key: 'fees', label: 'Fee Structure' },
+    { key: 'optional-queue', label: 'Optional Queue' },
     { key: 'records', label: 'Individual Records' },
     { key: 'administrators', label: 'Finance Admins' },
     { key: 'settings', label: 'Settings' },
@@ -275,6 +277,7 @@ export default function FinanceDashboard() {
                             onRefresh={onRefresh}
                         />
                     )}
+                    {activeTab === 'optional-queue' && <OptionalItemsQueueSection />}
                     {activeTab === 'records' && <IndividualRecordsSection />}
                     {activeTab === 'administrators' && <FinanceDesignationSection />}
                     {activeTab === 'settings' && <FinanceSettingsSection />}

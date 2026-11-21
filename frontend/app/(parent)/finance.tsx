@@ -25,6 +25,7 @@ import {
 import { PdfPreviewModal } from "@/components/pdf/PdfPreviewModal";
 import { InvoiceReceiptService, StudentFeeInvoice } from "@/services/InvoiceReceiptService";
 import { RecordPaymentModal } from "@/components/parent/finance/RecordPaymentModal";
+import { ChooseOptionalFeesModal } from "@/components/parent/finance/ChooseOptionalFeesModal";
 
 type LinkedStudent = {
   id: string;
@@ -69,8 +70,33 @@ export default function ParentFinancePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showRecordModal, setShowRecordModal] = useState(false);
+  const [showOptionalModal, setShowOptionalModal] = useState(false);
   const [previewPayload, setPreviewPayload] = useState<any | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+  const handlePreviewFeeStructure = () => {
+    if (!selectedStudent?.id) return;
+    setPreviewPayload({
+      documentType: 'fee_structure',
+      title: `${selectedName} — Fee Structure`,
+      fileName: `fee-structure-${selectedName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf`,
+      data: {
+        student_id: selectedStudent.id,
+      },
+    });
+  };
+
+  const handlePreviewAccountStatement = () => {
+    if (!selectedStudent?.id) return;
+    setPreviewPayload({
+      documentType: 'account_statement',
+      title: `${selectedName} — Statement of Account`,
+      fileName: `account-statement-${selectedName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf`,
+      data: {
+        student_id: selectedStudent.id,
+      },
+    });
+  };
 
   const { formatAmount } = useCurrency();
   const { isDark } = useTheme();
@@ -315,6 +341,53 @@ export default function ParentFinancePage() {
                   </TouchableOpacity>
                 </View>
 
+                {/* Official Documents & Optional Services Card */}
+                <View className="bg-white dark:bg-[#161B22] p-6 rounded-[32px] mb-6 border border-gray-100 dark:border-gray-800 shadow-sm gap-4">
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center gap-2">
+                      <FileText size={18} color="#FF6900" />
+                      <Text className="text-gray-900 dark:text-white font-bold text-base">Fee Services & Official Documents</Text>
+                    </View>
+                    {currentChildSummary?.held_funds_balance ? (
+                      <View className="bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-full border border-indigo-200 dark:border-indigo-800">
+                        <Text className="text-[10px] font-black text-indigo-700 dark:text-indigo-400">
+                          Held Funds: {formatAmount(currentChildSummary.held_funds_balance)}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  <Text className="text-gray-500 dark:text-gray-400 text-xs">
+                    Choose optional school services (transport, meals, activities) or download official vector PDF statements.
+                  </Text>
+
+                  <View className="flex-row flex-wrap gap-2.5">
+                    <TouchableOpacity
+                      onPress={() => setShowOptionalModal(true)}
+                      className="flex-1 min-w-[140px] bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/50 p-3 rounded-2xl flex-row items-center justify-center gap-2"
+                    >
+                      <Plus size={16} color="#FF6900" />
+                      <Text className="text-[#FF6900] text-xs font-black">Choose Optional Fees</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={handlePreviewFeeStructure}
+                      className="flex-1 min-w-[140px] bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-3 rounded-2xl flex-row items-center justify-center gap-2"
+                    >
+                      <Download size={16} color={isDark ? '#FFFFFF' : '#111827'} />
+                      <Text className="text-gray-900 dark:text-white text-xs font-black">Fee Structure PDF</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={handlePreviewAccountStatement}
+                      className="flex-1 min-w-[140px] bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-3 rounded-2xl flex-row items-center justify-center gap-2"
+                    >
+                      <Download size={16} color={isDark ? '#FFFFFF' : '#111827'} />
+                      <Text className="text-gray-900 dark:text-white text-xs font-black">Account Statement</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
                 {/* Submissions & Payment History Section */}
                 <View className="mb-8">
                   <View className="px-1 mb-3 flex-row items-center justify-between">
@@ -455,6 +528,17 @@ export default function ParentFinancePage() {
         linkedStudents={linkedStudents}
         preselectedStudentId={selectedStudent?.id}
       />
+
+      {/* Choose Optional Fees Modal */}
+      {selectedStudent && (
+        <ChooseOptionalFeesModal
+          visible={showOptionalModal}
+          studentId={selectedStudent.id}
+          studentName={selectedName}
+          onClose={() => setShowOptionalModal(false)}
+          onSaved={() => onRefresh()}
+        />
+      )}
 
       {/* PDF Preview Modal */}
       <PdfPreviewModal

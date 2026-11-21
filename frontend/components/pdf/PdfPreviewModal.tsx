@@ -13,6 +13,15 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { PdfService, PdfDocumentPayload } from '@/services/PdfService';
 import { DetailSkeleton } from '@/components/ui/skeletons';
 
+let NativeWebView: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    NativeWebView = require('react-native-webview').WebView;
+  } catch (e) {
+    console.warn('Failed to load react-native-webview:', e);
+  }
+}
+
 export interface PdfPreviewModalProps {
   visible: boolean;
   payload?: PdfDocumentPayload | null;
@@ -56,6 +65,59 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
 
   const activePdfBase64 = effectivePayload?.pdfBase64 || compiledBase64;
   const activeHtml = effectivePayload?.html;
+
+  const mobileHtml = React.useMemo(() => {
+    if (activeHtml) return activeHtml;
+    if (!activePdfBase64) return null;
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 12px; background-color: ${isDark ? '#0D1117' : '#525659'}; display: flex; flex-direction: column; align-items: center; }
+    .page-container { width: 100%; display: flex; justify-content: center; margin-bottom: 14px; }
+    canvas { width: 100%; max-width: 800px; height: auto; box-shadow: 0 4px 14px rgba(0,0,0,0.4); background: #ffffff; border-radius: 6px; }
+    #status { color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; padding: 24px; text-align: center; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+  <div id="status">Loading Vector PDF Preview...</div>
+  <div id="viewer" style="width: 100%; max-width: 800px;"></div>
+  <script>
+    try {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const raw = atob("${activePdfBase64}");
+      const uint8Array = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) {
+        uint8Array[i] = raw.charCodeAt(i);
+      }
+      pdfjsLib.getDocument({ data: uint8Array }).promise.then(function(pdf) {
+        document.getElementById('status').style.display = 'none';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          pdf.getPage(i).then(function(page) {
+            const viewport = page.getViewport({ scale: 2.0 });
+            const container = document.createElement('div');
+            container.className = 'page-container';
+            const canvas = document.createElement('canvas');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            container.appendChild(canvas);
+            document.getElementById('viewer').appendChild(container);
+            page.render({ canvasContext: canvas.getContext('2d'), viewport: viewport });
+          });
+        }
+      }).catch(function(e) {
+        document.getElementById('status').innerText = 'Could not render PDF preview: ' + e.message;
+      });
+    } catch(err) {
+      document.getElementById('status').innerText = 'Error loading document: ' + err.message;
+    }
+  </script>
+</body>
+</html>`;
+  }, [activeHtml, activePdfBase64, isDark]);
 
   React.useEffect(() => {
     if (!visible || !effectivePayload) return;
@@ -103,14 +165,6 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
   }, [visible, effectivePayload?.documentType, JSON.stringify(effectivePayload?.data), retryCount]);
 
   if (!visible || !effectivePayload) return null;
-
-  // On native mobile, bypass modal and immediately trigger native download/share
-  if (Platform.OS !== 'web') {
-    PdfService.downloadCompiledPdf(effectivePayload)
-      .catch((err) => console.error('Mobile PDF download error:', err))
-      .finally(onClose);
-    return null;
-  }
 
   const bg = isDark ? '#161B22' : '#FFFFFF';
   const headerBg = isDark ? '#0D1117' : '#F6F8FA';
@@ -304,44 +358,67 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
                   <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Retry Preview</Text>
                 </TouchableOpacity>
               </View>
-            ) : activePdfBase64 ? (
-              <iframe
-                src={`data:application/pdf;base64,${activePdfBase64}`}
-                style={{
-                  width: `${zoomLevel}%`,
-                  height: '100%',
-                  maxWidth: 820 * (zoomLevel / 100),
-                  border: `1px solid ${border}`,
-                  borderRadius: 8,
-                  backgroundColor: '#FFFFFF',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                  transition: 'width 0.15s ease, max-width 0.15s ease',
-                }}
-                title="PDF Vector Preview"
-              />
-            ) : activeHtml ? (
-              <iframe
-                srcDoc={activeHtml}
-                style={{
-                  width: `${zoomLevel}%`,
-                  height: '100%',
-                  maxWidth: 820 * (zoomLevel / 100),
-                  border: `1px solid ${border}`,
-                  borderRadius: 8,
-                  backgroundColor: '#FFFFFF',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                  transition: 'width 0.15s ease, max-width 0.15s ease',
-                }}
-                title="PDF Preview"
-              />
+            ) : Platform.OS === 'web' ? (
+              activePdfBase64 ? (
+                <iframe
+                  src={`data:application/pdf;base64,${activePdfBase64}`}
+                  style={{
+                    width: `${zoomLevel}%`,
+                    height: '100%',
+                    maxWidth: 820 * (zoomLevel / 100),
+                    border: `1px solid ${border}`,
+                    borderRadius: 8,
+                    backgroundColor: '#FFFFFF',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                    transition: 'width 0.15s ease, max-width 0.15s ease',
+                  }}
+                  title="PDF Vector Preview"
+                />
+              ) : activeHtml ? (
+                <iframe
+                  srcDoc={activeHtml}
+                  style={{
+                    width: `${zoomLevel}%`,
+                    height: '100%',
+                    maxWidth: 820 * (zoomLevel / 100),
+                    border: `1px solid ${border}`,
+                    borderRadius: 8,
+                    backgroundColor: '#FFFFFF',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                    transition: 'width 0.15s ease, max-width 0.15s ease',
+                  }}
+                  title="PDF Preview"
+                />
+              ) : (
+                <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+                  <Ionicons name="document-text-outline" size={64} color={textSecondary} />
+                  <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 16, marginTop: 12 }}>
+                    {effectivePayload.title}
+                  </Text>
+                  <Text style={{ color: textSecondary, fontSize: 12, marginTop: 4 }}>
+                    Ready to compile high-fidelity vector PDF.
+                  </Text>
+                </View>
+              )
+            ) : NativeWebView && mobileHtml ? (
+              <View style={{ width: '100%', height: '100%', borderRadius: 8, overflow: 'hidden' }}>
+                <NativeWebView
+                  source={{ html: mobileHtml }}
+                  style={{ flex: 1, backgroundColor: 'transparent' }}
+                  originWhitelist={['*']}
+                  javaScriptEnabled={true}
+                  domStorageEnabled={true}
+                  scalesPageToFit={true}
+                />
+              </View>
             ) : (
-              <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
-                <Ionicons name="document-text-outline" size={64} color={textSecondary} />
+              <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1, padding: 20 }}>
+                <Ionicons name="document-text-outline" size={64} color="#FF6900" />
                 <Text style={{ color: textPrimary, fontWeight: '700', fontSize: 16, marginTop: 12 }}>
                   {effectivePayload.title}
                 </Text>
-                <Text style={{ color: textSecondary, fontSize: 12, marginTop: 4 }}>
-                  Ready to compile high-fidelity vector PDF.
+                <Text style={{ color: textSecondary, fontSize: 12, marginTop: 4, textAlign: 'center' }}>
+                  Tap Download PDF below to save or view the official document on your device.
                 </Text>
               </View>
             )}

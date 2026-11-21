@@ -4228,18 +4228,43 @@ exports.getChildPayableItems = async (req, res) => {
 
         const student = linkedStudents.find(s => s.id === studentId);
         const classId = student?.class_id;
+        const studentLevel = student?.grade_level || student?.form_level;
+
+        // Fetch student's optional selections
+        const { data: selections } = await supabase
+            .from('student_optional_selections')
+            .select('*, variant:fee_item_variants(option_name, price)')
+            .eq('student_id', studentId)
+            .eq('institution_id', institution_id);
+
+        const selectionMap = new Map();
+        (selections || []).forEach(s => {
+            selectionMap.set(s.fee_type_id, s);
+        });
 
         const payableItems = (feeTypes || []).filter(ft => {
             const rules = ft.fee_type_applicability || [];
             if (!rules.length) return true; // Whole school default
             return rules.some(r => {
                 if (r.scope_type === 'school') return true;
+                if (r.scope_type === 'level' && String(r.scope_id) === String(studentLevel)) return true;
                 if (r.scope_type === 'class' && r.scope_id === classId) return true;
                 if (r.scope_type === 'student' && r.scope_id === studentId) return true;
                 return false;
             });
         }).map(ft => {
-            const fullAmount = Number(ft.amount) || 0;
+            const selection = selectionMap.get(ft.id);
+            const isOptional = Boolean(ft.is_optional || !ft.is_mandatory);
+            const isChosen = selection && selection.status !== 'not_chosen' && selection.status !== 'opt_out_confirmed';
+
+            let fullAmount = Number(ft.amount) || 0;
+            let variantName = null;
+
+            if (isOptional && isChosen && selection.total_price) {
+                fullAmount = Number(selection.total_price);
+                variantName = selection.variant?.option_name || null;
+            }
+
             const alreadyPaid = paidByFeeType.get(ft.id) || 0;
             const outstanding = Math.max(0, fullAmount - alreadyPaid);
 
@@ -4247,14 +4272,20 @@ exports.getChildPayableItems = async (req, res) => {
                 id: ft.id,
                 name: ft.name,
                 category: ft.fee_categories?.name || 'General Fees',
+                kind: ft.kind || 'fee',
                 total_amount: fullAmount,
                 already_paid: alreadyPaid,
                 outstanding_balance: outstanding,
-                is_mandatory: ft.is_mandatory,
+                is_mandatory: !isOptional,
+                is_optional: isOptional,
+                is_chosen: isChosen,
+                is_held_funds: ft.kind === 'held_funds',
+                variant_name: variantName,
                 partial_payment_allowed: ft.partial_payment_allowed,
                 min_installment: ft.min_installment_amount || 0,
                 due_date: ft.due_date,
-                notes: ft.parent_notes
+                notes: ft.parent_notes,
+                selection_status: selection?.status || (isOptional ? 'not_chosen' : 'mandatory')
             };
         });
 
@@ -4554,4 +4585,36 @@ exports.getOfficialReceiptBase64 = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+// ==========================================
+// UNIFIED FEE STRUCTURE & OPTIONAL ITEMS RE-EXPORTS
+// ==========================================
+const feeStructureController = require('./feeStructure.controller.js');
+
+exports.getFeeStructuresV2 = feeStructureController.getFeeStructuresV2;
+exports.getFeeStructureDetails = feeStructureController.getFeeStructureDetails;
+exports.createFeeStructureV2 = feeStructureController.createFeeStructureV2;
+exports.updateFeeStructureV2 = feeStructureController.updateFeeStructureV2;
+exports.copyFeeStructure = feeStructureController.copyFeeStructure;
+exports.bulkPercentageIncrease = feeStructureController.bulkPercentageIncrease;
+exports.publishFeeStructure = feeStructureController.publishFeeStructure;
+exports.getParentViewPreview = feeStructureController.getParentViewPreview;
+exports.compileFeeStructurePdf = feeStructureController.compileFeeStructurePdf;
+exports.compileFeeStructureBase64 = feeStructureController.compileFeeStructureBase64;
+exports.getOptionCatalogs = feeStructureController.getOptionCatalogs;
+exports.createOptionCatalog = feeStructureController.createOptionCatalog;
+exports.updateOptionCatalog = feeStructureController.updateOptionCatalog;
+exports.deleteOptionCatalog = feeStructureController.deleteOptionCatalog;
+exports.bulkImportCatalogs = feeStructureController.bulkImportCatalogs;
+exports.getOptionalItemsQueue = feeStructureController.getOptionalItemsQueue;
+exports.confirmOptOut = feeStructureController.confirmOptOut;
+exports.markTakingItem = feeStructureController.markTakingItem;
+exports.bulkConfirmOptionalItems = feeStructureController.bulkConfirmOptionalItems;
+exports.sendOptionalItemReminder = feeStructureController.sendOptionalItemReminder;
+exports.getOperationalRosters = feeStructureController.getOperationalRosters;
+exports.getParentChildFeeStructure = feeStructureController.getParentChildFeeStructure;
+exports.saveChildOptionalSelections = feeStructureController.saveChildOptionalSelections;
+exports.getStudentStatementPdf = feeStructureController.getStudentStatementPdf;
+exports.getStudentStatementBase64 = feeStructureController.getStudentStatementBase64;
+
 

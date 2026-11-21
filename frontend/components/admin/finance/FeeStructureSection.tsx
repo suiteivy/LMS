@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { ClassService } from '@/services/ClassService';
 import { GradingAPI } from '@/services/GradingService';
 import { FinanceService } from '@/services/FinanceService';
+import { PdfPreviewModal } from '@/components/pdf/PdfPreviewModal';
 import { supabase } from '@/libs/supabase';
 import { FeeStructure } from '@/types/types';
 import { Eye, Search, X, Users, Check } from 'lucide-react-native';
@@ -94,6 +95,11 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
   const [previewPayableItems, setPreviewPayableItems] = useState<any[]>([]);
   const [loadingPreviewItems, setLoadingPreviewItems] = useState(false);
 
+  // PDF Preview State
+  const [pdfModalVisible, setPdfModalVisible] = useState(false);
+  const [selectedPdfPayload, setSelectedPdfPayload] = useState<any>(null);
+  const [copyPickerVisible, setCopyPickerVisible] = useState(false);
+
   const [formData, setFormData] = useState({
     title: '',
     amount: '',
@@ -109,7 +115,14 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     level_value: '',
     level_from: '',
     level_to: '',
-    components: [] as Array<{ id?: string; name: string; amount: string; category: string; is_optional?: boolean }>,
+    components: [] as Array<{
+      id?: string;
+      name: string;
+      amount: string;
+      category: string;
+      is_optional?: boolean;
+      kind?: 'fee' | 'held_funds' | 'pass_through';
+    }>,
   });
 
   useEffect(() => {
@@ -340,6 +353,39 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
     });
   };
 
+  const handleBulkIncrease = (percent: number) => {
+    const factor = 1 + percent / 100;
+    setFormData((prev) => {
+      const updated = prev.components.map((c) => ({
+        ...c,
+        amount: String(Math.round((Number(c.amount) || 0) * factor)),
+      }));
+      const totalFromComponents = updated.reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
+      return {
+        ...prev,
+        components: updated,
+        amount: updated.length > 0 ? String(totalFromComponents) : String(Math.round((Number(prev.amount) || 0) * factor)),
+      };
+    });
+  };
+
+  const handleCopyFromStructure = (source: FeeStructure) => {
+    const sourceComps = (source as any).components || [];
+    setFormData((prev) => ({
+      ...prev,
+      title: `${(source as any).title || (source as any).Subject_name} (Copy)`,
+      amount: String((source as any).amount ?? (source as any).base_fee ?? ''),
+      components: sourceComps.map((c: any) => ({
+        name: c.name,
+        amount: String(c.amount ?? 0),
+        category: c.category || 'tuition',
+        is_optional: !!c.is_optional,
+        kind: c.kind || 'fee',
+      })),
+    }));
+    setCopyPickerVisible(false);
+  };
+
   const parseAmount = () => {
     const cleaned = formData.amount.replace(/,/g, '').trim();
     const numeric = Number(cleaned);
@@ -416,6 +462,7 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
             amount: Number(c.amount) || 0,
             category: c.category,
             is_optional: !!c.is_optional,
+            kind: c.kind || 'fee',
           }))
         : undefined,
     };
@@ -638,6 +685,26 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
               >
                 <Text className="text-white text-[10px] font-black uppercase tracking-widest">
                   {isReleased ? 'Revert Release' : 'Release'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedPdfPayload({
+                    documentType: 'fee_structure',
+                    title: `${title} Fee Structure`,
+                    fileName: `fee-structure-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf`,
+                    data: {
+                      fee_structure_id: (item as any).id,
+                      academic_year_id: (item as any).academic_year_id,
+                      term_id: (item as any).term_id,
+                    },
+                  });
+                  setPdfModalVisible(true);
+                }}
+                className="p-1 px-3 rounded-xl bg-[#FF6900]"
+              >
+                <Text className="text-white text-[10px] font-black uppercase tracking-widest">
+                  PDF
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1016,12 +1083,38 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                     <Text className="text-gray-900 dark:text-white font-bold text-sm">Itemized Fee Components</Text>
                     <Text className="text-gray-500 text-xs">Breakdown by tuition, transport, meals, exam fees, etc.</Text>
                   </View>
-                  <TouchableOpacity
-                    onPress={addComponentRow}
-                    className="bg-indigo-600 px-3 py-1.5 rounded-xl flex-row items-center"
-                  >
-                    <Text className="text-white text-xs font-bold">+ Add Item</Text>
-                  </TouchableOpacity>
+                  <View className="flex-row items-center gap-1.5">
+                    {feeStructures.length > 0 && (
+                      <TouchableOpacity
+                        onPress={() => setCopyPickerVisible(true)}
+                        className="bg-gray-200 dark:bg-gray-700 px-2 py-1.5 rounded-xl"
+                      >
+                        <Text className="text-gray-800 dark:text-gray-200 text-[10px] font-bold">Copy From</Text>
+                      </TouchableOpacity>
+                    )}
+                    {formData.components.length > 0 && (
+                      <>
+                        <TouchableOpacity
+                          onPress={() => handleBulkIncrease(5)}
+                          className="bg-emerald-500/20 px-2 py-1.5 rounded-xl"
+                        >
+                          <Text className="text-emerald-500 text-[10px] font-bold">+5%</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => handleBulkIncrease(10)}
+                          className="bg-emerald-500/20 px-2 py-1.5 rounded-xl"
+                        >
+                          <Text className="text-emerald-500 text-[10px] font-bold">+10%</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                    <TouchableOpacity
+                      onPress={addComponentRow}
+                      className="bg-indigo-600 px-3 py-1.5 rounded-xl flex-row items-center"
+                    >
+                      <Text className="text-white text-xs font-bold">+ Add Item</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 {formData.components.map((c, idx) => (
@@ -1050,6 +1143,50 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
                         className="bg-red-500/20 px-2.5 py-2 rounded-xl"
                       >
                         <Text className="text-red-500 font-black text-xs">X</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Kind and Optional Toggles */}
+                    <View className="flex-row items-center justify-between mb-2">
+                      {/* Kind Selector */}
+                      <View className="flex-row items-center gap-1">
+                        {[
+                          { id: 'fee', label: 'Standard' },
+                          { id: 'held_funds', label: 'Held Funds' },
+                          { id: 'pass_through', label: 'Pass-Through' },
+                        ].map((k) => (
+                          <TouchableOpacity
+                            key={k.id}
+                            onPress={() => updateComponentField(idx, 'kind', k.id)}
+                            className={`px-2 py-0.5 rounded-md ${
+                              (c.kind || 'fee') === k.id ? 'bg-[#FF6900]' : 'bg-gray-200 dark:bg-gray-700'
+                            }`}
+                          >
+                            <Text
+                              className={`text-[9px] font-bold ${
+                                (c.kind || 'fee') === k.id ? 'text-white' : 'text-gray-600 dark:text-gray-300'
+                              }`}
+                            >
+                              {k.label}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+
+                      {/* Optional Toggle */}
+                      <TouchableOpacity
+                        onPress={() => updateComponentField(idx, 'is_optional', !c.is_optional)}
+                        className={`px-2.5 py-1 rounded-lg ${
+                          c.is_optional ? 'bg-amber-500/20 border border-amber-500/50' : 'bg-blue-500/20 border border-blue-500/50'
+                        }`}
+                      >
+                        <Text
+                          className={`text-[10px] font-bold ${
+                            c.is_optional ? 'text-amber-500' : 'text-blue-500'
+                          }`}
+                        >
+                          {c.is_optional ? 'Optional Choice' : 'Mandatory Fee'}
+                        </Text>
                       </TouchableOpacity>
                     </View>
 
@@ -1258,6 +1395,44 @@ const FeeStructureSection: React.FC<FeeStructureSectionProps> = ({
           </View>
         </View>
       </Modal>
+
+      {/* Copy From Previous Modal */}
+      <Modal visible={copyPickerVisible} transparent animationType="fade" onRequestClose={() => setCopyPickerVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View className="bg-white dark:bg-[#161B22] rounded-2xl p-5 w-full max-w-md border border-gray-200 dark:border-gray-800">
+            <Text className="text-gray-900 dark:text-white font-black text-base mb-2">Copy Structure Components</Text>
+            <Text className="text-gray-500 text-xs mb-4">Select an existing structure to copy components and base prices:</Text>
+            <ScrollView style={{ maxHeight: 300 }}>
+              {feeStructures.map((s: any) => (
+                <TouchableOpacity
+                  key={s.id}
+                  onPress={() => handleCopyFromStructure(s)}
+                  className="p-3 mb-2 rounded-xl bg-gray-50 dark:bg-[#0D1117] border border-gray-200 dark:border-gray-800 flex-row justify-between items-center"
+                >
+                  <View>
+                    <Text className="text-gray-900 dark:text-white font-bold text-xs">{s.title || s.Subject_name}</Text>
+                    <Text className="text-gray-500 text-[10px]">{s.academic_year || 'Year'} · {s.term || 'Term'}</Text>
+                  </View>
+                  <Text className="text-[#FF6900] font-black text-xs">{formatAmount(s.amount ?? s.base_fee ?? 0)}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity
+              onPress={() => setCopyPickerVisible(false)}
+              className="mt-3 py-2.5 rounded-xl bg-gray-200 dark:bg-gray-800 items-center"
+            >
+              <Text className="text-gray-700 dark:text-gray-300 font-bold text-xs">Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Vector PDF Preview Modal */}
+      <PdfPreviewModal
+        visible={pdfModalVisible}
+        payload={selectedPdfPayload}
+        onClose={() => setPdfModalVisible(false)}
+      />
     </View>
   );
 };

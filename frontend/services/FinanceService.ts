@@ -461,4 +461,150 @@ export class FinanceService {
         const response = await api.post(`/finance/receipts/${encodeURIComponent(receiptId)}/compile-base64`, {});
         return response.data;
     }
+
+    /**
+     * ==========================================
+     * RECONCILED LEVEL-SPECIFIC FEE STRUCTURES & BUILDER
+     * ==========================================
+     */
+
+    static async getFeeStructuresV2(params?: { academic_year_id?: string; term_id?: string; status?: string }): Promise<any[]> {
+        const response = await api.get('/finance/structures-v2', { params });
+        return response.data || [];
+    }
+
+    static async getFeeStructureDetails(id: string): Promise<any> {
+        const response = await api.get(`/finance/structures-v2/${encodeURIComponent(id)}/details`);
+        return response.data;
+    }
+
+    static async createFeeStructureV2(payload: any): Promise<any> {
+        const response = await api.post('/finance/structures-v2', payload);
+        return response.data;
+    }
+
+    static async updateFeeStructureV2(id: string, payload: any): Promise<any> {
+        const response = await api.put(`/finance/structures-v2/${encodeURIComponent(id)}`, payload);
+        return response.data;
+    }
+
+    static async copyFeeStructure(id: string, payload: any): Promise<any> {
+        const response = await api.post(`/finance/structures-v2/${encodeURIComponent(id)}/copy`, payload);
+        return response.data;
+    }
+
+    static async bulkPercentageIncrease(payload: { structure_ids: string[]; percentage: number; preview_only?: boolean }): Promise<any> {
+        const response = await api.post('/finance/structures-v2/bulk-increase', payload);
+        return response.data;
+    }
+
+    static async publishFeeStructure(id: string): Promise<any> {
+        const response = await api.post(`/finance/structures-v2/${encodeURIComponent(id)}/publish`);
+        return response.data;
+    }
+
+    static async getParentViewPreview(id: string): Promise<any> {
+        const response = await api.get(`/finance/structures-v2/${encodeURIComponent(id)}/parent-preview`);
+        return response.data;
+    }
+
+    static async compileFeeStructureBase64(id: string): Promise<{ base64: string; filename: string }> {
+        const response = await api.post(`/finance/structures-v2/${encodeURIComponent(id)}/compile-base64`);
+        return response.data;
+    }
+
+    /**
+     * ==========================================
+     * REUSABLE OPTION CATALOGS & PRICING MATRICES
+     * ==========================================
+     */
+
+    static async getOptionCatalogs(catalog_type?: string): Promise<any[]> {
+        const response = await api.get('/finance/catalogs', { params: catalog_type ? { catalog_type } : undefined });
+        return response.data || [];
+    }
+
+    static async createOptionCatalog(payload: { catalog_type: string; name: string; code?: string; details?: any; display_order?: number }): Promise<any> {
+        const response = await api.post('/finance/catalogs', payload);
+        return response.data;
+    }
+
+    static async updateOptionCatalog(id: string, payload: any): Promise<any> {
+        const response = await api.put(`/finance/catalogs/${encodeURIComponent(id)}`, payload);
+        return response.data;
+    }
+
+    static async deleteOptionCatalog(id: string): Promise<any> {
+        const response = await api.delete(`/finance/catalogs/${encodeURIComponent(id)}`);
+        return response.data;
+    }
+
+    static async bulkImportCatalogs(items: any[]): Promise<any> {
+        const response = await api.post('/finance/catalogs/bulk-import', { items });
+        return response.data;
+    }
+
+    /**
+     * ==========================================
+     * OPTIONAL ITEMS REVIEW QUEUE (Admin)
+     * ==========================================
+     */
+
+    static async getOptionalItemsQueue(params?: { status?: string; fee_type_id?: string; grade_level?: string | number; class_id?: string }): Promise<any[]> {
+        const response = await api.get('/finance/optional-queue', { params });
+        return response.data || [];
+    }
+
+    static async confirmOptOut(selectionId: string, payload?: { admin_notes?: string; opt_out_reason?: string }): Promise<any> {
+        const response = await api.post(`/finance/optional-queue/${encodeURIComponent(selectionId)}/confirm-opt-out`, payload || {});
+        return response.data;
+    }
+
+    static async markTakingItem(payload: { student_id: string; fee_type_id: string; variant_id?: string; quantity?: number; admin_notes?: string }): Promise<any> {
+        const response = await api.post('/finance/optional-queue/mark-taking', payload);
+        return response.data;
+    }
+
+    static async bulkConfirmOptionalItems(payload: { action: 'confirm_opt_out' | 'mark_taking'; selection_ids: string[]; admin_notes?: string }): Promise<any> {
+        const response = await api.post('/finance/optional-queue/bulk-confirm', payload);
+        return response.data;
+    }
+
+    static async sendOptionalItemReminder(selectionId: string): Promise<any> {
+        const response = await api.post(`/finance/optional-queue/${encodeURIComponent(selectionId)}/remind`);
+        return response.data;
+    }
+
+    static async getOperationalRosters(params: { catalog_type?: string; catalog_id?: string }): Promise<any[]> {
+        const response = await api.get('/finance/optional-queue/rosters', { params });
+        return response.data || [];
+    }
+
+    /**
+     * ==========================================
+     * PARENT OPTIONAL SELECTIONS & STATEMENTS
+     * ==========================================
+     */
+
+    static async getParentChildFeeStructure(studentId: string): Promise<any> {
+        const response = await api.get(`/finance/parent/child/${encodeURIComponent(studentId)}/fee-structure`);
+        return response.data;
+    }
+
+    static async saveChildOptionalSelections(studentId: string, selections: Array<{
+        fee_type_id: string;
+        variant_id?: string | null;
+        catalog_id?: string | null;
+        quantity?: number;
+        is_opt_out?: boolean;
+        opt_out_reason?: string;
+    }>): Promise<any> {
+        const response = await api.post(`/finance/parent/child/${encodeURIComponent(studentId)}/optional-selections`, { selections });
+        return response.data;
+    }
+
+    static async getStudentStatementBase64(studentId: string): Promise<{ base64: string; filename: string }> {
+        const response = await api.post(`/finance/parent/statement/${encodeURIComponent(studentId)}/compile-base64`);
+        return response.data;
+    }
 }

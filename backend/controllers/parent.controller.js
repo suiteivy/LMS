@@ -1,4 +1,5 @@
 const supabase = require("../utils/supabaseClient.js");
+const LedgerService = require('../services/ledger.service.js');
 const { buildClassLabel } = require('../utils/classLabel');
 const { resolveActiveTerm } = require('../utils/resolveActiveTerm');
 const { getStudentCurrentClassEnrollment } = require('../utils/studentClassEnrollment');
@@ -304,21 +305,17 @@ exports.getStudentFinance = async (req, res) => {
             discounts = [];
         }
 
-        const assessment = await computeStudentFinancialAssessment({
-            institution_id: student.institution_id,
-            student: effectiveStudent,
-            activeTerm,
-            feeStructures: feeStructureRows || [],
-            payments: paymentRows || [],
-            discounts,
-        });
-
-        const totalFees = roundCurrency(assessment.netAssessed);
-        const grossFees = roundCurrency(assessment.grossAmount);
-        const totalDiscount = roundCurrency(assessment.totalDiscount);
-        const paidAmount = roundCurrency(assessment.totalPaid);
-        const balance = roundCurrency(assessment.netBalance);
-        const pendingAmount = Math.max(balance, 0);
+        // 6. Compute financial summary strictly from immutable ledger
+        const ledgerSummary = await LedgerService.getStudentSummary(studentId, student.institution_id);
+        const totalFees = roundCurrency(Number(ledgerSummary?.total_billed || 0));
+        const paidAmount = roundCurrency(Number(ledgerSummary?.total_paid || 0));
+        const balance = roundCurrency(Number(ledgerSummary?.balance_due || 0));
+        const pendingAmount = roundCurrency(Number(ledgerSummary?.pending_amount || 0));
+        const creditAmount = roundCurrency(Number(ledgerSummary?.credit_amount || 0));
+        const heldFundsBalance = roundCurrency(Number(ledgerSummary?.held_funds_balance || 0));
+        const optionalUnpaidAmount = roundCurrency(Number(ledgerSummary?.optional_unpaid_amount || 0));
+        const grossFees = totalFees;
+        const totalDiscount = creditAmount;
 
         const enrichedTransactions = (paymentRows || []).map((p) => ({
             id: p.id,
@@ -368,10 +365,12 @@ exports.getStudentFinance = async (req, res) => {
             paid_amount: paidAmount,
             pending_amount: pendingAmount,
             paid_percentage: paidPercentage,
-            matched_tier: assessment.matchedTier,
-            fee_structures: assessment.feeStructure ? [assessment.feeStructure] : [],
-            components: assessment.components || [],
-            discounts: assessment.appliedDiscounts || [],
+            credit_amount: creditAmount,
+            held_funds_balance: heldFundsBalance,
+            optional_unpaid_amount: optionalUnpaidAmount,
+            matched_tier: 'ledger_unified',
+            fee_structures: feeStructureRows || [],
+            discounts,
             invoices,
             transactions: enrichedTransactions,
         });

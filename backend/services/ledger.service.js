@@ -218,6 +218,8 @@ class LedgerService {
     let total_paid = 0;
     let total_pending = 0;
     let total_credit = 0;
+    let total_held_funds = 0;
+    let total_optional_unpaid = 0;
 
     summaries.forEach(s => {
       total_balance += Number(s.balance_due || 0);
@@ -225,6 +227,8 @@ class LedgerService {
       total_paid += Number(s.total_paid || 0);
       total_pending += Number(s.pending_amount || 0);
       total_credit += Number(s.credit_amount || 0);
+      total_held_funds += Number(s.held_funds_balance || 0);
+      total_optional_unpaid += Number(s.optional_unpaid_amount || 0);
     });
 
     return {
@@ -233,6 +237,8 @@ class LedgerService {
       total_paid,
       total_pending,
       total_credit,
+      total_held_funds,
+      total_optional_unpaid,
       children: summaries
     };
   }

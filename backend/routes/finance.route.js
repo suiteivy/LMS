@@ -69,7 +69,33 @@ const {
     recordParentPayment,
     getParentPaymentHistory,
     getOfficialReceiptPdf,
-    getOfficialReceiptBase64
+    getOfficialReceiptBase64,
+    // Reconciled Fee Structures & Optional Items
+    getFeeStructuresV2,
+    getFeeStructureDetails,
+    createFeeStructureV2,
+    updateFeeStructureV2,
+    copyFeeStructure,
+    bulkPercentageIncrease,
+    publishFeeStructure,
+    getParentViewPreview,
+    compileFeeStructurePdf,
+    compileFeeStructureBase64,
+    getOptionCatalogs,
+    createOptionCatalog,
+    updateOptionCatalog,
+    deleteOptionCatalog,
+    bulkImportCatalogs,
+    getOptionalItemsQueue,
+    confirmOptOut,
+    markTakingItem,
+    bulkConfirmOptionalItems,
+    sendOptionalItemReminder,
+    getOperationalRosters,
+    getParentChildFeeStructure,
+    saveChildOptionalSelections,
+    getStudentStatementPdf,
+    getStudentStatementBase64
 } = require("../controllers/finance.controller.js");
 
 const FINANCE_DASHBOARD_ROLES = ['admin', 'school_admin', 'platform_admin', 'bursary', 'master_admin', 'finance_administrator', 'finance_admin'];
@@ -110,6 +136,39 @@ router.get("/parent/history", authMiddleware, getParentPaymentHistory);
 // 5. Official Receipts
 router.get("/receipts/:id/pdf", authMiddleware, getOfficialReceiptPdf);
 router.post("/receipts/:id/compile-base64", authMiddleware, getOfficialReceiptBase64);
+
+// 6. Fee Structures (Reconciled Builder & Details)
+router.get("/structures-v2", authMiddleware, authorizeFinanceAction('view'), getFeeStructuresV2);
+router.get("/structures-v2/:id/details", authMiddleware, authorizeFinanceAction('view'), getFeeStructureDetails);
+router.post("/structures-v2", authMiddleware, authorizeFinanceAction('edit'), createFeeStructureV2);
+router.put("/structures-v2/:id", authMiddleware, authorizeFinanceAction('edit'), updateFeeStructureV2);
+router.post("/structures-v2/:id/copy", authMiddleware, authorizeFinanceAction('edit'), copyFeeStructure);
+router.post("/structures-v2/bulk-increase", authMiddleware, authorizeFinanceAction('edit'), bulkPercentageIncrease);
+router.post("/structures-v2/:id/publish", authMiddleware, authorizeFinanceAction('approve'), publishFeeStructure);
+router.get("/structures-v2/:id/parent-preview", authMiddleware, authorizeFinanceAction('view'), getParentViewPreview);
+router.get("/structures-v2/:id/pdf", authMiddleware, compileFeeStructurePdf);
+router.post("/structures-v2/:id/compile-base64", authMiddleware, compileFeeStructureBase64);
+
+// 7. Option Catalogs & Pricing Matrices
+router.get("/catalogs", authMiddleware, authorizeFinanceAction('view'), getOptionCatalogs);
+router.post("/catalogs", authMiddleware, authorizeFinanceAction('edit'), createOptionCatalog);
+router.put("/catalogs/:id", authMiddleware, authorizeFinanceAction('edit'), updateOptionCatalog);
+router.delete("/catalogs/:id", authMiddleware, authorizeFinanceAction('edit'), deleteOptionCatalog);
+router.post("/catalogs/bulk-import", authMiddleware, authorizeFinanceAction('edit'), bulkImportCatalogs);
+
+// 8. Admin Optional Items Review Queue & Operations
+router.get("/optional-queue", authMiddleware, authorizeFinanceAction('view'), getOptionalItemsQueue);
+router.post("/optional-queue/:selectionId/confirm-opt-out", authMiddleware, authorizeFinanceAction('edit'), confirmOptOut);
+router.post("/optional-queue/mark-taking", authMiddleware, authorizeFinanceAction('edit'), markTakingItem);
+router.post("/optional-queue/bulk-confirm", authMiddleware, authorizeFinanceAction('edit'), bulkConfirmOptionalItems);
+router.post("/optional-queue/:selectionId/remind", authMiddleware, authorizeFinanceAction('edit'), sendOptionalItemReminder);
+router.get("/optional-queue/rosters", authMiddleware, authorizeFinanceAction('view'), getOperationalRosters);
+
+// 9. Parent Portal Extended Flow & Statements
+router.get("/parent/child/:studentId/fee-structure", authMiddleware, getParentChildFeeStructure);
+router.post("/parent/child/:studentId/optional-selections", authMiddleware, saveChildOptionalSelections);
+router.get("/parent/statement/:studentId/pdf", authMiddleware, getStudentStatementPdf);
+router.post("/parent/statement/:studentId/compile-base64", authMiddleware, getStudentStatementBase64);
 
 // ==========================================
 // LEGACY & COMPATIBILITY ROUTES
