@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscriptionTier } from "@/hooks/useSubscriptionTier";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Slot, Tabs } from "expo-router";
-import { House, LayoutGrid, Settings, Users, Wallet, MessageSquare, Bell, Calendar } from "lucide-react-native";
+import { House, LayoutGrid, Settings, Users, Wallet, MessageSquare, Bell, Calendar, FileBarChart } from "lucide-react-native";
 import { Platform, useWindowDimensions, View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export const ALL_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: House, route: "/(admin)" },
     { name: "management/index", title: "Manage", icon: LayoutGrid, route: "/(admin)/management" },
+    { name: "reports/index", title: "Reports", icon: FileBarChart, route: "/(admin)/reports" },
     { name: "calendar/index", title: "Calendar", icon: Calendar, route: "/(admin)/calendar" },
     { name: "users/index", title: "Users", icon: Users, route: "/(admin)/users" },
     { name: "finance/index", title: "Finance", icon: Wallet, route: "/(admin)/finance" },
@@ -27,6 +28,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
 export const BETA_NAV_ITEMS: NavItem[] = [
     { name: "index", title: "Home", icon: House, route: "/(admin)" },
     { name: "management/index", title: "Manage", icon: LayoutGrid, route: "/(admin)/management" },
+    { name: "reports/index", title: "Reports", icon: FileBarChart, route: "/(admin)/reports" },
     { name: "calendar/index", title: "Calendar", icon: Calendar, route: "/(admin)/calendar" },
     { name: "users/index", title: "Users", icon: Users, route: "/(admin)/users" },
     { name: "communication/index", title: "Communication", icon: MessageSquare, route: "/(admin)/communication" },
@@ -88,6 +90,7 @@ const ALL_ADMIN_ROUTES = [
     "management/subjects/details",
     "management/subjects/index",
     "notifications",
+    "reports/index",
     "request-feature",
     "results/index",
     "results/promotions",

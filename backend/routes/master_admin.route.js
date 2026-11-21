@@ -89,4 +89,13 @@ router.get('/credential-requests', masterAdminController.getCredentialRequests);
 router.post('/credential-requests/:id/approve', masterAdminController.approveCredentialRequest);
 router.post('/credential-requests/:id/reject', masterAdminController.rejectCredentialRequest);
 
+// Retention & Compliance Toolkit (Platform Master Admin)
+router.get('/retention/policies', masterAdminController.getRetentionPolicies);
+router.put('/retention/policies', masterAdminController.updateRetentionPolicy);
+router.get('/retention/legal-holds', masterAdminController.getLegalHolds);
+router.post('/retention/legal-holds', masterAdminController.createLegalHold);
+router.put('/retention/legal-holds/:id/release', masterAdminController.releaseLegalHold);
+router.get('/retention/restore-requests', masterAdminController.getRestoreRequests);
+router.post('/retention/restore-requests/:id/action', masterAdminController.handleRestoreRequest);
+
 module.exports = router;

@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Redirect, Slot, Tabs, useSegments } from "expo-router";
-import { Bell, Building2, CreditCard, Headphones, LayoutDashboard, Settings, ShieldAlert, Users, FileText, MessageSquare } from 'lucide-react-native';
+import { Bell, Building2, CreditCard, Headphones, LayoutDashboard, Settings, ShieldAlert, Users, FileText, MessageSquare, Archive } from 'lucide-react-native';
 import React from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Platform, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
@@ -15,6 +15,7 @@ const NAV_ITEMS: NavItem[] = [
     { name: "institutions", title: "Institutions", icon: Building2, route: "/(master-admin)/institutions" },
     { name: "users", title: "All Users", icon: Users, route: "/(master-admin)/users" },
     { name: "payments", title: "Payments", icon: CreditCard, route: "/(master-admin)/payments" },
+    { name: "retention", title: "Retention & Compliance", icon: Archive, route: "/(master-admin)/retention" },
     { name: "notifications", title: "Notices", icon: Bell, route: "/(master-admin)/notifications" },
     { name: "system-logs", title: "System Logs", icon: FileText, route: "/(master-admin)/system-logs" },
     { name: "password-audit", title: "Password Audit", icon: ShieldAlert, route: "/(master-admin)/password-audit" },
@@ -47,6 +48,7 @@ const ALL_MASTER_ADMIN_ROUTES = [
     "notifications",
     "password-audit",
     "payments",
+    "retention",
     "settings",
     "support",
     "feedback",

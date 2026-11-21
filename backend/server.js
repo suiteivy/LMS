@@ -100,6 +100,7 @@ app.use("/api/teacher", authMiddleware, checkSubscription, require("./routes/tea
 app.use("/api/student", authMiddleware, checkSubscription, require("./routes/student.route.js"));
 app.use("/api/classes", authMiddleware, checkSubscription, require("./routes/class.route.js"));
 app.use("/api/diary", authMiddleware, checkSubscription, require("./routes/diary.route.js"));
+app.use("/api/reports/smart", authMiddleware, checkSubscription, require("./routes/smartReports.route.js"));
 app.use("/api/reports", authMiddleware, checkSubscription, require("./routes/reports.route.js"));
 app.use("/api/assessment-types", authMiddleware, checkSubscription, require("./routes/assessmentTypes.route.js"));
 app.use("/api/academic-years", authMiddleware, checkSubscription, require("./routes/academicYears.route.js"));

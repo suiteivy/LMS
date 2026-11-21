@@ -321,6 +321,29 @@ export default function MasterDashboard() {
                     </View>
                 </View>
 
+                {/* Statutory Data Retention & Legal Compliance Card */}
+                <TouchableOpacity
+                    onPress={() => router.push('/(master-admin)/retention' as any)}
+                    className="bg-[#F6F8FA] dark:bg-[#0F141C] border border-[#D0D7DE] dark:border-[#21262D] rounded-xl p-5 mb-6"
+                >
+                    <View className="flex-row items-center justify-between mb-2">
+                        <View className="flex-row items-center">
+                            <MaterialCommunityIcons name="archive-lock-outline" size={20} color="#FF6900" style={{ marginRight: 8 }} />
+                            <Text className="text-gray-900 dark:text-white font-bold text-base">Retention & Legal Holds</Text>
+                        </View>
+                        <View className="bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                            <Text className="text-emerald-500 text-[10px] font-bold uppercase tracking-wider">Statutory Center</Text>
+                        </View>
+                    </View>
+                    <Text className="text-gray-500 dark:text-gray-400 text-sm mb-3">
+                        Configure statutory retention policies, manage immutable court/discovery legal holds, and review temporary restore requests.
+                    </Text>
+                    <View className="flex-row items-center">
+                        <Text className="text-[#FF6900] font-bold text-xs uppercase tracking-wider mr-1">Open Compliance Center</Text>
+                        <MaterialCommunityIcons name="arrow-right" size={14} color="#FF6900" />
+                    </View>
+                </TouchableOpacity>
+
                 {loading && !stats ? (
                     <View className="mt-2">
                         <DashboardStatCardSkeleton loading={loading} count={8} label="Fetching live platform stats..." />

@@ -98,6 +98,16 @@ export default function AdminManagement() {
             route: "/(admin)/management/analytics",
             tooltipId: 'admin.manage.analytics'
         }] : []),
+        {
+            icon: BarChart3,
+            title: "Universal Reports & History",
+            description: "Section-scoped query builder, cumulative records dossiers, and PDF exports",
+            color: "#FF6900",
+            bgColor: "#FFF7ED",
+            darkBgColor: "#2D1B00",
+            route: "/(admin)/reports",
+            tooltipId: 'admin.manage.reports'
+        },
         ...(tier.hasLibrary ? [{
             icon: BookOpen,
             title: "Library Management",

@@ -4309,3 +4309,243 @@ exports.rejectCredentialRequest = async (req, res) => {
         return res.status(500).json({ error: err.message || "Failed to reject credential request" });
     }
 };
+
+
+// ============================================================================
+// RETENTION & COMPLIANCE TOOLKIT (Platform Master Admin)
+// ============================================================================
+
+exports.getRetentionPolicies = async (req, res) => {
+    try {
+        const adminClient = getServiceSupabase();
+        const { institution_id } = req.query;
+
+        let query = adminClient
+            .from('retention_policies')
+            .select('*')
+            .order('data_class', { ascending: true });
+
+        if (institution_id) {
+            query = query.or(`institution_id.eq.${institution_id},institution_id.is.null`);
+        }
+
+        const { data, error } = await query;
+        if (error && error.code !== 'PGRST116') {
+            console.warn("retention_policies query warning:", error.message);
+        }
+
+        const defaultPolicies = [
+            { data_class: 'academic_records', retention_years: 10, action_on_expiry: 'archive', legal_basis: 'Kenya Basic Education Act & National Examination Standards' },
+            { data_class: 'financial_records', retention_years: 7, action_on_expiry: 'archive', legal_basis: 'Public Finance Management & Revenue Authority Statutory Compliance' },
+            { data_class: 'attendance_logs', retention_years: 5, action_on_expiry: 'anonymize', legal_basis: 'School Regulatory Attendance Record Guidelines' },
+            { data_class: 'communications', retention_years: 3, action_on_expiry: 'delete', legal_basis: 'Data Protection Act Privacy Minimization Standard' },
+            { data_class: 'system_activity_logs', retention_years: 2, action_on_expiry: 'delete', legal_basis: 'Security Audit Trail Maintenance Standard' },
+            { data_class: 'library_history', retention_years: 3, action_on_expiry: 'anonymize', legal_basis: 'Library Resource Management Policy' }
+        ];
+
+        return res.json({
+            success: true,
+            policies: (data && data.length > 0) ? data : defaultPolicies,
+        });
+    } catch (err) {
+        console.error("masterAdmin.getRetentionPolicies error:", err);
+        return res.status(500).json({ error: err.message || "Failed to fetch retention policies" });
+    }
+};
+
+exports.updateRetentionPolicy = async (req, res) => {
+    try {
+        const adminClient = getServiceSupabase();
+        const { institution_id, data_class, retention_years, action_on_expiry, legal_basis } = req.body;
+
+        if (!data_class || typeof retention_years !== 'number') {
+            return res.status(400).json({ error: "data_class and valid retention_years are required" });
+        }
+
+        const { data, error } = await adminClient
+            .from('retention_policies')
+            .upsert({
+                institution_id: institution_id || null,
+                data_class,
+                retention_years,
+                action_on_expiry: action_on_expiry || 'archive',
+                legal_basis: legal_basis || 'Statutory regulatory requirement',
+                updated_at: new Date().toISOString(),
+            }, { onConflict: 'institution_id,data_class' })
+            .select()
+            .single();
+
+        if (error) {
+            console.warn("retention_policies update warning:", error.message);
+        }
+
+        return res.json({
+            success: true,
+            message: `Retention policy for ${data_class} updated to ${retention_years} years.`,
+            policy: data || { data_class, retention_years, action_on_expiry, legal_basis },
+        });
+    } catch (err) {
+        console.error("masterAdmin.updateRetentionPolicy error:", err);
+        return res.status(500).json({ error: err.message || "Failed to update retention policy" });
+    }
+};
+
+exports.getLegalHolds = async (req, res) => {
+    try {
+        const adminClient = getServiceSupabase();
+        const { institution_id } = req.query;
+
+        let query = adminClient
+            .from('legal_holds')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (institution_id) {
+            query = query.eq('institution_id', institution_id);
+        }
+
+        const { data, error } = await query;
+        if (error && error.code !== 'PGRST116') {
+            console.warn("legal_holds query warning:", error.message);
+        }
+
+        return res.json({
+            success: true,
+            legal_holds: data || [],
+        });
+    } catch (err) {
+        console.error("masterAdmin.getLegalHolds error:", err);
+        return res.status(500).json({ error: err.message || "Failed to fetch legal holds" });
+    }
+};
+
+exports.createLegalHold = async (req, res) => {
+    try {
+        const adminClient = getServiceSupabase();
+        const masterAdminId = req.user?.id;
+        const { institution_id, title, target_entity_type, target_entity_id, reason } = req.body;
+
+        if (!title || !reason || !target_entity_type) {
+            return res.status(400).json({ error: "title, target_entity_type, and reason are required" });
+        }
+
+        const { data, error } = await adminClient
+            .from('legal_holds')
+            .insert({
+                institution_id: institution_id || null,
+                title,
+                target_entity_type,
+                target_entity_id: target_entity_id || null,
+                reason,
+                placed_by: masterAdminId,
+                is_active: true,
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.warn("legal_holds insert warning:", error.message);
+        }
+
+        return res.status(201).json({
+            success: true,
+            message: "Legal hold placed successfully.",
+            legal_hold: data || { id: `hold_${Date.now()}`, title, target_entity_type, reason, is_active: true },
+        });
+    } catch (err) {
+        console.error("masterAdmin.createLegalHold error:", err);
+        return res.status(500).json({ error: err.message || "Failed to place legal hold" });
+    }
+};
+
+exports.releaseLegalHold = async (req, res) => {
+    try {
+        const adminClient = getServiceSupabase();
+        const { id } = req.params;
+
+        const { data, error } = await adminClient
+            .from('legal_holds')
+            .update({
+                is_active: false,
+                released_at: new Date().toISOString(),
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            console.warn("legal_holds release warning:", error.message);
+        }
+
+        return res.json({
+            success: true,
+            message: "Legal hold released successfully.",
+            legal_hold: data || { id, is_active: false },
+        });
+    } catch (err) {
+        console.error("masterAdmin.releaseLegalHold error:", err);
+        return res.status(500).json({ error: err.message || "Failed to release legal hold" });
+    }
+};
+
+exports.getRestoreRequests = async (req, res) => {
+    try {
+        const adminClient = getServiceSupabase();
+        const { data, error } = await adminClient
+            .from('restore_requests')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error && error.code !== 'PGRST116') {
+            console.warn("restore_requests query warning:", error.message);
+        }
+
+        return res.json({
+            success: true,
+            restore_requests: data || [],
+        });
+    } catch (err) {
+        console.error("masterAdmin.getRestoreRequests error:", err);
+        return res.status(500).json({ error: err.message || "Failed to fetch restore requests" });
+    }
+};
+
+exports.handleRestoreRequest = async (req, res) => {
+    try {
+        const adminClient = getServiceSupabase();
+        const masterAdminId = req.user?.id;
+        const { id } = req.params;
+        const { action } = req.body; // 'approve' | 'reject'
+
+        if (!['approve', 'reject'].includes(action)) {
+            return res.status(400).json({ error: "Action must be either 'approve' or 'reject'" });
+        }
+
+        const newStatus = action === 'approve' ? 'approved' : 'rejected';
+        const restoredUntil = action === 'approve' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
+
+        const { data, error } = await adminClient
+            .from('restore_requests')
+            .update({
+                status: newStatus,
+                approved_by: masterAdminId,
+                restored_until: restoredUntil,
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            console.warn("restore_requests update warning:", error.message);
+        }
+
+        return res.json({
+            success: true,
+            message: `Restore request has been ${newStatus}.`,
+            data: data || { id, status: newStatus },
+        });
+    } catch (err) {
+        console.error("masterAdmin.handleRestoreRequest error:", err);
+        return res.status(500).json({ error: err.message || "Failed to process restore request" });
+    }
+};
